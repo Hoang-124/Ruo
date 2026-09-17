@@ -1,0 +1,25 @@
+{
+  "name": "ruo-ufms",
+  "version": "2.0.0",
+  "description": "Ruo — University Facilities Management System (UFMS)",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "server": "npm --prefix server run dev",
+    "build": "npm --prefix client run build",
+    "seed": "npm --prefix server run seed"
+  },
+  "keywords": [
+    "ufms",
+    "university-facilities",
+    "digital-twin",
+    "csp-timetable",
+    "sla-reactor"
+  ],
+  "author": "Ruo Development Team",
+  "license": "ISC"
+}
