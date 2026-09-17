@@ -288,9 +288,9 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal }) => {
                   letterSpacing: '0.04em',
                   padding: '3px 9px',
                   borderRadius: '4px',
-                  background: 'rgba(37,99,235,0.1)',
+                  background: 'rgba(161, 101, 38, 0.14)',
                   color: 'var(--laser-indigo)',
-                  border: '1px solid rgba(37,99,235,0.25)'
+                  border: '1px solid rgba(161, 101, 38, 0.30)'
                 }}
               >
                 CAD MẶT BẰNG TẦNG {selectedFloor}
@@ -371,15 +371,15 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal }) => {
                     {sim.status === 'occupied' && sim.slot ? (
                       <div
                         style={{
-                          background: 'rgba(37,99,235,0.08)',
-                          border: '1px solid rgba(37,99,235,0.22)',
+                          background: 'rgba(161, 101, 38, 0.10)',
+                          border: '1px solid rgba(161, 101, 38, 0.25)',
                           borderRadius: 'var(--radius-sm)',
                           padding: '6px 10px',
                           fontSize: '11px',
                           marginBottom: '10px'
                         }}
                       >
-                        <div style={{ color: 'var(--laser-indigo)', fontWeight: 700 }}>
+                        <div style={{ color: 'var(--laser-cyan)', fontWeight: 700 }}>
                           {sim.slot.title}
                         </div>
                         <div style={{ color: 'var(--ink-muted)', fontSize: '10px' }}>
@@ -389,8 +389,8 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal }) => {
                     ) : (
                       <div
                         style={{
-                          background: 'rgba(5,150,105,0.08)',
-                          border: '1px solid rgba(5,150,105,0.22)',
+                          background: 'rgba(94, 98, 73, 0.12)',
+                          border: '1px solid rgba(94, 98, 73, 0.30)',
                           borderRadius: 'var(--radius-sm)',
                           padding: '6px 10px',
                           fontSize: '11px',
@@ -486,15 +486,15 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal }) => {
                     {sim.status === 'occupied' && sim.slot ? (
                       <div
                         style={{
-                          background: 'rgba(37,99,235,0.08)',
-                          border: '1px solid rgba(37,99,235,0.22)',
+                          background: 'rgba(161, 101, 38, 0.10)',
+                          border: '1px solid rgba(161, 101, 38, 0.25)',
                           borderRadius: 'var(--radius-sm)',
                           padding: '6px 10px',
                           fontSize: '11px',
                           marginBottom: '10px'
                         }}
                       >
-                        <div style={{ color: 'var(--laser-indigo)', fontWeight: 700 }}>
+                        <div style={{ color: 'var(--laser-cyan)', fontWeight: 700 }}>
                           {sim.slot.title}
                         </div>
                         <div style={{ color: 'var(--ink-muted)', fontSize: '10px' }}>
@@ -504,8 +504,8 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal }) => {
                     ) : (
                       <div
                         style={{
-                          background: 'rgba(5,150,105,0.08)',
-                          border: '1px solid rgba(5,150,105,0.22)',
+                          background: 'rgba(94, 98, 73, 0.12)',
+                          border: '1px solid rgba(94, 98, 73, 0.30)',
                           borderRadius: 'var(--radius-sm)',
                           padding: '6px 10px',
                           fontSize: '11px',
@@ -710,7 +710,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal }) => {
                     fontFamily: 'var(--font-mono)',
                     fontSize: '11px',
                     color: 'var(--laser-cyan)',
-                    background: 'rgba(6,182,212,0.15)',
+                    background: 'rgba(161, 101, 38, 0.16)',
                     padding: '2px 8px',
                     borderRadius: '4px'
                   }}

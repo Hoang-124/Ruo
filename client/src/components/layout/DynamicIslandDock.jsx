@@ -212,9 +212,9 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                 fontSize: '11px',
                 color: 'var(--laser-cyan)',
                 padding: '4px 10px',
-                background: 'rgba(6,182,212,0.08)',
+                background: 'rgba(161, 101, 38, 0.12)',
                 borderRadius: 'var(--radius-sm)',
-                border: '1px solid rgba(6,182,212,0.2)',
+                border: '1px solid rgba(161, 101, 38, 0.28)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '5px'
@@ -243,8 +243,8 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Chuyển sang Giao Diện Sáng (Clean Light Mode)' : 'Chuyển sang Giao Diện Tối (Obsidian Dark Mode)'}
               style={{
-                background: theme === 'light' ? 'rgba(37,99,235,0.08)' : 'rgba(255,255,255,0.06)',
-                borderColor: theme === 'light' ? 'rgba(37,99,235,0.3)' : 'var(--hairline-medium)',
+                background: theme === 'light' ? 'rgba(161, 101, 38, 0.08)' : 'rgba(255, 255, 255, 0.06)',
+                borderColor: theme === 'light' ? 'rgba(161, 101, 38, 0.3)' : 'var(--hairline-medium)',
                 color: theme === 'light' ? 'var(--laser-indigo)' : 'var(--laser-cyan)'
               }}
             >
@@ -351,7 +351,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                 fontSize: '11px',
                 border: '1px solid var(--hairline-medium)',
                 color: theme === 'light' ? 'var(--laser-indigo)' : 'var(--laser-cyan)',
-                background: theme === 'light' ? 'rgba(37,99,235,0.06)' : 'rgba(255,255,255,0.04)',
+                background: theme === 'light' ? 'rgba(161, 101, 38, 0.08)' : 'rgba(255, 255, 255, 0.04)',
                 cursor: 'pointer'
               }}
               title="Mở bảng tra cứu toàn bộ 95 Use Cases và 5 Trụ Cột (Phím tắt ⌘K / Ctrl+K)"
@@ -375,7 +375,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                   alignItems: 'center',
                   gap: '6px',
                   padding: '2px 9px 2px 3px',
-                  background: showUserMenu ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255,255,255,0.04)',
+                  background: showUserMenu ? 'rgba(161, 101, 38, 0.18)' : 'rgba(255, 255, 255, 0.04)',
                   borderRadius: 'var(--radius-full)',
                   border: showUserMenu ? '1px solid var(--laser-cyan)' : '1px solid var(--hairline-soft)',
                   cursor: 'pointer',
@@ -409,7 +409,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                     fontFamily: 'var(--font-mono)',
                     padding: '1px 5px',
                     borderRadius: 'var(--radius-full)',
-                    background: 'rgba(37, 99, 235, 0.2)',
+                    background: 'rgba(161, 101, 38, 0.22)',
                     color: 'var(--laser-cyan)',
                     fontWeight: 800
                   }}
@@ -441,7 +441,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                       <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--ink-pure)' }}>
                         {currentUser.name}
                       </div>
-                      <span style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: 'var(--laser-cyan)', background: 'rgba(6, 182, 212, 0.1)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(6, 182, 212, 0.25)', fontWeight: 700 }}>
+                      <span style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: 'var(--laser-cyan)', background: 'rgba(161, 101, 38, 0.14)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(161, 101, 38, 0.3)', fontWeight: 700 }}>
                         {currentUser.code}
                       </span>
                     </div>
@@ -491,7 +491,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                             padding: '8px 10px',
                             borderRadius: 'var(--radius-md)',
                             background: isActive
-                              ? (theme === 'light' ? 'rgba(37, 99, 235, 0.1)' : 'rgba(6, 182, 212, 0.14)')
+                              ? (theme === 'light' ? 'rgba(161, 101, 38, 0.12)' : 'rgba(161, 101, 38, 0.18)')
                               : (theme === 'light' ? 'rgba(0, 0, 0, 0.03)' : 'rgba(255, 255, 255, 0.03)'),
                             border: isActive
                               ? '1px solid var(--laser-cyan)'
