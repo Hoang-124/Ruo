@@ -4,11 +4,11 @@
 
 ---
 
-## 📑 MỤC LỤC TỔNG QUAN
+## MỤC LỤC TỔNG QUAN
 
 1. [Giới Thiệu Đề Án & Tầm Nhìn](#1-giới-thiệu-đề-án--tầm-nhìn)
 2. [Sơ Đồ Kiến Trúc Hệ Thống (System Architecture)](#2-sơ-đồ-kiến-trúc-hệ-thống-system-architecture)
-3. [6 Trụ Cột Kỹ Thuật Nâng Cao (Điểm Nhấn Đồ Án)](#3-6-trụ-cột-kỹ-thuật-nâng-cao-điểm-nhấn-đồ-án)
+3. [6 Trụ Cột Kỹ Thuật Nâng Cao](#3-6-trụ-cột-kỹ-thuật-nâng-cao)
 4. [Ma Trận 7 Tác Nhân (Actors) & Tài Khoản Trình Diễn (Demo Accounts)](#4-ma-trận-7-tác-nhân-actors--tài-khoản-trình-diễn-demo-accounts)
 5. [Cấu Trúc Thư Mục Dự Án (Monorepo Layout)](#5-cấu-trúc-thư-mục-dự-án-monorepo-layout)
 6. [Đặc Tả Cơ Sở Dữ Liệu 12 Collections (MongoDB Mongoose)](#6-đặc-tả-cơ-sở-dữ-liệu-12-collections-mongodb-mongoose)
@@ -68,15 +68,15 @@ Hệ thống quản lý cơ sở vật chất tại các trường đại học 
 
 ---
 
-## 3. 6 TRỤ CỘT KỸ THUẬT NÂNG CAO (ĐIỂM NHẤN ĐỒ ÁN)
+## 3. 6 TRỤ CỘT KỸ THUẬT NÂNG CAO
 
-### 🧩 Trụ Cột 1: Động Cơ Xếp Thời Khóa Biểu CSP (Constraint Satisfaction Problem)
+### Trụ Cột 1: Động Cơ Xếp Thời Khóa Biểu CSP (Constraint Satisfaction Problem)
 - **Giải thuật:** Backtracking kết hợp **MRV (Minimum Remaining Values)** ưu tiên xếp lớp có miền phòng hẹp nhất trước + **Degree Heuristic** ưu tiên môn sĩ số lớn và phòng Lab chuyên dụng.
 - **Hàm mục tiêu phạt mềm (Soft Penalty Optimization):**
   $$\text{Penalty} = W_{\text{waste}} \times \left(\frac{\text{Capacity}_{\text{room}} - \text{Size}_{\text{class}}}{\text{Capacity}_{\text{room}}} \times 100\right) + W_{\text{dist}} \times \text{BuildingMismatchPenalty}$$
 - **Hiệu quả thực nghiệm:** Phân bổ tự động **100% lớp học phần chỉ trong 2 - 5ms**, cam kết **0 xung đột** thời gian và đạt tỷ lệ tối ưu sử dụng ghế ngồi **> 85%**.
 
-### ⏱️ Trụ Cột 2: Kanban SLA Reactor Tính Chuẩn Giờ Hành Chính
+### Trụ Cột 2: Kanban SLA Reactor Tính Chuẩn Giờ Hành Chính
 - **Quy tắc đếm ngược:** Chỉ tính thời gian trong khung giờ làm việc: **07:30 – 17:00 (Thứ 2 đến Thứ 6)**. Đóng băng đồng hồ ban đêm và các ngày cuối tuần. Riêng mức sự cố `Critical` tính 24/7 liên tục ($\le 4$h).
 - **Hệ thống cảnh báo sớm 3 giai đoạn (Early Warning Matrix):**
   - `ON_TRACK` (0% - 70% hạn định): Badge xanh lục ổn định.
@@ -84,7 +84,7 @@ Hệ thống quản lý cơ sở vật chất tại các trường đại học 
   - `OVERDUE` ($> 100\%$ hạn định): Badge đỏ đậm, gửi email báo cáo Trưởng phòng CSVC và trừ điểm KPI.
 - **Nghiệm thu 2 chiều (Double Confirmation):** Người báo hỏng đánh giá 1 - 5 sao và bấm xác nhận trước khi đóng ticket; hệ thống tự động nghiệm thu sau 48h nếu không có phản hồi.
 
-### 🛡️ Trụ Cột 3: Phân Luồng Duyệt Đa Cấp Tự Động (4-Rule Escalation Engine)
+### Trụ Cột 3: Phân Luồng Duyệt Đa Cấp Tự Động (4-Rule Escalation Engine)
 Hệ thống tự động đánh giá đơn đặt phòng qua 4 ngưỡng định lượng để quyết định thẩm quyền phê duyệt:
 1. `RULE_CURRICULUM`: Slot mượn trùng với thời khóa biểu chính khóa đã đóng băng.
 2. `RULE_SCALE`: Quy mô mượn đồng thời $\ge 3$ phòng hoặc số lượng tham dự $\ge 300$ người.
@@ -92,7 +92,7 @@ Hệ thống tự động đánh giá đơn đặt phòng qua 4 ngưỡng địn
 4. `RULE_HIGH_VALUE`: Mượn trang thiết bị có nguyên giá $> 50.000.000$ VNĐ.
 $\rightarrow$ Tự động chuyển quyền thẩm định từ Quản lý CSVC lên **Phòng Đào Tạo & Ban Giám Hiệu**.
 
-### 📅 Trụ Cột 4: Đặt Lịch Định Kỳ Chuẩn iCalendar (RFC-5545) & Khắc Phục Xung Đột
+### Trụ Cột 4: Đặt Lịch Định Kỳ Chuẩn iCalendar (RFC-5545) & Khắc Phục Xung Đột
 - Tránh bùng nổ dữ liệu bằng cấu trúc kế thừa:
   - Bảng cha `booking_series`: Lưu thông tin lặp tuần cho cả học kỳ (15 tuần).
   - Bảng con `booking_exceptions`: Chỉ lưu các ngày nghỉ lễ, ngày dời phòng (`MODIFIED`) hoặc buổi hủy (`CANCELLED`).
@@ -100,7 +100,7 @@ $\rightarrow$ Tự động chuyển quyền thẩm định từ Quản lý CSVC 
   - *Chế độ 1 (Chỉ buổi này):* Sinh ngoại lệ độc lập, giữ nguyên toàn bộ chuỗi còn lại.
   - *Chế độ 2 (Buổi này và các buổi sau):* Cắt chuỗi tại thời điểm hiện tại và tạo chuỗi mới.
 
-### ⚙️ Trụ Cột 5: Quy Trình Thanh Lý Tài Sản 5 Bước Theo Ma Trận RACI ($R \ge 60\%$)
+### Trụ Cột 5: Quy Trình Thanh Lý Tài Sản 5 Bước Theo Ma Trận RACI ($R \ge 60\%$)
 - **Chỉ số tỷ lệ sửa chữa (Repair Ratio):**
   $$R = \left(\frac{\text{Chi phí ước tính linh kiện thay thế}}{\text{Giá trị sổ sách còn lại của thiết bị}}\right) \times 100\%$$
 - Khi $R \ge 60\%$, thiết bị tự động khóa mượn (`PENDING_DISPOSAL`) và kích hoạt quy trình 5 bước:
@@ -110,7 +110,7 @@ $\rightarrow$ Tự động chuyển quyền thẩm định từ Quản lý CSVC 
   - **Bước 4 (Consulted - P. Đào tạo & Kế hoạch):** Lập dự trù ngân sách mua sắm lô máy mới thay thế.
   - **Bước 5 (Informed - Thủ kho & IT Admin):** Nhập kho tài sản mới, dán mã QR và cập nhật danh mục.
 
-### ⛓️ Trụ Cột 6: Chuỗi Khối Kiểm Toán Bất Biến SHA-256 (Tamper-Proof Audit Trail)
+### Trụ Cột 6: Chuỗi Khối Kiểm Toán Bất Biến SHA-256 (Tamper-Proof Audit Trail)
 - Mọi thao tác trọng yếu (Đăng nhập, duyệt đơn, bàn giao thiết bị, thanh lý, cập nhật cấu hình) đều được đóng gói thành một khối dữ liệu kiểm toán.
 - Khối dữ liệu chứa: `timestamp`, `userId`, `action`, `entity`, `ipAddress`, `dataDiff`, `prevHash` và `sha256Hash`.
 - Cung cấp endpoint đối soát toàn vẹn `GET /api/audit/verify-chain`, phát hiện ngay lập tức vị trí khối bị can thiệp trái phép nếu cơ sở dữ liệu bị chỉnh sửa trực tiếp.
@@ -140,7 +140,7 @@ d:/Ruo/
 ├── client/                                 # Giao diện người dùng React 19 + Vite
 │   ├── public/                             # Tài nguyên tĩnh
 │   ├── src/
-│   │   ├── assets/                         # SVG icons thuần, tài nguyên đồ họa
+│   │   ├── assets/                         # SVG thuần nội bộ, tài nguyên đồ họa
 │   │   ├── components/                     # Components dùng chung (Header, Island, Modals...)
 │   │   ├── modules/                        # Giao diện 5 phân hệ nghiệp vụ chính
 │   │   │   ├── auth/                       # Đăng nhập, Quên mật khẩu, Profile
@@ -201,7 +201,7 @@ d:/Ruo/
 
 ## 7. DANH MỤC API ENDPOINTS CHUẨN RESTFUL
 
-### 🔐 Phân Hệ 1: Xác Thực & Người Dùng (`/api/auth`, `/api/admin/users`)
+### Phân Hệ 1: Xác Thực & Người Dùng (`/api/auth`, `/api/admin/users`)
 - `POST /api/auth/login`: Đăng nhập hệ thống, cấp Access Token (15m) + Refresh Token (7d).
 - `POST /api/auth/logout`: Đăng xuất, đưa token vào Blacklist.
 - `POST /api/auth/forgot-password`: Gửi mã OTP 6 số qua email.
@@ -212,14 +212,14 @@ d:/Ruo/
 - `PUT /api/admin/users/:id/toggle-status`: Khóa hoặc kích hoạt tài khoản.
 - `POST /api/admin/users/import`: Import danh sách sinh viên/giảng viên hàng loạt từ Excel.
 
-### 🏢 Phân Hệ 2: Không Gian Phòng & Bản Đồ CAD (`/api/facilities`)
+### Phân Hệ 2: Không Gian Phòng & Bản Đồ CAD (`/api/facilities`)
 - `GET /api/facilities/rooms`: Danh sách phòng học kèm bộ lọc đa tiêu chí.
 - `GET /api/facilities/rooms/:code`: Xem chi tiết thông số kỹ thuật, telemetry IoT và lịch phòng.
 - `POST /api/facilities/rooms`: Thêm mới phòng học vào sơ đồ mặt bằng.
 - `GET /api/facilities/cad-canvas`: Dữ liệu mặt bằng Tầng 3 Tòa A1 phục vụ vẽ sơ đồ CAD 2.5D.
 - `GET /api/facilities/rooms/search`: Thuật toán tìm kiếm phòng trống thông minh không trùng lịch.
 
-### 📦 Phân Hệ 3: Thiết Bị & Kho QR Định Danh (`/api/equipments`)
+### Phân Hệ 3: Thiết Bị & Kho QR Định Danh (`/api/equipments`)
 - `GET /api/equipments`: Danh mục thiết bị toàn trường, lọc theo trạng thái và vị trí.
 - `POST /api/equipments`: Nhập thiết bị mới, tự động sinh mã QR định danh duy nhất.
 - `GET /api/equipments/qr/:qrCode`: Tra cứu thông tin máy tức thời khi quét mã QR.
@@ -227,7 +227,7 @@ d:/Ruo/
 - `POST /api/equipments/borrow`: Đăng ký mượn thiết bị di động giảng dạy.
 - `PUT /api/equipments/borrow/:id/return`: Trả thiết bị và bàn giao nghiệm thu kỹ thuật.
 
-### 📅 Phân Hệ 4: Lịch Đặt Phòng Đơn & Định Kỳ (`/api/bookings`)
+### Phân Hệ 4: Lịch Đặt Phòng Đơn & Định Kỳ (`/api/bookings`)
 - `POST /api/bookings`: Đặt phòng đơn lẻ (khóa nguyên tử chống trùng lịch 409 Conflict).
 - `GET /api/bookings/my`: Lịch sử đặt phòng của cá nhân.
 - `POST /api/bookings/check-in`: Quét mã QR cửa phòng xác nhận có mặt trong 15 phút đầu.
@@ -236,7 +236,7 @@ d:/Ruo/
 - `GET /api/bookings/pending`: Hàng đợi duyệt đơn dành cho Quản lý CSVC.
 - `PUT /api/bookings/:id/approval`: Phê duyệt hoặc từ chối đơn mượn phòng.
 
-### 🛠️ Phân Hệ 5: Sự Cố Kỹ Thuật & Giám Sát SLA (`/api/incidents`, `/api/maintenance`)
+### Phân Hệ 5: Sự Cố Kỹ Thuật & Giám Sát SLA (`/api/incidents`, `/api/maintenance`)
 - `POST /api/incidents`: Báo sự cố hư hỏng (đính kèm tối đa 5 ảnh hiện trường).
 - `GET /api/incidents/kanban`: Bảng Kanban điều phối sự cố toàn trường theo hạn định SLA.
 - `PUT /api/incidents/:id/assign`: Giao việc cho kỹ thuật viên theo chuyên môn và khối lượng tải.
@@ -246,7 +246,7 @@ d:/Ruo/
 - `POST /api/disposals`: Lập hồ sơ đề xuất thanh lý tài sản khi $R \ge 60\%$.
 - `PUT /api/disposals/:id/step`: Chuyển bước phê duyệt thanh lý theo ma trận RACI.
 
-### 🎓 Phân Hệ 6: Xếp Lịch CSP Đào Tạo & Kiểm Toán (`/api/academic`, `/api/audit`)
+### Phân Hệ 6: Xếp Lịch CSP Đào Tạo & Kiểm Toán (`/api/academic`, `/api/audit`)
 - `POST /api/academic/import-courses`: Import danh sách lớp học phần học kỳ.
 - `POST /api/academic/csp/solve`: Kích hoạt bộ giải CSP xếp TKB tự động 0 xung đột.
 - `PUT /api/academic/semesters/:code/freeze`: Khóa cứng lịch học toàn trường.
@@ -262,7 +262,7 @@ d:/Ruo/
 ### 1. Yêu Cầu Môi Trường
 - **Node.js**: Phiên bản `>= 18.0.0` (Khuyến nghị Node LTS v20.x).
 - **MongoDB**: Phiên bản `>= 6.0` (Chạy local `mongodb://localhost:27017` hoặc kết nối MongoDB Atlas).
-- **Trình duyệt**: Chrome, Edge, Firefox, Safari (khuyến nghị chế độ hiển thị 1920x1080 hoặc laptop 14-inch).
+- **Trình duyệt**: Chrome, Edge, Firefox, Safari (khuyến nghị độ phân giải 1920x1080 hoặc màn hình laptop 14-inch).
 
 ---
 
@@ -319,25 +319,25 @@ Dự án được phân rã theo phương pháp **Horizontal Slicing** (Cắt th
 | **Uyên** | **Động Cơ CSP Đào Tạo, Báo Cáo BI, Thông Báo & Tích Hợp** | `UC-5.1` $\rightarrow$ `UC-5.10`, `UC-3.22` $\rightarrow$ `UC-3.25`, `UC-1.19` $\rightarrow$ `UC-1.20`, `UC-7.1` $\rightarrow$ `UC-7.3` | **16 Tasks** |
 | **TỔNG CỘNG** | **TOÀN BỘ DỰ ÁN RUO (UFMS)** | **103 Nghiệp Vụ Chuẩn Hóa** | **103 Tasks** |
 
-👉 Xem ma trận chi tiết 15 cột tại [PROJECT_TASKS_MATRIX.md](file:///d:/Ruo/PROJECT_TASKS_MATRIX.md) và tài liệu phân rã WBS tại [PROJECT_TASKS_WBS.md](file:///d:/Ruo/PROJECT_TASKS_WBS.md).
+Tra cứu ma trận chi tiết 15 cột tại [PROJECT_TASKS_MATRIX.md](file:///d:/Ruo/PROJECT_TASKS_MATRIX.md) và tài liệu phân rã WBS tại [PROJECT_TASKS_WBS.md](file:///d:/Ruo/PROJECT_TASKS_WBS.md).
 
 ---
 
 ## 10. QUY CHUẨN THIẾT KẾ GIAO DIỆN & TIÊU CHUẨN MÃ NGUỒN
 
-### 🎨 Hệ Thống Design Tokens & Bảng Màu Cao Cấp
+### Hệ Thống Design Tokens & Bảng Màu Cao Cấp
 - **Obsidian Dark Command Center:** Màu nền `#080c14`, thẻ bề mặt `#0f172a`, đường viền `rgba(255,255,255,0.08)`, chữ trắng ngà `#f8fafc`.
 - **Clean Academic Light Mode:** Màu nền `#f8fafc`, bề mặt trắng tinh khiết `#ffffff`, đường viền `#e2e8f0`, chữ Oxford Navy `#0f172a`.
 - **Màu sắc nhận diện giáo dục:** Xanh Navy Học thuật (`#0284c7`), Xanh Emerald Hoạt động (`#10b981`), Hổ phách Cảnh báo (`#f59e0b`), Đỏ Hồng Khẩn cấp (`#ef4444`).
 
-### ⚡ Nguyên Tắc Kỹ Thuật Bất Biến
-1. **100% Native Inline SVG:** Tuyệt đối không cài đặt hoặc import thư viện icon ngoài (`lucide-react`, `react-icons`...). Toàn bộ icon được viết trực tiếp bằng thẻ SVG chuẩn tối ưu hiệu năng.
+### Nguyên Tắc Kỹ Thuật Bất Biến
+1. **100% Native Inline SVG:** Tuyệt đối không cài đặt hoặc import thư viện icon ngoài (`lucide-react`, `react-icons`...). Toàn bộ icon được viết trực tiếp bằng thẻ SVG chuẩn nội bộ nhằm tối ưu hiệu năng.
 2. **Không Viết Mã Giả (Full Output Enforcement):** Mọi controller, service và component đều được viết hoàn chỉnh 100%, không chứa chú thích dạng `// todo` hoặc lược bỏ code.
 3. **Typography Đồng Bộ:** Sử dụng đồng nhất phông chữ **Be Vietnam Pro** cho tiêu đề, nội dung tiếng Việt và **JetBrains Mono** cho các chỉ số kỹ thuật, mã phòng, mã QR.
 
 ---
 
-## 📜 GIẤY PHÉP & BẢN QUYỀN
+## GIẤY PHÉP & BẢN QUYỀN
 
 Đề tài Đồ án Tốt nghiệp được nghiên cứu và phát triển bởi **Nhóm Phát Triển Ruo (UFMS Team)**.  
 Bản quyền © 2026. Mọi quyền được bảo lưu.
