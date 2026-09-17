@@ -1,0 +1,671 @@
+// ==============================================================================
+// RUO — UNIVERSITY FACILITIES MANAGEMENT SYSTEM (UFMS)
+// COMPLETE PRODUCTION DATABASE SCHEMA (DBML)
+// Built on: 5 Core Business Pillars, 6 RBAC Actors, CSP Engine & Digital Twin
+// ==============================================================================
+
+// ==============================================================================
+// 1. ENUMS & DOMAIN VALUE SETS
+// ==============================================================================
+
+Enum user_status {
+  active [note: 'Đang hoạt động']
+  locked [note: 'Tạm khóa tài khoản do vi phạm hoặc nghỉ chế độ']
+  inactive [note: 'Đã tốt nghiệp hoặc thôi việc']
+}
+
+Enum room_type {
+  theory [note: 'Phòng học lý thuyết']
+  lab [note: 'Phòng thí nghiệm / Thực hành chuyên dụng']
+  hall [note: 'Hội trường đa năng / Giảng đường bậc thang']
+  smart [note: 'Phòng học thông minh Smart Classroom']
+  meeting [note: 'Phòng họp / Seminar']
+}
+
+Enum room_status {
+  available [note: 'Khả dụng / Sẵn sàng phục vụ']
+  occupied [note: 'Đang có lớp học hoặc sự kiện']
+  maintenance [note: 'Đang bảo trì kỹ thuật']
+  locked [note: 'Khóa niêm phong']
+}
+
+Enum equipment_condition {
+  brand_new [note: 'Mới 100%']
+  good [note: 'Hoạt động tốt']
+  fair [note: 'Khấu hao trung bình, hoạt động bình thường']
+  damaged [note: 'Hư hỏng cần kiểm định sửa chữa']
+  disposed [note: 'Đã hoàn tất thanh lý']
+}
+
+Enum equipment_status {
+  available [note: 'Sẵn sàng trong kho hoặc phòng']
+  in_use [note: 'Đang lắp đặt cố định tại phòng học']
+  borrowed [note: 'Đang cho mượn di động']
+  under_maintenance [note: 'Đang trong quy trình sửa chữa bảo hành']
+  pending_disposal [note: 'Đã khóa mượn, chờ thẩm định thanh lý R >= 60%']
+}
+
+Enum booking_status {
+  pending [note: 'Chờ duyệt']
+  approved [note: 'Đã duyệt, cấp mã QR check-in']
+  rejected [note: 'Bị từ chối']
+  cancelled [note: 'Người dùng tự hủy']
+  checked_in [note: 'Đã check-in QR thành công trong 15 phút đầu']
+  no_show [note: 'Không có mặt check-in, bị trừ điểm uy tín']
+  completed [note: 'Đã hoàn thành ca sử dụng']
+}
+
+Enum ticket_priority {
+  critical [note: 'Khẩn cấp (SLA 4h 24/7)']
+  high [note: 'Ưu tiên cao (SLA 8h)']
+  medium [note: 'Trung bình (SLA 24h)']
+  low [note: 'Bình thường (SLA 48h)']
+}
+
+Enum ticket_status {
+  open [note: 'Mới tạo, chờ tiếp nhận']
+  assigned [note: 'Đã phân công cho kỹ thuật viên']
+  in_progress [note: 'Đang trực tiếp khảo sát / sửa chữa']
+  pending_parts [note: 'Tạm dừng chờ xuất linh kiện thay thế từ kho']
+  resolved [note: 'Đã khắc phục xong, chờ người dùng nghiệm thu 2 chiều']
+  closed [note: 'Đã đóng và nghiệm thu đạt chuẩn']
+}
+
+Enum sla_state {
+  on_track [note: 'Tiến độ an toàn trong khung SLA']
+  at_risk [note: 'Sắp hết hạn SLA (<25% thời gian còn lại)']
+  overdue [note: 'Quá hạn SLA cam kết']
+  met [note: 'Hoàn thành đúng hoặc trước hạn SLA']
+  breached [note: 'Vi phạm cam kết chất lượng dịch vụ']
+}
+
+Enum disposal_status {
+  draft [note: 'Bản thảo đề xuất thanh lý']
+  technical_assessment [note: 'Kỹ thuật viên thẩm định chi phí sửa chữa']
+  committee_review [note: 'Hội đồng thanh lý bỏ phiếu ma trận RACI']
+  approved [note: 'Ban Giám Hiệu phê duyệt quyết định thanh lý']
+  auction_or_scrap [note: 'Bán đấu giá / Hủy phế liệu thu hồi tài chính']
+  rejected [note: 'Bác bỏ đề xuất thanh lý, yêu cầu sửa chữa tiếp']
+}
+
+// ==============================================================================
+// 2. USER & ACCESS MANAGEMENT (RBAC, SESSIONS & AUDIT LOGS)
+// ==============================================================================
+
+Table departments {
+  id int [pk, increment]
+  code varchar(20) [unique, not null, note: 'Mã khoa/viện: CNTT, DIEN, CSVC...']
+  name varchar(150) [not null, note: 'Tên khoa / phòng ban chức năng']
+  description text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table users {
+  id int [pk, increment]
+  employee_code varchar(30) [unique, not null, note: 'Mã SV / Mã Cán bộ: SV20220412, CB198402']
+  email varchar(120) [unique, not null]
+  password_hash varchar(255) [not null]
+  full_name varchar(100) [not null]
+  phone varchar(20)
+  avatar varchar(255) [note: 'URL ảnh hoặc mã ký tự đại diện']
+  department_id int [ref: > departments.id, null]
+  class_name varchar(50) [null, note: 'Lớp sinh hoạt: K67-CNTT-02']
+  repute_score int [default: 100, note: 'Điểm uy tín mượn phòng (Trừ khi no-show)']
+  status user_status [default: 'active']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp [null, note: 'Xóa mềm tài khoản']
+
+  indexes {
+    employee_code
+    email
+    (department_id, status)
+  }
+}
+
+Table roles {
+  id int [pk, increment]
+  name varchar(50) [unique, not null, note: 'student, lecturer, facility_staff, maintenance, academic_affairs, admin']
+  title varchar(100) [not null, note: 'Tên hiển thị tiếng Việt']
+  description text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table user_roles {
+  user_id int [ref: > users.id, not null]
+  role_id int [ref: > roles.id, not null]
+  assigned_at timestamp [default: `now()`]
+
+  indexes {
+    (user_id, role_id) [pk]
+  }
+}
+
+Table permissions {
+  id int [pk, increment]
+  code varchar(80) [unique, not null, note: 'room:book, ticket:assign, csp:execute, equipment:dispose']
+  name varchar(120) [not null]
+  module varchar(50) [not null, note: 'rooms, bookings, equipments, tickets, academic, rbac']
+  description text
+}
+
+Table role_permissions {
+  role_id int [ref: > roles.id, not null]
+  permission_id int [ref: > permissions.id, not null]
+
+  indexes {
+    (role_id, permission_id) [pk]
+  }
+}
+
+Table user_sessions {
+  id varchar(64) [pk, note: 'Session Token / Refresh Token Hash']
+  user_id int [ref: > users.id, not null]
+  ip_address varchar(45)
+  user_agent text
+  is_revoked boolean [default: false]
+  expires_at timestamp [not null]
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    user_id
+    expires_at
+  }
+}
+
+Table audit_logs {
+  id bigint [pk, increment]
+  user_id int [ref: > users.id, null, note: 'Null nếu là hành động hệ thống tự động']
+  action varchar(60) [not null, note: 'BOOKING_CREATE, TICKET_ASSIGN, SCHEDULE_FREEZE, DISPOSAL_APPROVE']
+  entity_type varchar(50) [not null, note: 'Booking, Ticket, Equipment, Schedule, Role']
+  entity_id varchar(64) [not null]
+  ip_address varchar(45)
+  diff_data jsonb [note: 'Trạng thái trước và sau khi thay đổi (before/after)']
+  sha256_hash varchar(64) [not null, note: 'Mã băm SHA-256 xác thực tính toàn vẹn bất biến']
+  prev_hash varchar(64) [note: 'Liên kết khối băm trước để chống can thiệp kiểm toán']
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    user_id
+    action
+    entity_type
+    created_at
+  }
+}
+
+// ==============================================================================
+// 3. SPATIAL CAMPUS & FACILITY DIGITAL TWIN (TRỤ CỘT 2)
+// ==============================================================================
+
+Table buildings {
+  id int [pk, increment]
+  code varchar(20) [unique, not null, note: 'Mã tòa: A1, B1, B2, C1...']
+  name varchar(100) [not null, note: 'Tòa A1 - Giảng Đường Chính']
+  campus_zone varchar(50) [note: 'Khu A, Khu B, Khu Công nghệ cao']
+  total_floors int [default: 5]
+  description text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table floors {
+  id int [pk, increment]
+  building_id int [ref: > buildings.id, not null]
+  floor_number int [not null, note: '1, 2, 3, 4, 5...']
+  name varchar(50) [not null, note: 'Tầng 1, Tầng 3 - Khoa CNTT']
+  floor_plan_svg text [note: 'Tọa độ và đường vẽ mặt bằng CAD 2.5D']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    (building_id, floor_number) [unique]
+  }
+}
+
+Table rooms {
+  id int [pk, increment]
+  code varchar(30) [unique, not null, note: 'Mã phòng: A1-302, B2-105']
+  name varchar(120) [not null, note: 'Phòng Học Lý Thuyết 302']
+  building_id int [ref: > buildings.id, not null]
+  floor_id int [ref: > floors.id, not null]
+  department_id int [ref: > departments.id, null]
+  type room_type [default: 'theory']
+  capacity int [not null, default: 40, note: 'Sức chứa ghế ngồi']
+  area_sqm decimal(8,2) [note: 'Diện tích (m2)']
+  status room_status [default: 'available']
+  power_kw decimal(6,2) [default: 0, note: 'Công suất tiêu thụ điện tức thời (kW)']
+  cad_coordinates jsonb [note: 'Tọa độ bounding box hiển thị trên bản đồ CAD']
+  image_url varchar(255)
+  booking_rules text [note: 'Quy tắc mượn riêng của phòng (ví dụ: chỉ cho Lab)']
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp [null]
+
+  indexes {
+    code
+    (building_id, floor_id)
+    (type, status)
+    capacity
+  }
+}
+
+Table room_sensors {
+  id int [pk, increment]
+  room_id int [ref: > rooms.id, not null]
+  sensor_code varchar(50) [unique, not null]
+  sensor_type varchar(30) [not null, note: 'temperature, humidity, occupancy_counter, power_meter']
+  current_value decimal(10,2) [not null]
+  unit varchar(20) [not null, note: '°C, %, people, kW']
+  battery_level int [null, note: 'Phần trăm pin thiết bị IoT']
+  last_ping_at timestamp [default: `now()`]
+
+  indexes {
+    (room_id, sensor_type)
+  }
+}
+
+// ==============================================================================
+// 4. EQUIPMENT INVENTORY & IMMUTABLE QR IDENTITY (TRỤ CỘT 4)
+// ==============================================================================
+
+Table suppliers {
+  id int [pk, increment]
+  code varchar(30) [unique, not null]
+  name varchar(150) [not null]
+  tax_code varchar(30)
+  contact_name varchar(100)
+  phone varchar(20)
+  email varchar(100)
+  address text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table equipment_categories {
+  id int [pk, increment]
+  code varchar(30) [unique, not null]
+  name varchar(100) [not null, note: 'Máy chiếu, Điều hòa, PC đồ họa, Thiết bị đo kiểm']
+  depreciation_years int [default: 5, note: 'Số năm khấu hao tiêu chuẩn nhà nước']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table equipment {
+  id int [pk, increment]
+  asset_code varchar(50) [unique, not null, note: 'Mã tài sản cố định: TS-2021-MC01']
+  qr_code_data varchar(255) [unique, not null, note: 'Dữ liệu mã QR định danh bất biến phục vụ kiểm kê']
+  serial_number varchar(80) [note: 'Serial Number từ hãng sản xuất']
+  name varchar(150) [not null, note: 'Máy Chiếu Laser Sony VPL-FHZ85']
+  category_id int [ref: > equipment_categories.id, not null]
+  room_id int [ref: > rooms.id, null, note: 'Phòng lắp đặt cố định (null nếu lưu kho)']
+  supplier_id int [ref: > suppliers.id, null]
+  original_price decimal(14,2) [not null, note: 'Nguyên giá mua vào (VNĐ)']
+  remaining_value decimal(14,2) [not null, note: 'Giá trị sổ sách còn lại (VNĐ)']
+  purchase_date date [not null]
+  warranty_expiry date
+  condition equipment_condition [default: 'good']
+  status equipment_status [default: 'available']
+  repair_count int [default: 0, note: 'Tổng số lần đã sửa chữa']
+  estimated_repair_cost decimal(14,2) [default: 0, note: 'Chi phí sửa chữa ước tính hiện tại']
+  image_url varchar(255)
+  specifications jsonb [note: 'Thông số kỹ thuật chi tiết']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp [null]
+
+  indexes {
+    asset_code
+    qr_code_data
+    (room_id, status)
+    (category_id, condition)
+  }
+}
+
+// ==============================================================================
+// 5. ROOM BOOKING & EQUIPMENT BORROWING (RFC-5545, ESCALATION, CHECK-IN)
+// ==============================================================================
+
+Table escalation_rules {
+  id int [pk, increment]
+  rule_code varchar(40) [unique, not null, note: 'RULE_OFF_HOURS, RULE_HIGH_VALUE, RULE_LARGE_CAPACITY']
+  name varchar(120) [not null]
+  description text
+  condition_json jsonb [not null, note: 'Biểu thức điều kiện kích hoạt chuyển cấp BGH']
+  escalate_to_role_id int [ref: > roles.id, not null]
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+}
+
+Table room_bookings {
+  id int [pk, increment]
+  booking_code varchar(40) [unique, not null, note: 'Mã đơn: BK-2026-0012']
+  user_id int [ref: > users.id, not null]
+  room_id int [ref: > rooms.id, not null]
+  start_time timestamp [not null]
+  end_time timestamp [not null]
+  purpose text [not null, note: 'Mục đích sử dụng: Học nhóm đồ án tốt nghiệp']
+  participants_count int [default: 1]
+  is_recurring boolean [default: false, note: 'Lịch định kỳ chuỗi nhiều tuần']
+  status booking_status [default: 'pending']
+  check_in_qr_code varchar(100) [note: 'Mã QR cấp riêng cho người mượn quét tại cửa phòng']
+  check_in_time timestamp [null, note: 'Thời điểm quét QR thực tế']
+  check_in_deadline timestamp [note: 'Hạn chót 15 phút sau start_time']
+  no_show_marked_at timestamp [null]
+  approved_by int [ref: > users.id, null]
+  approved_at timestamp [null]
+  rejection_reason text [null]
+  is_escalated boolean [default: false]
+  escalation_rule_id int [ref: > escalation_rules.id, null]
+  escalation_reason text [null]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp [null]
+
+  indexes {
+    (room_id, start_time, end_time)
+    (user_id, status)
+    (status, check_in_deadline)
+  }
+}
+
+Table recurring_booking_rules {
+  id int [pk, increment]
+  booking_id int [ref: > room_bookings.id, not null]
+  recurrence_pattern varchar(30) [not null, note: 'WEEKLY, BIWEEKLY (Chuẩn RFC-5545)']
+  day_of_week int [not null, note: '2 = Thứ Hai ... 8 = Chủ Nhật']
+  repeat_weeks_count int [not null, default: 15]
+  start_date date [not null]
+  end_date date [not null]
+  created_at timestamp [default: `now()`]
+}
+
+Table equipment_borrowings {
+  id int [pk, increment]
+  borrow_code varchar(40) [unique, not null]
+  user_id int [ref: > users.id, not null]
+  equipment_id int [ref: > equipment.id, not null]
+  room_booking_id int [ref: > room_bookings.id, null, note: 'Gắn kèm đơn mượn phòng nếu có']
+  start_time timestamp [not null]
+  end_time timestamp [not null]
+  return_time timestamp [null]
+  purpose text
+  status varchar(30) [default: 'pending', note: 'pending, approved, borrowed, returned, extended, overdue']
+  approved_by int [ref: > users.id, null]
+  approved_at timestamp [null]
+  condition_before equipment_condition [default: 'good']
+  condition_after equipment_condition [null]
+  handover_notes text
+  is_escalated boolean [default: false, note: 'Tự động kích hoạt khi thiết bị > 50 triệu']
+  escalation_reason text [null]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp [null]
+
+  indexes {
+    (equipment_id, start_time, end_time)
+    (user_id, status)
+  }
+}
+
+// ==============================================================================
+// 6. INCIDENTS & KANBAN SLA REACTOR (TRỤ CỘT 3)
+// ==============================================================================
+
+Table sla_configs {
+  id int [pk, increment]
+  priority ticket_priority [unique, not null]
+  response_time_minutes int [not null, note: 'Thời gian tối đa để chuyên viên tiếp nhận (Phút)']
+  resolution_time_minutes int [not null, note: 'Thời gian tối đa để sửa dứt điểm (Phút)']
+  business_hours_only boolean [default: true, note: 'Đếm ngược 07:30 - 17:00 hay 24/7']
+  auto_escalate_after_minutes int [note: 'Quá thời gian này tự chuyển cấp lên Trưởng phòng']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table incidents {
+  id int [pk, increment]
+  ticket_code varchar(40) [unique, not null, note: 'TCK-2026-0042']
+  reporter_id int [ref: > users.id, not null]
+  room_id int [ref: > rooms.id, null]
+  equipment_id int [ref: > equipment.id, null]
+  title varchar(150) [not null]
+  description text [not null]
+  priority ticket_priority [default: 'medium']
+  status ticket_status [default: 'open']
+  images jsonb [note: 'Mảng URL ảnh chụp hiện trường']
+  evaluation_score int [null, note: 'Người báo đánh giá 1-5 sao sau nghiệm thu 2 chiều']
+  evaluation_comment text [null]
+  created_at timestamp [default: `now()`]
+  resolved_at timestamp [null]
+  closed_at timestamp [null]
+  deleted_at timestamp [null]
+
+  indexes {
+    ticket_code
+    (status, priority)
+    (room_id, status)
+    (reporter_id, status)
+  }
+}
+
+Table sla_tracking {
+  id int [pk, increment]
+  incident_id int [ref: > incidents.id, unique, not null]
+  sla_config_id int [ref: > sla_configs.id, not null]
+  sla_start_time timestamp [not null]
+  response_deadline timestamp [not null]
+  resolution_deadline timestamp [not null]
+  actual_response_time timestamp [null]
+  actual_resolution_time timestamp [null]
+  state sla_state [default: 'on_track']
+  remaining_minutes int [note: 'Đồng hồ đếm ngược âm khi quá hạn']
+  is_escalated boolean [default: false]
+  escalated_to int [ref: > users.id, null]
+  escalated_at timestamp [null]
+  last_calculated_at timestamp [default: `now()`]
+
+  indexes {
+    state
+    resolution_deadline
+  }
+}
+
+Table incident_comments {
+  id int [pk, increment]
+  incident_id int [ref: > incidents.id, not null]
+  user_id int [ref: > users.id, not null]
+  comment text [not null]
+  attachments jsonb [null]
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    incident_id
+  }
+}
+
+Table maintenance_tickets {
+  id int [pk, increment]
+  incident_id int [ref: > incidents.id, unique, not null]
+  equipment_id int [ref: > equipment.id, null]
+  assigned_to int [ref: > users.id, not null, note: 'Kỹ thuật viên chịu trách nhiệm']
+  type varchar(30) [default: 'reactive', note: 'reactive = sửa sự cố, preventive = bảo dưỡng định kỳ']
+  status ticket_status [default: 'assigned']
+  root_cause text [null, note: 'Nguyên nhân gốc rễ kỹ thuật']
+  resolution text [null, note: 'Biện pháp khắc phục đã thực hiện']
+  parts_used jsonb [null, note: 'Vật tư linh kiện đã thay thế']
+  labor_cost decimal(12,2) [default: 0]
+  material_cost decimal(12,2) [default: 0]
+  total_repair_cost decimal(12,2) [default: 0, note: 'Cộng dồn vào chi phí ước tính để tính chỉ số R']
+  started_at timestamp [null]
+  completed_at timestamp [null]
+  scheduled_date timestamp [null]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    assigned_to
+    status
+  }
+}
+
+// ==============================================================================
+// 7. PUBLIC ASSET DISPOSAL PROCESS R >= 60% (TRỤ CỘT 5)
+// ==============================================================================
+
+Table disposal_proposals {
+  id int [pk, increment]
+  proposal_code varchar(40) [unique, not null, note: 'DISP-2026-0008']
+  equipment_id int [ref: > equipment.id, not null]
+  proposed_by int [ref: > users.id, not null, note: 'Chuyên viên CSVC lập đề xuất']
+  repair_cost decimal(14,2) [not null, note: 'Chi phí sửa chữa ước tính']
+  remaining_value decimal(14,2) [not null, note: 'Giá trị sổ sách còn lại']
+  r_ratio decimal(6,2) [not null, note: 'Chỉ số tài chính R = (repair_cost / remaining_value) * 100']
+  current_step int [default: 1, note: 'Tiến trình 5 bước theo ma trận RACI (1 đến 5)']
+  status disposal_status [default: 'draft']
+  reason text [not null, note: 'Căn cứ đề xuất thanh lý']
+  approved_by int [ref: > users.id, null, note: 'BGH duyệt bước 4']
+  final_decision_date date [null]
+  scrap_proceeds decimal(14,2) [default: 0, note: 'Số tiền thu hồi khi bán đấu giá / hủy phế liệu']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  deleted_at timestamp [null]
+
+  indexes {
+    equipment_id
+    status
+    r_ratio
+  }
+}
+
+Table disposal_steps {
+  id int [pk, increment]
+  proposal_id int [ref: > disposal_proposals.id, not null]
+  step_number int [not null, note: '1: Lập hồ sơ, 2: Thẩm định KT, 3: Họp hội đồng, 4: BGH phê duyệt, 5: Xử lý tài sản']
+  step_name varchar(100) [not null]
+  raci_responsible int [ref: > users.id, null]
+  status varchar(20) [default: 'pending', note: 'pending, in_progress, approved, rejected, skipped']
+  notes text
+  started_at timestamp [null]
+  completed_at timestamp [null]
+
+  indexes {
+    (proposal_id, step_number) [unique]
+  }
+}
+
+Table disposal_committee_members {
+  id int [pk, increment]
+  proposal_id int [ref: > disposal_proposals.id, not null]
+  user_id int [ref: > users.id, not null]
+  committee_role varchar(50) [not null, note: 'chair, technical_expert, financial_officer, secretary']
+  vote varchar(20) [default: 'pending', note: 'approve, reject, abstain']
+  vote_comment text [null]
+  voted_at timestamp [null]
+
+  indexes {
+    (proposal_id, user_id) [unique]
+  }
+}
+
+// ==============================================================================
+// 8. ACADEMIC ALLOCATION & CSP ENGINE (TRỤ CỘT 1)
+// ==============================================================================
+
+Table semesters {
+  id int [pk, increment]
+  code varchar(20) [unique, not null, note: '2026-1, 2026-2, 2026-SUMMER']
+  name varchar(100) [not null, note: 'Học kỳ 1 Năm học 2026 - 2027']
+  start_date date [not null]
+  end_date date [not null]
+  is_locked boolean [default: false, note: 'LOCKED: Đóng băng lịch toàn trường, cấm ghi đè']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table courses {
+  id int [pk, increment]
+  code varchar(30) [unique, not null, note: 'IT3010, IT3160, EE2010']
+  name varchar(150) [not null, note: 'Kỹ Thuật Lập Trình']
+  credits int [default: 3]
+  department_id int [ref: > departments.id, not null]
+  required_room_type room_type [default: 'theory']
+  created_at timestamp [default: `now()`]
+}
+
+Table csp_solver_runs {
+  id int [pk, increment]
+  semester_id int [ref: > semesters.id, not null]
+  run_by int [ref: > users.id, not null, note: 'Chuyên viên Đào tạo kích hoạt']
+  algorithm varchar(60) [default: 'backtracking_mrv_lcv_ac3']
+  status varchar(30) [default: 'running', note: 'running, completed, optimal, partial_solution, failed']
+  total_classes int [not null]
+  allocated_classes int [default: 0]
+  conflicts_found int [default: 0]
+  seat_utilization_rate decimal(5,2) [note: 'Tỉ lệ lấp đầy ghế ngồi trung bình']
+  execution_time_ms int [note: 'Thời gian chạy giải thuật (ms)']
+  created_at timestamp [default: `now()`]
+  completed_at timestamp [null]
+
+  indexes {
+    semester_id
+    created_at
+  }
+}
+
+Table csp_constraints {
+  id int [pk, increment]
+  semester_id int [ref: > semesters.id, not null]
+  code varchar(50) [not null, note: 'HARD_NO_DOUBLE_BOOKING, SOFT_CLUSTER_BUILDING, SOFT_CAPACITY_FIT']
+  type varchar(20) [not null, note: 'hard, soft']
+  weight int [default: 100, note: 'Hệ số phạt của ràng buộc mềm khi tối ưu MRV/LCV']
+  description text
+  is_active boolean [default: true]
+}
+
+Table academic_schedules {
+  id int [pk, increment]
+  csp_run_id int [ref: > csp_solver_runs.id, null, note: 'Gắn kết phiên chạy CSP sinh ra lịch']
+  semester_id int [ref: > semesters.id, not null]
+  room_id int [ref: > rooms.id, not null]
+  lecturer_id int [ref: > users.id, not null]
+  course_id int [ref: > courses.id, not null]
+  class_section_code varchar(50) [not null, note: 'Mã lớp học phần: IT3010-01']
+  student_count int [not null, note: 'Số lượng sinh viên đăng ký lớp']
+  day_of_week int [not null, note: '2 = Thứ Hai ... 7 = Thứ Bảy']
+  start_time time [not null, note: '07:30:00']
+  end_time time [not null, note: '11:30:00']
+  start_week int [default: 1]
+  end_week int [default: 15]
+  is_frozen boolean [default: false, note: 'Khóa slot cố định không cho thuật toán dời đi']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    (semester_id, room_id, day_of_week, start_time, end_time)
+    (semester_id, lecturer_id, day_of_week, start_time)
+    (course_id, class_section_code)
+  }
+}
+
+// ==============================================================================
+// 9. REAL-TIME NOTIFICATION SYSTEM
+// ==============================================================================
+
+Table notifications {
+  id bigint [pk, increment]
+  user_id int [ref: > users.id, not null]
+  title varchar(150) [not null]
+  message text [not null]
+  type varchar(20) [default: 'info', note: 'success, warning, info, error']
+  is_read boolean [default: false]
+  related_entity_type varchar(40) [null, note: 'room_bookings, incidents, disposal_proposals']
+  related_entity_id varchar(50) [null]
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    (user_id, is_read, created_at)
+  }
+}
