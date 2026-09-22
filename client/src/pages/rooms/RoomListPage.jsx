@@ -3,13 +3,13 @@ import { Icons } from '../../components/common/SvgIcons';
 import { ROOMS } from '../../mock/mockData';
 
 export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCalendar }) => {
-  const [selectedBuilding, setSelectedBuilding] = useState('all');
+  const [selectedFloor, setSelectedFloor] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [capacityFilter, setCapacityFilter] = useState(20);
   const [searchFilter, setSearchFilter] = useState('');
 
   const filteredRooms = ROOMS.filter((room) => {
-    if (selectedBuilding !== 'all' && !room.building.includes(selectedBuilding)) return false;
+    if (selectedFloor !== 'all' && Number(room.floor) !== Number(selectedFloor)) return false;
     if (selectedType !== 'all' && room.type !== selectedType) return false;
     if (room.capacity < capacityFilter) return false;
     if (searchFilter && !room.code.toLowerCase().includes(searchFilter.toLowerCase()) && !room.name.toLowerCase().includes(searchFilter.toLowerCase())) {
@@ -19,7 +19,7 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
   });
 
   const clearFilters = () => {
-    setSelectedBuilding('all');
+    setSelectedFloor('all');
     setSelectedType('all');
     setCapacityFilter(20);
     setSearchFilter('');
@@ -54,11 +54,11 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
               MODULE 01
             </span>
             <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)' }}>
-              108 PHÒNG HỌC & GIẢNG ĐƯỜNG
+              TÒA NHÀ A1 • 5 TẦNG HỌC VỤ • 108 PHÒNG
             </span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.03em' }}>
-            Tra Cứu & Giữ Chỗ Không Gian Học Tập
+            Tra Cứu & Giữ Chỗ Phòng Học Tòa A1
           </h1>
           <p style={{ color: 'var(--ink-secondary)', fontSize: '13px', marginTop: '2px' }}>
             Tìm kiếm phòng học đa chiều theo sức chứa, phân loại trang thiết bị IoT và lịch biểu khả dụng tức thời.
@@ -123,15 +123,15 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
             />
           </div>
 
-          {/* Building Select */}
+          {/* Floor Select in Building A1 */}
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label className="form-label" style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
-              TÒA NHÀ CAMPUS
+              PHÂN TẦNG HỌC VỤ (TÒA A1)
             </label>
             <select
               className="form-control"
-              value={selectedBuilding}
-              onChange={(e) => setSelectedBuilding(e.target.value)}
+              value={selectedFloor}
+              onChange={(e) => setSelectedFloor(e.target.value)}
               style={{
                 background: 'var(--surface-panel)',
                 border: '1px solid var(--hairline-medium)',
@@ -139,11 +139,12 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
                 fontSize: '13px'
               }}
             >
-              <option value="all">Tất cả các tòa nhà (Toàn trường)</option>
-              <option value="A1">Tòa A1 (Khu giảng đường chính)</option>
-              <option value="A2">Tòa A2 (Khu chuyên đề)</option>
-              <option value="B1">Tòa B1 (Viện Điện tử - IoT)</option>
-              <option value="B2">Tòa B2 (Viện CNTT & Lab máy tính)</option>
+              <option value="all">Tất cả 5 tầng (Toàn Tòa A1)</option>
+              <option value="1">Tầng 1 (Hội trường & Phòng học thực nghiệm)</option>
+              <option value="2">Tầng 2 (Giảng đường lý thuyết)</option>
+              <option value="3">Tầng 3 (Phòng học thông minh & Seminar)</option>
+              <option value="4">Tầng 4 (Hội trường đa năng & Lab máy tính)</option>
+              <option value="5">Tầng 5 (Phòng hội thảo chuyên đề)</option>
             </select>
           </div>
 

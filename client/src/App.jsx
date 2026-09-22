@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { DynamicIslandDock } from './components/layout/DynamicIslandDock';
+import { AppHeader } from './components/layout/AppHeader';
 import { Dashboard } from './pages/dashboard/Dashboard';
 import { RoomListPage } from './pages/rooms/RoomListPage';
 import { RoomCalendarPage } from './pages/rooms/RoomCalendarPage';
@@ -13,22 +13,22 @@ import { ApprovalQueuePage } from './pages/approvals/ApprovalQueuePage';
 import { BookingModal } from './components/ui/BookingModal';
 import { QRCheckInModal } from './components/ui/QRCheckInModal';
 import { LoginPage } from './pages/auth/LoginPage';
+import { UserProfileModal } from './components/ui/UserProfileModal';
 import { Icons } from './components/common/SvgIcons';
 import { ROOMS } from './mock/mockData';
 
 const MainAppContent = () => {
-  const { isTabAllowed, currentRoleMeta } = useAuth();
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const { isTabAllowed, currentRoleMeta, isLoggedIn } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
-
 
   // Modals state
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedBookingRoom, setSelectedBookingRoom] = useState(ROOMS[0]);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   if (!isLoggedIn) {
-    return <LoginPage onLoginSuccess={() => setIsLoggedIn(true)} />;
+    return <LoginPage onLoginSuccess={() => {}} />;
   }
 
   const handleOpenBooking = (room) => {
@@ -38,8 +38,8 @@ const MainAppContent = () => {
 
   // Subpage wrapper with Return-to-CAD button
   const renderSubPageWrapper = (title, category, component) => (
-    <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 36px 80px' }}>
-      {/* Return to Spatial Twin Breadcrumb */}
+    <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '24px 32px 80px' }}>
+      {/* Return to CAD Breadcrumb */}
       <div
         style={{
           display: 'flex',
@@ -58,13 +58,13 @@ const MainAppContent = () => {
             alignItems: 'center',
             gap: '8px',
             padding: '6px 16px',
-            borderRadius: 'var(--radius-full)',
-            fontSize: '12px'
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '12.5px'
           }}
-          title="Quay lại Bản Đồ Không Gian Kiến Trúc CAD"
+          title="Quay lại Bản Đồ Mặt Bằng CAD"
         >
           <Icons.ChevronLeft size={14} />
-          <span>Quay lại Bản Đồ Không Gian (Spatial CAD Twin)</span>
+          <span>Quay lại Bản Đồ CAD</span>
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
@@ -191,15 +191,16 @@ const MainAppContent = () => {
 
   return (
     <div className="panoramic-shell blueprint-canvas-bg">
-      {/* 1. Unified Cybernetic Command & Navigation Header (Two-Tier OS Deck) */}
-      <DynamicIslandDock
+      {/* 1. Grounded Two-Tier Enterprise Navigation Header */}
+      <AppHeader
         activeTab={activeTab}
         onSelectTab={(tab) => setActiveTab(tab)}
         onOpenQRDemo={() => setIsQRModalOpen(true)}
+        onOpenProfileModal={() => setIsProfileModalOpen(true)}
       />
 
-      {/* 2. Panoramic Spatial Viewport (Clears Header with 72px Padding) */}
-      <main style={{ paddingTop: '72px', minHeight: '100vh', width: '100%' }}>
+      {/* 2. Main Subsystem Viewport */}
+      <main className="ruo-main-viewport">
         {renderActiveView()}
       </main>
 
@@ -215,6 +216,11 @@ const MainAppContent = () => {
         isOpen={isQRModalOpen}
         onClose={() => setIsQRModalOpen(false)}
         bookingRoom={selectedBookingRoom?.code || 'A1-302'}
+      />
+
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
       />
     </div>
   );

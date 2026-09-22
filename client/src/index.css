@@ -9,44 +9,41 @@
    ========================================================================== */
 
 :root {
-  /* Canvas & Academic Architectural Surfaces (Slate Charcoal & Warm Mineral Stone) */
-  --canvas-base: #18171A;
-  --canvas-subtle: #201F22;
-  --surface-panel: #262428;
-  --surface-panel-hover: #2F2D32;
-  --surface-card: rgba(38, 36, 40, 0.88);
-  --surface-glass: rgba(30, 29, 32, 0.90);
-  --surface-elevated: #333136;
+  /* OLED True Pitch Black (Đen Tuyền) & Precision Neutral Titanium */
+  --canvas-base: #000000;
+  --canvas-subtle: #050507;
+  --surface-panel: #070709;
+  --surface-panel-hover: #101014;
+  --surface-card: #08080A;
+  --surface-glass: rgba(0, 0, 0, 0.96);
+  --surface-elevated: #0E0E12;
 
-  /* Architectural Earthy Accents (From Image 2 Color Swatch) */
-  /* Color 2: Warm Ochre Amber & Terracotta (#A16526) */
-  --laser-cyan: #C97A2B;
-  --laser-cyan-glow: rgba(201, 122, 43, 0.28);
-  --laser-indigo: #A16526;
-  --laser-indigo-glow: rgba(161, 101, 38, 0.32);
-  --laser-amber: #D68636;
-  --laser-amber-glow: rgba(214, 134, 54, 0.25);
+  /* Refined High-Contrast Cyber Accents */
+  --laser-cyan: #3B82F6;
+  --laser-cyan-glow: rgba(59, 130, 246, 0.25);
+  --laser-indigo: #6366F1;
+  --laser-indigo-glow: rgba(99, 102, 241, 0.25);
+  --laser-amber: #F59E0B;
+  --laser-amber-glow: rgba(245, 158, 11, 0.25);
 
-  /* Color 3: Forest Moss & Earthy Olive Sage (#5E6249) */
-  --laser-emerald: #757E5D;
-  --laser-emerald-glow: rgba(117, 126, 93, 0.28);
+  /* Occupancy States (Crisp Neon Luminescence on True Pitch Black) */
+  --laser-emerald: #10B981;
+  --laser-emerald-glow: rgba(16, 185, 129, 0.25);
+  --laser-violet: #8B5CF6;
+  --laser-crimson: #EF4444;
+  --laser-crimson-glow: rgba(239, 68, 68, 0.25);
 
-  /* Color 1: Slate Pewter (#746E70) & Terracotta Rust */
-  --laser-violet: #8C8487;
-  --laser-crimson: #B84D3C;
-  --laser-crimson-glow: rgba(184, 77, 60, 0.25);
+  /* Hairlines & Precision Dividers (Neutral Obsidian, Zero Blue Tint) */
+  --hairline-soft: rgba(255, 255, 255, 0.08);
+  --hairline-medium: #1C1C20;
+  --hairline-glow: rgba(59, 130, 246, 0.35);
 
-  /* Hairlines & Dividers (Color 4 #CDCDCD & Color 1 #746E70) */
-  --hairline-soft: rgba(205, 205, 205, 0.08);
-  --hairline-medium: rgba(116, 110, 112, 0.35);
-  --hairline-glow: rgba(201, 122, 43, 0.38);
-
-  /* Typography / Inks (Color 4 #CDCDCD & Crisp Off-White) */
-  --ink-pure: #FBFBFB;
-  --ink-primary: #E8E8E8;
-  --ink-secondary: #CDCDCD;
-  --ink-muted: #8E888A;
-  --ink-faint: #4E4A4C;
+  /* High-Legibility Typography Inks */
+  --ink-pure: #FFFFFF;
+  --ink-primary: #F4F4F5;
+  --ink-secondary: #A1A1AA;
+  --ink-muted: #71717A;
+  --ink-faint: #3F3F46;
 
   /* 100% Unified Vietnamese Typography (Be Vietnam Pro Master Family) */
   --font-sans: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -57,77 +54,85 @@
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
   --radius-full: 9999px;
 
   /* Animations */
   --transition-fast: 120ms cubic-bezier(0.2, 0, 0, 1);
-  --transition-smooth: 240ms cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-spring: 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-smooth: 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring: 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* Spatial Digital Twin CAD Tokens (Dark Mode) */
-  --spatial-card-bg: rgba(38, 36, 40, 0.90);
-  --spatial-card-border: var(--hairline-glow);
-  --spatial-card-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
-  --spatial-strip-bg: rgba(26, 25, 27, 0.95);
-  --spatial-bar-bg: rgba(45, 43, 47, 0.70);
-  --spatial-node-bg: rgba(40, 38, 43, 0.85);
-  --spatial-node-border: var(--hairline-medium);
-  --spatial-node-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --spatial-node-hover-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(201, 122, 43, 0.22);
-  --spatial-corridor-bg: rgba(205, 205, 205, 0.03);
-  --spatial-dock-bg: rgba(28, 27, 30, 0.96);
-  --spatial-dock-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 20px rgba(161, 101, 38, 0.18);
-  --spatial-drawer-bg: rgba(26, 25, 28, 0.98);
-  --spatial-drawer-shadow: -20px 0 60px rgba(0, 0, 0, 0.8);
-  --spatial-tile-bg: rgba(205, 205, 205, 0.04);
-  --spatial-gauge-track: rgba(205, 205, 205, 0.08);
+  /* CAD Blueprint Drafting Tokens (OLED Pure Pitch Black Mode) */
+  --spatial-card-bg: #070709;
+  --spatial-card-border: var(--hairline-medium);
+  --spatial-card-shadow: 0 10px 35px rgba(0, 0, 0, 0.95);
+  --spatial-strip-bg: #000000;
+  --spatial-bar-bg: #000000;
+  --spatial-node-bg: #0A0A0C;
+  --spatial-node-border: #1C1C20;
+  --spatial-node-shadow: 0 4px 14px rgba(0, 0, 0, 0.8);
+  --spatial-node-hover-shadow: 0 8px 28px rgba(0, 0, 0, 0.95);
+  --spatial-corridor-bg: #000000;
+  --spatial-dock-bg: #070709;
+  --spatial-dock-shadow: 0 12px 40px rgba(0, 0, 0, 0.98);
+  --spatial-drawer-bg: #050506;
+  --spatial-drawer-shadow: -15px 0 50px rgba(0, 0, 0, 0.98);
+  --spatial-tile-bg: rgba(255, 255, 255, 0.04);
+  --spatial-gauge-track: rgba(255, 255, 255, 0.1);
+  --spatial-canvas-bg: #000000;
+  --spatial-room-card-bg: #070709;
+  --spatial-room-card-stroke: #1C1C20;
+  --spatial-corridor-text: #A1A1AA;
 }
 
-/* Light Mode Adaptation (Natural Stone & Warm Architectural Sandstone) */
+/* Light Mode Adaptation (Parchment & Crisp Architectural Drafting Studio) */
 [data-theme="light"] {
-  --canvas-base: #F5F4F2;
-  --canvas-subtle: #EBE9E5;
+  --canvas-base: #F8FAFC;
+  --canvas-subtle: #F1F5F9;
   --surface-panel: #FFFFFF;
-  --surface-panel-hover: #F8F7F5;
-  --surface-card: rgba(255, 255, 255, 0.96);
-  --surface-glass: rgba(255, 255, 255, 0.92);
+  --surface-panel-hover: #F8FAFC;
+  --surface-card: #FFFFFF;
+  --surface-glass: rgba(255, 255, 255, 0.96);
   --surface-elevated: #FFFFFF;
 
-  --hairline-soft: rgba(116, 110, 112, 0.12);
-  --hairline-medium: rgba(161, 101, 38, 0.22);
-  --hairline-glow: rgba(161, 101, 38, 0.35);
+  --hairline-soft: #E2E8F0;
+  --hairline-medium: #CBD5E1;
+  --hairline-glow: rgba(37, 99, 235, 0.25);
 
-  --ink-pure: #1C1B1E;
-  --ink-primary: #2C2B2E;
-  --ink-secondary: #5C585A;
-  --ink-muted: #746E70;
-  --ink-faint: #B5B2B4;
+  --ink-pure: #0F172A;
+  --ink-primary: #1E293B;
+  --ink-secondary: #475569;
+  --ink-muted: #64748B;
+  --ink-faint: #94A3B8;
 
-  --laser-indigo: #995B1E;
-  --laser-cyan: #A16526;
-  --laser-emerald: #5E6249;
-  --laser-amber: #B86B25;
-  --laser-crimson: #A34332;
+  --laser-indigo: #4F46E5;
+  --laser-cyan: #2563EB;
+  --laser-emerald: #059669;
+  --laser-amber: #D97706;
+  --laser-crimson: #DC2626;
 
   /* Spatial Digital Twin Architectural Drafting Studio Tokens */
   --spatial-card-bg: #FFFFFF;
-  --spatial-card-border: rgba(161, 101, 38, 0.22);
-  --spatial-card-shadow: 0 16px 40px rgba(28, 27, 30, 0.06);
-  --spatial-strip-bg: rgba(255, 255, 255, 0.94);
-  --spatial-bar-bg: rgba(116, 110, 112, 0.06);
+  --spatial-card-border: #E2E8F0;
+  --spatial-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --spatial-strip-bg: #F8FAFC;
+  --spatial-bar-bg: #F1F5F9;
   --spatial-node-bg: #FFFFFF;
-  --spatial-node-border: rgba(116, 110, 112, 0.15);
-  --spatial-node-shadow: 0 4px 14px rgba(28, 27, 30, 0.05);
-  --spatial-node-hover-shadow: 0 10px 25px rgba(161, 101, 38, 0.15);
-  --spatial-corridor-bg: rgba(116, 110, 112, 0.04);
-  --spatial-dock-bg: rgba(255, 255, 255, 0.96);
-  --spatial-dock-shadow: 0 16px 45px rgba(28, 27, 30, 0.12);
-  --spatial-drawer-bg: rgba(255, 255, 255, 0.98);
-  --spatial-drawer-shadow: -20px 0 60px rgba(28, 27, 30, 0.12);
-  --spatial-tile-bg: rgba(116, 110, 112, 0.04);
-  --spatial-gauge-track: rgba(116, 110, 112, 0.10);
+  --spatial-node-border: #E2E8F0;
+  --spatial-node-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --spatial-node-hover-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --spatial-corridor-bg: rgba(0, 0, 0, 0.02);
+  --spatial-dock-bg: #FFFFFF;
+  --spatial-dock-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  --spatial-drawer-bg: #FFFFFF;
+  --spatial-drawer-shadow: -15px 0 45px rgba(0, 0, 0, 0.08);
+  --spatial-tile-bg: #F1F5F9;
+  --spatial-gauge-track: #E2E8F0;
+  --spatial-canvas-bg: #F8FAFC;
+  --spatial-room-card-bg: #FFFFFF;
+  --spatial-room-card-stroke: #E2E8F0;
+  --spatial-corridor-text: #64748B;
 }
 
 /* Reset & Global Base */
@@ -147,18 +152,15 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  background-image: 
-    radial-gradient(circle at 15% 10%, rgba(161, 101, 38, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 85% 80%, rgba(94, 98, 73, 0.06) 0%, transparent 40%),
-    linear-gradient(to bottom, transparent, rgba(24, 23, 26, 0.85));
-  background-attachment: fixed;
+  background-image: none;
 }
 
 [data-theme="light"] body {
+  background-color: #F8FAFC;
   background-image: 
-    radial-gradient(circle at 15% 10%, rgba(161, 101, 38, 0.04) 0%, transparent 40%),
-    radial-gradient(circle at 85% 80%, rgba(94, 98, 73, 0.03) 0%, transparent 40%),
-    linear-gradient(to bottom, #F5F4F2 0%, #EBE9E5 100%);
+    radial-gradient(circle at 10% 10%, rgba(37, 99, 235, 0.04) 0%, transparent 45%),
+    radial-gradient(circle at 90% 90%, rgba(16, 185, 129, 0.03) 0%, transparent 45%),
+    linear-gradient(to bottom, #F8FAFC 0%, #F1F5F9 100%);
 }
 
 /* Universal Form & Button Typography Inheritance */
@@ -226,7 +228,7 @@ code, pre, .font-mono {
    Cybernetic HUD: Live Ticker & Telemetry Bar
    ========================================================================== */
 .hud-telemetry-strip {
-  background: rgba(6, 8, 14, 0.95);
+  background: var(--surface-panel);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--hairline-soft);
   padding: 6px 32px;
@@ -329,7 +331,7 @@ code, pre, .font-mono {
    ========================================================================== */
 .topbar {
   height: 60px;
-  background: rgba(11, 14, 23, 0.85);
+  background: var(--surface-panel);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--hairline-soft);
   display: flex;
@@ -998,391 +1000,941 @@ code, pre, .font-mono {
 
 /* Blueprint CAD Grid Canvas */
 .blueprint-canvas-bg {
+  background-color: var(--canvas-base);
   background-size: 32px 32px;
   background-image: 
-    linear-gradient(to right, rgba(205, 205, 205, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(205, 205, 205, 0.04) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   position: relative;
 }
 
 .blueprint-canvas-bg::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 280px;
-  background: radial-gradient(circle at 50% 0%, rgba(161, 101, 38, 0.12) 0%, transparent 70%);
-  pointer-events: none;
+  display: none;
 }
 
 [data-theme="light"] .blueprint-canvas-bg {
+  background-color: #F8FAFC;
   background-image: 
     linear-gradient(to right, rgba(161, 101, 38, 0.05) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(161, 101, 38, 0.05) 1px, transparent 1px);
 }
 
 [data-theme="light"] .blueprint-canvas-bg::before {
-  background: radial-gradient(circle at 50% 0%, rgba(161, 101, 38, 0.07) 0%, transparent 70%);
-}
-
-/* Dynamic Island Floating Header Dock */
-.dynamic-island-header {
-  position: fixed;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  background: rgba(26, 25, 28, 0.94);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--hairline-medium);
-  border-radius: var(--radius-full);
-  padding: 6px 18px;
-  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(205, 205, 205, 0.05);
-  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
-  width: min(1560px, 96vw);
-}
-
-.dynamic-island-header:hover {
-  border-color: var(--hairline-glow);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 24px var(--laser-cyan-glow);
-}
-
-.dynamic-island-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 0;
-  border-bottom: none;
-}
-
-.dynamic-island-nav-strip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  padding-top: 8px;
-  scrollbar-width: none;
-}
-.dynamic-island-nav-strip::-webkit-scrollbar {
-  display: none;
-}
-
-.island-nav-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ink-secondary);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--hairline-soft);
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
-  white-space: nowrap;
-}
-
-.island-nav-tab:hover {
-  color: var(--ink-pure);
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--hairline-medium);
-}
-
-.island-nav-tab.active {
-  color: #FFFFFF;
-  background: rgba(161, 101, 38, 0.22);
-  border-color: var(--laser-cyan);
-  box-shadow: 0 0 14px var(--laser-cyan-glow);
-  font-weight: 700;
-}
-
-.theme-capsule-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--hairline-medium);
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-/* Spatial Telemetry Bar (Top of Spatial Canvas) */
-.spatial-telemetry-strip {
-  padding: 12px 36px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--hairline-soft);
-  background: var(--spatial-strip-bg);
-  backdrop-filter: blur(12px);
-  font-size: 12px;
-  font-family: var(--font-sans);
-  font-weight: 500;
-  transition: background-color 150ms ease, border-color 150ms ease;
-}
-
-/* Spatial Blueprint CAD Architectural Grid Floorplan Container */
-.spatial-blueprint-card {
-  background: var(--spatial-card-bg);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--spatial-card-border);
-  border-radius: var(--radius-xl);
-  padding: 28px;
-  position: relative;
-  box-shadow: var(--spatial-card-shadow);
-  overflow: hidden;
-  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
-}
-
-/* Spatial Floorplan Building Tabs */
-.building-switch-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--spatial-bar-bg);
-  padding: 6px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--hairline-soft);
-  transition: background-color 150ms ease, border-color 150ms ease;
-}
-
-.building-switch-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-secondary);
-  background: transparent;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
-}
-
-.building-switch-btn:hover {
-  color: var(--ink-pure);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.building-switch-btn.active {
-  background: rgba(161, 101, 38, 0.18);
-  border-color: rgba(161, 101, 38, 0.45);
-  color: var(--laser-cyan);
-  box-shadow: 0 0 16px var(--laser-cyan-glow);
-}
-
-/* Spatial Room Polygon Node on Blueprint */
-.spatial-room-node {
-  background: var(--spatial-node-bg);
-  /* Nested blur removed to eliminate offscreen GPU framebuffer thrashing */
-  border: 1px solid var(--spatial-node-border);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  cursor: pointer;
-  transition: transform 140ms cubic-bezier(0.2, 0, 0, 1),
-              border-color 140ms ease,
-              box-shadow 140ms ease,
-              background-color 140ms ease;
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--spatial-node-shadow);
-  will-change: transform;
-}
-
-.spatial-room-node .room-title {
-  color: var(--ink-pure) !important;
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.spatial-room-node::before {
+  display: block;
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
-  background: transparent;
+  height: 280px;
+  background: radial-gradient(circle at 50% 0%, rgba(161, 101, 38, 0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   HUMAN-CRAFTED ENTERPRISE TOP NAVIGATION & SUBNAV (LINEAR / VERCEL STANDARD)
+   ========================================================================== */
+
+.ruo-header-root {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  background: var(--surface-panel);
+  border-bottom: 1px solid var(--hairline-medium);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(12px);
+}
+
+:root:not([data-theme="light"]) .ruo-header-root,
+[data-theme="dark"] .ruo-header-root {
+  background: #000000;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+}
+
+/* Tier 1: Grounded Topbar */
+.ruo-topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  gap: 12px;
+  background: var(--surface-panel);
+  border-bottom: 1px solid var(--hairline-soft);
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
+:root:not([data-theme="light"]) .ruo-topbar,
+[data-theme="dark"] .ruo-topbar {
+  background: #000000;
+}
+
+.ruo-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ruo-brand-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.ruo-brand-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #2563EB, #1D4ED8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+  flex-shrink: 0;
+}
+
+.ruo-brand-titles {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.ruo-brand-name {
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink-pure);
+}
+
+.ruo-brand-tag {
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+.ruo-breadcrumb-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--hairline-medium);
+}
+
+.ruo-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.ruo-crumb-muted {
+  color: var(--ink-muted);
+}
+
+.ruo-crumb-sep {
+  color: var(--hairline-medium);
+}
+
+.ruo-crumb-active {
+  color: var(--ink-primary);
+  font-weight: 600;
+}
+
+/* Tier 1: Center Command Search Bar */
+.ruo-topbar-center {
+  flex: 1;
+  max-width: 360px;
+  min-width: 140px;
+  margin: 0 8px;
+}
+
+.ruo-search-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--canvas-subtle);
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--ink-secondary);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.ruo-search-trigger:hover {
+  border-color: var(--hairline-glow);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ruo-search-placeholder {
+  flex: 1;
+  text-align: left;
+  font-size: 12px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ruo-kbd-shortcut {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline-medium);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--ink-secondary);
+  font-weight: 600;
+}
+
+/* Tier 1: Right Tools & User Popover */
+.ruo-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ruo-telemetry-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  background: var(--canvas-subtle);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline-soft);
+  white-space: nowrap;
+}
+
+.ruo-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.ruo-btn-compact {
+  padding: 5px 10px !important;
+  font-size: 11.5px !important;
+}
+
+@media (max-width: 1400px) {
+  .ruo-hide-lg { display: none !important; }
+}
+
+@media (max-width: 1240px) {
+  .ruo-hide-md { display: none !important; }
+}
+
+@media (max-width: 1024px) {
+  .ruo-hide-sm { display: none !important; }
+}
+
+.ruo-dot-emerald {
+  background-color: #10B981;
+}
+
+.ruo-telemetry-sep {
+  color: var(--hairline-medium);
+}
+
+.ruo-clock-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--ink-secondary);
+  background: var(--canvas-subtle);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline-soft);
+}
+
+.ruo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
   transition: all var(--transition-fast);
+  border: 1px solid transparent;
 }
 
-.spatial-room-node:hover {
-  transform: translateY(-3px) scale(1.01);
-  border-color: var(--laser-indigo);
-  box-shadow: var(--spatial-node-hover-shadow);
+.ruo-btn-secondary {
+  background: var(--canvas-subtle);
+  border-color: var(--hairline-soft);
+  color: var(--ink-primary);
 }
 
-.spatial-room-node:hover::before {
-  background: linear-gradient(90deg, transparent, var(--laser-indigo), transparent);
+.ruo-btn-secondary:hover {
+  background: var(--surface-panel-hover);
+  border-color: var(--hairline-medium);
+  color: var(--ink-pure);
 }
 
-.spatial-room-node.selected {
-  border-color: var(--laser-indigo);
-  box-shadow: 0 0 24px var(--laser-indigo-glow);
-  background: rgba(161, 101, 38, 0.10);
-}
-
-/* Central Hallway Walkway Visual Marker */
-.spatial-corridor-marker {
-  height: 32px;
-  background: var(--spatial-corridor-bg);
-  border: 1px dashed var(--hairline-medium);
+.ruo-icon-button {
+  width: 34px;
+  height: 34px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  color: var(--ink-muted);
-  font-family: var(--font-sans);
-  font-weight: 600;
+  background: var(--canvas-subtle);
+  border: 1px solid var(--hairline-soft);
+  cursor: pointer;
+  color: var(--ink-secondary);
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.ruo-icon-button:hover, .ruo-icon-button.active {
+  background: var(--surface-panel-hover);
+  border-color: var(--hairline-medium);
+  color: var(--ink-pure);
+}
+
+.ruo-notif-indicator {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #EF4444;
+}
+
+/* User Profile & Role Switcher Popover */
+.ruo-profile-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px 4px 5px;
+  background: var(--canvas-subtle);
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ruo-profile-button:hover, .ruo-profile-button.active {
+  background: var(--surface-panel-hover);
+  border-color: var(--hairline-medium);
+}
+
+.ruo-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #2563EB, #1D4ED8);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ruo-profile-info {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.ruo-profile-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-pure);
+}
+
+.ruo-profile-role {
   font-size: 10.5px;
-  letter-spacing: 0.05em;
+  color: var(--ink-muted);
 }
 
-/* Lower Tactical Cards: SLA Reactor & Realtime Stream */
-.spatial-tactical-card {
-  background: var(--spatial-card-bg);
+/* Popover Panels */
+.ruo-popover-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--surface-panel);
   border: 1px solid var(--hairline-medium);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--spatial-node-shadow);
-  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  border-radius: var(--radius-md);
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.6);
+  z-index: 200;
+  overflow: hidden;
+  animation: scaleIn 140ms ease-out;
 }
 
-/* Time-Travel Scrubber Dock (Middle-Right Floating HUD Widget) */
-.time-travel-dock {
-  position: fixed;
-  right: 24px;
-  top: 50%;
-  transform: translateY(-50%) translateX(0);
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  z-index: 95;
-  background: var(--spatial-dock-bg);
-  backdrop-filter: blur(14px);
-  border: 1px solid var(--hairline-medium);
-  border-radius: var(--radius-xl);
+.ruo-notif-popover {
+  width: 360px;
+}
+
+.ruo-popover-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--canvas-subtle);
+}
+
+.ruo-link-btn {
+  font-size: 11.5px;
+  color: var(--laser-cyan);
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.ruo-notif-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.ruo-notif-row {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline-soft);
+  transition: background-color var(--transition-fast);
+}
+
+.ruo-notif-row.unread {
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.ruo-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.ruo-dot.cyan { background-color: var(--laser-cyan); }
+.ruo-dot.muted { background-color: var(--ink-faint); }
+
+.ruo-profile-popover {
+  width: 370px;
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: var(--spatial-dock-shadow);
-  width: 270px;
-  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 200ms ease,
-              visibility 260ms,
-              background-color 150ms ease,
-              border-color 150ms ease,
-              box-shadow 150ms ease;
+  gap: 14px;
 }
 
-/* When room inspection drawer opens, smoothly slide widget out of view to the right and disappear */
-.time-travel-dock.drawer-open {
-  transform: translateY(-50%) translateX(calc(100% + 40px));
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
+.ruo-profile-meta {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--hairline-soft);
 }
 
-.time-scrubber-track {
-  width: 100%;
+.ruo-uid-pill {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--laser-cyan);
+  background: rgba(37, 99, 235, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.ruo-role-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
 
-.time-scrubber-input {
-  width: 100%;
-  height: 5px;
-  accent-color: var(--laser-indigo);
-  cursor: pointer;
-  border-radius: 999px;
-}
-
-.time-notches {
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--ink-muted);
-}
-
-.time-presets-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-
-.time-preset-btn {
-  padding: 5px 0;
-  border-radius: var(--radius-xs);
-  border: 1px solid var(--hairline-soft);
-  background: var(--spatial-tile-bg);
-  color: var(--ink-secondary);
+.ruo-section-label {
   font-size: 10.5px;
-  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--ink-muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.ruo-role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.ruo-role-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ruo-role-item:hover {
+  background: var(--surface-panel-hover);
+}
+
+.ruo-role-item.active {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.ruo-role-icon-box {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ruo-role-texts {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ruo-profile-footer {
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline-soft);
+}
+
+.ruo-footer-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--canvas-subtle);
+  border: 1px solid var(--hairline-soft);
+  color: var(--ink-primary);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  text-align: center;
-  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+  transition: all var(--transition-fast);
 }
 
-.time-preset-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+.ruo-footer-btn:hover {
+  background: var(--surface-panel-hover);
+  color: var(--ink-pure);
+}
+
+/* Tier 2: Sub-Navigation Bar */
+.ruo-subnav {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  background: var(--surface-panel);
+  border-bottom: 1px solid var(--hairline-medium);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+:root:not([data-theme="light"]) .ruo-subnav,
+[data-theme="dark"] .ruo-subnav {
+  background: #050507;
+}
+
+.ruo-subnav::-webkit-scrollbar {
+  display: none;
+}
+
+.ruo-subnav-items {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+
+.ruo-subnav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 100%;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.ruo-subnav-btn:hover {
+  color: var(--ink-pure);
+}
+
+.ruo-subnav-btn.active {
+  color: var(--laser-cyan);
+  border-bottom-color: var(--laser-cyan);
+  font-weight: 700;
+}
+
+.ruo-subnav-badge {
+  font-size: 10px;
+  font-weight: 800;
+  color: #FFFFFF;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+.ruo-subnav-catalog-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  background: var(--canvas-subtle);
+  border: 1px solid var(--hairline-soft);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.ruo-subnav-catalog-btn:hover {
   color: var(--ink-pure);
   border-color: var(--hairline-medium);
 }
 
-.time-preset-btn.active {
-  background: rgba(161, 101, 38, 0.22);
-  color: var(--laser-cyan);
-  border-color: var(--laser-cyan);
-  font-weight: 700;
+/* ==========================================================================
+   AUTHENTIC ARCHITECTURAL CAD BLUEPRINT STYLES
+   ========================================================================== */
+
+.ruo-main-viewport {
+  min-height: calc(100vh - 102px);
+  width: 100%;
 }
 
-/* Slide Inspection Drawer (Right Side) */
+.ruo-cad-wrapper {
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 24px 28px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Top CAD Toolbar */
+.ruo-cad-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.ruo-building-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-panel);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline-medium);
+}
+
+.ruo-building-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ruo-building-btn:hover {
+  color: var(--ink-pure);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ruo-building-btn.active {
+  background: var(--canvas-subtle);
+  color: var(--laser-cyan);
+  font-weight: 700;
+  border: 1px solid var(--hairline-soft);
+}
+
+.ruo-floor-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-panel);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline-medium);
+}
+
+.ruo-floor-btn {
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--ink-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ruo-floor-btn:hover {
+  color: var(--ink-pure);
+}
+
+.ruo-floor-btn.active {
+  background: var(--laser-cyan);
+  color: #FFFFFF;
+  font-weight: 800;
+}
+
+/* Authentic Architectural SVG CAD Blueprint Drafting Canvas */
+.ruo-cad-canvas-card {
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline-medium);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ruo-cad-card-header {
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--hairline-soft);
+  background: var(--canvas-subtle);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ruo-cad-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ruo-cad-spec-pill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--laser-cyan);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+}
+
+.ruo-cad-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-pure);
+}
+
+.ruo-cad-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ruo-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-secondary);
+}
+
+.ruo-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* SVG Vector CAD Blueprint Viewport */
+.ruo-cad-svg-viewport {
+  width: 100%;
+  padding: 20px;
+  background: var(--spatial-canvas-bg);
+  display: flex;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.ruo-cad-svg {
+  width: 100%;
+  max-width: 1100px;
+  height: auto;
+  display: block;
+}
+
+/* Integrated Architectural Timeline Scrubber Bar */
+.ruo-cad-timeline-bar {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--hairline-medium);
+  background: var(--canvas-subtle);
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.ruo-timeline-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ruo-play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline-medium);
+  color: var(--ink-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ruo-play-btn:hover {
+  background: var(--surface-panel-hover);
+  color: var(--ink-pure);
+}
+
+.ruo-play-btn.playing {
+  color: #F59E0B;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.ruo-time-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-mono);
+  background: var(--surface-panel);
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline-soft);
+}
+
+.ruo-time-label {
+  font-size: 10.5px;
+  color: var(--ink-muted);
+}
+
+.ruo-time-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--laser-cyan);
+}
+
+.ruo-timeline-slider-wrap {
+  flex: 1;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ruo-timeline-slider {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--laser-cyan);
+  cursor: pointer;
+}
+
+.ruo-timeline-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
+}
+
+.ruo-timeline-presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ruo-preset-btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--ink-secondary);
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline-soft);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ruo-preset-btn:hover {
+  color: var(--ink-pure);
+  border-color: var(--hairline-medium);
+}
+
+.ruo-preset-btn.active {
+  background: var(--laser-cyan);
+  color: #FFFFFF;
+  border-color: var(--laser-cyan);
+}
+
+/* Slide-out Technical Room Drawer */
 .spatial-drawer {
   position: fixed;
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(460px, 100vw);
+  width: 440px;
+  max-width: 90vw;
   background: var(--spatial-drawer-bg);
-  backdrop-filter: blur(16px);
   border-left: 1px solid var(--hairline-medium);
   box-shadow: var(--spatial-drawer-shadow);
-  z-index: 120;
+  z-index: 150;
   display: flex;
   flex-direction: column;
   animation: slideDrawer 240ms cubic-bezier(0.16, 1, 0.3, 1);
-  color: var(--ink-primary);
-  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.spatial-drawer .drawer-stat-val {
-  color: var(--ink-pure) !important;
-  font-weight: 800;
-}
-
-.spatial-drawer .drawer-stat-lbl {
-  color: var(--ink-muted) !important;
-  font-size: 10px;
-  font-family: var(--font-mono);
-}
-
-.spatial-drawer .drawer-equipment-item {
-  color: var(--ink-primary) !important;
 }
 
 @keyframes slideDrawer {
@@ -1391,70 +1943,1087 @@ code, pre, .font-mono {
 }
 
 /* ==========================================================================
-   LIGHT MODE SPECIFIC ADAPTATIONS FOR SPATIAL INTERACTION
+   LIGHT MODE ADAPTATIONS
    ========================================================================== */
-[data-theme="light"] .dynamic-island-header {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
-}
-
-[data-theme="light"] .island-nav-tab {
+[data-theme="light"] .ruo-header-root {
   background: #FFFFFF;
-  color: #475569;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-bottom-color: #E2E8F0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-[data-theme="light"] .island-nav-tab:hover {
+[data-theme="light"] .ruo-topbar {
+  background: #FFFFFF;
+  border-bottom-color: #F1F5F9;
+}
+
+[data-theme="light"] .ruo-search-trigger {
   background: #F8FAFC;
-  color: #0F172A;
-  border-color: rgba(37, 99, 235, 0.3);
+  border-color: #E2E8F0;
 }
 
-[data-theme="light"] .island-nav-tab.active {
-  background: rgba(37, 99, 235, 0.1);
+[data-theme="light"] .ruo-subnav {
+  background: #FFFFFF;
+  border-bottom-color: #E2E8F0;
+}
+
+[data-theme="light"] .ruo-subnav-btn {
+  color: #475569;
+}
+
+[data-theme="light"] .ruo-subnav-btn:hover {
+  color: #0F172A;
+}
+
+[data-theme="light"] .ruo-subnav-btn.active {
+  color: #2563EB;
+  border-bottom-color: #2563EB;
+}
+
+[data-theme="light"] .ruo-cad-canvas-card {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .ruo-cad-card-header {
+  background: #F8FAFC;
+  border-bottom-color: #E2E8F0;
+}
+
+[data-theme="light"] .ruo-cad-svg-viewport {
+  background: #F1F5F9;
+}
+
+[data-theme="light"] .ruo-cad-timeline-bar {
+  background: #F8FAFC;
+  border-top-color: #E2E8F0;
+}
+
+[data-theme="light"] .ruo-blueprint-container {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .ruo-blueprint-canvas {
+  background-color: #F8FAFC;
+  background-image: radial-gradient(#CBD5E1 1px, transparent 1px);
+}
+
+[data-theme="light"] .ruo-room-card {
+  background: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .ruo-corridor-strip {
+  background: #F1F5F9;
+  border-top-color: #CBD5E1;
+  border-bottom-color: #CBD5E1;
+}
+
+[data-theme="light"] .ruo-corridor-stairs,
+[data-theme="light"] .ruo-elev-bank,
+[data-theme="light"] .ruo-wc-block {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+}
+
+[data-theme="light"] .ruo-control-deck {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .ruo-deck-building-card {
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+  color: #475569;
+}
+
+[data-theme="light"] .ruo-deck-building-card:hover {
+  background: #F1F5F9;
+  border-color: #2563EB;
+  color: #0F172A;
+}
+
+[data-theme="light"] .ruo-deck-building-card.active {
+  background: #EFF6FF;
   border-color: #2563EB;
   color: #1D4ED8;
-  box-shadow: 0 0 14px rgba(37, 99, 235, 0.16);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+}
+
+[data-theme="light"] .ruo-deck-floors {
+  background: #F1F5F9;
+  border-color: #E2E8F0;
+}
+
+[data-theme="light"] .ruo-deck-floor-btn {
+  color: #64748B;
+}
+
+[data-theme="light"] .ruo-deck-floor-btn:hover {
+  color: #0F172A;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .ruo-deck-status-pill.emerald {
+  background: #ECFDF5;
+  border-color: #A7F3D0;
+  color: #059669;
+}
+
+[data-theme="light"] .ruo-deck-status-pill.blue {
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+  color: #2563EB;
+}
+
+[data-theme="light"] .ruo-deck-status-pill.amber {
+  background: #FFFBEB;
+  border-color: #FDE68A;
+  color: #D97706;
+}
+
+[data-theme="light"] .ruo-deck-room-preview {
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+}
+
+[data-theme="light"] .ruo-play-btn,
+[data-theme="light"] .ruo-time-readout,
+[data-theme="light"] .ruo-preset-btn {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  color: #1E293B;
+}
+
+[data-theme="light"] .ruo-popover-menu {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .ruo-building-tabs,
+[data-theme="light"] .ruo-floor-selector {
+  background: #F1F5F9;
+  border-color: #E2E8F0;
+}
+
+[data-theme="light"] .ruo-building-btn.active {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  color: #2563EB;
+}
+
+/* ==========================================================================
+   ACADEMIC COMMAND HERO, STATS & ACCESSIBLE DASHBOARD SUITE
+   ========================================================================== */
+
+.ruo-dashboard-container {
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 24px 28px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 1. Academic Command Hero Banner */
+.ruo-hero-banner {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(16, 185, 129, 0.04) 50%, rgba(99, 102, 241, 0.06) 100%);
+  border: 1px solid var(--hairline-medium);
+  border-radius: var(--radius-lg);
+  padding: 26px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.ruo-hero-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.ruo-hero-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.ruo-badge-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
   font-weight: 700;
+  font-family: var(--font-mono);
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--laser-cyan);
+  border: 1px solid rgba(37, 99, 235, 0.25);
 }
 
-[data-theme="light"] .building-switch-btn {
-  color: #475569;
+.ruo-badge-chip-emerald {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--laser-emerald);
+  border-color: rgba(16, 185, 129, 0.25);
 }
 
-[data-theme="light"] .building-switch-btn:hover {
+.ruo-hero-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ink-pure);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.ruo-hero-subtitle {
+  font-size: 14px;
+  color: var(--ink-secondary);
+  max-width: 680px;
+  line-height: 1.5;
+}
+
+.ruo-hero-clock-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline-soft);
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.ruo-hero-clock-time {
+  font-size: 20px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--laser-cyan);
+}
+
+.ruo-hero-clock-date {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+
+/* 2. Key Performance Stat Counter Cards */
+.ruo-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .ruo-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .ruo-stat-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ruo-stat-card {
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline-medium);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all var(--transition-smooth);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.ruo-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--hairline-glow);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.ruo-stat-icon-wrap {
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ruo-stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ruo-stat-val {
+  font-size: 22px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--ink-pure);
+  line-height: 1.2;
+}
+
+.ruo-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ruo-stat-subtext {
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-top: 4px;
+}
+
+/* 3. Quick Action Bar (Accessible for All Ages) */
+.ruo-action-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 1000px) {
+  .ruo-action-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 580px) {
+  .ruo-action-bar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ruo-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  border: 1px solid transparent;
+  min-height: 48px;
+}
+
+.ruo-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+.ruo-action-btn-primary {
+  background: var(--laser-cyan);
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.ruo-action-btn-primary:hover {
+  background: #1D4ED8;
+}
+
+.ruo-action-btn-emerald {
+  background: rgba(16, 185, 129, 0.14);
+  color: var(--laser-emerald);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.ruo-action-btn-emerald:hover {
+  background: rgba(16, 185, 129, 0.22);
+}
+
+.ruo-action-btn-amber {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--laser-amber);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.ruo-action-btn-amber:hover {
+  background: rgba(245, 158, 11, 0.22);
+}
+
+.ruo-action-btn-subtle {
+  background: var(--surface-panel);
+  color: var(--ink-primary);
+  border-color: var(--hairline-medium);
+}
+
+.ruo-action-btn-subtle:hover {
+  background: var(--surface-panel-hover);
+  color: var(--ink-pure);
+}
+
+/* 4. Tri-Card Operational Suite */
+.ruo-tri-suite {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 1180px) {
+  .ruo-tri-suite {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ruo-suite-card {
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline-medium);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  transition: all var(--transition-smooth);
+}
+
+.ruo-suite-card:hover {
+  border-color: var(--hairline-glow);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.ruo-suite-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+
+.ruo-suite-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink-pure);
+}
+
+.ruo-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulseLight 2s infinite ease-in-out;
+}
+
+@keyframes pulseLight {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.2); }
+}
+
+/* Light Theme Overrides for New Dashboard Components */
+[data-theme="light"] .ruo-hero-banner {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06) 0%, rgba(16, 185, 129, 0.04) 50%, rgba(99, 102, 241, 0.05) 100%);
+  border-color: #E2E8F0;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="light"] .ruo-hero-clock-box {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .ruo-stat-card {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .ruo-stat-card:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .ruo-suite-card {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .ruo-action-btn-subtle {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  color: #1E293B;
+}
+
+[data-theme="light"] .ruo-action-btn-subtle:hover {
   background: #F8FAFC;
   color: #0F172A;
 }
 
-[data-theme="light"] .building-switch-btn.active {
-  background: rgba(37, 99, 235, 0.1);
-  border-color: #2563EB;
-  color: #1D4ED8;
-  box-shadow: 0 0 14px rgba(37, 99, 235, 0.14);
+/* ==========================================================================
+   ARCHITECTURAL CAD BLUEPRINT FLOOR PLAN (100% FAITHFUL TO PHOTO SPEC)
+   ========================================================================== */
+
+.ruo-blueprint-container {
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: all var(--transition-smooth);
 }
 
-[data-theme="light"] .spatial-room-node:hover {
-  background: #FFFFFF;
-  border-color: #2563EB;
-  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.1);
+:root:not([data-theme="light"]) .ruo-blueprint-container,
+[data-theme="dark"] .ruo-blueprint-container {
+  background: #050507;
+  border-color: #1C1C20;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.9);
 }
 
-[data-theme="light"] .spatial-room-node.selected {
-  border-color: #2563EB;
-  background: rgba(37, 99, 235, 0.04);
-  box-shadow: 0 0 20px rgba(37, 99, 235, 0.18);
+.ruo-blueprint-canvas {
+  position: relative;
+  background-color: var(--spatial-canvas-bg);
+  background-image: 
+    radial-gradient(rgba(255, 255, 255, 0.08) 0.8px, transparent 0.8px);
+  background-size: 24px 24px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
-[data-theme="light"] .time-travel-dock {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1.5px solid rgba(37, 99, 235, 0.2);
-  box-shadow: 0 16px 45px rgba(15, 23, 42, 0.12);
+/* 3-Column Upper & Lower Wings */
+.ruo-rooms-wing {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  position: relative;
+  z-index: 2;
 }
 
-[data-theme="light"] .spatial-drawer {
-  background: rgba(255, 255, 255, 0.98);
-  border-left: 1px solid rgba(15, 23, 42, 0.1);
-  box-shadow: -20px 0 60px rgba(15, 23, 42, 0.12);
+/* Room Card Pod */
+.ruo-room-card {
+  position: relative;
+  background: var(--spatial-room-card-bg);
+  border-radius: var(--radius-sm);
+  border-width: 1.5px;
+  border-style: solid;
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 168px;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.18s ease;
 }
+
+:root:not([data-theme="light"]) .ruo-room-card,
+[data-theme="dark"] .ruo-room-card {
+  background: #070709;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+}
+
+.ruo-room-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.10);
+}
+
+.ruo-room-card.selected {
+  outline: 2px solid #2563EB;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.20), 0 10px 25px rgba(0, 0, 0, 0.12);
+}
+
+/* Room Header Row */
+.ruo-room-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ruo-room-code-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ruo-room-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ruo-room-code {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink-pure);
+  letter-spacing: -0.01em;
+}
+
+.ruo-room-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2.5px 9px;
+  border-radius: 9999px;
+  border-width: 1px;
+  border-style: solid;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Room Name Title */
+.ruo-room-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink-primary);
+  margin-top: 4px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Inner Details Box (State Container) */
+.ruo-room-inner-box {
+  border-radius: 6px;
+  border-width: 1px;
+  border-style: solid;
+  padding: 8px 12px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 48px;
+  justify-content: center;
+}
+
+.ruo-room-inner-line1 {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ruo-room-inner-line2 {
+  font-size: 11px;
+  color: var(--ink-muted);
+  line-height: 1.3;
+}
+
+/* Hardware Telemetry Specs */
+.ruo-room-specs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--hairline-soft);
+  padding-top: 8px;
+  margin-top: 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
+}
+
+.ruo-room-specs strong {
+  color: var(--ink-pure);
+  font-weight: 800;
+}
+
+/* Corner Door Swing Graphic */
+.ruo-door-swing {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Central Arterial Corridor Strip */
+.ruo-corridor-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  height: 80px;
+  margin: 12px 0;
+  background: var(--spatial-corridor-bg);
+  border-top: 1.5px dashed var(--hairline-medium);
+  border-bottom: 1.5px dashed var(--hairline-medium);
+  padding: 0 10px;
+  user-select: none;
+}
+
+:root:not([data-theme="light"]) .ruo-corridor-strip,
+[data-theme="dark"] .ruo-corridor-strip {
+  background: #000000;
+  border-color: #1C1C20;
+}
+
+.ruo-corridor-stairs {
+  width: 76px;
+  height: 60px;
+  border: 1px solid var(--hairline-medium);
+  background: var(--canvas-subtle);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  border-radius: 3px;
+}
+
+.ruo-stairs-lines {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 0;
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.ruo-stairs-lines span {
+  height: 1px;
+  background: currentColor;
+  width: 100%;
+}
+
+.ruo-stairs-label {
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--spatial-corridor-text);
+  letter-spacing: 0.06em;
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+
+.ruo-corridor-center {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.ruo-elev-bank {
+  border: 1px solid var(--hairline-medium);
+  background: var(--canvas-subtle);
+  padding: 4px 8px;
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 8.5px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--spatial-corridor-text);
+  text-align: center;
+}
+
+.ruo-corridor-axis-title {
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--spatial-corridor-text);
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+
+.ruo-wc-block {
+  border: 1px solid var(--hairline-medium);
+  background: var(--canvas-subtle);
+  padding: 4px 8px;
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 8.5px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--spatial-corridor-text);
+  text-align: center;
+}
+
+:root:not([data-theme="light"]) .ruo-corridor-stairs,
+:root:not([data-theme="light"]) .ruo-elev-bank,
+:root:not([data-theme="light"]) .ruo-wc-block,
+[data-theme="dark"] .ruo-corridor-stairs,
+[data-theme="dark"] .ruo-elev-bank,
+[data-theme="dark"] .ruo-wc-block {
+  background: #050507;
+  border-color: #1C1C20;
+}
+
+@media (max-width: 1024px) {
+  .ruo-rooms-wing {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .ruo-corridor-strip {
+    flex-direction: column;
+    height: auto;
+    padding: 12px 10px;
+    gap: 8px;
+  }
+  .ruo-corridor-center {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* ==========================================================================
+   SIDE-BY-SIDE (SPLIT) LAYOUT: CAD BLUEPRINT (LEFT) & CONTROL DECK (RIGHT)
+   ========================================================================== */
+
+.ruo-split-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(380px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1280px) {
+  .ruo-split-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Control Deck (Right Panel containing all functions of Image 2) */
+.ruo-control-deck {
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline-medium);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+:root:not([data-theme="light"]) .ruo-control-deck,
+[data-theme="dark"] .ruo-control-deck {
+  background: #050507;
+  border-color: #1C1C20;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.9);
+}
+
+.ruo-deck-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+
+.ruo-deck-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ink-pure);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ruo-deck-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ruo-deck-label {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Building Grid List */
+.ruo-deck-building-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ruo-deck-building-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--canvas-subtle);
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  text-align: left;
+}
+
+.ruo-deck-building-card:hover {
+  background: var(--surface-panel-hover);
+  border-color: var(--laser-cyan);
+  color: var(--ink-pure);
+}
+
+.ruo-deck-building-card.active {
+  background: #0C101E;
+  border-color: var(--laser-cyan);
+  color: #60A5FA;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+/* Floor Button Row */
+.ruo-deck-floors {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  background: var(--canvas-subtle);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline-soft);
+}
+
+.ruo-deck-floor-btn {
+  padding: 6px 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--ink-secondary);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.ruo-deck-floor-btn:hover {
+  color: var(--ink-pure);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ruo-deck-floor-btn.active {
+  background: #2563EB;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+}
+
+/* Status Chips Container */
+.ruo-deck-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ruo-deck-status-pill {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:root:not([data-theme="light"]) .ruo-deck-status-pill.emerald,
+[data-theme="dark"] .ruo-deck-status-pill.emerald {
+  background: #020C06;
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #10B981;
+}
+
+:root:not([data-theme="light"]) .ruo-deck-status-pill.blue,
+[data-theme="dark"] .ruo-deck-status-pill.blue {
+  background: #020612;
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #3B82F6;
+}
+
+:root:not([data-theme="light"]) .ruo-deck-status-pill.amber,
+[data-theme="dark"] .ruo-deck-status-pill.amber {
+  background: #0E0800;
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #F59E0B;
+}
+
+.ruo-deck-pill-count {
+  font-size: 16px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+.ruo-deck-pill-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Room Preview Card */
+.ruo-deck-room-preview {
+  background: var(--canvas-subtle);
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all var(--transition-smooth);
+}
+
+.ruo-deck-room-preview:hover {
+  border-color: var(--hairline-glow);
+}
+
+/* Dynamic Inner Room Text Luminescence Inks */
+.ruo-text-occupied {
+  color: #2563EB;
+}
+.ruo-text-maint {
+  color: #D97706;
+}
+.ruo-text-avail {
+  color: #059669;
+}
+
+:root:not([data-theme="light"]) .ruo-text-occupied,
+[data-theme="dark"] .ruo-text-occupied {
+  color: #60A5FA;
+}
+:root:not([data-theme="light"]) .ruo-text-maint,
+[data-theme="dark"] .ruo-text-maint {
+  color: #FBBF24;
+}
+:root:not([data-theme="light"]) .ruo-text-avail,
+[data-theme="dark"] .ruo-text-avail {
+  color: #34D399;
+}
+
+

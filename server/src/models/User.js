@@ -102,10 +102,22 @@ export const User = mongoose.model('User', userSchema);
 const userSessionSchema = new mongoose.Schema({
   tokenHash: { type: String, required: true, unique: true, index: true },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  refreshTokenHash: { type: String, default: null, index: true },
   ipAddress: { type: String, default: '' },
   userAgent: { type: String, default: '' },
-  isRevoked: { type: Boolean, default: false },
+  isRevoked: { type: Boolean, default: false, index: true },
   expiresAt: { type: Date, required: true, index: true }
 }, { timestamps: true });
 
 export const UserSession = mongoose.model('UserSession', userSessionSchema);
+
+// Password Reset OTP Schema (TTL 15 minutes)
+const passwordResetSchema = new mongoose.Schema({
+  email: { type: String, required: true, lowercase: true, trim: true, index: true },
+  otpHash: { type: String, required: true },
+  attempts: { type: Number, default: 0 },
+  isUsed: { type: Boolean, default: false },
+  expiresAt: { type: Date, required: true, index: { expires: '15m' } }
+}, { timestamps: true });
+
+export const PasswordReset = mongoose.model('PasswordReset', passwordResetSchema);

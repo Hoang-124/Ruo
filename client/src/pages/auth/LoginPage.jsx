@@ -1,26 +1,58 @@
 import React, { useState } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useAuth } from '../../context/AuthContext';
+import { ForgotPasswordModal } from '../../components/ui/ForgotPasswordModal';
 
 export const LoginPage = ({ onLoginSuccess }) => {
-  const { switchRole } = useAuth();
-  const [email, setEmail] = useState('hoang.tb220412@university.edu.vn');
-  const [password, setPassword] = useState('password123');
+  const { login, switchRole } = useAuth();
+  const [identifier, setIdentifier] = useState('hoang.tb220412@university.edu.vn');
+  const [password, setPassword] = useState('Ruo@2026');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
-  const handleLogin = (e) => {
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+
+  // Handle standard login form submit (UC-1.1)
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (onLoginSuccess) {
-      onLoginSuccess();
+    setErrorMsg(null);
+    setLoading(true);
+
+    const res = await login(identifier, password);
+    setLoading(false);
+
+    if (res.success) {
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
+    } else {
+      setErrorMsg(res.message || 'Thông tin đăng nhập hoặc mật khẩu không chính xác.');
     }
   };
 
-  const handleQuickLogin = (roleKey, roleEmail) => {
-    switchRole(roleKey);
-    setEmail(roleEmail);
-    if (onLoginSuccess) {
-      onLoginSuccess();
+  // Fast persona demo switcher
+  const handleQuickLogin = async (roleKey, roleIdentifier) => {
+    setErrorMsg(null);
+    setLoading(true);
+    setIdentifier(roleIdentifier);
+    setPassword('Ruo@2026');
+
+    // Attempt real API login with canonical password Ruo@2026
+    const res = await login(roleIdentifier, 'Ruo@2026');
+    setLoading(false);
+
+    if (res.success) {
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
+    } else {
+      // Fallback switch role in mock state
+      switchRole(roleKey);
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
     }
   };
 
@@ -153,25 +185,46 @@ export const LoginPage = ({ onLoginSuccess }) => {
               Đăng nhập tài khoản
             </h2>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              Sử dụng email định danh nhà trường (@university.edu.vn)
+              Sử dụng email định danh nhà trường (@university.edu.vn) hoặc MSSV/Mã cán bộ
             </p>
           </div>
 
-          {/* Login Form */}
+          {/* Error Banner */}
+          {errorMsg && (
+            <div
+              style={{
+                marginBottom: '20px',
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#EF4444',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}
+            >
+              <Icons.Shield size={18} color="#EF4444" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* Login Form (UC-1.1) */}
           <form onSubmit={handleLogin}>
             <div className="form-group">
-              <label className="form-label">Email trường</label>
+              <label className="form-label">Email trường hoặc MSSV / Mã cán bộ</label>
               <div style={{ position: 'relative' }}>
                 <span style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }}>
                   <Icons.Mail size={18} />
                 </span>
                 <input
-                  type="email"
+                  type="text"
                   className="form-control"
                   style={{ paddingLeft: '40px' }}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="hoang.tb220412@university.edu.vn"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="hoang.tb220412@university.edu.vn hoặc SV20220412"
                   required
                 />
               </div>
@@ -195,9 +248,10 @@ export const LoginPage = ({ onLoginSuccess }) => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  style={{ position: 'absolute', right: '12px', top: '12px', color: 'var(--text-muted)' }}
+                  style={{ position: 'absolute', right: '12px', top: '12px', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                  title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
-                  <Icons.Eye size={18} />
+                  {showPassword ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
                 </button>
               </div>
             </div>
@@ -213,13 +267,22 @@ export const LoginPage = ({ onLoginSuccess }) => {
                 <span>Ghi nhớ đăng nhập</span>
               </label>
 
-              <a href="#forgot" onClick={(e) => { e.preventDefault(); alert('Vui lòng kiểm tra email trường để nhận mã OTP khôi phục mật khẩu!'); }} style={{ color: 'var(--color-primary-600)', fontWeight: 600 }}>
+              <button
+                type="button"
+                onClick={() => setIsForgotPasswordOpen(true)}
+                style={{ background: 'none', border: 'none', padding: 0, color: 'var(--color-primary-600)', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}
+              >
                 Quên mật khẩu?
-              </a>
+              </button>
             </div>
 
-            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', marginBottom: '16px' }}>
-              <span>Đăng Nhập Vào Hệ Thống</span>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary btn-lg"
+              style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            >
+              <span>{loading ? 'Đang xác thực...' : 'Đăng Nhập Vào Hệ Thống'}</span>
               <Icons.ArrowRight size={18} />
             </button>
           </form>
@@ -227,16 +290,16 @@ export const LoginPage = ({ onLoginSuccess }) => {
           {/* Divider */}
           <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', gap: '10px' }}>
             <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>HOẶC ĐĂNG NHẬP NHANH BẰNG VAI TRÒ DEMO</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>HOẶC ĐĂNG NHẬP NHANH VAI TRÒ DEMO</span>
             <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
           </div>
 
-          {/* Quick Persona Demo Buttons */}
+          {/* Quick Persona Demo Buttons (Password: Ruo@2026) */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
             <button
               className="btn btn-outline btn-sm"
               onClick={() => handleQuickLogin('student', 'hoang.tb220412@university.edu.vn')}
-              title="Vào vai Sinh viên"
+              title="Vào vai Sinh viên (SV20220412)"
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
               <Icons.AcademicCap size={14} />
@@ -245,7 +308,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
             <button
               className="btn btn-outline btn-sm"
               onClick={() => handleQuickLogin('lecturer', 'nam.nv@university.edu.vn')}
-              title="Vào vai Giảng viên"
+              title="Vào vai Giảng viên (CB198402)"
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
               <Icons.User size={14} />
@@ -254,7 +317,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
             <button
               className="btn btn-outline btn-sm"
               onClick={() => handleQuickLogin('facility_staff', 'mai.lt@university.edu.vn')}
-              title="Vào vai QL CSVC"
+              title="Vào vai QL CSVC (NV201901)"
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
               <Icons.Building size={14} />
@@ -263,7 +326,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
             <button
               className="btn btn-outline btn-sm"
               onClick={() => handleQuickLogin('maintenance', 'hung.pv@university.edu.vn')}
-              title="Vào vai Kỹ thuật viên"
+              title="Vào vai Kỹ thuật viên (KT201805)"
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
               <Icons.Wrench size={14} />
@@ -272,7 +335,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
             <button
               className="btn btn-outline btn-sm"
               onClick={() => handleQuickLogin('academic_affairs', 'dung.hq@university.edu.vn')}
-              title="Vào vai Phòng Đào tạo"
+              title="Vào vai Phòng Đào tạo (DT201509)"
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
               <Icons.Calendar size={14} />
@@ -281,7 +344,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
             <button
               className="btn btn-outline btn-sm"
               onClick={() => handleQuickLogin('admin', 'admin@university.edu.vn')}
-              title="Vào vai System Admin"
+              title="Vào vai System Admin (AD000001)"
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
               <Icons.Shield size={14} />
@@ -290,6 +353,17 @@ export const LoginPage = ({ onLoginSuccess }) => {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal (UC-1.3) */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        defaultEmail={identifier.includes('@') ? identifier : 'hoang.tb220412@university.edu.vn'}
+        onSuccessLogin={(resetEmail) => {
+          setIdentifier(resetEmail);
+          setIsForgotPasswordOpen(false);
+        }}
+      />
     </div>
   );
 };

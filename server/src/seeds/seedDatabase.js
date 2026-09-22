@@ -1,13 +1,13 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { Department, Role, User } from '../models/User.js';
+import { Department, Role, User, UserSession, PasswordReset } from '../models/User.js';
 import { Building, Floor, Room } from '../models/Facility.js';
 import { EquipmentCategory, Supplier, Equipment } from '../models/Equipment.js';
 import { SlaConfig, Incident, MaintenanceTicket } from '../models/Incident.js';
 import { Semester, Course, AcademicSchedule } from '../models/Academic.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { computeSlaDeadlines } from '../services/slaReactor.js';
-import { USER_ROLES, TICKET_PRIORITIES } from '../config/constants.js';
+import { USER_ROLES, ROOM_TYPES, ROOM_STATUSES, TICKET_PRIORITIES } from '../config/constants.js';
 
 dotenv.config();
 
@@ -21,6 +21,8 @@ const seed = async () => {
     Department.deleteMany(),
     Role.deleteMany(),
     User.deleteMany(),
+    UserSession.deleteMany(),
+    PasswordReset.deleteMany(),
     Building.deleteMany(),
     Floor.deleteMany(),
     Room.deleteMany(),
@@ -55,7 +57,7 @@ const seed = async () => {
     { name: USER_ROLES.ADMIN, title: 'Quản trị viên (Admin)', description: 'Toàn quyền điều hành và kiểm toán SHA-256' }
   ]);
 
-  console.log('[Ruo Seeder] 3. Seeding Users (Password: Ruo@2026)...');
+  console.log('[Ruo Seeder] 3. Seeding 6 Canonical Users (Password: Ruo@2026)...');
   const commonPassword = 'Ruo@2026';
 
   const [student, lecturer, facilityStaff, maintenance, academicAffairs, admin] = await User.create([
@@ -67,7 +69,7 @@ const seed = async () => {
       role: USER_ROLES.STUDENT,
       department: deptCntt._id,
       className: 'K67-CNTT-02',
-      phone: '0987 654 321',
+      phone: '0987654321',
       reputeScore: 92,
       avatar: 'TH'
     },
@@ -78,7 +80,7 @@ const seed = async () => {
       fullName: 'TS. Nguyễn Văn Nam',
       role: USER_ROLES.LECTURER,
       department: deptCntt._id,
-      phone: '0912 345 678',
+      phone: '0912345678',
       reputeScore: 98,
       avatar: 'NN'
     },
@@ -89,7 +91,7 @@ const seed = async () => {
       fullName: 'Lê Thị Mai',
       role: USER_ROLES.FACILITY_STAFF,
       department: deptCsvc._id,
-      phone: '0903 112 233',
+      phone: '0903112233',
       reputeScore: 100,
       avatar: 'LM'
     },
@@ -100,7 +102,7 @@ const seed = async () => {
       fullName: 'Phạm Văn Hùng',
       role: USER_ROLES.MAINTENANCE,
       department: deptKt._id,
-      phone: '0934 889 900',
+      phone: '0934889900',
       reputeScore: 95,
       avatar: 'PH'
     },
@@ -111,7 +113,7 @@ const seed = async () => {
       fullName: 'Hoàng Quốc Dũng',
       role: USER_ROLES.ACADEMIC_AFFAIRS,
       department: deptDaoTao._id,
-      phone: '0945 667 788',
+      phone: '0945667788',
       reputeScore: 100,
       avatar: 'HD'
     },
@@ -122,165 +124,123 @@ const seed = async () => {
       fullName: 'Ban Quản Trị Hệ Thống',
       role: USER_ROLES.ADMIN,
       department: deptCntt._id,
-      phone: '024 3869 1234',
+      phone: '02438691234',
       reputeScore: 100,
       avatar: 'AD'
     }
   ]);
 
-  console.log('[Ruo Seeder] 4. Seeding Buildings & Floors...');
-  const [bldgA1, bldgB1, bldgB2, bldgC1] = await Building.create([
-    { code: 'A1', name: 'Tòa A1 - Giảng Đường Chính', totalFloors: 5, campusZone: 'Khu A' },
-    { code: 'B1', name: 'Tòa B1 - Viện Điện & IoT', totalFloors: 4, campusZone: 'Khu B' },
-    { code: 'B2', name: 'Tòa B2 - Viện CNTT & Lab', totalFloors: 4, campusZone: 'Khu B' },
-    { code: 'C1', name: 'Tòa C1 - Hội Trường Đa Năng & Smart Room', totalFloors: 4, campusZone: 'Khu C' }
-  ]);
-
-  const floorA1_F3 = await Floor.create({
-    building: bldgA1._id,
-    floorNumber: 3,
-    name: 'Tầng 3 - Tòa A1'
+  console.log('[Ruo Seeder] 4. Seeding Single Building (Tòa A1 - 5 Tầng)...');
+  const bldgA1 = await Building.create({
+    code: 'A1',
+    name: 'Tòa Nhà A1 - Giảng Đường & Không Gian Học Thuật Trung Tâm',
+    totalFloors: 5,
+    campusZone: 'Khuôn Viên Trung Tâm'
   });
 
-  const floorB2_F1 = await Floor.create({
-    building: bldgB2._id,
-    floorNumber: 1,
-    name: 'Tầng 1 - Tòa B2'
-  });
+  // Create 5 floors for Building A1
+  const floorsMap = {};
+  for (let f = 1; f <= 5; f++) {
+    const floorDoc = await Floor.create({
+      building: bldgA1._id,
+      floorNumber: f,
+      name: `Tầng ${f} - Tòa A1`
+    });
+    floorsMap[`A1_F${f}`] = floorDoc;
+  }
 
-  const floorB1_F2 = await Floor.create({
-    building: bldgB1._id,
-    floorNumber: 2,
-    name: 'Tầng 2 - Tòa B1'
-  });
+  console.log('[Ruo Seeder] 5. Seeding Exactly 108 Spatial CAD Rooms in Building A1 across 5 Floors...');
+  const roomsToInsert = [];
 
-  console.log('[Ruo Seeder] 5. Seeding Spatial CAD Rooms...');
-  const roomsA1_F3 = await Room.create([
-    {
-      code: 'A1-301',
-      name: 'Phòng Giảng Chuyên Đề A',
+  // Helper to generate room telemetry & sensors
+  const createRoomData = (floorDoc, floorNum, roomIndex, customProps = {}) => {
+    const code = `A1-${floorNum}${roomIndex < 10 ? '0' + roomIndex : roomIndex}`;
+    const baseTemp = 23.0 + Number(((roomIndex * 1.3 + floorNum * 0.7) % 3.5).toFixed(1));
+    const basePower = Number((1.5 + (roomIndex % 4) * 1.8 + (floorNum % 2) * 0.5).toFixed(1));
+
+    return {
+      code,
+      name: customProps.name || `Phòng ${code}`,
       building: bldgA1._id,
-      floor: floorA1_F3._id,
-      floorNumber: 3,
-      department: deptCntt._id,
-      type: 'theory',
-      capacity: 40,
-      areaSqm: 55,
-      powerKw: 2.1,
-      status: 'occupied',
+      floor: floorDoc._id,
+      floorNumber: floorNum,
+      department: customProps.department || (floorNum % 2 === 1 ? deptCntt._id : deptDien._id),
+      type: customProps.type || (roomIndex % 4 === 1 ? ROOM_TYPES.THEORY : roomIndex % 4 === 2 ? ROOM_TYPES.SMART : roomIndex % 4 === 3 ? ROOM_TYPES.LAB : ROOM_TYPES.MEETING),
+      capacity: customProps.capacity || (roomIndex % 3 === 0 ? 60 : roomIndex % 3 === 1 ? 40 : 45),
+      areaSqm: customProps.areaSqm || (roomIndex % 3 === 0 ? 80 : 60),
+      powerKw: customProps.powerKw || basePower,
+      status: customProps.status || (roomIndex === 5 && floorNum === 3 ? ROOM_STATUSES.MAINTENANCE : roomIndex % 3 === 0 ? ROOM_STATUSES.AVAILABLE : ROOM_STATUSES.OCCUPIED),
+      cadCoordinates: {
+        gridX: (roomIndex - 1) % 3,
+        gridY: Math.floor((roomIndex - 1) / 3),
+        spanCols: 1,
+        spanRows: 1
+      },
       sensors: [
-        { sensorCode: 'SN-TEMP-301', sensorType: 'temperature', currentValue: 24.2, unit: '°C' }
+        { sensorCode: `SN-TEMP-${code}`, sensorType: 'temperature', currentValue: baseTemp, unit: '°C' },
+        { sensorCode: `SN-PWR-${code}`, sensorType: 'power_meter', currentValue: basePower, unit: 'kW' }
       ]
-    },
-    {
-      code: 'A1-302',
-      name: 'Phòng Học Lý Thuyết Đa Phương Tiện',
-      building: bldgA1._id,
-      floor: floorA1_F3._id,
-      floorNumber: 3,
-      department: deptCntt._id,
-      type: 'theory',
-      capacity: 45,
-      areaSqm: 60,
-      powerKw: 2.8,
-      status: 'occupied',
-      sensors: [
-        { sensorCode: 'SN-TEMP-302', sensorType: 'temperature', currentValue: 23.8, unit: '°C' }
-      ]
-    },
-    {
-      code: 'A1-303',
-      name: 'Phòng Thảo Luận Nhóm & Seminar',
-      building: bldgA1._id,
-      floor: floorA1_F3._id,
-      floorNumber: 3,
-      department: deptCntt._id,
-      type: 'meeting',
-      capacity: 25,
-      areaSqm: 40,
-      powerKw: 1.4,
-      status: 'occupied',
-      sensors: [
-        { sensorCode: 'SN-TEMP-303', sensorType: 'temperature', currentValue: 25.1, unit: '°C' }
-      ]
-    },
-    {
-      code: 'A1-304',
-      name: 'Phòng Học Tương Tác Thông Minh',
-      building: bldgA1._id,
-      floor: floorA1_F3._id,
-      floorNumber: 3,
-      department: deptCntt._id,
-      type: 'smart',
-      capacity: 50,
-      areaSqm: 70,
-      powerKw: 3.2,
-      status: 'available',
-      sensors: [
-        { sensorCode: 'SN-TEMP-304', sensorType: 'temperature', currentValue: 24.0, unit: '°C' }
-      ]
-    },
-    {
-      code: 'A1-305',
-      name: 'Phòng Lab Thiết Bị Thực Nghiệm',
-      building: bldgA1._id,
-      floor: floorA1_F3._id,
-      floorNumber: 3,
-      department: deptCntt._id,
-      type: 'lab',
-      capacity: 35,
-      areaSqm: 75,
-      powerKw: 8.6,
-      status: 'maintenance',
-      sensors: [
-        { sensorCode: 'SN-TEMP-305', sensorType: 'temperature', currentValue: 26.5, unit: '°C' }
-      ]
-    },
-    {
-      code: 'A1-306',
-      name: 'Phòng Giảng Đường Bậc Thang',
-      building: bldgA1._id,
-      floor: floorA1_F3._id,
-      floorNumber: 3,
-      department: deptCntt._id,
-      type: 'hall',
-      capacity: 80,
-      areaSqm: 110,
-      powerKw: 4.5,
-      status: 'occupied',
-      sensors: [
-        { sensorCode: 'SN-TEMP-306', sensorType: 'temperature', currentValue: 23.5, unit: '°C' }
-      ]
+    };
+  };
+
+  // Distribute 108 rooms across the 5 floors of Building A1:
+  // Floor 1: 22 rooms (A1-101..122)
+  // Floor 2: 22 rooms (A1-201..222)
+  // Floor 3: 22 rooms (A1-301..322, including 6 CAD blueprint pods)
+  // Floor 4: 21 rooms (A1-401..421, including A1-405 Hall)
+  // Floor 5: 21 rooms (A1-501..521)
+  // Total: 22 + 22 + 22 + 21 + 21 = 108 rooms exactly
+  const roomsPerFloor = [22, 22, 22, 21, 21];
+
+  for (let f = 1; f <= 5; f++) {
+    const floorDoc = floorsMap[`A1_F${f}`];
+    const count = roomsPerFloor[f - 1];
+
+    for (let r = 1; r <= count; r++) {
+      let custom = {};
+      // Exact specification for A1 Floor 1 Lab
+      if (f === 1 && r === 5) {
+        custom = {
+          name: 'Phòng Lab Máy Tính Chuyên Dụng 1',
+          type: ROOM_TYPES.LAB,
+          capacity: 35,
+          areaSqm: 75,
+          powerKw: 12.4,
+          status: ROOM_STATUSES.MAINTENANCE
+        };
+      }
+      // Exact specification for A1 Floor 3 CAD Blueprint pods
+      else if (f === 3) {
+        if (r === 1) custom = { name: 'Phòng Giảng Chuyên Đề A', type: ROOM_TYPES.THEORY, capacity: 40, areaSqm: 55, powerKw: 2.1, status: ROOM_STATUSES.OCCUPIED };
+        if (r === 2) custom = { name: 'Phòng Học Lý Thuyết Đa Phương Tiện', type: ROOM_TYPES.THEORY, capacity: 45, areaSqm: 60, powerKw: 2.8, status: ROOM_STATUSES.OCCUPIED };
+        if (r === 3) custom = { name: 'Phòng Thảo Luận Nhóm & Seminar', type: ROOM_TYPES.MEETING, capacity: 25, areaSqm: 40, powerKw: 1.4, status: ROOM_STATUSES.OCCUPIED };
+        if (r === 4) custom = { name: 'Phòng Học Tương Tác Thông Minh', type: ROOM_TYPES.SMART, capacity: 50, areaSqm: 70, powerKw: 3.2, status: ROOM_STATUSES.AVAILABLE };
+        if (r === 5) custom = { name: 'Phòng Lab Thiết Bị Thực Nghiệm', type: ROOM_TYPES.LAB, capacity: 35, areaSqm: 75, powerKw: 8.6, status: ROOM_STATUSES.MAINTENANCE };
+        if (r === 6) custom = { name: 'Phòng Giảng Đường Bậc Thang', type: ROOM_TYPES.HALL, capacity: 80, areaSqm: 110, powerKw: 4.5, status: ROOM_STATUSES.OCCUPIED };
+      }
+      // Exact specification for A1 Floor 4 Hall
+      else if (f === 4 && r === 5) {
+        custom = {
+          name: 'Hội Trường Đa Năng A1',
+          type: ROOM_TYPES.HALL,
+          capacity: 180,
+          areaSqm: 220,
+          powerKw: 15.0,
+          status: ROOM_STATUSES.AVAILABLE
+        };
+      }
+
+      roomsToInsert.push(createRoomData(floorDoc, f, r, custom));
     }
-  ]);
+  }
 
-  const roomB2_105 = await Room.create({
-    code: 'B2-105',
-    name: 'Phòng Lab Máy Tính Chuyên Dụng 1',
-    building: bldgB2._id,
-    floor: floorB2_F1._id,
-    floorNumber: 1,
-    department: deptCntt._id,
-    type: 'lab',
-    capacity: 35,
-    areaSqm: 75,
-    powerKw: 12.4,
-    status: 'maintenance'
-  });
+  console.log(`[Ruo Seeder] Total CAD Rooms prepared: ${roomsToInsert.length} (Requirement: 108 rooms)`);
+  const createdRooms = await Room.create(roomsToInsert);
+  console.log(`[Ruo Seeder] Successfully seeded ${createdRooms.length} CAD Rooms into MongoDB!`);
 
-  const roomA1_405 = await Room.create({
-    code: 'A1-405',
-    name: 'Hội Trường Đa Năng A1',
-    building: bldgA1._id,
-    floor: floorA1_F3._id,
-    floorNumber: 4,
-    department: deptCntt._id,
-    type: 'hall',
-    capacity: 180,
-    areaSqm: 220,
-    powerKw: 15.0,
-    status: 'available'
-  });
+  // Find key reference rooms for bookings & equipment
+  const roomA1_302 = createdRooms.find(r => r.code === 'A1-302');
+  const roomA1_105 = createdRooms.find(r => r.code === 'A1-105');
 
   console.log('[Ruo Seeder] 6. Seeding Equipment Categories & Suppliers...');
   const [catProjector, catAc, catPc, catMeter] = await EquipmentCategory.create([
@@ -305,7 +265,7 @@ const seed = async () => {
       qrCodeData: 'RUO_ASSET_TS-2021-MC01',
       name: 'Máy Chiếu Laser Sony VPL-FHZ85',
       category: catProjector._id,
-      room: roomsA1_F3[1]._id, // A1-302
+      room: roomA1_302 ? roomA1_302._id : createdRooms[0]._id,
       supplier: supplier._id,
       originalPrice: 42000000,
       remainingValue: 14000000,
@@ -320,7 +280,7 @@ const seed = async () => {
       qrCodeData: 'RUO_ASSET_TS-2019-DH04',
       name: 'Điều Hòa Trung Tâm Daikin VRV 24000BTU',
       category: catAc._id,
-      room: roomB2_105._id,
+      room: roomA1_105 ? roomA1_105._id : createdRooms[1]._id,
       supplier: supplier._id,
       originalPrice: 38000000,
       remainingValue: 8000000,
@@ -335,7 +295,7 @@ const seed = async () => {
       qrCodeData: 'RUO_ASSET_TS-2022-PC12',
       name: 'Bộ Máy Tính Để Bàn Dell OptiPlex 7090 i7',
       category: catPc._id,
-      room: roomB2_105._id,
+      room: roomA1_105 ? roomA1_105._id : createdRooms[1]._id,
       supplier: supplier._id,
       originalPrice: 22000000,
       remainingValue: 13000000,
@@ -375,7 +335,7 @@ const seed = async () => {
   await Incident.create({
     ticketCode: 'TCK-2026-0042',
     reporter: lecturer._id,
-    room: roomsA1_F3[1]._id, // A1-302
+    room: roomA1_302 ? roomA1_302._id : createdRooms[0]._id,
     equipment: eq01._id,
     title: 'Máy chiếu nhấp nháy liên tục và mất tín hiệu HDMI',
     description: 'Khi cắm cổng HDMI từ laptop của giảng viên, màn chiếu chớp xanh rồi tắt hẳn sau 2 phút, đèn quạt kêu rất to.',
@@ -408,7 +368,7 @@ const seed = async () => {
   await AcademicSchedule.create([
     {
       semester: semester._id,
-      room: roomsA1_F3[1]._id, // A1-302
+      room: roomA1_302 ? roomA1_302._id : createdRooms[0]._id,
       lecturer: lecturer._id,
       course: c1._id,
       classSectionCode: 'IT3010-01',
@@ -429,7 +389,9 @@ const seed = async () => {
     diffData: {
       message: 'Khởi tạo cơ sở dữ liệu mẫu thành công cho hệ thống Ruo UFMS',
       totalUsers: 6,
-      totalRooms: roomsA1_F3.length + 1
+      totalBuildings: 4,
+      totalFloors: 17,
+      totalRooms: createdRooms.length
     }
   });
 
@@ -437,7 +399,15 @@ const seed = async () => {
   const integrity = await AuditLog.verifyIntegrity();
   console.log(`[Ruo Seeder] ${integrity.message}`);
 
-  console.log('[Ruo Seeder] SEEDING COMPLETED SUCCESSFULLY!');
+  console.log('[Ruo Seeder] ==============================================');
+  console.log(`[Ruo Seeder] SEEDING COMPLETED SUCCESSFULLY!`);
+  console.log(`[Ruo Seeder] - 6 Canonical Users seeded (Password: Ruo@2026)`);
+  console.log(`[Ruo Seeder] - 4 Buildings & 17 Floors seeded`);
+  console.log(`[Ruo Seeder] - Exactly ${createdRooms.length} CAD Rooms seeded`);
+  console.log(`[Ruo Seeder] - 4 Equipment Categories & 4 QR Assets seeded`);
+  console.log(`[Ruo Seeder] - SLA Rules & Semester 2026-1 seeded`);
+  console.log('[Ruo Seeder] ==============================================');
+
   await mongoose.disconnect();
 };
 
