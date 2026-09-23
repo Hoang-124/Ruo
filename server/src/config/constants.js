@@ -27,6 +27,7 @@ export const ROOM_STATUSES = {
   AVAILABLE: 'available',
   OCCUPIED: 'occupied',
   MAINTENANCE: 'maintenance',
+  INACTIVE: 'inactive',
   LOCKED: 'locked'
 };
 
