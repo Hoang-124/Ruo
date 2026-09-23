@@ -16,7 +16,7 @@ const hashToken = (token) => {
 };
 
 // Password policy regex: >= 8 chars, at least 1 uppercase, 1 lowercase, 1 digit, 1 special char
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d\s]).{8,}$/;
 
 // Phone number regex (Vietnam 10-digit mobile)
 const PHONE_REGEX = /^(84|0)(3|5|7|8|9)[0-9]{8}$/;
@@ -70,13 +70,17 @@ export const login = async (req, res) => {
     }
 
     // Generate JWT Access Token (15m) and Refresh Token (7d)
-    const accessToken = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
-      expiresIn: ACCESS_TOKEN_EXPIRY
-    });
+    const accessToken = jwt.sign(
+      { id: user._id, userId: user._id, role: user.role, employeeCode: user.employeeCode, jti: crypto.randomUUID() },
+      JWT_SECRET,
+      { expiresIn: ACCESS_TOKEN_EXPIRY }
+    );
 
-    const refreshToken = jwt.sign({ id: user._id, type: 'refresh' }, JWT_SECRET, {
-      expiresIn: REFRESH_TOKEN_EXPIRY
-    });
+    const refreshToken = jwt.sign(
+      { id: user._id, userId: user._id, role: user.role, type: 'refresh', jti: crypto.randomUUID() },
+      JWT_SECRET,
+      { expiresIn: REFRESH_TOKEN_EXPIRY }
+    );
 
     // Create session in UserSession
     const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1';
@@ -216,13 +220,13 @@ export const register = async (req, res) => {
 
     // Generate JWT access token & refresh token
     const accessToken = jwt.sign(
-      { userId: newUser._id, role: newUser.role, employeeCode: newUser.employeeCode },
+      { id: newUser._id, userId: newUser._id, role: newUser.role, employeeCode: newUser.employeeCode, jti: crypto.randomUUID() },
       JWT_SECRET,
       { expiresIn: ACCESS_TOKEN_EXPIRY }
     );
 
     const refreshToken = jwt.sign(
-      { userId: newUser._id, role: newUser.role, type: 'refresh' },
+      { id: newUser._id, userId: newUser._id, role: newUser.role, type: 'refresh', jti: crypto.randomUUID() },
       JWT_SECRET,
       { expiresIn: REFRESH_TOKEN_EXPIRY }
     );
@@ -376,9 +380,11 @@ export const refreshToken = async (req, res) => {
     }
 
     // Issue new 15-minute Access Token
-    const newAccessToken = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
-      expiresIn: ACCESS_TOKEN_EXPIRY
-    });
+    const newAccessToken = jwt.sign(
+      { id: user._id, userId: user._id, role: user.role, employeeCode: user.employeeCode, jti: crypto.randomUUID() },
+      JWT_SECRET,
+      { expiresIn: ACCESS_TOKEN_EXPIRY }
+    );
 
     // Update session with new access token hash
     session.tokenHash = hashToken(newAccessToken);
@@ -554,7 +560,7 @@ export const resetPassword = async (req, res) => {
     if (!PASSWORD_REGEX.test(newPassword)) {
       return res.status(400).json({
         success: false,
-        message: 'Mật khẩu mới phải có tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ thường, 1 chữ số và 1 ký tự đặc biệt (@$!%*?&).'
+        message: 'Mật khẩu mới phải có tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ thường, 1 chữ số và 1 ký tự đặc biệt.'
       });
     }
 
@@ -671,7 +677,7 @@ export const changePassword = async (req, res) => {
     if (!PASSWORD_REGEX.test(newPassword)) {
       return res.status(400).json({
         success: false,
-        message: 'Mật khẩu mới phải có tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ thường, 1 chữ số và 1 ký tự đặc biệt (@$!%*?&).'
+        message: 'Mật khẩu mới phải có tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ thường, 1 chữ số và 1 ký tự đặc biệt.'
       });
     }
 

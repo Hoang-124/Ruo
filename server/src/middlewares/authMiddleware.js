@@ -33,7 +33,8 @@ export const protect = async (req, res, next) => {
       });
     }
 
-    const user = await User.findById(decoded.id).select('-passwordHash');
+    const userId = decoded.id || decoded.userId;
+    const user = await User.findById(userId).select('-passwordHash');
 
     if (!user) {
       return res.status(401).json({

@@ -103,7 +103,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
       hasUpper: /[A-Z]/.test(newPassword),
       hasLower: /[a-z]/.test(newPassword),
       hasNumber: /\d/.test(newPassword),
-      hasSpecial: /[@$!%*?&]/.test(newPassword),
+      hasSpecial: /[^a-zA-Z\d\s]/.test(newPassword),
       isMatching: newPassword.length > 0 && newPassword === confirmPassword
     };
   }, [newPassword, confirmPassword]);
