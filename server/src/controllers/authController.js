@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { User, UserSession, PasswordReset } from '../models/User.js';
+import { User, UserSession, PasswordReset, Department } from '../models/User.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { USER_STATUSES } from '../config/constants.js';
 import { sendPasswordResetEmail, generateSixDigitOtp } from '../utils/mailer.js';
@@ -129,6 +129,153 @@ export const login = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Đã xảy ra lỗi hệ thống trong quá trình xử lý đăng nhập.',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Register: New User Account Registration
+ * Allows new students or lecturers to register for an institutional account
+ * Checks unique email and employeeCode, creates session, issues JWT tokens
+ */
+export const register = async (req, res) => {
+  try {
+    const { fullName, email, employeeCode, password, role, departmentName, phone, className } = req.body;
+
+    if (!fullName || !email || !employeeCode || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng điền đầy đủ họ tên, email trường, MSSV/mã cán bộ và mật khẩu.'
+      });
+    }
+
+    const trimmedEmail = String(email).trim().toLowerCase();
+    const trimmedCode = String(employeeCode).trim().toUpperCase();
+
+    // Check duplicate email
+    const existingEmail = await User.findOne({ email: trimmedEmail });
+    if (existingEmail) {
+      return res.status(409).json({
+        success: false,
+        message: 'Email trường này đã được đăng ký trong hệ thống.'
+      });
+    }
+
+    // Check duplicate employeeCode
+    const existingCode = await User.findOne({ employeeCode: trimmedCode });
+    if (existingCode) {
+      return res.status(409).json({
+        success: false,
+        message: 'Mã số sinh viên hoặc mã cán bộ này đã tồn tại trong hệ thống.'
+      });
+    }
+
+    // Password validation (min 8 chars)
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mật khẩu phải có độ dài tối thiểu 8 ký tự.'
+      });
+    }
+
+    // Role security: default to student, only allow 'student' or 'lecturer' self-registration
+    const allowedRoles = ['student', 'lecturer'];
+    const chosenRole = allowedRoles.includes(role) ? role : 'student';
+
+    // Find or link department if provided
+    let departmentId = null;
+    if (departmentName) {
+      const dept = await Department.findOne({
+        $or: [
+          { name: new RegExp(departmentName, 'i') },
+          { code: new RegExp(departmentName, 'i') }
+        ]
+      });
+      if (dept) departmentId = dept._id;
+    }
+
+    // Create user record
+    const newUser = await User.create({
+      fullName: String(fullName).trim(),
+      email: trimmedEmail,
+      employeeCode: trimmedCode,
+      passwordHash: password, // Mongoose pre-save hook will bcrypt hash this
+      role: chosenRole,
+      department: departmentId,
+      phone: phone ? String(phone).trim() : '',
+      className: className ? String(className).trim() : '',
+      reputeScore: 100, // Top initial reputation
+      status: USER_STATUSES.ACTIVE,
+      avatar: fullName.slice(0, 2).toUpperCase()
+    });
+
+    if (departmentId) {
+      await newUser.populate('department');
+    }
+
+    // Generate JWT access token & refresh token
+    const accessToken = jwt.sign(
+      { userId: newUser._id, role: newUser.role, employeeCode: newUser.employeeCode },
+      JWT_SECRET,
+      { expiresIn: ACCESS_TOKEN_EXPIRY }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId: newUser._id, role: newUser.role, type: 'refresh' },
+      JWT_SECRET,
+      { expiresIn: REFRESH_TOKEN_EXPIRY }
+    );
+
+    const ipAddress = req.ip || req.connection?.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown Client';
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await UserSession.create({
+      user: newUser._id,
+      tokenHash: hashToken(accessToken),
+      refreshTokenHash: hashToken(refreshToken),
+      ipAddress,
+      userAgent,
+      isRevoked: false,
+      expiresAt
+    });
+
+    // Audit log
+    await AuditLog.logAction({
+      user: newUser._id,
+      userDisplay: `${newUser.fullName} (${newUser.employeeCode})`,
+      action: 'USER_REGISTER',
+      entityType: 'User',
+      entityId: newUser._id.toString(),
+      ipAddress
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Đăng ký tài khoản thành công! Chào mừng bạn gia nhập hệ thống Ruo UFMS.',
+      token: accessToken,
+      refreshToken,
+      expiresIn: 15 * 60,
+      user: {
+        id: newUser._id,
+        employeeCode: newUser.employeeCode,
+        fullName: newUser.fullName,
+        email: newUser.email,
+        role: newUser.role,
+        department: newUser.department ? newUser.department.name : null,
+        className: newUser.className,
+        phone: newUser.phone,
+        avatar: newUser.avatar,
+        reputeScore: newUser.reputeScore,
+        status: newUser.status
+      }
+    });
+  } catch (error) {
+    console.error('[authController:register] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Đã xảy ra lỗi hệ thống trong quá trình xử lý đăng ký tài khoản.',
       error: error.message
     });
   }

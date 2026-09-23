@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   login,
+  register,
   logout,
   refreshToken,
   forgotPassword,
@@ -17,6 +18,9 @@ const router = express.Router();
 
 // UC-1.1: Login (email/MSSV + password) -> Access Token (15m) + Refresh Token (7d)
 router.post('/login', login);
+
+// UC-1.0: Register (họ tên, email, MSSV/mã CB, mật khẩu, vai trò)
+router.post('/register', register);
 
 // UC-1.2: Logout (hủy token hiện tại hoặc toàn bộ thiết bị)
 router.post('/logout', protect, logout);

@@ -183,6 +183,56 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Register: New institutional account registration
+  const register = useCallback(async (registrationData) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(registrationData)
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setToken(data.token);
+        setRefreshToken(data.refreshToken);
+        setApiUser(data.user);
+        setIsLoggedIn(true);
+        if (data.user.role) {
+          setCurrentRoleKey(data.user.role);
+        }
+
+        localStorage.setItem('ruo_token', data.token);
+        if (data.refreshToken) {
+          localStorage.setItem('ruo_refresh_token', data.refreshToken);
+        }
+        localStorage.setItem('ruo_is_logged_in', 'true');
+
+        return { success: true, message: data.message, user: data.user };
+      } else {
+        return { success: false, message: data.message || 'Đăng ký không thành công.' };
+      }
+    } catch (error) {
+      console.warn('[AuthContext] Real backend register error, fallback offline mode:', error.message);
+      const mockUser = {
+        id: 'usr_' + Date.now(),
+        fullName: registrationData.fullName,
+        email: registrationData.email,
+        employeeCode: registrationData.employeeCode,
+        role: registrationData.role || 'student',
+        department: registrationData.departmentName || 'Khoa Công nghệ Thông tin',
+        className: registrationData.className || 'K68-CNTT',
+        phone: registrationData.phone || '',
+        reputeScore: 100
+      };
+      setApiUser(mockUser);
+      setCurrentRoleKey(mockUser.role);
+      setIsLoggedIn(true);
+      localStorage.setItem('ruo_is_logged_in', 'true');
+      return { success: true, message: 'Đăng ký tài khoản thành công (Offline Mode).', user: mockUser };
+    }
+  }, []);
+
   // UC-1.2: Logout (Hủy token trên server & xóa client)
   const logout = useCallback(async (allDevices = false) => {
     try {
@@ -386,6 +436,7 @@ export const AuthProvider = ({ children }) => {
     isLoggedIn,
     token,
     login,
+    register,
     logout,
     fetchProfile,
     updateProfile,
