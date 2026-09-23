@@ -14,6 +14,7 @@ import { BookingModal } from './components/ui/BookingModal';
 import { QRCheckInModal } from './components/ui/QRCheckInModal';
 import { LoginPage } from './pages/auth/LoginPage';
 import { UserProfileModal } from './components/ui/UserProfileModal';
+import { RoomDetailModal } from './components/ui/RoomDetailModal';
 import { Icons } from './components/common/SvgIcons';
 import { ROOMS } from './mock/mockData';
 
@@ -26,6 +27,8 @@ const MainAppContent = () => {
   const [selectedBookingRoom, setSelectedBookingRoom] = useState(ROOMS[0]);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isRoomDetailOpen, setIsRoomDetailOpen] = useState(false);
+  const [selectedRoomCode, setSelectedRoomCode] = useState(null);
 
   if (!isLoggedIn) {
     return <LoginPage onLoginSuccess={() => {}} />;
@@ -119,6 +122,10 @@ const MainAppContent = () => {
           'TRỤ CỘT 2 • LỊCH BIỂU',
           <RoomListPage
             onOpenBookingModal={handleOpenBooking}
+            onSelectRoomDetail={(room) => {
+              setSelectedRoomCode(room.code || room.code);
+              setIsRoomDetailOpen(true);
+            }}
             onOpenCalendar={() => setActiveTab('calendar')}
           />
         );
@@ -221,6 +228,13 @@ const MainAppContent = () => {
       <UserProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
+      />
+
+      <RoomDetailModal
+        isOpen={isRoomDetailOpen}
+        onClose={() => setIsRoomDetailOpen(false)}
+        roomCode={selectedRoomCode}
+        onOpenBookingModal={handleOpenBooking}
       />
     </div>
   );
