@@ -37,8 +37,59 @@ export const RoomDetailModal = ({ isOpen, onClose, roomCode, onOpenBookingModal 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [statusAction, setStatusAction] = useState(null); // 'available' | 'maintenance' | 'inactive' | 'deactivate'
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState(null);
 
   const canEdit = ['facility_staff', 'admin'].includes(currentRoleKey);
+
+  // UC-3.6: Update Room Status
+  const handleStatusChange = async (newStatus) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn chuyển phòng ${room.code} sang trạng thái "${newStatus}"?`)) return;
+    setStatusLoading(true);
+    setStatusMessage(null);
+    try {
+      const roomId = room._id;
+      const res = await fetch(`${API_BASE}/rooms/${roomId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setRoom(data.room);
+      setStatusMessage({ type: 'success', text: data.message });
+      if (data.affectedBookings?.length > 0) {
+        setStatusMessage(prev => ({ ...prev, affected: data.affectedBookings }));
+      }
+    } catch (err) {
+      setStatusMessage({ type: 'error', text: err.message });
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  // UC-3.5: Deactivate Room
+  const handleDeactivate = async () => {
+    if (!window.confirm(`Bạn có chắc chắn muốn NGỪNG KÍCH HOẠT phòng ${room.code}? Phòng sẽ chuyển sang trạng thái INACTIVE.`)) return;
+    setStatusLoading(true);
+    setStatusMessage(null);
+    try {
+      const roomId = room._id;
+      const res = await fetch(`${API_BASE}/rooms/${roomId}/deactivate`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setRoom(data.room);
+      setStatusMessage({ type: 'success', text: data.message });
+    } catch (err) {
+      setStatusMessage({ type: 'error', text: err.message });
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen || !roomCode) return;
@@ -269,6 +320,78 @@ export const RoomDetailModal = ({ isOpen, onClose, roomCode, onOpenBookingModal 
                   </div>
                 )}
               </div>
+
+              {/* UC-3.5 & UC-3.6: Status Management Panel (Facility Staff / Admin only) */}
+              {canEdit && (
+                <div style={{
+                  marginBottom: '24px', padding: '16px',
+                  background: 'rgba(255,255,255,0.02)', border: '1px solid var(--hairline-soft)',
+                  borderRadius: 'var(--radius-sm)'
+                }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-primary)', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
+                    🔧 QUẢN LÝ TRẠNG THÁI PHÒNG
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {room.status !== 'available' && (
+                      <button
+                        className="laser-btn laser-btn-ghost"
+                        style={{ fontSize: '11px', color: 'var(--laser-emerald)', borderColor: 'rgba(16,185,129,0.3)' }}
+                        disabled={statusLoading}
+                        onClick={() => handleStatusChange('available')}
+                      >
+                        ✅ Kích hoạt (Available)
+                      </button>
+                    )}
+                    {room.status !== 'maintenance' && (
+                      <button
+                        className="laser-btn laser-btn-ghost"
+                        style={{ fontSize: '11px', color: 'var(--laser-amber)', borderColor: 'rgba(245,158,11,0.3)' }}
+                        disabled={statusLoading}
+                        onClick={() => handleStatusChange('maintenance')}
+                      >
+                        🔧 Bảo trì (Maintenance)
+                      </button>
+                    )}
+                    {room.status !== 'inactive' && (
+                      <button
+                        className="laser-btn laser-btn-ghost"
+                        style={{ fontSize: '11px', color: 'var(--laser-rose)', borderColor: 'rgba(239,68,68,0.25)' }}
+                        disabled={statusLoading}
+                        onClick={handleDeactivate}
+                      >
+                        ⛔ Ngừng kích hoạt (Deactivate)
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Status Action Feedback */}
+                  {statusMessage && (
+                    <div style={{
+                      marginTop: '10px', padding: '10px 14px', borderRadius: 'var(--radius-sm)',
+                      fontSize: '12px',
+                      background: statusMessage.type === 'success' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+                      border: `1px solid ${statusMessage.type === 'success' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                      color: statusMessage.type === 'success' ? 'var(--laser-emerald)' : 'var(--laser-rose)'
+                    }}>
+                      {statusMessage.text}
+                      {statusMessage.affected && statusMessage.affected.length > 0 && (
+                        <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--laser-amber)' }}>
+                          ⚠️ {statusMessage.affected.length} đơn mượn bị ảnh hưởng:
+                          {statusMessage.affected.map((b, i) => (
+                            <div key={i} style={{ marginLeft: '8px' }}>
+                              • {b.bookingCode} — {b.user} ({new Date(b.startTime).toLocaleDateString('vi-VN')})
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {statusLoading && (
+                    <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--ink-muted)' }}>Đang xử lý...</div>
+                  )}
+                </div>
+              )}
 
               {/* Actions Footer */}
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
