@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../common/SvgIcons';
 import { useAuth } from '../../context/AuthContext';
+import { RoomEditModal } from './RoomEditModal';
 
 const API_BASE = 'http://localhost:5000/api/facilities';
 
@@ -29,12 +30,15 @@ const DEFAULT_IMAGES = {
 };
 
 export const RoomDetailModal = ({ isOpen, onClose, roomCode, onOpenBookingModal }) => {
-  const { token } = useAuth();
+  const { token, currentRoleKey } = useAuth();
   const [room, setRoom] = useState(null);
   const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [stats, setStats] = useState({ monthlyBookings: 0, totalCompletedBookings: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const canEdit = ['facility_staff', 'admin'].includes(currentRoleKey);
 
   useEffect(() => {
     if (!isOpen || !roomCode) return;
@@ -271,6 +275,15 @@ export const RoomDetailModal = ({ isOpen, onClose, roomCode, onOpenBookingModal 
                 <button className="laser-btn laser-btn-ghost" onClick={onClose} style={{ fontSize: '12px' }}>
                   Đóng
                 </button>
+                {canEdit && (
+                  <button
+                    className="laser-btn laser-btn-ghost"
+                    style={{ fontSize: '12px', color: 'var(--laser-amber)' }}
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Icons.Settings size={14} /> Chỉnh sửa
+                  </button>
+                )}
                 {room.status === 'available' && onOpenBookingModal && (
                   <button
                     className="laser-btn laser-btn-cyan"
@@ -284,6 +297,17 @@ export const RoomDetailModal = ({ isOpen, onClose, roomCode, onOpenBookingModal 
                   </button>
                 )}
               </div>
+
+              {/* Edit Modal */}
+              <RoomEditModal
+                isOpen={isEditing}
+                onClose={() => setIsEditing(false)}
+                room={room}
+                onSaveSuccess={(updatedRoom) => {
+                  setRoom(updatedRoom);
+                  setIsEditing(false);
+                }}
+              />
             </div>
           </>
         )}
