@@ -3026,4 +3026,53 @@ code, pre, .font-mono {
   color: #34D399;
 }
 
+/* ==========================================================================
+   RUO ENTERPRISE LOGIN PORTAL (RESPONSIVE STYLING)
+   ========================================================================== */
+.ruo-login-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background: #040711;
+  overflow: hidden;
+}
+
+.ruo-login-hero {
+  flex: 1.25;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: #040711;
+  overflow: hidden;
+}
+
+.ruo-login-terminal {
+  flex: 0.95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: radial-gradient(ellipse at 50% 30%, #0A0F1D 0%, #03060D 100%);
+  position: relative;
+}
+
+@media (max-width: 960px) {
+  .ruo-login-container {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .ruo-login-hero {
+    min-height: 440px !important;
+    flex: none !important;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .ruo-login-terminal {
+    flex: 1 !important;
+    padding: 32px 18px !important;
+  }
+}
+
+
 
