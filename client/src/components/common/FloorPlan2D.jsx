@@ -331,11 +331,31 @@ export const FloorPlan2D = ({
           <line x1={canvasW - 108} y1={corridorY} x2={canvasW - 20} y2={corridorY} stroke="var(--ink-muted)" strokeWidth="3.5" />
           <line x1={canvasW - 108} y1={corridorY + corridorH} x2={canvasW - 20} y2={corridorY + corridorH} stroke="var(--ink-muted)" strokeWidth="3.5" />
 
+          {/* Trục dẫn hướng hành lang nét đứt dọc theo dãy phòng Bắc & Nam */}
+          <line
+            x1="140"
+            y1={corridorY + 18}
+            x2={canvasW - 140}
+            y2={corridorY + 18}
+            stroke="#38BDF8"
+            strokeWidth="1.2"
+            strokeDasharray="4 3"
+          />
+          <line
+            x1="140"
+            y1={corridorY + corridorH - 18}
+            x2={canvasW - 140}
+            y2={corridorY + corridorH - 18}
+            stroke="#38BDF8"
+            strokeWidth="1.2"
+            strokeDasharray="4 3"
+          />
+
           {/* ==============================================================
               SẢNH PHÂN LUỒNG TÂY (WEST FOYER - RỘNG 3.5M)
               ============================================================== */}
           <g id="west-foyer">
-            {/* Vạch dẫn hướng luồng đi từ cửa thang: Quẹo trái (North), Quẹo phải (South), Đi thẳng (East) */}
+            {/* Vạch dẫn hướng luồng đi từ cửa thang: Quẹo trái (North) và Quẹo phải (South) */}
             <path
               d={`M 112 ${corridorY + corridorH / 2} L 140 ${corridorY + corridorH / 2} L 140 ${corridorY + 8}`}
               fill="none"
@@ -353,16 +373,6 @@ export const FloorPlan2D = ({
               strokeDasharray="4 3"
             />
             <polyline points={`136,${corridorY + corridorH - 14} 140,${corridorY + corridorH - 7} 144,${corridorY + corridorH - 14}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
-
-            {/* Hướng đi thẳng vào trục hành lang chính */}
-            <path
-              d={`M 140 ${corridorY + corridorH / 2} L 190 ${corridorY + corridorH / 2}`}
-              fill="none"
-              stroke="#38BDF8"
-              strokeWidth="1.2"
-              strokeDasharray="4 3"
-            />
-            <polyline points={`184,${corridorY + corridorH / 2 - 4} 191,${corridorY + corridorH / 2} 184,${corridorY + corridorH / 2 + 4}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
 
             {/* Đèn chỉ dẫn thoát nạn EXIT vào thang Tây */}
             <g transform={`translate(112, ${corridorY + 44})`}>
@@ -399,16 +409,6 @@ export const FloorPlan2D = ({
               strokeDasharray="4 3"
             />
             <polyline points={`${canvasW - 144},${corridorY + corridorH - 14} ${canvasW - 140},${corridorY + corridorH - 7} ${canvasW - 136},${corridorY + corridorH - 14}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
-
-            {/* Hướng đi thẳng vào trục hành lang chính */}
-            <path
-              d={`M ${canvasW - 140} ${corridorY + corridorH / 2} L ${canvasW - 190} ${corridorY + corridorH / 2}`}
-              fill="none"
-              stroke="#38BDF8"
-              strokeWidth="1.2"
-              strokeDasharray="4 3"
-            />
-            <polyline points={`${canvasW - 184},${corridorY + corridorH / 2 - 4} ${canvasW - 191},${corridorY + corridorH / 2} ${canvasW - 184},${corridorY + corridorH / 2 + 4}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
 
             {/* Đèn chỉ dẫn thoát nạn EXIT vào thang Đông */}
             <g transform={`translate(${canvasW - 146}, ${corridorY + 44})`}>
