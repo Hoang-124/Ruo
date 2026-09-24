@@ -380,10 +380,10 @@ export const FloorPlan2D = ({
               <text x="17" y="3" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">◄ EXIT</text>
             </g>
 
-            {/* Hộp cứu hỏa PCCC vách tường */}
-            <g transform={`translate(112, ${corridorY + corridorH - 44})`}>
-              <rect x="0" y="0" width="28" height="14" rx="2" fill="#EF4444" />
-              <text x="14" y="10" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
+            {/* Hộp cứu hỏa PCCC đặt ngang sát mép phòng học */}
+            <g transform={`translate(160, ${corridorY + corridorH - 13})`}>
+              <rect x="0" y="0" width="30" height="13" rx="2" fill="#EF4444" />
+              <text x="15" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
             </g>
           </g>
 
@@ -416,10 +416,10 @@ export const FloorPlan2D = ({
               <text x="17" y="3" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">EXIT ►</text>
             </g>
 
-            {/* Hộp cứu hỏa PCCC vách tường */}
-            <g transform={`translate(${canvasW - 140}, ${corridorY + corridorH - 44})`}>
-              <rect x="0" y="0" width="28" height="14" rx="2" fill="#EF4444" />
-              <text x="14" y="10" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
+            {/* Hộp cứu hỏa PCCC đặt ngang sát mép phòng học */}
+            <g transform={`translate(${canvasW - 190}, ${corridorY + corridorH - 13})`}>
+              <rect x="0" y="0" width="30" height="13" rx="2" fill="#EF4444" />
+              <text x="15" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
             </g>
           </g>
 
@@ -519,11 +519,6 @@ export const FloorPlan2D = ({
             {/* Mũi tên dẫn hướng Vế Xuống */}
             <line x1="54" y1={corridorY + 110} x2="98" y2={corridorY + 110} stroke="#10B981" strokeWidth="1.2" />
             <polyline points={`93,${corridorY + 106} 99,${corridorY + 110} 93,${corridorY + 114}`} fill="none" stroke="#10B981" strokeWidth="1.2" />
-
-            {/* Cửa chống cháy tự đóng mở ra sảnh phân luồng (Fire Door) */}
-            <line x1="108" y1={corridorY + 28} x2="108" y2={corridorY + 118} stroke="#10B981" strokeWidth="3" strokeDasharray="5 3" />
-            {/* Ký hiệu mở cửa thoát nạn hướng vào thang */}
-            <path d={`M 108 ${corridorY + 48} A 22 22 0 0 0 86 ${corridorY + 70}`} fill="none" stroke="#10B981" strokeWidth="1.2" strokeDasharray="2 2" />
           </g>
 
           {/* ==============================================================
@@ -580,11 +575,6 @@ export const FloorPlan2D = ({
             {/* Kính lấy sáng mặt ngoài Đông */}
             <line x1={canvasW - 20} y1={corridorY + 20} x2={canvasW - 20} y2={corridorY + 56} stroke="#38BDF8" strokeWidth="2.5" />
             <line x1={canvasW - 20} y1={corridorY + 90} x2={canvasW - 20} y2={corridorY + 126} stroke="#38BDF8" strokeWidth="2.5" />
-
-            {/* Cửa chống cháy tự đóng mở ra sảnh phân luồng (Fire Door) */}
-            <line x1={canvasW - 108} y1={corridorY + 28} x2={canvasW - 108} y2={corridorY + 118} stroke="#10B981" strokeWidth="3" strokeDasharray="5 3" />
-            {/* Ký hiệu mở cửa thoát nạn hướng vào thang */}
-            <path d={`M ${canvasW - 108} ${corridorY + 48} A 22 22 0 0 1 ${canvasW - 86} ${corridorY + 70}`} fill="none" stroke="#10B981" strokeWidth="1.2" strokeDasharray="2 2" />
           </g>
 
           {/* ==============================================================
