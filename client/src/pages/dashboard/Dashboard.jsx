@@ -92,40 +92,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
   return (
     <div className="ruo-dashboard-wrapper">
       {/* ====================================================================
-          1. COMPACT SLIM HEADER (TIẾT KIỆM KHÔNG GIAN, TRÁNH LẶP LẠI THỐNG KÊ)
-          ==================================================================== */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-pure)', margin: 0, letterSpacing: '-0.02em' }}>
-            Xin chào, {currentUser?.fullName || 'Thầy/Cô và Bạn'} 👋
-          </h1>
-          <p style={{ margin: '3px 0 0 0', fontSize: '12.5px', color: 'var(--ink-muted)' }}>
-            Sơ đồ không gian học tập &amp; điều phối tài nguyên • {BUILDING_INFO.name}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onOpenBookingModal(selectedRoom || floorRooms[0])}
-          className="ruo-portal-btn-primary"
-          style={{ width: 'auto', padding: '9px 18px', fontSize: '12.5px', borderRadius: '10px', whiteSpace: 'nowrap' }}
-        >
-          <Icons.Calendar size={15} />
-          <span>+ Đặt Phòng Nhanh</span>
-        </button>
-      </div>
-
-      {/* ====================================================================
-          2. MAIN SPLIT: ROOMS MANAGEMENT (LEFT) & QUICK INSPECTOR (RIGHT)
+          MAIN SPLIT: ROOMS MANAGEMENT (LEFT) & QUICK INSPECTOR (RIGHT)
           ==================================================================== */}
       <div className="ruo-main-grid-layout">
         {/* LEFT COLUMN: THE CLEAN ROOM CANVAS */}

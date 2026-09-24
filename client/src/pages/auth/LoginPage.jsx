@@ -198,24 +198,9 @@ export const LoginPage = ({ onLoginSuccess }) => {
           BÊN TRÁI (LEFT): TÒA NHÀ KIẾN TRÚC 2D & LOGO RUO
           ==================================================================== */}
       <div className="ruo-split-auth-left">
-        {/* Top Header of Left Column: Bespoke Logo & Campus Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+        {/* Top Header of Left Column: Bespoke Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
           <RuoLogo size={44} subtitle="HỆ THỐNG QUẢN LÝ CSVC" />
-          <span
-            style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              fontFamily: 'var(--font-mono)',
-              color: '#2563EB',
-              background: 'rgba(37, 99, 235, 0.08)',
-              border: '1px solid rgba(37, 99, 235, 0.2)',
-              padding: '4px 10px',
-              borderRadius: '8px',
-              letterSpacing: '0.04em'
-            }}
-          >
-            TÒA NHÀ A1 • TRUNG TÂM
-          </span>
         </div>
 
         {/* Center: 2D Isometric Building Model */}

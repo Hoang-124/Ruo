@@ -120,12 +120,12 @@ export const FloorPlan2D = ({
 
     // If fits on one line or cannot split
     if (rawName.length <= maxSingleLineChars || words.length <= 1) {
-      const fontSize = rw > 160 ? '13' : rw > 105 ? '11' : '10';
+      const fontSize = rw > 160 ? '14.5' : rw > 115 ? '13' : '11.5';
       return (
         <g style={{ pointerEvents: 'none' }}>
           <text
             x={rx + 16}
-            y={ry + rh / 2 - 2}
+            y={ry + rh / 2 - 3}
             fontFamily="var(--font-sans)"
             fontSize={fontSize}
             fontWeight="700"
@@ -135,9 +135,9 @@ export const FloorPlan2D = ({
           </text>
           <text
             x={rx + 16}
-            y={ry + rh / 2 + 13}
+            y={ry + rh / 2 + 15}
             fontFamily="var(--font-sans)"
-            fontSize="10"
+            fontSize="11"
             fill="var(--ink-muted)"
             fontWeight="500"
           >
@@ -151,13 +151,13 @@ export const FloorPlan2D = ({
     const mid = Math.ceil(words.length / 2);
     const line1 = words.slice(0, mid).join(' ');
     const line2 = words.slice(mid).join(' ');
-    const fontSize = rw > 130 ? '11' : '10';
+    const fontSize = rw > 130 ? '12.5' : '11.5';
 
     return (
       <g style={{ pointerEvents: 'none' }}>
         <text
           x={rx + 16}
-          y={ry + rh / 2 - 10}
+          y={ry + rh / 2 - 12}
           fontFamily="var(--font-sans)"
           fontSize={fontSize}
           fontWeight="700"
@@ -177,9 +177,9 @@ export const FloorPlan2D = ({
         </text>
         <text
           x={rx + 16}
-          y={ry + rh / 2 + 17}
+          y={ry + rh / 2 + 19}
           fontFamily="var(--font-sans)"
-          fontSize="9.5"
+          fontSize="10.5"
           fill="var(--ink-muted)"
           fontWeight="500"
         >
@@ -197,9 +197,7 @@ export const FloorPlan2D = ({
       <div
         style={{
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
+          flexDirection: 'column',
           gap: '12px',
           background: 'var(--surface-panel)',
           padding: '12px 18px',
@@ -231,33 +229,60 @@ export const FloorPlan2D = ({
           </div>
         </div>
 
-        {/* 5-Story Floor Selector Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          {[1, 2, 3, 4, 5].map((fl) => {
-            const isActive = selectedFloor === fl;
-            const flData = CAMPUS_FLOORS[fl];
-            return (
-              <button
-                key={fl}
-                type="button"
-                onClick={() => onChangeFloor && onChangeFloor(fl)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '8px',
-                  border: isActive ? '1.5px solid #38BDF8' : '1px solid var(--hairline-medium)',
-                  background: isActive ? 'rgba(56, 189, 248, 0.15)' : 'var(--canvas-subtle)',
-                  color: isActive ? '#38BDF8' : 'var(--ink-primary)',
-                  fontSize: '12px',
-                  fontWeight: isActive ? 700 : 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-                title={flData?.title}
-              >
-                <span>Tầng {fl}</span>
-              </button>
-            );
-          })}
+        {/* 5-Story Floor Selector Buttons (Left) & Quick Booking Button (Far Right) */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            {[1, 2, 3, 4, 5].map((fl) => {
+              const isActive = selectedFloor === fl;
+              const flData = CAMPUS_FLOORS[fl];
+              return (
+                <button
+                  key={fl}
+                  type="button"
+                  onClick={() => onChangeFloor && onChangeFloor(fl)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    border: isActive ? '1.5px solid #38BDF8' : '1px solid var(--hairline-medium)',
+                    background: isActive ? 'rgba(56, 189, 248, 0.15)' : 'var(--canvas-subtle)',
+                    color: isActive ? '#38BDF8' : 'var(--ink-primary)',
+                    fontSize: '12px',
+                    fontWeight: isActive ? 700 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title={flData?.title}
+                >
+                  <span>Tầng {fl}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {onOpenBookingModal && (
+            <button
+              type="button"
+              onClick={() => onOpenBookingModal(selectedRoom || (currentFloorData?.rooms && currentFloorData.rooms[0]))}
+              className="ruo-portal-btn-primary"
+              style={{
+                width: 'auto',
+                padding: '8px 18px',
+                fontSize: '12.5px',
+                fontWeight: 700,
+                borderRadius: '9px',
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '7px',
+                marginLeft: 'auto',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(56, 189, 248, 0.25)'
+              }}
+            >
+              <Icons.Calendar size={14} />
+              <span>+ Đặt Phòng Nhanh</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -366,16 +391,16 @@ export const FloorPlan2D = ({
               strokeDasharray="4 3"
             />
 
-            {/* Đèn chỉ dẫn thoát nạn EXIT - đặt ngang sát mép phòng học Bắc (gần sảnh thang, chỉ hướng vào thang Tây) */}
-            <g transform={`translate(158, ${corridorY})`}>
-              <rect x="0" y="0" width="34" height="13" rx="2" fill="#10B981" />
-              <text x="17" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">◄ EXIT</text>
+            {/* Đèn chỉ dẫn thoát nạn EXIT - Góc trên bên trái (sát vách phòng học Bắc, chỉ hướng vào thang Tây) */}
+            <g transform={`translate(160, ${corridorY})`}>
+              <rect x="0" y="0" width="38" height="15" rx="2.5" fill="#10B981" />
+              <text x="19" y="10.8" fontSize="8.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">◄ EXIT</text>
             </g>
 
-            {/* Hộp cứu hỏa PCCC - đặt so le lệch về phía hành lang lớp học sát mép phòng học Nam */}
-            <g transform={`translate(252, ${corridorY + corridorH - 13})`}>
-              <rect x="0" y="0" width="30" height="13" rx="2" fill="#EF4444" />
-              <text x="15" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
+            {/* Hộp cứu hỏa PCCC - Góc dưới bên trái (sát vách phòng học Nam) */}
+            <g transform={`translate(160, ${corridorY + corridorH - 15})`}>
+              <rect x="0" y="0" width="34" height="15" rx="2.5" fill="#EF4444" />
+              <text x="17" y="10.8" fontSize="8.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
             </g>
           </g>
 
@@ -394,16 +419,16 @@ export const FloorPlan2D = ({
               strokeDasharray="4 3"
             />
 
-            {/* Đèn chỉ dẫn thoát nạn EXIT - đặt ngang sát mép phòng học Bắc (gần sảnh thang, chỉ hướng vào thang Đông) */}
-            <g transform={`translate(768, ${corridorY})`}>
-              <rect x="0" y="0" width="34" height="13" rx="2" fill="#10B981" />
-              <text x="17" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">EXIT ►</text>
+            {/* Hộp cứu hỏa PCCC - Góc trên bên phải (sát vách phòng học Bắc) */}
+            <g transform={`translate(770, ${corridorY})`}>
+              <rect x="0" y="0" width="34" height="15" rx="2.5" fill="#EF4444" />
+              <text x="17" y="10.8" fontSize="8.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
             </g>
 
-            {/* Hộp cứu hỏa PCCC - đặt so le lệch về phía hành lang lớp học sát mép phòng học Nam */}
-            <g transform={`translate(688, ${corridorY + corridorH - 13})`}>
-              <rect x="0" y="0" width="30" height="13" rx="2" fill="#EF4444" />
-              <text x="15" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
+            {/* Đèn chỉ dẫn thoát nạn EXIT - Góc dưới bên phải (sát vách phòng học Nam, chỉ hướng vào thang Đông) */}
+            <g transform={`translate(766, ${corridorY + corridorH - 15})`}>
+              <rect x="0" y="0" width="38" height="15" rx="2.5" fill="#10B981" />
+              <text x="19" y="10.8" fontSize="8.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">EXIT ►</text>
             </g>
           </g>
 
@@ -414,8 +439,8 @@ export const FloorPlan2D = ({
             {/* Giếng Trời Thông Tầng Căn Giữa Trung Tâm */}
             <g transform={`translate(${(canvasW - 180) / 2}, ${corridorY + 36})`}>
               <rect x="0" y="0" width="180" height="74" fill="rgba(56, 189, 248, 0.04)" stroke="rgba(56, 189, 248, 0.25)" strokeWidth="1" strokeDasharray="4 2" rx="6" />
-              <text x="90" y="34" fontSize="9" fontWeight="800" fill="var(--laser-cyan)" textAnchor="middle">GIẾNG TRỜI THÔNG TẦNG</text>
-              <text x="90" y="50" fontSize="7.5" fontWeight="500" fill="var(--ink-muted)" textAnchor="middle">Đón Gió Tự Nhiên • Chiếu Sáng</text>
+              <text x="90" y="34" fontSize="10.5" fontWeight="800" fill="var(--laser-cyan)" textAnchor="middle">GIẾNG TRỜI THÔNG TẦNG</text>
+              <text x="90" y="50" fontSize="8.5" fontWeight="500" fill="var(--ink-muted)" textAnchor="middle">Đón Gió Tự Nhiên • Chiếu Sáng</text>
             </g>
           </g>
 
@@ -490,8 +515,8 @@ export const FloorPlan2D = ({
             <polyline points={`59,${corridorY + 30} 53,${corridorY + 34} 59,${corridorY + 38}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
 
             {/* Khe hở kỹ thuật / Giếng thang & Tay vịn ở giữa */}
-            <rect x="48" y={corridorY + 66} width="58" height="14" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
-            <text x="76" y={corridorY + 76} fontSize="6.5" fontWeight="900" fill="var(--ink-pure)" textAnchor="middle">
+            <rect x="48" y={corridorY + 65.5} width="58" height="15" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
+            <text x="77" y={corridorY + 76.5} fontSize="8" fontWeight="900" fill="var(--ink-pure)" textAnchor="middle">
               THANG TÂY
             </text>
 
@@ -532,8 +557,8 @@ export const FloorPlan2D = ({
             <polyline points={`${canvasW - 61},${corridorY + 30} ${canvasW - 55},${corridorY + 34} ${canvasW - 61},${corridorY + 38}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
 
             {/* Khe hở kỹ thuật / Giếng thang & Tay vịn ở giữa */}
-            <rect x={canvasW - 106} y={corridorY + 66} width="58" height="14" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
-            <text x={canvasW - 78} y={corridorY + 76} fontSize="6.5" fontWeight="900" fill="var(--ink-pure)" textAnchor="middle">
+            <rect x={canvasW - 106} y={corridorY + 65.5} width="58" height="15" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
+            <text x={canvasW - 77} y={corridorY + 76.5} fontSize="8" fontWeight="900" fill="var(--ink-pure)" textAnchor="middle">
               THANG ĐÔNG
             </text>
 
