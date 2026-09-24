@@ -366,14 +366,14 @@ export const FloorPlan2D = ({
               strokeDasharray="4 3"
             />
 
-            {/* Đèn chỉ dẫn thoát nạn EXIT - đặt ngang sát mép phòng học Bắc (đối xứng PCCC), chỉ hướng vào thang Tây */}
-            <g transform={`translate(160, ${corridorY})`}>
+            {/* Đèn chỉ dẫn thoát nạn EXIT - đặt ngang sát mép phòng học Bắc (gần sảnh thang, chỉ hướng vào thang Tây) */}
+            <g transform={`translate(158, ${corridorY})`}>
               <rect x="0" y="0" width="34" height="13" rx="2" fill="#10B981" />
               <text x="17" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">◄ EXIT</text>
             </g>
 
-            {/* Hộp cứu hỏa PCCC đặt ngang sát mép phòng học */}
-            <g transform={`translate(160, ${corridorY + corridorH - 13})`}>
+            {/* Hộp cứu hỏa PCCC - đặt so le lệch về phía hành lang lớp học sát mép phòng học Nam */}
+            <g transform={`translate(252, ${corridorY + corridorH - 13})`}>
               <rect x="0" y="0" width="30" height="13" rx="2" fill="#EF4444" />
               <text x="15" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
             </g>
@@ -394,14 +394,14 @@ export const FloorPlan2D = ({
               strokeDasharray="4 3"
             />
 
-            {/* Đèn chỉ dẫn thoát nạn EXIT - đặt ngang sát mép phòng học Bắc (đối xứng PCCC), chỉ hướng vào thang Đông */}
-            <g transform={`translate(${canvasW - 194}, ${corridorY})`}>
+            {/* Đèn chỉ dẫn thoát nạn EXIT - đặt ngang sát mép phòng học Bắc (gần sảnh thang, chỉ hướng vào thang Đông) */}
+            <g transform={`translate(768, ${corridorY})`}>
               <rect x="0" y="0" width="34" height="13" rx="2" fill="#10B981" />
               <text x="17" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">EXIT ►</text>
             </g>
 
-            {/* Hộp cứu hỏa PCCC đặt ngang sát mép phòng học */}
-            <g transform={`translate(${canvasW - 190}, ${corridorY + corridorH - 13})`}>
+            {/* Hộp cứu hỏa PCCC - đặt so le lệch về phía hành lang lớp học sát mép phòng học Nam */}
+            <g transform={`translate(688, ${corridorY + corridorH - 13})`}>
               <rect x="0" y="0" width="30" height="13" rx="2" fill="#EF4444" />
               <text x="15" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
             </g>
