@@ -355,29 +355,25 @@ export const FloorPlan2D = ({
               SẢNH PHÂN LUỒNG TÂY (WEST FOYER - RỘNG 3.5M)
               ============================================================== */}
           <g id="west-foyer">
-            {/* Vạch dẫn hướng luồng đi từ cửa thang: Quẹo trái (North) và Quẹo phải (South) */}
-            <path
-              d={`M 112 ${corridorY + corridorH / 2} L 140 ${corridorY + corridorH / 2} L 140 ${corridorY + 8}`}
-              fill="none"
+            {/* Trục hành lang nét đứt Tây kết nối thông suốt Bắc & Nam */}
+            <line
+              x1="140"
+              y1={corridorY + 18}
+              x2="140"
+              y2={corridorY + corridorH - 18}
               stroke="#38BDF8"
               strokeWidth="1.2"
               strokeDasharray="4 3"
             />
-            <polyline points={`136,${corridorY + 14} 140,${corridorY + 7} 144,${corridorY + 14}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
 
-            <path
-              d={`M 112 ${corridorY + corridorH / 2} L 140 ${corridorY + corridorH / 2} L 140 ${corridorY + corridorH - 8}`}
-              fill="none"
-              stroke="#38BDF8"
-              strokeWidth="1.2"
-              strokeDasharray="4 3"
-            />
-            <polyline points={`136,${corridorY + corridorH - 14} 140,${corridorY + corridorH - 7} 144,${corridorY + corridorH - 14}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
-
-            {/* Đèn chỉ dẫn thoát nạn EXIT vào thang Tây */}
-            <g transform={`translate(112, ${corridorY + 44})`}>
-              <rect x="0" y="-8" width="34" height="15" rx="3" fill="#10B981" />
-              <text x="17" y="3" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">◄ EXIT</text>
+            {/* Đèn chỉ dẫn thoát nạn EXIT vào thang Tây - đặt dọc sát vách buồng thang, không đè hành lang */}
+            <g transform={`translate(111, ${corridorY + 40})`}>
+              <rect x="0" y="0" width="13" height="38" rx="2.5" fill="#10B981" />
+              <text x="6.5" y="8" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">◄</text>
+              <text x="6.5" y="15.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">E</text>
+              <text x="6.5" y="22.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">X</text>
+              <text x="6.5" y="29.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">I</text>
+              <text x="6.5" y="36" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">T</text>
             </g>
 
             {/* Hộp cứu hỏa PCCC đặt ngang sát mép phòng học */}
@@ -391,29 +387,25 @@ export const FloorPlan2D = ({
               SẢNH PHÂN LUỒNG ĐÔNG (EAST FOYER - RỘNG 3.5M)
               ============================================================== */}
           <g id="east-foyer">
-            {/* Vạch dẫn hướng luồng đi từ cửa thang quẹo trái (North) và quẹo phải (South) */}
-            <path
-              d={`M ${canvasW - 112} ${corridorY + corridorH / 2} L ${canvasW - 140} ${corridorY + corridorH / 2} L ${canvasW - 140} ${corridorY + 8}`}
-              fill="none"
+            {/* Trục hành lang nét đứt Đông kết nối thông suốt Bắc & Nam */}
+            <line
+              x1={canvasW - 140}
+              y1={corridorY + 18}
+              x2={canvasW - 140}
+              y2={corridorY + corridorH - 18}
               stroke="#38BDF8"
               strokeWidth="1.2"
               strokeDasharray="4 3"
             />
-            <polyline points={`${canvasW - 144},${corridorY + 14} ${canvasW - 140},${corridorY + 7} ${canvasW - 136},${corridorY + 14}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
 
-            <path
-              d={`M ${canvasW - 112} ${corridorY + corridorH / 2} L ${canvasW - 140} ${corridorY + corridorH / 2} L ${canvasW - 140} ${corridorY + corridorH - 8}`}
-              fill="none"
-              stroke="#38BDF8"
-              strokeWidth="1.2"
-              strokeDasharray="4 3"
-            />
-            <polyline points={`${canvasW - 144},${corridorY + corridorH - 14} ${canvasW - 140},${corridorY + corridorH - 7} ${canvasW - 136},${corridorY + corridorH - 14}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
-
-            {/* Đèn chỉ dẫn thoát nạn EXIT vào thang Đông */}
-            <g transform={`translate(${canvasW - 146}, ${corridorY + 44})`}>
-              <rect x="0" y="-8" width="34" height="15" rx="3" fill="#10B981" />
-              <text x="17" y="3" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">EXIT ►</text>
+            {/* Đèn chỉ dẫn thoát nạn EXIT vào thang Đông - đặt dọc sát vách buồng thang, không đè hành lang */}
+            <g transform={`translate(${canvasW - 124}, ${corridorY + 40})`}>
+              <rect x="0" y="0" width="13" height="38" rx="2.5" fill="#10B981" />
+              <text x="6.5" y="8" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">►</text>
+              <text x="6.5" y="15.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">E</text>
+              <text x="6.5" y="22.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">X</text>
+              <text x="6.5" y="29.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">I</text>
+              <text x="6.5" y="36" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">T</text>
             </g>
 
             {/* Hộp cứu hỏa PCCC đặt ngang sát mép phòng học */}
