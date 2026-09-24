@@ -46,19 +46,19 @@ export const FloorPlan2D = ({
 
   // Dimensions of SVG architectural canvas
   const canvasW = 960;
-  const canvasH = 390;
+  const canvasH = 412;
 
-  // Perimeter bounds for rooms (Mở rộng toàn bộ mép Tây & Đông để lấp kín 4 khoảng trống quanh cầu thang)
+  // Perimeter bounds for rooms
   const perimeterLeft = 20;
   const perimeterRight = 940;
   const availableWidth = perimeterRight - perimeterLeft; // 920px
 
-  const topRoomY = 18;
-  const roomHeight = 118;
-  const bottomRoomY = 252;
+  const topRoomY = 16;
+  const roomHeight = 114;
+  const bottomRoomY = 276;
 
-  const corridorY = 140;
-  const corridorH = 108;
+  const corridorY = 130;
+  const corridorH = 146;
 
   // Calculate clean layout positions along perimeter
   const layoutRoomsAlongEdge = (roomList) => {
@@ -84,6 +84,32 @@ export const FloorPlan2D = ({
 
   const topPlacedRooms = layoutRoomsAlongEdge(currentFloorData.topRooms);
   const bottomPlacedRooms = layoutRoomsAlongEdge(currentFloorData.bottomRooms);
+
+  // Intelligent Door Placement: Ensures doors open into corridor/foyers, never into stair walls
+  const getRoomDoorProps = (room, index, totalRooms) => {
+    const rx = room.x;
+    const rw = room.width;
+    let doorX;
+
+    if (index === 0) {
+      // West corner room: place door safely on the right side opening into West Foyer
+      doorX = Math.max(rx + rw - 36, 126);
+    } else if (index === totalRooms - 1) {
+      // East corner room: place door safely on the left side opening into East Foyer
+      doorX = Math.min(rx + 16, 810);
+    } else {
+      // Middle rooms: comfortable offset from left wall
+      doorX = rx + Math.min(22, rw / 3);
+    }
+
+    return {
+      doorX,
+      doorW: 24
+    };
+  };
+
+  // Structural column grid positions along corridor boundaries (Trục lưới kết cấu 400x400)
+  const structuralColumns = [20, 108, 230, 340, 480, 620, 730, 852, 940];
 
   // Intelligent Room Text Renderer: Prevents text from overflowing room boundary
   const renderRoomLabels = (room, rx, ry, rw, rh) => {
@@ -199,7 +225,7 @@ export const FloorPlan2D = ({
             </span>
           </div>
           <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '2px' }}>
-            Sơ đồ mặt bằng 2D: Phòng nằm ở mép ngoài • Hành lang trung tâm kết nối
+            Mặt bằng kiến trúc chuẩn: Phòng học mép ngoài • Trục hành lang 3.5m & Sảnh đệm kết nối
           </div>
         </div>
 
@@ -234,7 +260,7 @@ export const FloorPlan2D = ({
       </div>
 
       {/* ==============================================================
-          2. MINIMALIST 2D ARCHITECTURAL FLOOR PLAN (TỐI GIẢN & THOÁNG ĐÃNG)
+          2. ARCHITECTURAL 2D FLOOR PLAN WITH COMPLETE CIRCULATION
           ============================================================== */}
       <div
         style={{
@@ -252,6 +278,14 @@ export const FloorPlan2D = ({
           style={{ width: '100%', height: 'auto', minWidth: '780px', display: 'block' }}
           xmlns="http://www.w3.org/2000/svg"
         >
+          <defs>
+            {/* Subtle floor tile grid pattern for the corridor circulation zone */}
+            <pattern id="corridor-tiles" width="18" height="18" patternUnits="userSpaceOnUse">
+              <rect width="18" height="18" fill="var(--surface-panel)" />
+              <path d="M 18 0 L 0 0 0 18" fill="none" stroke="var(--hairline-soft)" strokeWidth="0.5" opacity="0.4" />
+            </pattern>
+          </defs>
+
           {/* Outer Perimeter Wall of Building (Tường bao mép ngoài tòa nhà) */}
           <rect
             x="16"
@@ -259,9 +293,9 @@ export const FloorPlan2D = ({
             width={canvasW - 32}
             height={canvasH - 24}
             fill="none"
-            stroke="var(--hairline-medium)"
-            strokeWidth="2"
-            rx="10"
+            stroke="var(--hairline-strong)"
+            strokeWidth="2.5"
+            rx="8"
           />
 
           {/* Exterior Window Lines on North & South Facades */}
@@ -273,137 +307,266 @@ export const FloorPlan2D = ({
           ))}
 
           {/* Exterior Fire Exit Door Lines on West & East Facades */}
-          <line x1="16" y1={corridorY + 36} x2="16" y2={corridorY + 72} stroke="#10B981" strokeWidth="3.5" />
-          <line x1={canvasW - 16} y1={corridorY + 36} x2={canvasW - 16} y2={corridorY + 72} stroke="#10B981" strokeWidth="3.5" />
+          <line x1="16" y1={corridorY + 45} x2="16" y2={corridorY + 101} stroke="#10B981" strokeWidth="3.5" />
+          <line x1={canvasW - 16} y1={corridorY + 45} x2={canvasW - 16} y2={corridorY + 101} stroke="#10B981" strokeWidth="3.5" />
 
           {/* ==============================================================
-              3. CENTRAL CORRIDOR & UTILITY CORE (HÀNH LANG TRUNG TÂM)
+              3. SÀN HÀNH LANG & TRỤC GIAO THÔNG CHÍNH (CORRIDOR CIRCULATION)
               ============================================================== */}
+          {/* Sàn gạch phân tầng riêng biệt cho toàn bộ dải hành lang trung tâm */}
           <rect
             x="108"
             y={corridorY}
             width={canvasW - 216}
             height={corridorH}
-            fill="var(--surface-panel)"
-            stroke="var(--hairline-soft)"
-            strokeWidth="1"
-            strokeDasharray="4 3"
+            fill="url(#corridor-tiles)"
+            stroke="none"
           />
 
-          {/* Corridor Directional Label */}
+          {/* Tường ngăn hành lang với các phòng (Boundary Walls) */}
+          <line x1="108" y1={corridorY} x2={canvasW - 108} y2={corridorY} stroke="var(--hairline-strong)" strokeWidth="2.5" />
+          <line x1="108" y1={corridorY + corridorH} x2={canvasW - 108} y2={corridorY + corridorH} stroke="var(--hairline-strong)" strokeWidth="2.5" />
+
+          {/* Tường đặc ngăn buồng thang Tây & Đông với các phòng góc */}
+          <line x1="20" y1={corridorY} x2="108" y2={corridorY} stroke="var(--ink-muted)" strokeWidth="3.5" />
+          <line x1="20" y1={corridorY + corridorH} x2="108" y2={corridorY + corridorH} stroke="var(--ink-muted)" strokeWidth="3.5" />
+          <line x1={canvasW - 108} y1={corridorY} x2={canvasW - 20} y2={corridorY} stroke="var(--ink-muted)" strokeWidth="3.5" />
+          <line x1={canvasW - 108} y1={corridorY + corridorH} x2={canvasW - 20} y2={corridorY + corridorH} stroke="var(--ink-muted)" strokeWidth="3.5" />
+
+          {/* Trục dẫn hướng giao thông Hành Lang Nhánh Bắc (2.4m) */}
+          <line x1="210" y1={corridorY + 20} x2={canvasW - 210} y2={corridorY + 20} stroke="#38BDF8" strokeWidth="1" strokeDasharray="6 4" opacity="0.45" />
           <text
             x={canvasW / 2}
-            y={corridorY + 20}
+            y={corridorY + 16}
             fontFamily="var(--font-sans)"
-            fontSize="10"
+            fontSize="8"
             fontWeight="800"
             letterSpacing="0.08em"
-            fill="var(--ink-muted)"
+            fill="var(--laser-cyan)"
             textAnchor="middle"
             style={{ textTransform: 'uppercase', pointerEvents: 'none' }}
           >
-            ◄ TRỤC HÀNH LANG CHÍNH (RỘNG 3.5M) • THOÁT NẠN 2 ĐẦU HỒI ►
+            ◄── HÀNH LANG NHÁNH BẮC (RỘNG 2.4M) • PHỤC VỤ DÃY PHÒNG BẮC ──►
           </text>
 
-          {/* Center Elevators & Atrium Lounge (Cụm Thang Máy & Giếng Trời) */}
-          <g transform={`translate(${canvasW / 2 - 120}, ${corridorY + 34})`}>
-            {/* Elevator A */}
-            <rect x="0" y="0" width="46" height="50" fill="var(--canvas-subtle)" stroke="var(--hairline-medium)" strokeWidth="1" rx="4" />
-            <line x1="0" y1="0" x2="46" y2="50" stroke="var(--hairline-soft)" strokeWidth="0.8" />
-            <line x1="46" y1="0" x2="0" y2="50" stroke="var(--hairline-soft)" strokeWidth="0.8" />
-            <text x="23" y="30" fontSize="8" fontWeight="800" fill="var(--ink-muted)" textAnchor="middle">THANG A</text>
+          {/* Trục dẫn hướng giao thông Hành Lang Nhánh Nam (2.4m) */}
+          <line x1="210" y1={corridorY + corridorH - 20} x2={canvasW - 210} y2={corridorY + corridorH - 20} stroke="#38BDF8" strokeWidth="1" strokeDasharray="6 4" opacity="0.45" />
+          <text
+            x={canvasW / 2}
+            y={corridorY + corridorH - 12}
+            fontFamily="var(--font-sans)"
+            fontSize="8"
+            fontWeight="800"
+            letterSpacing="0.08em"
+            fill="var(--laser-cyan)"
+            textAnchor="middle"
+            style={{ textTransform: 'uppercase', pointerEvents: 'none' }}
+          >
+            ◄── HÀNH LANG NHÁNH NAM (RỘNG 2.4M) • PHỤC VỤ DÃY PHÒNG NAM ──►
+          </text>
 
-            {/* Elevator B */}
-            <rect x="54" y="0" width="46" height="50" fill="var(--canvas-subtle)" stroke="var(--hairline-medium)" strokeWidth="1" rx="4" />
-            <line x1="54" y1="0" x2="100" y2="50" stroke="var(--hairline-soft)" strokeWidth="0.8" />
-            <line x1="100" y1="0" x2="54" y2="50" stroke="var(--hairline-soft)" strokeWidth="0.8" />
-            <text x="77" y="30" fontSize="8" fontWeight="800" fill="var(--ink-muted)" textAnchor="middle">THANG B</text>
+          {/* SẢNH THANG TÂY (WEST FOYER - RỘNG 3.5M) */}
+          <g id="west-foyer" style={{ pointerEvents: 'none' }}>
+            <text x="168" y={corridorY + 68} fontSize="9" fontWeight="800" fill="var(--ink-pure)" letterSpacing="0.05em" textAnchor="middle">
+              SẢNH THANG TÂY
+            </text>
+            <text x="168" y={corridorY + 82} fontSize="7.5" fontWeight="600" fill="var(--ink-muted)" textAnchor="middle">
+              Rộng 3.5m • Nút giao thông
+            </text>
+            {/* Đèn chỉ dẫn thoát nạn EXIT vào thang Tây */}
+            <g transform={`translate(114, ${corridorY + 65})`}>
+              <rect x="0" y="-8" width="34" height="15" rx="3" fill="#10B981" />
+              <text x="17" y="3" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">◄ EXIT</text>
+            </g>
+            {/* Hộp cứu hỏa PCCC vách tường */}
+            <g transform={`translate(114, ${corridorY + 16})`}>
+              <rect x="0" y="0" width="28" height="14" rx="2" fill="#EF4444" />
+              <text x="14" y="10" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
+            </g>
+            {/* Cây nước uống học đường tiện ích */}
+            <g transform={`translate(114, ${corridorY + corridorH - 30})`}>
+              <rect x="0" y="0" width="36" height="15" rx="3" fill="rgba(56, 189, 248, 0.12)" stroke="#38BDF8" strokeWidth="0.8" />
+              <text x="18" y="11" fontSize="7" fontWeight="700" fill="#38BDF8" textAnchor="middle">💧 CÂY NƯỚC</text>
+            </g>
+          </g>
 
-            {/* Sảnh đệm thông tầng / Giếng trời gió tự nhiên */}
-            <rect x="112" y="0" width="128" height="50" fill="rgba(56, 189, 248, 0.04)" stroke="rgba(56, 189, 248, 0.2)" strokeWidth="0.8" strokeDasharray="3 2" rx="4" />
-            <text x="176" y="22" fontSize="8" fontWeight="700" fill="var(--laser-cyan)" textAnchor="middle">GIẾNG TRỜI THÔNG TẦNG</text>
-            <text x="176" y="36" fontSize="7" fontWeight="500" fill="var(--ink-muted)" textAnchor="middle">Sảnh Nghỉ • Gió Tự Nhiên</text>
+          {/* SẢNH THANG ĐÔNG (EAST FOYER - RỘNG 3.5M) */}
+          <g id="east-foyer" style={{ pointerEvents: 'none' }}>
+            <text x={canvasW - 168} y={corridorY + 68} fontSize="9" fontWeight="800" fill="var(--ink-pure)" letterSpacing="0.05em" textAnchor="middle">
+              SẢNH THANG ĐÔNG
+            </text>
+            <text x={canvasW - 168} y={corridorY + 82} fontSize="7.5" fontWeight="600" fill="var(--ink-muted)" textAnchor="middle">
+              Rộng 3.5m • Nút giao thông
+            </text>
+            {/* Đèn chỉ dẫn thoát nạn EXIT vào thang Đông */}
+            <g transform={`translate(${canvasW - 148}, ${corridorY + 65})`}>
+              <rect x="0" y="-8" width="34" height="15" rx="3" fill="#10B981" />
+              <text x="17" y="3" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">EXIT ►</text>
+            </g>
+            {/* Hộp cứu hỏa PCCC vách tường */}
+            <g transform={`translate(${canvasW - 142}, ${corridorY + 16})`}>
+              <rect x="0" y="0" width="28" height="14" rx="2" fill="#EF4444" />
+              <text x="14" y="10" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">PCCC</text>
+            </g>
+            {/* Cụm thùng rác phân loại 3 màu */}
+            <g transform={`translate(${canvasW - 150}, ${corridorY + corridorH - 26})`}>
+              <rect x="0" y="0" width="10" height="12" rx="2" fill="#10B981" />
+              <rect x="12" y="0" width="10" height="12" rx="2" fill="#F59E0B" />
+              <rect x="24" y="0" width="10" height="12" rx="2" fill="#64748B" />
+              <text x="17" y="-3" fontSize="6.5" fontWeight="700" fill="var(--ink-muted)" textAnchor="middle">RÁC 3 MÀU</text>
+            </g>
           </g>
 
           {/* ==============================================================
+              LÕI DỊCH VỤ TRUNG TÂM (CENTRAL UTILITY & ELEVATOR CORE)
+              Nằm cân đối giữa hành lang, để hở 2 làn đi thông thoáng 2 bên
+              ============================================================== */}
+          <g id="central-core">
+            {/* Thang Máy A */}
+            <g transform={`translate(${canvasW / 2 - 128}, ${corridorY + 38})`}>
+              <rect x="0" y="0" width="46" height="58" fill="var(--canvas-subtle)" stroke="var(--hairline-strong)" strokeWidth="1.2" rx="4" />
+              <line x1="0" y1="0" x2="46" y2="58" stroke="var(--hairline-soft)" strokeWidth="0.8" />
+              <line x1="46" y1="0" x2="0" y2="58" stroke="var(--hairline-soft)" strokeWidth="0.8" />
+              <rect x="10" y="16" width="26" height="26" rx="2" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
+              <text x="23" y="32" fontSize="7.5" fontWeight="900" fill="var(--ink-pure)" textAnchor="middle">THANG A</text>
+              <text x="23" y="52" fontSize="6.5" fontWeight="700" fill="#38BDF8" textAnchor="middle">▲ 1000KG</text>
+            </g>
+
+            {/* Thang Máy B */}
+            <g transform={`translate(${canvasW / 2 - 76}, ${corridorY + 38})`}>
+              <rect x="0" y="0" width="46" height="58" fill="var(--canvas-subtle)" stroke="var(--hairline-strong)" strokeWidth="1.2" rx="4" />
+              <line x1="0" y1="0" x2="46" y2="58" stroke="var(--hairline-soft)" strokeWidth="0.8" />
+              <line x1="46" y1="0" x2="0" y2="58" stroke="var(--hairline-soft)" strokeWidth="0.8" />
+              <rect x="10" y="16" width="26" height="26" rx="2" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
+              <text x="23" y="32" fontSize="7.5" fontWeight="900" fill="var(--ink-pure)" textAnchor="middle">THANG B</text>
+              <text x="23" y="52" fontSize="6.5" fontWeight="700" fill="#38BDF8" textAnchor="middle">▼ 1000KG</text>
+            </g>
+
+            {/* Giếng Trời Thông Tầng & Sảnh Nghỉ Có Ghế Băng */}
+            <g transform={`translate(${canvasW / 2 - 20}, ${corridorY + 38})`}>
+              {/* Vùng giếng trời với lan can kính an toàn */}
+              <rect x="0" y="0" width="148" height="58" fill="rgba(56, 189, 248, 0.04)" stroke="rgba(56, 189, 248, 0.25)" strokeWidth="1" strokeDasharray="4 2" rx="5" />
+              <text x="74" y="24" fontSize="8.5" fontWeight="800" fill="var(--laser-cyan)" textAnchor="middle">GIẾNG TRỜI THÔNG TẦNG</text>
+              <text x="74" y="38" fontSize="7" fontWeight="500" fill="var(--ink-muted)" textAnchor="middle">Sảnh Đón Gió Tự Nhiên • Chiếu Sáng</text>
+
+              {/* Ghế băng nghỉ chân hành lang sinh viên (Benches) */}
+              <rect x="12" y="44" width="46" height="8" rx="2" fill="var(--canvas-subtle)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
+              <text x="35" y="50.5" fontSize="6" fontWeight="700" fill="var(--ink-muted)" textAnchor="middle">GHẾ NGHỈ</text>
+
+              <rect x="90" y="44" width="46" height="8" rx="2" fill="var(--canvas-subtle)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
+              <text x="113" y="50.5" fontSize="6" fontWeight="700" fill="var(--ink-muted)" textAnchor="middle">GHẾ NGHỈ</text>
+            </g>
+          </g>
+
+          {/* ==============================================================
+              HỆ THỐNG CỘT KẾT CẤU CHỊU LỰC (STRUCTURAL COLUMNS 400x400)
+              Tạo nhịp điệu kỹ thuật chuẩn CAD dọc 2 mép hành lang
+              ============================================================== */}
+          {structuralColumns.map((cx) => (
+            <g key={`col-${cx}`}>
+              {/* Cột hàng Bắc */}
+              <rect
+                x={cx - 4.5}
+                y={corridorY - 4.5}
+                width="9"
+                height="9"
+                fill="var(--ink-muted)"
+                stroke="var(--hairline-strong)"
+                strokeWidth="0.8"
+                rx="1"
+              />
+              {/* Cột hàng Nam */}
+              <rect
+                x={cx - 4.5}
+                y={corridorY + corridorH - 4.5}
+                width="9"
+                height="9"
+                fill="var(--ink-muted)"
+                stroke="var(--hairline-strong)"
+                strokeWidth="0.8"
+                rx="1"
+              />
+            </g>
+          ))}
+
+          {/* ==============================================================
               WEST STAIRWELL CORE — BUỒNG THANG BỘ 2 VẾ THUẬN TRỤC HÀNH LANG (TÂY)
-              Chuẩn QCVN 06:2022/BXD: Đi thẳng từ hành lang vào sảnh đón, 2 vế ngược chiều
+              Chuẩn QCVN 06:2022/BXD: Đi thẳng từ sảnh Tây vào buồng thang
               ============================================================== */}
           <g id="west-stairwell">
             {/* Buồng thang kín bao quanh */}
             <rect
               x="20"
               y={corridorY}
-              width="86"
+              width="88"
               height={corridorH}
               fill="var(--canvas-subtle)"
               stroke="var(--hairline-medium)"
               strokeWidth="1.2"
-              rx="6"
+              rx="4"
             />
 
             {/* Chiếu nghỉ giữa tầng (Mid-landing) sát tường ngoài Tây lấy sáng */}
             <rect
               x="20"
               y={corridorY}
-              width="26"
+              width="28"
               height={corridorH}
               fill="var(--surface-panel)"
               stroke="var(--hairline-soft)"
               strokeWidth="0.8"
-              rx="5"
             />
             {/* Kính lấy sáng mặt ngoài Tây */}
-            <line x1="20" y1={corridorY + 16} x2="20" y2={corridorY + 44} stroke="#38BDF8" strokeWidth="2.5" />
-            <line x1="20" y1={corridorY + 64} x2="20" y2={corridorY + 92} stroke="#38BDF8" strokeWidth="2.5" />
+            <line x1="20" y1={corridorY + 20} x2="20" y2={corridorY + 56} stroke="#38BDF8" strokeWidth="2.5" />
+            <line x1="20" y1={corridorY + 90} x2="20" y2={corridorY + 126} stroke="#38BDF8" strokeWidth="2.5" />
             <text
-              x="33"
+              x="34"
               y={corridorY + corridorH / 2}
               fontFamily="var(--font-sans)"
-              fontSize="7"
+              fontSize="7.5"
               fontWeight="700"
               fill="var(--ink-muted)"
               textAnchor="middle"
-              transform={`rotate(-90, 33, ${corridorY + corridorH / 2})`}
+              transform={`rotate(-90, 34, ${corridorY + corridorH / 2})`}
               style={{ letterSpacing: '0.08em' }}
             >
               CHIẾU NGHỈ
             </text>
 
             {/* Vế thang Bắc (Vế Đi Lên — UP Flight) */}
-            <rect x="46" y={corridorY + 3} width="58" height="47" fill="var(--canvas-subtle)" stroke="var(--hairline-soft)" strokeWidth="0.6" />
-            {[53, 60, 67, 74, 81, 88, 95].map((tx) => (
-              <line key={tx} x1={tx} y1={corridorY + 3} x2={tx} y2={corridorY + 50} stroke="var(--hairline-medium)" strokeWidth="0.8" />
+            <rect x="48" y={corridorY + 4} width="58" height="62" fill="var(--canvas-subtle)" stroke="var(--hairline-soft)" strokeWidth="0.6" />
+            {[55, 62, 69, 76, 83, 90, 97].map((tx) => (
+              <line key={tx} x1={tx} y1={corridorY + 4} x2={tx} y2={corridorY + 66} stroke="var(--hairline-medium)" strokeWidth="0.8" />
             ))}
             {/* Mũi tên dẫn hướng Vế Lên */}
-            <line x1="96" y1={corridorY + 26} x2="52" y2={corridorY + 26} stroke="#38BDF8" strokeWidth="1.2" />
-            <polyline points={`57,${corridorY + 22} 51,${corridorY + 26} 57,${corridorY + 30}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
-            <text x="74" y={corridorY + 20} fontSize="7" fontWeight="800" fill="#38BDF8" textAnchor="middle">
+            <line x1="98" y1={corridorY + 34} x2="54" y2={corridorY + 34} stroke="#38BDF8" strokeWidth="1.2" />
+            <polyline points={`59,${corridorY + 30} 53,${corridorY + 34} 59,${corridorY + 38}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
+            <text x="76" y={corridorY + 26} fontSize="7.5" fontWeight="800" fill="#38BDF8" textAnchor="middle">
               LÊN ▲
             </text>
 
             {/* Khe hở kỹ thuật / Giếng thang & Tay vịn ở giữa */}
-            <rect x="46" y={corridorY + 50} width="58" height="8" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
+            <rect x="48" y={corridorY + 66} width="58" height="14" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
 
             {/* Vế thang Nam (Vế Đi Xuống — DOWN Flight) */}
-            <rect x="46" y={corridorY + 58} width="58" height="47" fill="var(--canvas-subtle)" stroke="var(--hairline-soft)" strokeWidth="0.6" />
-            {[53, 60, 67, 74, 81, 88, 95].map((tx) => (
-              <line key={tx} x1={tx} y1={corridorY + 58} x2={tx} y2={corridorY + 105} stroke="var(--hairline-medium)" strokeWidth="0.8" />
+            <rect x="48" y={corridorY + 80} width="58" height="62" fill="var(--canvas-subtle)" stroke="var(--hairline-soft)" strokeWidth="0.6" />
+            {[55, 62, 69, 76, 83, 90, 97].map((tx) => (
+              <line key={tx} x1={tx} y1={corridorY + 80} x2={tx} y2={corridorY + 142} stroke="var(--hairline-medium)" strokeWidth="0.8" />
             ))}
             {/* Mũi tên dẫn hướng Vế Xuống */}
-            <line x1="52" y1={corridorY + 82} x2="96" y2={corridorY + 82} stroke="#10B981" strokeWidth="1.2" />
-            <polyline points={`91,${corridorY + 78} 97,${corridorY + 82} 91,${corridorY + 86}`} fill="none" stroke="#10B981" strokeWidth="1.2" />
-            <text x="74" y={corridorY + 77} fontSize="7" fontWeight="800" fill="#10B981" textAnchor="middle">
+            <line x1="54" y1={corridorY + 110} x2="98" y2={corridorY + 110} stroke="#10B981" strokeWidth="1.2" />
+            <polyline points={`93,${corridorY + 106} 99,${corridorY + 110} 93,${corridorY + 114}`} fill="none" stroke="#10B981" strokeWidth="1.2" />
+            <text x="76" y={corridorY + 104} fontSize="7.5" fontWeight="800" fill="#10B981" textAnchor="middle">
               ▼ XUỐNG
             </text>
 
-            {/* Cửa chống cháy tự đóng mở vào hành lang (Fire Door) */}
-            <line x1="106" y1={corridorY + 18} x2="106" y2={corridorY + 90} stroke="#10B981" strokeWidth="2.5" strokeDasharray="5 3" />
+            {/* Cửa chống cháy tự đóng mở vào sảnh (Fire Door) */}
+            <line x1="108" y1={corridorY + 28} x2="108" y2={corridorY + 118} stroke="#10B981" strokeWidth="3" strokeDasharray="5 3" />
             {/* Ký hiệu mở cửa thoát nạn hướng vào thang */}
-            <path d={`M 106 ${corridorY + 36} A 16 16 0 0 0 92 ${corridorY + 52}`} fill="none" stroke="#10B981" strokeWidth="1" strokeDasharray="2 2" />
+            <path d={`M 108 ${corridorY + 48} A 22 22 0 0 0 86 ${corridorY + 70}`} fill="none" stroke="#10B981" strokeWidth="1.2" strokeDasharray="2 2" />
 
-            <text x="63" y={corridorY - 4} fontFamily="var(--font-sans)" fontSize="7.5" fontWeight="800" fill="var(--ink-muted)" textAnchor="middle">
-              THANG TÂY (2 VẾ)
+            <text x="64" y={corridorY - 6} fontFamily="var(--font-sans)" fontSize="7.5" fontWeight="800" fill="var(--ink-muted)" textAnchor="middle">
+              THANG TÂY (THOÁT HIỂM)
             </text>
           </g>
 
@@ -414,85 +577,84 @@ export const FloorPlan2D = ({
           <g id="east-stairwell">
             {/* Buồng thang kín bao quanh */}
             <rect
-              x={canvasW - 106}
+              x={canvasW - 108}
               y={corridorY}
-              width="86"
+              width="88"
               height={corridorH}
               fill="var(--canvas-subtle)"
               stroke="var(--hairline-medium)"
               strokeWidth="1.2"
-              rx="6"
+              rx="4"
             />
 
             {/* Vế thang Bắc (Vế Đi Lên — UP Flight) */}
-            <rect x={canvasW - 104} y={corridorY + 3} width="58" height="47" fill="var(--canvas-subtle)" stroke="var(--hairline-soft)" strokeWidth="0.6" />
-            {[canvasW - 97, canvasW - 90, canvasW - 83, canvasW - 76, canvasW - 69, canvasW - 62, canvasW - 55].map((tx) => (
-              <line key={tx} x1={tx} y1={corridorY + 3} x2={tx} y2={corridorY + 50} stroke="var(--hairline-medium)" strokeWidth="0.8" />
+            <rect x={canvasW - 106} y={corridorY + 4} width="58" height="62" fill="var(--canvas-subtle)" stroke="var(--hairline-soft)" strokeWidth="0.6" />
+            {[canvasW - 99, canvasW - 92, canvasW - 85, canvasW - 78, canvasW - 71, canvasW - 64, canvasW - 57].map((tx) => (
+              <line key={tx} x1={tx} y1={corridorY + 4} x2={tx} y2={corridorY + 66} stroke="var(--hairline-medium)" strokeWidth="0.8" />
             ))}
             {/* Mũi tên dẫn hướng Vế Lên */}
-            <line x1={canvasW - 98} y1={corridorY + 26} x2={canvasW - 54} y2={corridorY + 26} stroke="#38BDF8" strokeWidth="1.2" />
-            <polyline points={`${canvasW - 59},${corridorY + 22} ${canvasW - 53},${corridorY + 26} ${canvasW - 59},${corridorY + 30}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
-            <text x={canvasW - 76} y={corridorY + 20} fontSize="7" fontWeight="800" fill="#38BDF8" textAnchor="middle">
+            <line x1={canvasW - 100} y1={corridorY + 34} x2={canvasW - 56} y2={corridorY + 34} stroke="#38BDF8" strokeWidth="1.2" />
+            <polyline points={`${canvasW - 61},${corridorY + 30} ${canvasW - 55},${corridorY + 34} ${canvasW - 61},${corridorY + 38}`} fill="none" stroke="#38BDF8" strokeWidth="1.2" />
+            <text x={canvasW - 78} y={corridorY + 26} fontSize="7.5" fontWeight="800" fill="#38BDF8" textAnchor="middle">
               LÊN ▲
             </text>
 
             {/* Khe hở kỹ thuật / Giếng thang & Tay vịn ở giữa */}
-            <rect x={canvasW - 104} y={corridorY + 50} width="58" height="8" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
+            <rect x={canvasW - 106} y={corridorY + 66} width="58" height="14" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
 
             {/* Vế thang Nam (Vế Đi Xuống — DOWN Flight) */}
-            <rect x={canvasW - 104} y={corridorY + 58} width="58" height="47" fill="var(--canvas-subtle)" stroke="var(--hairline-soft)" strokeWidth="0.6" />
-            {[canvasW - 97, canvasW - 90, canvasW - 83, canvasW - 76, canvasW - 69, canvasW - 62, canvasW - 55].map((tx) => (
-              <line key={tx} x1={tx} y1={corridorY + 58} x2={tx} y2={corridorY + 105} stroke="var(--hairline-medium)" strokeWidth="0.8" />
+            <rect x={canvasW - 106} y={corridorY + 80} width="58" height="62" fill="var(--canvas-subtle)" stroke="var(--hairline-soft)" strokeWidth="0.6" />
+            {[canvasW - 99, canvasW - 92, canvasW - 85, canvasW - 78, canvasW - 71, canvasW - 64, canvasW - 57].map((tx) => (
+              <line key={tx} x1={tx} y1={corridorY + 80} x2={tx} y2={corridorY + 142} stroke="var(--hairline-medium)" strokeWidth="0.8" />
             ))}
             {/* Mũi tên dẫn hướng Vế Xuống */}
-            <line x1={canvasW - 54} y1={corridorY + 82} x2={canvasW - 98} y2={corridorY + 82} stroke="#10B981" strokeWidth="1.2" />
-            <polyline points={`${canvasW - 93},${corridorY + 78} ${canvasW - 99},${corridorY + 82} ${canvasW - 93},${corridorY + 86}`} fill="none" stroke="#10B981" strokeWidth="1.2" />
-            <text x={canvasW - 76} y={corridorY + 77} fontSize="7" fontWeight="800" fill="#10B981" textAnchor="middle">
+            <line x1={canvasW - 56} y1={corridorY + 110} x2={canvasW - 100} y2={corridorY + 110} stroke="#10B981" strokeWidth="1.2" />
+            <polyline points={`${canvasW - 95},${corridorY + 106} ${canvasW - 101},${corridorY + 110} ${canvasW - 95},${corridorY + 114}`} fill="none" stroke="#10B981" strokeWidth="1.2" />
+            <text x={canvasW - 78} y={corridorY + 104} fontSize="7.5" fontWeight="800" fill="#10B981" textAnchor="middle">
               ▼ XUỐNG
             </text>
 
             {/* Chiếu nghỉ giữa tầng (Mid-landing) sát tường ngoài Đông lấy sáng */}
             <rect
-              x={canvasW - 46}
+              x={canvasW - 48}
               y={corridorY}
-              width="26"
+              width="28"
               height={corridorH}
               fill="var(--surface-panel)"
               stroke="var(--hairline-soft)"
               strokeWidth="0.8"
-              rx="5"
             />
             {/* Kính lấy sáng mặt ngoài Đông */}
-            <line x1={canvasW - 20} y1={corridorY + 16} x2={canvasW - 20} y2={corridorY + 44} stroke="#38BDF8" strokeWidth="2.5" />
-            <line x1={canvasW - 20} y1={corridorY + 64} x2={canvasW - 20} y2={corridorY + 92} stroke="#38BDF8" strokeWidth="2.5" />
+            <line x1={canvasW - 20} y1={corridorY + 20} x2={canvasW - 20} y2={corridorY + 56} stroke="#38BDF8" strokeWidth="2.5" />
+            <line x1={canvasW - 20} y1={corridorY + 90} x2={canvasW - 20} y2={corridorY + 126} stroke="#38BDF8" strokeWidth="2.5" />
             <text
-              x={canvasW - 33}
+              x={canvasW - 34}
               y={corridorY + corridorH / 2}
               fontFamily="var(--font-sans)"
-              fontSize="7"
+              fontSize="7.5"
               fontWeight="700"
               fill="var(--ink-muted)"
               textAnchor="middle"
-              transform={`rotate(90, ${canvasW - 33}, ${corridorY + corridorH / 2})`}
+              transform={`rotate(90, ${canvasW - 34}, ${corridorY + corridorH / 2})`}
               style={{ letterSpacing: '0.08em' }}
             >
               CHIẾU NGHỈ
             </text>
 
-            {/* Cửa chống cháy tự đóng mở vào hành lang (Fire Door) */}
-            <line x1={canvasW - 106} y1={corridorY + 18} x2={canvasW - 106} y2={corridorY + 90} stroke="#10B981" strokeWidth="2.5" strokeDasharray="5 3" />
+            {/* Cửa chống cháy tự đóng mở vào sảnh (Fire Door) */}
+            <line x1={canvasW - 108} y1={corridorY + 28} x2={canvasW - 108} y2={corridorY + 118} stroke="#10B981" strokeWidth="3" strokeDasharray="5 3" />
             {/* Ký hiệu mở cửa thoát nạn hướng vào thang */}
-            <path d={`M ${canvasW - 106} ${corridorY + 36} A 16 16 0 0 1 ${canvasW - 92} ${corridorY + 52}`} fill="none" stroke="#10B981" strokeWidth="1" strokeDasharray="2 2" />
+            <path d={`M ${canvasW - 108} ${corridorY + 48} A 22 22 0 0 1 ${canvasW - 86} ${corridorY + 70}`} fill="none" stroke="#10B981" strokeWidth="1.2" strokeDasharray="2 2" />
 
-            <text x={canvasW - 63} y={corridorY - 4} fontFamily="var(--font-sans)" fontSize="7.5" fontWeight="800" fill="var(--ink-muted)" textAnchor="middle">
-              THANG ĐÔNG (2 VẾ)
+            <text x={canvasW - 64} y={corridorY - 6} fontFamily="var(--font-sans)" fontSize="7.5" fontWeight="800" fill="var(--ink-muted)" textAnchor="middle">
+              THANG ĐÔNG (THOÁT HIỂM)
             </text>
           </g>
 
           {/* ==============================================================
               4. TOP ROW ROOMS — NẰM DỌC SÁT MÉP BẮC TÒA NHÀ
               ============================================================== */}
-          {topPlacedRooms.map((room) => {
+          {topPlacedRooms.map((room, idx) => {
             const rx = room.x;
             const rw = room.width;
             const ry = topRoomY;
@@ -500,6 +662,7 @@ export const FloorPlan2D = ({
             const catColor = getCategoryColor(room.category);
             const sim = getRoomSimulatedStatus ? getRoomSimulatedStatus(room) : { status: 'available', color: '#10B981', label: 'Trống' };
             const isSelected = selectedRoom?.code === room.code;
+            const { doorX, doorW } = getRoomDoorProps(room, idx, topPlacedRooms.length);
 
             return (
               <g
@@ -515,7 +678,7 @@ export const FloorPlan2D = ({
                   y={ry}
                   width={rw}
                   height={rh}
-                  rx="7"
+                  rx="4"
                   fill={isSelected ? 'var(--surface-panel)' : 'var(--canvas-subtle)'}
                   stroke={isSelected ? catColor : 'var(--hairline-medium)'}
                   strokeWidth={isSelected ? '2.4' : '1.1'}
@@ -543,13 +706,15 @@ export const FloorPlan2D = ({
                   fill={sim.color}
                 />
 
-                {/* Door Opening into Corridor (Bottom Edge) */}
-                <rect x={rx + rw / 2 - 12} y={ry + rh - 2} width="24" height="3" fill="var(--surface-panel)" />
+                {/* Door Opening & Threshold (Khoảng mở tường & Khuôn cửa) */}
+                <line x1={doorX} y1={ry + rh} x2={doorX + doorW} y2={ry + rh} stroke="var(--canvas-subtle)" strokeWidth="3" />
+                {/* Door leaf swinging 90 deg inward into room */}
+                <line x1={doorX} y1={ry + rh} x2={doorX} y2={ry + rh - 22} stroke={catColor} strokeWidth="1.6" />
                 <path
-                  d={`M ${rx + rw / 2 - 12} ${ry + rh} A 12 12 0 0 1 ${rx + rw / 2} ${ry + rh + 8}`}
+                  d={`M ${doorX} ${ry + rh - 22} A 22 22 0 0 1 ${doorX + 22} ${ry + rh}`}
                   fill="none"
                   stroke={catColor}
-                  strokeWidth="1.1"
+                  strokeWidth="1"
                   strokeDasharray="2 2"
                 />
 
@@ -562,7 +727,7 @@ export const FloorPlan2D = ({
           {/* ==============================================================
               5. BOTTOM ROW ROOMS — NẰM DỌC SÁT MÉP NAM TÒA NHÀ
               ============================================================== */}
-          {bottomPlacedRooms.map((room) => {
+          {bottomPlacedRooms.map((room, idx) => {
             const rx = room.x;
             const rw = room.width;
             const ry = bottomRoomY;
@@ -570,6 +735,7 @@ export const FloorPlan2D = ({
             const catColor = getCategoryColor(room.category);
             const sim = getRoomSimulatedStatus ? getRoomSimulatedStatus(room) : { status: 'available', color: '#10B981', label: 'Trống' };
             const isSelected = selectedRoom?.code === room.code;
+            const { doorX, doorW } = getRoomDoorProps(room, idx, bottomPlacedRooms.length);
 
             return (
               <g
@@ -585,7 +751,7 @@ export const FloorPlan2D = ({
                   y={ry}
                   width={rw}
                   height={rh}
-                  rx="7"
+                  rx="4"
                   fill={isSelected ? 'var(--surface-panel)' : 'var(--canvas-subtle)'}
                   stroke={isSelected ? catColor : 'var(--hairline-medium)'}
                   strokeWidth={isSelected ? '2.4' : '1.1'}
@@ -613,13 +779,15 @@ export const FloorPlan2D = ({
                   fill={sim.color}
                 />
 
-                {/* Door Opening into Corridor (Top Edge) */}
-                <rect x={rx + rw / 2 - 12} y={ry - 1} width="24" height="3" fill="var(--surface-panel)" />
+                {/* Door Opening & Threshold (Khoảng mở tường & Khuôn cửa) */}
+                <line x1={doorX} y1={ry} x2={doorX + doorW} y2={ry} stroke="var(--canvas-subtle)" strokeWidth="3" />
+                {/* Door leaf swinging 90 deg inward into room */}
+                <line x1={doorX} y1={ry} x2={doorX} y2={ry + 22} stroke={catColor} strokeWidth="1.6" />
                 <path
-                  d={`M ${rx + rw / 2 - 12} ${ry} A 12 12 0 0 0 ${rx + rw / 2} ${ry - 8}`}
+                  d={`M ${doorX} ${ry + 22} A 22 22 0 0 0 ${doorX + 22} ${ry}`}
                   fill="none"
                   stroke={catColor}
-                  strokeWidth="1.1"
+                  strokeWidth="1"
                   strokeDasharray="2 2"
                 />
 
