@@ -48,17 +48,17 @@ export const FloorPlan2D = ({
   const canvasW = 960;
   const canvasH = 390;
 
-  // Perimeter bounds for rooms
-  const perimeterLeft = 65;
-  const perimeterRight = 895;
-  const availableWidth = perimeterRight - perimeterLeft; // 830px
+  // Perimeter bounds for rooms (Mở rộng toàn bộ mép Tây & Đông để lấp kín 4 khoảng trống quanh cầu thang)
+  const perimeterLeft = 20;
+  const perimeterRight = 940;
+  const availableWidth = perimeterRight - perimeterLeft; // 920px
 
   const topRoomY = 18;
-  const roomHeight = 115;
-  const bottomRoomY = 255;
+  const roomHeight = 118;
+  const bottomRoomY = 252;
 
-  const corridorY = 143;
-  const corridorH = 102;
+  const corridorY = 140;
+  const corridorH = 108;
 
   // Calculate clean layout positions along perimeter
   const layoutRoomsAlongEdge = (roomList) => {
@@ -265,20 +265,24 @@ export const FloorPlan2D = ({
           />
 
           {/* Exterior Window Lines on North & South Facades */}
-          {[90, 210, 330, 450, 570, 690, 810].map((wx) => (
+          {[40, 150, 260, 370, 480, 590, 700, 810].map((wx) => (
             <g key={wx} stroke="#38BDF8" strokeWidth="2.5" opacity="0.6">
               <line x1={wx} y1="12" x2={wx + 65} y2="12" />
               <line x1={wx} y1={canvasH - 12} x2={wx + 65} y2={canvasH - 12} />
             </g>
           ))}
 
+          {/* Exterior Fire Exit Door Lines on West & East Facades */}
+          <line x1="16" y1={corridorY + 36} x2="16" y2={corridorY + 72} stroke="#10B981" strokeWidth="3" />
+          <line x1={canvasW - 16} y1={corridorY + 36} x2={canvasW - 16} y2={corridorY + 72} stroke="#10B981" strokeWidth="3" />
+
           {/* ==============================================================
               3. CENTRAL CORRIDOR & UTILITY CORE (HÀNH LANG TRUNG TÂM)
               ============================================================== */}
           <rect
-            x={perimeterLeft - 4}
+            x={perimeterLeft + 48}
             y={corridorY}
-            width={availableWidth + 8}
+            width={availableWidth - 96}
             height={corridorH}
             fill="var(--surface-panel)"
             stroke="var(--hairline-soft)"
@@ -316,26 +320,30 @@ export const FloorPlan2D = ({
             <text x="77.5" y="28" fontSize="7.5" fontWeight="800" fill="var(--ink-muted)" textAnchor="middle">THANG B</text>
           </g>
 
-          {/* West Stairwell & Exit (Thang Bộ Tây) */}
-          <g transform="translate(20, 135)">
-            <rect x="0" y="0" width="38" height="118" fill="var(--canvas-subtle)" stroke="var(--hairline-medium)" strokeWidth="1" rx="4" />
-            {[20, 40, 60, 80, 100].map((stepY) => (
-              <line key={stepY} x1="3" y1={stepY} x2="35" y2={stepY} stroke="var(--hairline-medium)" strokeWidth="0.8" />
+          {/* West Stairwell & Exit (Thang Bộ Tây — Khớp sát mép Tây tòa nhà) */}
+          <g transform={`translate(${perimeterLeft}, ${corridorY})`}>
+            <rect x="0" y="0" width="44" height={corridorH} fill="var(--canvas-subtle)" stroke="var(--hairline-medium)" strokeWidth="1" rx="5" />
+            {[18, 36, 54, 72, 90].map((stepY) => (
+              <line key={stepY} x1="4" y1={stepY} x2="40" y2={stepY} stroke="var(--hairline-medium)" strokeWidth="0.8" />
             ))}
-            <text x="19" y="62" fontFamily="var(--font-sans)" fontSize="7.5" fontWeight="800" fill="var(--ink-muted)" textAnchor="middle" transform="rotate(-90, 19, 62)">
+            <text x="22" y={corridorH / 2} fontFamily="var(--font-sans)" fontSize="8" fontWeight="800" fill="var(--ink-muted)" textAnchor="middle" transform={`rotate(-90, 22, ${corridorH / 2})`}>
               THANG TÂY
             </text>
+            {/* Fire Exit Door into Corridor */}
+            <line x1="44" y1="36" x2="44" y2="72" stroke="var(--laser-emerald)" strokeWidth="2.5" />
           </g>
 
-          {/* East Stairwell & Exit (Thang Bộ Đông) */}
-          <g transform="translate(902, 135)">
-            <rect x="0" y="0" width="38" height="118" fill="var(--canvas-subtle)" stroke="var(--hairline-medium)" strokeWidth="1" rx="4" />
-            {[20, 40, 60, 80, 100].map((stepY) => (
-              <line key={stepY} x1="3" y1={stepY} x2="35" y2={stepY} stroke="var(--hairline-medium)" strokeWidth="0.8" />
+          {/* East Stairwell & Exit (Thang Bộ Đông — Khớp sát mép Đông tòa nhà) */}
+          <g transform={`translate(${perimeterRight - 44}, ${corridorY})`}>
+            <rect x="0" y="0" width="44" height={corridorH} fill="var(--canvas-subtle)" stroke="var(--hairline-medium)" strokeWidth="1" rx="5" />
+            {[18, 36, 54, 72, 90].map((stepY) => (
+              <line key={stepY} x1="4" y1={stepY} x2="40" y2={stepY} stroke="var(--hairline-medium)" strokeWidth="0.8" />
             ))}
-            <text x="19" y="62" fontFamily="var(--font-sans)" fontSize="7.5" fontWeight="800" fill="var(--ink-muted)" textAnchor="middle" transform="rotate(90, 19, 62)">
+            <text x="22" y={corridorH / 2} fontFamily="var(--font-sans)" fontSize="8" fontWeight="800" fill="var(--ink-muted)" textAnchor="middle" transform={`rotate(90, 22, ${corridorH / 2})`}>
               THANG ĐÔNG
             </text>
+            {/* Fire Exit Door into Corridor */}
+            <line x1="0" y1="36" x2="0" y2="72" stroke="var(--laser-emerald)" strokeWidth="2.5" />
           </g>
 
           {/* ==============================================================
