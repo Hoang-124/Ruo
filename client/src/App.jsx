@@ -1,21 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppHeader } from './components/layout/AppHeader';
 import { Dashboard } from './pages/dashboard/Dashboard';
-import { RoomListPage } from './pages/rooms/RoomListPage';
-import { RoomCalendarPage } from './pages/rooms/RoomCalendarPage';
-import { TicketKanbanPage } from './pages/incidents/TicketKanbanPage';
-import { CSPStudioPage } from './pages/allocations/CSPStudioPage';
-import { EquipmentDisposalPage } from './pages/equipments/EquipmentDisposalPage';
-import { RBACMatrixPage } from './pages/admin/RBACMatrixPage';
-import { AuditLogPage } from './pages/admin/AuditLogPage';
-import { ApprovalQueuePage } from './pages/approvals/ApprovalQueuePage';
-import { BookingModal } from './components/ui/BookingModal';
-import { QRCheckInModal } from './components/ui/QRCheckInModal';
-import { LoginPage } from './pages/auth/LoginPage';
-import { UserProfileModal } from './components/ui/UserProfileModal';
 import { Icons } from './components/common/SvgIcons';
 import { ROOMS } from './mock/mockData';
+
+// Code-Splitting: Lazy load secondary subsystems & heavy modals to reduce initial load time
+const RoomListPage = lazy(() => import('./pages/rooms/RoomListPage').then(m => ({ default: m.RoomListPage })));
+const RoomCalendarPage = lazy(() => import('./pages/rooms/RoomCalendarPage').then(m => ({ default: m.RoomCalendarPage })));
+const TicketKanbanPage = lazy(() => import('./pages/incidents/TicketKanbanPage').then(m => ({ default: m.TicketKanbanPage })));
+const CSPStudioPage = lazy(() => import('./pages/allocations/CSPStudioPage').then(m => ({ default: m.CSPStudioPage })));
+const EquipmentDisposalPage = lazy(() => import('./pages/equipments/EquipmentDisposalPage').then(m => ({ default: m.EquipmentDisposalPage })));
+const RBACMatrixPage = lazy(() => import('./pages/admin/RBACMatrixPage').then(m => ({ default: m.RBACMatrixPage })));
+const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage').then(m => ({ default: m.AuditLogPage })));
+const ApprovalQueuePage = lazy(() => import('./pages/approvals/ApprovalQueuePage').then(m => ({ default: m.ApprovalQueuePage })));
+
+const BookingModal = lazy(() => import('./components/ui/BookingModal').then(m => ({ default: m.BookingModal })));
+const QRCheckInModal = lazy(() => import('./components/ui/QRCheckInModal').then(m => ({ default: m.QRCheckInModal })));
+const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
+const UserProfileModal = lazy(() => import('./components/ui/UserProfileModal').then(m => ({ default: m.UserProfileModal })));
+
+// Sleek native SVG loading spinner
+const LazyFallback = () => (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '380px', gap: '14px', color: 'var(--ink-muted)' }}>
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+    <span style={{ fontSize: '13px', fontWeight: 600 }}>Đang tải phân hệ...</span>
+  </div>
+);
 
 const MainAppContent = () => {
   const { isTabAllowed, currentRoleMeta, isLoggedIn } = useAuth();
@@ -28,7 +41,11 @@ const MainAppContent = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   if (!isLoggedIn) {
-    return <LoginPage onLoginSuccess={() => {}} />;
+    return (
+      <Suspense fallback={<LazyFallback />}>
+        <LoginPage onLoginSuccess={() => {}} />
+      </Suspense>
+    );
   }
 
   const handleOpenBooking = (room) => {
@@ -201,27 +218,37 @@ const MainAppContent = () => {
 
       {/* 2. Main Subsystem Viewport */}
       <main className="ruo-main-viewport">
-        {renderActiveView()}
+        <Suspense fallback={<LazyFallback />}>
+          {renderActiveView()}
+        </Suspense>
       </main>
 
-      {/* Global Interactive Modals */}
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
-        selectedRoom={selectedBookingRoom}
-        onBookingSuccess={() => {}}
-      />
+      {/* Global Interactive Modals (Lazy Loaded on Demand) */}
+      <Suspense fallback={null}>
+        {isBookingModalOpen && (
+          <BookingModal
+            isOpen={isBookingModalOpen}
+            onClose={() => setIsBookingModalOpen(false)}
+            selectedRoom={selectedBookingRoom}
+            onBookingSuccess={() => {}}
+          />
+        )}
 
-      <QRCheckInModal
-        isOpen={isQRModalOpen}
-        onClose={() => setIsQRModalOpen(false)}
-        bookingRoom={selectedBookingRoom?.code || 'A1-302'}
-      />
+        {isQRModalOpen && (
+          <QRCheckInModal
+            isOpen={isQRModalOpen}
+            onClose={() => setIsQRModalOpen(false)}
+            bookingRoom={selectedBookingRoom?.code || 'A1-302'}
+          />
+        )}
 
-      <UserProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-      />
+        {isProfileModalOpen && (
+          <UserProfileModal
+            isOpen={isProfileModalOpen}
+            onClose={() => setIsProfileModalOpen(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

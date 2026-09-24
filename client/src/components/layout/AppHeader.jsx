@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../common/SvgIcons';
 import { CommandPaletteModal } from '../ui/CommandPaletteModal';
+import { RuoLogo } from '../common/RuoLogo';
 
 export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileModal }) => {
   const {
@@ -107,16 +108,10 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
           <div className="ruo-topbar-left">
             <button
               onClick={() => onSelectTab('dashboard')}
-              className="ruo-brand-btn"
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
               title="Về Bàn Điều Hành Không Gian Kiến Trúc"
             >
-              <div className="ruo-brand-logo">
-                <Icons.Building size={16} color="#FFFFFF" />
-              </div>
-              <div className="ruo-brand-titles">
-                <span className="ruo-brand-name">RUO</span>
-                <span className="ruo-brand-tag ruo-hide-sm">Quản Lý CSVC</span>
-              </div>
+              <RuoLogo size={32} subtitle="Quản Lý CSVC" />
             </button>
 
             <div className="ruo-breadcrumb-divider ruo-hide-md" />

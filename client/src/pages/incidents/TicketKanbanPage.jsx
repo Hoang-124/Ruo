@@ -183,16 +183,16 @@ export const TicketKanbanPage = () => {
                     </div>
 
                     {/* Title & Room */}
-                    <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.3 }}>
+                    <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.3, wordBreak: 'break-word' }}>
                       {ticket.title}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
                         <Icons.Room size={12} /> {ticket.roomCode}
                       </span>
                       <span>•</span>
-                      <span>{ticket.equipmentName}</span>
+                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{ticket.equipmentName}</span>
                     </div>
 
                     {/* SLA Badge */}

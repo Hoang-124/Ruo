@@ -147,12 +147,13 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
           <Icons.Search size={18} color="var(--laser-cyan)" />
           <input
             type="text"
-            placeholder="Tìm kiếm phân hệ nghiệp vụ, tính năng 95 Use Cases (VD: Đặt phòng, CSP, Thanh lý, SLA)..."
+            placeholder="Tìm kiếm phân hệ, tính năng 95 Use Cases (CSP, SLA, QR)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
             style={{
               flex: 1,
+              minWidth: 0,
               background: 'transparent',
               border: 'none',
               outline: 'none',

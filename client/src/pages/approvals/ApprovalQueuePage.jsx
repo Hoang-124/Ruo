@@ -39,7 +39,7 @@ export const ApprovalQueuePage = () => {
   };
 
   return (
-    <div>
+    <div style={{ paddingBottom: '60px' }}>
       {/* Page Header */}
       <div className="page-header">
         <div>
