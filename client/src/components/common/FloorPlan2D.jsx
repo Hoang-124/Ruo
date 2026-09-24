@@ -366,14 +366,10 @@ export const FloorPlan2D = ({
               strokeDasharray="4 3"
             />
 
-            {/* Đèn chỉ dẫn thoát nạn EXIT vào thang Tây - đặt dọc sát vách buồng thang, không đè hành lang */}
-            <g transform={`translate(111, ${corridorY + 40})`}>
-              <rect x="0" y="0" width="13" height="38" rx="2.5" fill="#10B981" />
-              <text x="6.5" y="8" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">◄</text>
-              <text x="6.5" y="15.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">E</text>
-              <text x="6.5" y="22.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">X</text>
-              <text x="6.5" y="29.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">I</text>
-              <text x="6.5" y="36" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">T</text>
+            {/* Đèn chỉ dẫn thoát nạn EXIT - đặt ngang sát mép phòng học Bắc (đối xứng PCCC), chỉ hướng vào thang Tây */}
+            <g transform={`translate(160, ${corridorY})`}>
+              <rect x="0" y="0" width="34" height="13" rx="2" fill="#10B981" />
+              <text x="17" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">◄ EXIT</text>
             </g>
 
             {/* Hộp cứu hỏa PCCC đặt ngang sát mép phòng học */}
@@ -398,14 +394,10 @@ export const FloorPlan2D = ({
               strokeDasharray="4 3"
             />
 
-            {/* Đèn chỉ dẫn thoát nạn EXIT vào thang Đông - đặt dọc sát vách buồng thang, không đè hành lang */}
-            <g transform={`translate(${canvasW - 124}, ${corridorY + 40})`}>
-              <rect x="0" y="0" width="13" height="38" rx="2.5" fill="#10B981" />
-              <text x="6.5" y="8" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">►</text>
-              <text x="6.5" y="15.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">E</text>
-              <text x="6.5" y="22.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">X</text>
-              <text x="6.5" y="29.5" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">I</text>
-              <text x="6.5" y="36" fontSize="6.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">T</text>
+            {/* Đèn chỉ dẫn thoát nạn EXIT - đặt ngang sát mép phòng học Bắc (đối xứng PCCC), chỉ hướng vào thang Đông */}
+            <g transform={`translate(${canvasW - 194}, ${corridorY})`}>
+              <rect x="0" y="0" width="34" height="13" rx="2" fill="#10B981" />
+              <text x="17" y="9.5" fontSize="7.5" fontWeight="900" fill="#FFFFFF" textAnchor="middle">EXIT ►</text>
             </g>
 
             {/* Hộp cứu hỏa PCCC đặt ngang sát mép phòng học */}
