@@ -1,7 +1,99 @@
+import crypto from 'crypto';
 import { Equipment, EquipmentCategory, Supplier } from '../models/Equipment.js';
+import { Room } from '../models/Facility.js';
 import { EquipmentBorrowing } from '../models/EquipmentBorrowing.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { EQUIPMENT_STATUSES } from '../config/constants.js';
+
+// @desc    Create new equipment item (UC-3.7)
+// @route   POST /api/equipments
+// @access  Private (Facility Staff, Admin)
+export const createEquipment = async (req, res) => {
+  const {
+    assetCode,
+    serialNumber,
+    name,
+    category,
+    room,
+    supplier,
+    originalPrice,
+    remainingValue,
+    purchaseDate,
+    warrantyExpiry,
+    condition,
+    specifications,
+    imageUrl,
+    qrCodeData: customQrCodeData
+  } = req.body;
+
+  if (!assetCode || !name || !category || originalPrice === undefined || !purchaseDate) {
+    return res.status(400).json({
+      success: false,
+      message: 'Vui lòng cung cấp đầy đủ thông tin bắt buộc: Mã tài sản, Tên thiết bị, Chủng loại, Nguyên giá và Ngày mua.'
+    });
+  }
+
+  // Check unique assetCode
+  const existingAsset = await Equipment.findOne({ assetCode: assetCode.toUpperCase().trim() });
+  if (existingAsset) {
+    return res.status(409).json({
+      success: false,
+      message: `Mã tài sản '${assetCode.toUpperCase().trim()}' đã tồn tại trong hệ thống. Vui lòng nhập mã khác.`
+    });
+  }
+
+  // Auto-generate immutable QR Code Data token if not provided
+  const qrCodeData = customQrCodeData && customQrCodeData.trim() !== ''
+    ? customQrCodeData.trim()
+    : `QR-EQ-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+  const equipment = await Equipment.create({
+    assetCode: assetCode.toUpperCase().trim(),
+    qrCodeData,
+    serialNumber: serialNumber || '',
+    name: name.trim(),
+    category,
+    room: room || null,
+    supplier: supplier || null,
+    originalPrice: Number(originalPrice),
+    remainingValue: remainingValue !== undefined ? Number(remainingValue) : Number(originalPrice),
+    purchaseDate: new Date(purchaseDate),
+    warrantyExpiry: warrantyExpiry ? new Date(warrantyExpiry) : null,
+    condition: condition || 'brand_new',
+    status: 'available',
+    specifications: specifications || {},
+    imageUrl: imageUrl || ''
+  });
+
+  const populatedEquipment = await Equipment.findById(equipment._id)
+    .populate('category')
+    .populate('room')
+    .populate('supplier');
+
+  // Audit log
+  if (req.user) {
+    await AuditLog.logAction({
+      user: req.user._id,
+      userDisplay: req.user.fullName,
+      action: 'EQUIPMENT_CREATE',
+      entityType: 'Equipment',
+      entityId: equipment._id.toString(),
+      ipAddress: req.ip,
+      diffData: {
+        assetCode: equipment.assetCode,
+        name: equipment.name,
+        originalPrice: equipment.originalPrice
+      }
+    });
+  }
+
+  res.status(201).json({
+    success: true,
+    message: 'Tạo tài sản mới thành công.',
+    equipment: populatedEquipment
+  });
+};
+
 
 // @desc    Get all equipment items
 // @route   GET /api/equipments

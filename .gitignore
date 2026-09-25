@@ -35,3 +35,7 @@ Thumbs.db
 
 # Agent internal skills cache
 .agents/
+
+# Exported planning & documentation artifacts
+exports/
+
