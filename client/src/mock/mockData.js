@@ -467,6 +467,62 @@ export const EQUIPMENTS = [
   }
 ];
 
+export const EQUIPMENT_SEED_DATA = [
+  ...EQUIPMENTS,
+  {
+    id: 'EQ_005',
+    assetCode: 'TS-2023-SB01',
+    name: 'Màn Hình Cảm Ứng Tương Tác Maxhub 86 inch 4K',
+    category: 'Màn hình & Bảng số',
+    originalPrice: 85000000,
+    remainingValue: 68000000,
+    purchaseDate: '2023-01-12',
+    locationRoom: 'A1-405',
+    status: 'in_use',
+    repairCount: 0,
+    estimatedRepairCost: 0
+  },
+  {
+    id: 'EQ_006',
+    assetCode: 'TS-2020-SW08',
+    name: 'Switch L3 Cisco Catalyst 9200L 48-port PoE+',
+    category: 'Thiết bị mạng & Viễn thông',
+    originalPrice: 62000000,
+    remainingValue: 21000000,
+    purchaseDate: '2020-08-25',
+    locationRoom: 'Phòng Server C1',
+    status: 'in_use',
+    repairCount: 2,
+    estimatedRepairCost: 2100000
+  },
+  {
+    id: 'EQ_007',
+    assetCode: 'TS-2022-MIC01',
+    name: 'Kính Hiển Vi Quang Học 3 Mắt Olympus CX23',
+    category: 'Thiết bị Lab & Đo kiểm',
+    originalPrice: 28000000,
+    remainingValue: 19500000,
+    purchaseDate: '2022-04-10',
+    locationRoom: 'B1-204 (Lab Vi sinh)',
+    status: 'available',
+    repairCount: 0,
+    estimatedRepairCost: 0
+  },
+  {
+    id: 'EQ_008',
+    assetCode: 'TS-2017-AM03',
+    name: 'Hệ Thống Âm Thanh Hội Thảo Đa Vùng Shure MXW',
+    category: 'Âm thanh & Ánh sáng',
+    originalPrice: 45000000,
+    remainingValue: 5000000,
+    purchaseDate: '2017-10-15',
+    locationRoom: 'Hội Trường Trụ Sở A',
+    status: 'disposal_pending',
+    repairCount: 7,
+    estimatedRepairCost: 4200000
+  }
+];
+
 export const CSP_CLASSES_SAMPLE = [
   { id: 'IT3010', name: 'Kỹ Thuật Lập Trình', lecturer: 'TS. Lê Đức Anh', students: 42, type: 'theory', requiredLab: false, faculty: 'CNTT' },
   { id: 'IT3160', name: 'Kiến Trúc Máy Tính & Lab', lecturer: 'PGS. TS. Trần Đình Hưng', students: 35, type: 'lab', requiredLab: true, faculty: 'CNTT' },
