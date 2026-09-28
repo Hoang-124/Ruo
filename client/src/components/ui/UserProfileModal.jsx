@@ -525,6 +525,26 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                     {currentUser.phone || 'Chưa cập nhật'}
                   </strong>
                 </div>
+
+                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                    <SvgIcons.User size={13} />
+                    <span>LỚP HỌC VỤ / BỘ MÔN</span>
+                  </div>
+                  <strong style={{ fontSize: '13px', color: 'var(--ink-pure)' }}>
+                    {currentUser.className || 'K67-CNTT-02'}
+                  </strong>
+                </div>
+
+                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                    <SvgIcons.Shield size={13} />
+                    <span>VAI TRÒ & PHÂN QUYỀN</span>
+                  </div>
+                  <strong style={{ fontSize: '13px', color: 'var(--laser-cyan)' }}>
+                    {currentUser.roleTitle || 'Sinh viên'}
+                  </strong>
+                </div>
               </div>
             </div>
           )}

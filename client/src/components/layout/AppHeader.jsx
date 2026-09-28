@@ -263,43 +263,102 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
               </button>
 
               {showProfilePopover && (
-                <div className="ruo-popover-menu ruo-profile-popover" style={{ minWidth: '280px', padding: '16px' }}>
+                <div className="ruo-popover-menu ruo-profile-popover" style={{ width: '320px', padding: '16px' }}>
                   {/* Account Overview Header */}
-                  <div className="ruo-profile-meta" style={{ paddingBottom: '14px', borderBottom: '1px solid var(--hairline-soft)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink-pure)' }}>
-                        {currentUser.name}
-                      </span>
-                      <span className="ruo-uid-pill">{currentUser.code}</span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
-                      <span style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>Vai trò:</span>
-                      <span
+                  <div className="ruo-profile-meta" style={{ paddingBottom: '12px', borderBottom: '1px solid var(--hairline-soft)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                      <div
                         style={{
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          color: roleInfo.color,
-                          background: roleInfo.bg,
-                          padding: '2px 8px',
-                          borderRadius: 'var(--radius-full)'
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)',
+                          color: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 800,
+                          fontSize: '14px',
+                          flexShrink: 0
                         }}
                       >
-                        {roleInfo.label}
+                        {currentUser.avatar || 'TH'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '15px', color: 'var(--ink-pure)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {currentUser.name}
+                          </span>
+                          <span className="ruo-uid-pill" style={{ flexShrink: 0 }}>{currentUser.code}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                          <span
+                            style={{
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              color: roleInfo.color,
+                              background: roleInfo.bg,
+                              padding: '1.5px 7px',
+                              borderRadius: 'var(--radius-full)'
+                            }}
+                          >
+                            {roleInfo.label}
+                          </span>
+                          <span style={{ fontSize: '10.5px', color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                            Trực tuyến
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Academic & University Profile Specs */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 0', borderBottom: '1px solid var(--hairline-soft)', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
+                      <Icons.Mail size={13} color="var(--laser-cyan)" />
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={currentUser.email}>
+                        {currentUser.email}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', marginTop: '6px' }}>
-                      {currentUser.email}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
+                      <Icons.Building size={13} color="var(--laser-cyan)" />
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={currentUser.department}>
+                        Đơn vị: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.department}</strong>
+                      </span>
                     </div>
 
-                    <div style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', marginTop: '4px' }}>
-                      Đơn vị: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.department}</strong>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
+                      <Icons.Layers size={13} color="var(--laser-cyan)" />
+                      <span>
+                        {currentRoleKey === 'student' ? 'Lớp sinh hoạt:' : 'Bộ môn / Tổ:'}{' '}
+                        <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.className || 'K67-CNTT-02'}</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
+                      <Icons.Phone size={13} color="var(--laser-cyan)" />
+                      <span>
+                        Số điện thoại: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.phone || '0987 654 321'}</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
+                      <Icons.Calendar size={13} color="var(--laser-cyan)" />
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        Quyền hạn: <strong style={{ color: 'var(--laser-cyan)' }}>{currentUser.bookingPrivilege || 'Đặt trước tối đa 30 ngày'}</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-muted)', fontSize: '11px', marginTop: '2px' }}>
+                      <Icons.Shield size={12} color="var(--ink-muted)" />
+                      <span>Xác thực: <strong>SSO Nội Bộ (OAuth2)</strong></span>
                     </div>
                   </div>
 
                   {/* Real User Actions */}
-                  <div className="ruo-profile-footer" style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '12px' }}>
+                  <div className="ruo-profile-footer" style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '10px' }}>
                     <button
                       className="ruo-footer-btn"
                       style={{ color: 'var(--laser-cyan)' }}
@@ -307,7 +366,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                         setShowProfilePopover(false);
                         if (onOpenProfileModal) onOpenProfileModal();
                       }}
-                      title="Xem thông tin tài khoản và đổi mật khẩu"
+                      title="Xem thông tin chi tiết tài khoản và đổi mật khẩu"
                     >
                       <Icons.User size={15} color="var(--laser-cyan)" />
                       <span>Hồ Sơ & Đổi Mật Khẩu</span>
