@@ -117,19 +117,24 @@ $\rightarrow$ Tự động chuyển quyền thẩm định từ Quản lý CSVC 
 
 ---
 
-## 4. MA TRẬN 7 TÁC NHÂN (ACTORS) & TÀI KHOẢN TRÌNH DIỄN (DEMO ACCOUNTS)
+## 4. MA TRẬN 7 TÁC NHÂN (ACTORS) & DANH SÁCH TÀI KHOẢN THẬT TRONG MONGODB
 
-Hệ thống cung cấp sẵn bộ dữ liệu tài khoản thực tế sau khi chạy `npm run seed`:
+Hệ thống quản lý xác thực tập trung trực tiếp qua MongoDB (`ruo_db`). Dưới đây là danh sách tài khoản trường học thực tế có sẵn sau khi chạy `npm run seed`, dùng để đăng nhập và kiểm thử toàn diện các phân hệ:
 
-| Vai trò (Role) | Email Đăng Nhập | Mật Khẩu | Mã Cán Bộ / MSSV | Đặc Quyền Nghiệp Vụ Chính |
-| :--- | :--- | :---: | :---: | :--- |
-| **Sinh viên** *(Student)* | `sv.hoang@hcmut.edu.vn` | `Ruo@2026` | 2011001 | Đặt tối đa 2 phòng/ngày, đặt trước $\le 2$ tuần, Check-in QR tại cửa, Báo cáo sự cố thiết bị. |
-| **Giảng viên** *(Lecturer)* | `gv.tung@hcmut.edu.vn` | `Ruo@2026` | CB-1024 | Đặt tối đa 5 phòng/ngày, đặt trước 4 tuần, Đặt lịch chuỗi cả kỳ RFC-5545, Mượn thiết bị giảng dạy. |
-| **Quản lý CSVC** *(Facility Staff)* | `csvc.nguyen@hcmut.edu.vn` | `Ruo@2026` | NV-2001 | Thẩm định đơn mượn phòng/thiết bị, CRUD danh mục Tòa nhà/Phòng/Tài sản, Điều phối kiểm kê QR. |
-| **Kỹ thuật viên** *(Maintenance Staff)* | `kt.quang@hcmut.edu.vn` | `Ruo@2026` | KT-3001 | Tiếp nhận ticket sự cố, bấm giờ xử lý SLA, xuất kho vật tư, lập đề xuất thanh lý máy $R \ge 60\%$. |
-| **Phòng Đào tạo** *(Academic Affairs)* | `daotao.uyen@hcmut.edu.vn` | `Ruo@2026` | DT-4001 | Động cơ CSP xếp TKB, Phê duyệt đơn chuyển cấp Escalation, Phân bổ phòng thi, Khóa lịch chính khóa. |
-| **Quản trị hệ thống** *(System Admin)* | `admin.hoang@hcmut.edu.vn` | `Ruo@2026` | AD-0001 | Quản trị Người dùng, Phân quyền ma trận RBAC, Cấu hình hệ thống, Đối soát Audit Log SHA-256. |
-| **Hệ thống ngoài** *(External SIS/Mock)* | *Automated Service* | *N/A* | SYS-SYNC | Nhận webhook đồng bộ lịch học SIS, tự động kích hoạt gửi Email/SMS cảnh báo. |
+| Họ và Tên | Vai trò (Role) | Email Đăng Nhập | Mã Cán Bộ / MSSV | Mật Khẩu Khởi Tạo | Đặc Quyền Nghiệp Vụ Chính |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| **Trần Bảo Hoàng** | **Sinh viên** *(Student)* | `hoang.tb220412@university.edu.vn` | `SV20220412` | `Ruo@2026` | Đặt tối đa 2 phòng/ngày, đặt trước $\le 2$ tuần, Check-in QR cửa phòng trong 15 phút, Báo cáo sự cố CSVC. |
+| **TS. Nguyễn Văn Nam** | **Giảng viên** *(Lecturer)* | `nam.nv@university.edu.vn` | `CB198402` | `Ruo@2026` | Đặt tối đa 5 phòng/ngày, đặt trước 4 tuần, Đặt lịch chuỗi cả kỳ RFC-5545, Mượn thiết bị di động giảng dạy. |
+| **Lê Thị Mai** | **Quản lý CSVC** *(Facility Staff)* | `mai.lt@university.edu.vn` | `NV201901` | `Ruo@2026` | Thẩm định đơn mượn phòng/thiết bị, CRUD danh mục Tòa nhà/Phòng/Tài sản, Điều phối kiểm kê mã QR. |
+| **Phạm Văn Hùng** | **Kỹ thuật viên** *(Maintenance)* | `hung.pv@university.edu.vn` | `KT201805` | `Ruo@2026` | Tiếp nhận ticket sự cố, bấm giờ xử lý SLA hành chính, xuất kho vật tư, lập đề xuất thanh lý máy $R \ge 60\%$. |
+| **Hoàng Quốc Dũng** | **Phòng Đào tạo** *(Academic Affairs)* | `dung.hq@university.edu.vn` | `DT201509` | `Ruo@2026` | Động cơ CSP xếp TKB tự động 0 xung đột, Phê duyệt đơn chuyển cấp Escalation, Khóa lịch TKB toàn trường. |
+| **Ban Quản Trị Hệ Thống** | **Quản trị viên** *(System Admin)* | `admin@university.edu.vn` | `AD000001` | `Ruo@2026` | Quản trị Người dùng, Phân quyền ma trận RBAC, Cấu hình hệ thống, Đối soát toàn vẹn Audit Log SHA-256. |
+| **Hệ thống ngoài** | **Dịch vụ tích hợp** *(External SIS/Mock)* | *Automated Background* | `SYS-SYNC` | *N/A* | Nhận webhook đồng bộ lịch học SIS, tự động kích hoạt gửi Email/SMS cảnh báo. |
+
+> **Ghi chú đăng nhập:**
+> - Người dùng có thể đăng nhập linh hoạt bằng **Email trường** hoặc **Mã số cán bộ/MSSV**.
+> - Mật khẩu mặc định sau khi seed: **`Ruo@2026`**.
+> - Hệ thống kích hoạt cơ chế an ninh **Khóa tạm 15 phút** nếu nhập sai mật khẩu quá 5 lần liên tiếp.
 
 ---
 

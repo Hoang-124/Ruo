@@ -137,7 +137,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token, fetchProfile]);
 
-  // UC-1.1: Login (Backend with Mock Fallback)
+  // UC-1.1: Login (Authenticates strictly against real Backend API & MongoDB)
   const login = useCallback(async (identifier, password) => {
     try {
       const res = await fetch(`${API_BASE_URL}/login`, {
@@ -164,22 +164,22 @@ export const AuthProvider = ({ children }) => {
 
         return { success: true, user: data.user };
       } else {
-        return { success: false, message: data.message || 'Thông tin đăng nhập không chính xác.' };
+        return {
+          success: false,
+          status: res.status,
+          message: data.message || 'Thông tin tài khoản hoặc mật khẩu không chính xác.',
+          isLocked: Boolean(data.isLocked),
+          remainingMinutes: data.remainingMinutes,
+          attemptsLeft: data.attemptsLeft,
+          failedAttempts: data.failedAttempts
+        };
       }
     } catch (error) {
-      console.warn('[AuthContext] Real backend login unreachable, falling back to mock authentication:', error.message);
-      // Resilient demo fallback
-      const foundRole = Object.keys(USERS).find(
-        (key) => USERS[key].email.toLowerCase() === String(identifier).toLowerCase() ||
-                 USERS[key].code.toLowerCase() === String(identifier).toLowerCase()
-      );
-      if (foundRole) {
-        setCurrentRoleKey(foundRole);
-        setIsLoggedIn(true);
-        localStorage.setItem('ruo_is_logged_in', 'true');
-        return { success: true, user: USERS[foundRole] };
-      }
-      return { success: false, message: 'Không thể kết nối đến máy chủ xác thực. Vui lòng kiểm tra cổng 5000.' };
+      console.error('[AuthContext] Backend connection error:', error.message);
+      return {
+        success: false,
+        message: 'Không thể kết nối đến máy chủ Backend (Port 5000). Vui lòng đảm bảo dịch vụ máy chủ đang chạy.'
+      };
     }
   }, []);
 
@@ -233,7 +233,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // UC-1.2: Logout (Hủy token trên server & xóa client)
+  // UC-1.2: Logout (Hủy token trên server & dọn dẹp triệt để client)
   const logout = useCallback(async (allDevices = false) => {
     try {
       if (token) {
@@ -256,6 +256,9 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('ruo_token');
       localStorage.removeItem('ruo_refresh_token');
       localStorage.removeItem('ruo_is_logged_in');
+      localStorage.removeItem('ruo_role');
+      localStorage.removeItem('ufms_role');
+      setCurrentRoleKey('student');
     }
   }, [token]);
 
@@ -414,6 +417,7 @@ export const AuthProvider = ({ children }) => {
     isLoggedIn,
     token,
     login,
+    register,
     logout,
     fetchProfile,
     updateProfile,

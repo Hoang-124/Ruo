@@ -103,29 +103,24 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
 
   return (
     <div
+      className="ruo-modal-backdrop-smooth"
       style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(11, 15, 23, 0.75)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 1000,
-        display: 'flex',
         alignItems: 'flex-start',
-        justifyContent: 'center',
-        paddingTop: '10vh',
-        paddingLeft: '16px',
-        paddingRight: '16px'
+        paddingTop: '10vh'
       }}
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
     >
       <div
+        className="ruo-modal-card-smooth"
         style={{
           width: '100%',
           maxWidth: '680px',
           background: 'var(--surface-panel)',
           border: '1px solid var(--hairline-medium)',
           borderRadius: 'var(--radius-lg)',
-          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.5)',
+          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',

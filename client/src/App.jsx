@@ -1,5 +1,6 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import { AppHeader } from './components/layout/AppHeader';
 import { Dashboard } from './pages/dashboard/Dashboard';
 import { Icons } from './components/common/SvgIcons';
@@ -207,7 +208,7 @@ const MainAppContent = () => {
   };
 
   return (
-    <div className="panoramic-shell blueprint-canvas-bg">
+    <div className="panoramic-shell blueprint-canvas-bg ruo-view-enter">
       {/* 1. Grounded Two-Tier Enterprise Navigation Header */}
       <AppHeader
         activeTab={activeTab}
@@ -219,7 +220,9 @@ const MainAppContent = () => {
       {/* 2. Main Subsystem Viewport */}
       <main className="ruo-main-viewport">
         <Suspense fallback={<LazyFallback />}>
-          {renderActiveView()}
+          <div key={activeTab} className="ruo-view-enter">
+            {renderActiveView()}
+          </div>
         </Suspense>
       </main>
 
@@ -255,8 +258,10 @@ const MainAppContent = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <MainAppContent />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <MainAppContent />
+      </AuthProvider>
+    </ToastProvider>
   );
 }

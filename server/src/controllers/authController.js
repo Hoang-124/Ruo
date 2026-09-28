@@ -53,7 +53,7 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check locked status (e.g. critically low repute score or manual lock)
+    // Check locked status (e.g. critically low repute score or manual permanent lock)
     if (user.status === USER_STATUSES.LOCKED) {
       return res.status(403).json({
         success: false,
@@ -61,13 +61,57 @@ export const login = async (req, res) => {
       });
     }
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
+    // Check temporary 15-minute brute-force lockout
+    if (user.isLocked()) {
+      const remainingMinutes = Math.max(1, Math.ceil((user.lockUntil.getTime() - Date.now()) / (60 * 1000)));
+      return res.status(423).json({
         success: false,
-        message: 'Thông tin đăng nhập hoặc mật khẩu không chính xác.'
+        isLocked: true,
+        remainingMinutes,
+        message: `Tài khoản đã bị tạm khóa 15 phút do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau ${remainingMinutes} phút.`
       });
     }
+
+    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1';
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      const lockResult = await user.handleFailedLogin();
+
+      if (lockResult.isLocked) {
+        await AuditLog.logAction({
+          user: user._id,
+          userDisplay: `${user.fullName} (${user.employeeCode})`,
+          action: 'USER_ACCOUNT_TEMP_LOCKED',
+          entityType: 'User',
+          entityId: user._id.toString(),
+          ipAddress,
+          diffData: {
+            reason: 'FAILED_LOGIN_EXCEEDED_5_ATTEMPTS',
+            lockDurationMinutes: 15,
+            lockUntil: user.lockUntil
+          }
+        });
+
+        return res.status(423).json({
+          success: false,
+          isLocked: true,
+          remainingMinutes: 15,
+          message: 'Tài khoản của bạn đã bị tạm khóa 15 phút do nhập sai mật khẩu 5 lần liên tiếp.'
+        });
+      }
+
+      return res.status(401).json({
+        success: false,
+        isLocked: false,
+        attemptsLeft: lockResult.attemptsLeft,
+        failedAttempts: lockResult.failedAttempts,
+        message: `Mật khẩu không chính xác. Bạn còn ${lockResult.attemptsLeft} lần thử trước khi tài khoản bị khóa tạm thời 15 phút.`
+      });
+    }
+
+    // Reset failed login counter upon successful authentication
+    await user.resetFailedLogin();
 
     // Generate JWT Access Token (15m) and Refresh Token (7d)
     const accessToken = jwt.sign(
@@ -83,7 +127,6 @@ export const login = async (req, res) => {
     );
 
     // Create session in UserSession
-    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1';
     const userAgent = req.headers['user-agent'] || 'Unknown Browser';
     const tokenHash = hashToken(accessToken);
     const refreshTokenHash = hashToken(refreshToken);
@@ -154,8 +197,30 @@ export const register = async (req, res) => {
       });
     }
 
+    const trimmedFullName = String(fullName).trim();
+    if (trimmedFullName.length < 2 || !/[a-zA-ZÀ-ỹ]/.test(trimmedFullName)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Họ và tên phải có tối thiểu 2 ký tự và là tên hợp lệ.'
+      });
+    }
+
     const trimmedEmail = String(email).trim().toLowerCase();
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Địa chỉ email không đúng định dạng (ví dụ: hoang.tb@university.edu.vn).'
+      });
+    }
+
     const trimmedCode = String(employeeCode).trim().toUpperCase();
+    if (trimmedCode.length < 3) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã số sinh viên/cán bộ phải có tối thiểu 3 ký tự (ví dụ: SV20240123 hoặc CB198402).'
+      });
+    }
 
     // Check duplicate email
     const existingEmail = await User.findOne({ email: trimmedEmail });
@@ -175,11 +240,11 @@ export const register = async (req, res) => {
       });
     }
 
-    // Password validation (min 8 chars)
-    if (password.length < 8) {
+    // Password validation (min 8 chars, uppercase, lowercase, digit, special char)
+    if (!PASSWORD_REGEX.test(password)) {
       return res.status(400).json({
         success: false,
-        message: 'Mật khẩu phải có độ dài tối thiểu 8 ký tự.'
+        message: 'Mật khẩu phải có tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ thường, 1 chữ số và 1 ký tự đặc biệt.'
       });
     }
 
@@ -292,42 +357,55 @@ export const register = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    const { allDevices } = req.body;
+    const { allDevices } = req.body || {};
+    const isAllDevices = allDevices === true || allDevices === 'true';
+    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1';
+
+    let revokedCount = 0;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
       const tokenHash = hashToken(token);
 
-      if (allDevices) {
-        // Revoke all sessions for this user across all devices
-        await UserSession.updateMany(
+      if (isAllDevices) {
+        // Revoke all active sessions for this user across all devices
+        const updateResult = await UserSession.updateMany(
           { user: req.user._id, isRevoked: false },
           { isRevoked: true }
         );
+        revokedCount = updateResult.modifiedCount || 0;
       } else {
         // Revoke current session only
-        await UserSession.updateOne(
+        const updateResult = await UserSession.updateOne(
           { tokenHash },
           { isRevoked: true }
         );
+        revokedCount = updateResult.modifiedCount || 0;
       }
     }
 
-    // Log logout to AuditLog
+    // Log logout event to immutable SHA-256 AuditLog
     await AuditLog.logAction({
       user: req.user._id,
-      userDisplay: req.user.fullName,
+      userDisplay: `${req.user.fullName} (${req.user.employeeCode})`,
       action: 'USER_LOGOUT',
       entityType: 'User',
       entityId: req.user._id.toString(),
-      ipAddress: req.ip
+      ipAddress,
+      diffData: {
+        scope: isAllDevices ? 'ALL_DEVICES' : 'CURRENT_DEVICE',
+        revokedSessionsCount: revokedCount,
+        timestamp: new Date().toISOString()
+      }
     });
 
     res.json({
       success: true,
-      message: allDevices 
-        ? 'Đăng xuất thành công khỏi tất cả các thiết bị.' 
-        : 'Đăng xuất thành công. Phiên làm việc đã kết thúc.'
+      scope: isAllDevices ? 'ALL_DEVICES' : 'CURRENT_DEVICE',
+      revokedSessionsCount: revokedCount,
+      message: isAllDevices 
+        ? 'Đăng xuất thành công khỏi tất cả các thiết bị. Mọi phiên làm việc đã bị thu hồi an toàn.' 
+        : 'Đăng xuất thành công. Phiên làm việc đã kết thúc an toàn.'
     });
   } catch (error) {
     console.error('[authController:logout] Error:', error);
@@ -430,17 +508,18 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    // Rate Limit Check: Maximum 3 requests in the last 1 hour
+    // Rate Limit Check: Maximum 3 requests in the last 1 hour (configurable in dev mode)
+    const maxRequestsPerHour = process.env.NODE_ENV === 'production' ? 3 : (Number(process.env.RATE_LIMIT_OTP_PER_HOUR) || 10);
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const recentRequestsCount = await PasswordReset.countDocuments({
       email: normalizedEmail,
       createdAt: { $gte: oneHourAgo }
     });
 
-    if (recentRequestsCount >= 3) {
+    if (recentRequestsCount >= maxRequestsPerHour) {
       return res.status(429).json({
         success: false,
-        message: 'Bạn đã yêu cầu OTP quá 3 lần trong vòng 1 giờ qua. Vui lòng thử lại sau.'
+        message: `Bạn đã yêu cầu OTP quá ${maxRequestsPerHour} lần trong vòng 1 giờ qua. Vui lòng thử lại sau.`
       });
     }
 
@@ -460,13 +539,17 @@ export const forgotPassword = async (req, res) => {
     });
 
     // Send email / log to terminal
-    await sendPasswordResetEmail(normalizedEmail, otp);
+    const mailSent = await sendPasswordResetEmail(normalizedEmail, otp);
+    const hasSmtpConfig = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 
     res.json({
       success: true,
-      message: 'Mã xác thực OTP (6 chữ số) đã được gửi đến email trường của bạn. Mã có hiệu lực trong 15 phút.',
-      // In development mode, return debugOtp so tests and UI demos can be seamless
-      debugOtp: process.env.NODE_ENV !== 'production' ? otp : undefined
+      message: hasSmtpConfig && mailSent
+        ? `Mã xác thực OTP (6 chữ số) đã được gửi trực tiếp đến hộp thư ${normalizedEmail}. Vui lòng kiểm tra Hộp thư đến (Inbox) hoặc mục Thư rác (Spam).`
+        : 'Mã xác thực OTP (6 chữ số) đã được tạo và gửi đến email trường của bạn. Mã có hiệu lực trong 15 phút.',
+      // Only expose debugOtp in dev mode when real SMTP is NOT configured
+      debugOtp: (!hasSmtpConfig && process.env.NODE_ENV !== 'production') ? otp : undefined,
+      isRealMailSent: hasSmtpConfig && mailSent
     });
   } catch (error) {
     console.error('[authController:forgotPassword] Error:', error);

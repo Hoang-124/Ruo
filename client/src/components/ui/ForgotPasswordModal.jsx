@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 // Native Inline SVG Icons strictly adhering to project specifications
 const SvgIcons = {
@@ -59,11 +60,13 @@ const SvgIcons = {
 
 export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSuccessLogin }) => {
   const { forgotPassword, verifyResetOtp, resetPassword } = useAuth();
+  const { toast } = useToast();
 
   const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password, 4: Success
   const [email, setEmail] = useState(defaultEmail);
   const [otp, setOtp] = useState('');
   const [debugOtp, setDebugOtp] = useState('');
+  const [isRealMailSent, setIsRealMailSent] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -83,6 +86,18 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
       return () => clearInterval(timer);
     }
   }, [step]);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !loading) {
+        resetModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, loading]);
 
   // Format mm:ss
   const formatTimer = (seconds) => {
@@ -107,9 +122,9 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
 
   if (!isOpen) return null;
 
-  // Step 1: Request OTP
+  // Step 1: Request OTP (Rate limited: 3 requests per hour, TTL: 15 minutes)
   const handleRequestOtp = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setErrorMsg(null);
     setLoading(true);
 
@@ -120,16 +135,28 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
       setSuccessMsg(res.message);
       if (res.debugOtp) {
         setDebugOtp(res.debugOtp);
+      } else {
+        setDebugOtp('');
       }
+      setIsRealMailSent(Boolean(res.isRealMailSent));
       setStep(2);
+      toast.info(res.message || 'Mã xác thực OTP (6 chữ số) đã được gửi.', 'Đã Gửi OTP');
     } else {
       setErrorMsg(res.message || 'Không thể gửi mã OTP.');
+      if (res.message && res.message.includes('quá 3 lần')) {
+        toast.warning(res.message, 'Giới Hạn Tần Suất (Rate Limit)');
+      }
     }
   };
 
   // Step 2: Verify OTP
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
+    if (timeLeft <= 0) {
+      setErrorMsg('Mã OTP này đã hết hạn hiệu lực 15 phút. Vui lòng bấm gửi lại mã mới.');
+      return;
+    }
+
     setErrorMsg(null);
     setLoading(true);
 
@@ -139,6 +166,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
     if (res.success) {
       setSuccessMsg(res.message);
       setStep(3);
+      toast.success('Xác thực mã OTP thành công! Vui lòng tạo mật khẩu mới.', 'Xác Thực OTP');
     } else {
       setErrorMsg(res.message || 'Mã xác thực OTP không chính xác.');
     }
@@ -157,6 +185,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
 
     if (res.success) {
       setStep(4);
+      toast.success('Đặt lại mật khẩu thành công! Mọi phiên đăng nhập cũ đã được thu hồi an toàn.', 'Hoàn Tất Khôi Phục');
     } else {
       setErrorMsg(res.message || 'Không thể đặt lại mật khẩu.');
     }
@@ -175,34 +204,26 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-        background: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}
+      className="ruo-modal-backdrop-smooth"
       onClick={(e) => e.target === e.currentTarget && resetModal()}
+      role="dialog"
+      aria-modal="true"
     >
       <div
-        className="card"
+        className="ruo-modal-card-smooth"
         style={{
           width: '100%',
           maxWidth: '520px',
           background: 'var(--surface-panel)',
           border: '1px solid var(--hairline-medium)',
-          borderRadius: 'var(--radius-xl)',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.5)',
-          overflow: 'hidden'
+          borderRadius: 'var(--radius-xl)'
         }}
       >
+        {/* Accent Bar */}
+        <div
+          className="ruo-modal-accent-bar"
+          style={{ background: 'linear-gradient(90deg, #3B82F6 0%, #06B6D4 50%, #10B981 100%)' }}
+        />
         {/* Header */}
         <div
           style={{
@@ -331,6 +352,29 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
                 </div>
               </div>
 
+              {isRealMailSent && (
+                <div
+                  style={{
+                    background: 'rgba(37, 99, 235, 0.08)',
+                    border: '1px solid rgba(37, 99, 235, 0.25)',
+                    padding: '11px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    fontSize: '12px',
+                    color: 'var(--ink-primary)',
+                    lineHeight: 1.45
+                  }}
+                >
+                  <SvgIcons.Mail size={18} color="var(--laser-cyan)" />
+                  <span>
+                    Mã xác thực đã được gửi tới hộp thư thật của bạn. Vui lòng kiểm tra <strong>Hộp thư đến</strong> hoặc mục <strong>Thư rác (Spam/Junk)</strong> để nhận mã OTP 6 số.
+                  </span>
+                </div>
+              )}
+
               {debugOtp && (
                 <div
                   style={{
@@ -379,6 +423,29 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
                 />
               </div>
 
+              {/* Expired or Resend prompt */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '12px' }}>
+                <span style={{ color: timeLeft === 0 ? '#EF4444' : 'var(--ink-muted)' }}>
+                  {timeLeft === 0 ? 'Mã OTP đã hết hạn (15 phút).' : 'Chưa nhận được mã OTP?'}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRequestOtp}
+                  disabled={loading}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: 'var(--laser-cyan)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  {loading ? 'Đang gửi...' : 'Gửi lại mã mới'}
+                </button>
+              </div>
+
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button
                   type="button"
@@ -392,7 +459,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
 
                 <button
                   type="submit"
-                  disabled={otp.length !== 6 || loading}
+                  disabled={otp.length !== 6 || loading || timeLeft === 0}
                   className="laser-btn laser-btn-primary"
                   style={{ flex: 2, padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >

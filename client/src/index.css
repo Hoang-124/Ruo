@@ -3633,6 +3633,737 @@ code, pre, .font-mono {
   gap: 16px;
 }
 
+/* ==========================================================================
+   PROJECT-WIDE SMOOTH MICRO-INTERACTIONS & EASING (TASTE-SKILL & UI-UX-PRO-MAX)
+   Smooth Deceleration: cubic-bezier(0.16, 1, 0.3, 1)
+   Tactile Spring: cubic-bezier(0.34, 1.56, 0.64, 1)
+   ========================================================================== */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Global button micro-interactions with physical tactility */
+.laser-btn,
+.ruo-footer-btn,
+.ruo-nav-tab,
+.ruo-portal-btn-primary,
+.ruo-portal-btn-secondary,
+.ruo-portal-btn-ghost,
+.ruo-tab-btn,
+.ruo-search-trigger,
+.ruo-action-btn,
+.ruo-modal-close-btn {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.laser-btn:active,
+.ruo-footer-btn:active,
+.ruo-portal-btn-primary:active,
+.ruo-portal-btn-secondary:active,
+.ruo-tab-btn:active {
+  transform: scale(0.976) !important;
+}
+
+/* Global input transition smoothing */
+input,
+select,
+textarea {
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Popover smoothly appears with spring scale */
+.ruo-popover-menu {
+  animation: ruoPopoverAppear 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top right;
+}
+
+@keyframes ruoPopoverAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ==========================================================================
+   GLOBAL SMOOTH MODAL SYSTEM
+   ========================================================================== */
+
+.ruo-modal-backdrop-smooth {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.76);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: ruoBackdropFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes ruoBackdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ruo-modal-card-smooth {
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline-medium);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 35px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+  animation: ruoModalScaleUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: center center;
+}
+
+@keyframes ruoModalScaleUp {
+  0% {
+    opacity: 0;
+    transform: scale(0.93) translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ==========================================================================
+   LOGOUT CONFIRMATION POPUP MODAL STYLES (UC-1.2)
+   ========================================================================== */
+
+.ruo-logout-modal-card {
+  width: 100%;
+  max-width: 480px;
+  padding: 28px;
+  background: var(--surface-panel);
+  border: 1px solid var(--hairline-medium);
+}
+
+.ruo-modal-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #EF4444 0%, #F59E0B 50%, #3B82F6 100%);
+}
+
+.ruo-logout-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ruo-logout-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.15);
+}
+
+.ruo-logout-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink-pure);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.01em;
+}
+
+.ruo-logout-subtitle {
+  font-size: 13px;
+  color: var(--ink-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ruo-modal-close-btn {
+  background: none;
+  border: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ruo-modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink-pure);
+}
+
+.ruo-logout-scope-box {
+  margin-bottom: 20px;
+  background: var(--surface-card);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.ruo-scope-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.ruo-scope-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ruo-scope-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--hairline-soft);
+  background: var(--surface-panel);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.ruo-scope-item:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ruo-scope-item.selected {
+  border-color: var(--laser-cyan);
+  background: rgba(59, 130, 246, 0.07);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.12);
+}
+
+.ruo-scope-item.selected.danger {
+  border-color: #EF4444;
+  background: rgba(239, 68, 68, 0.07);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.12);
+}
+
+.ruo-scope-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--hairline-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: border-color 0.2s ease;
+}
+
+.ruo-scope-item.selected .ruo-scope-radio {
+  border-color: var(--laser-cyan);
+}
+
+.ruo-scope-radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--laser-cyan);
+}
+
+.ruo-scope-item.selected.danger .ruo-scope-radio {
+  border-color: #EF4444;
+}
+
+.ruo-scope-radio-dot.danger {
+  background: #EF4444;
+}
+
+.ruo-scope-icon {
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ruo-scope-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ruo-scope-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink-pure);
+}
+
+.ruo-scope-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(239, 68, 68, 0.14);
+  color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+}
+
+.ruo-scope-desc {
+  font-size: 12px;
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+
+.ruo-logout-audit-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: var(--ink-secondary);
+  margin-bottom: 22px;
+}
+
+.ruo-logout-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.ruo-logout-cancel-btn {
+  padding: 9px 20px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+
+.ruo-logout-confirm-btn {
+  padding: 9px 22px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.laser-btn-danger {
+  background: #EF4444 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #DC2626 !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+}
+
+.laser-btn-danger:hover {
+  background: #DC2626 !important;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
+}
+
+/* ==========================================================================
+   TOP-RIGHT TOAST NOTIFICATION SYSTEM (NATIVE TOAST)
+   ========================================================================== */
+
+.ruo-toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 1000000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  max-width: 420px;
+  width: calc(100vw - 48px);
+}
+
+.ruo-toast-item {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px 16px 16px;
+  border-radius: 14px;
+  background: rgba(12, 14, 18, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--hairline-medium);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  font-family: var(--font-sans);
+  user-select: none;
+}
+
+.ruo-toast-enter {
+  animation: ruoSlideInRight 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ruo-toast-exit {
+  animation: ruoSlideOutRight 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes ruoSlideInRight {
+  0% {
+    opacity: 0;
+    transform: translate3d(120%, 0, 0) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes ruoSlideOutRight {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(115%, 0, 0) scale(0.92);
+  }
+}
+
+/* Toast types in Dark Mode (Default) */
+.ruo-toast-item.ruo-toast-success {
+  border-color: rgba(16, 185, 129, 0.38);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(16, 185, 129, 0.16);
+}
+.ruo-toast-item.ruo-toast-error {
+  border-color: rgba(239, 68, 68, 0.38);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(239, 68, 68, 0.16);
+}
+.ruo-toast-item.ruo-toast-warning {
+  border-color: rgba(245, 158, 11, 0.38);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(245, 158, 11, 0.16);
+}
+.ruo-toast-item.ruo-toast-info {
+  border-color: rgba(59, 130, 246, 0.38);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(59, 130, 246, 0.16);
+}
+
+.ruo-toast-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ruo-toast-success .ruo-toast-icon-wrap {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10B981;
+}
+.ruo-toast-error .ruo-toast-icon-wrap {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #EF4444;
+}
+.ruo-toast-warning .ruo-toast-icon-wrap {
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #F59E0B;
+}
+.ruo-toast-info .ruo-toast-icon-wrap {
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #3B82F6;
+}
+
+.ruo-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ruo-toast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.ruo-toast-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.ruo-toast-success .ruo-toast-title { color: #10B981; }
+.ruo-toast-error .ruo-toast-title { color: #EF4444; }
+.ruo-toast-warning .ruo-toast-title { color: #F59E0B; }
+.ruo-toast-info .ruo-toast-title { color: #3B82F6; }
+
+.ruo-toast-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.ruo-toast-message {
+  font-size: 12.5px;
+  color: var(--ink-primary);
+  margin: 0;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.ruo-toast-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+  transition: all 0.15s ease;
+  margin-left: 2px;
+  margin-top: 1px;
+}
+
+.ruo-toast-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink-pure);
+}
+
+.ruo-toast-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  transform-origin: left center;
+  animation: ruoToastProgress linear forwards;
+}
+.ruo-toast-success .ruo-toast-progress-bar { background: #10B981; }
+.ruo-toast-error .ruo-toast-progress-bar { background: #EF4444; }
+.ruo-toast-warning .ruo-toast-progress-bar { background: #F59E0B; }
+.ruo-toast-info .ruo-toast-progress-bar { background: #3B82F6; }
+
+@keyframes ruoToastProgress {
+  0% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+
+/* ==========================================================================
+   TOAST NOTIFICATION IN LIGHT MODE ADAPTATION
+   ========================================================================== */
+
+[data-theme="light"] .ruo-toast-item {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid #CBD5E1;
+  box-shadow: 0 14px 34px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="light"] .ruo-toast-item.ruo-toast-success {
+  border-color: #86EFAC;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%);
+  box-shadow: 0 14px 34px -4px rgba(16, 185, 129, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+}
+[data-theme="light"] .ruo-toast-item.ruo-toast-error {
+  border-color: #FCA5A5;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FEF2F2 100%);
+  box-shadow: 0 14px 34px -4px rgba(239, 68, 68, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+}
+[data-theme="light"] .ruo-toast-item.ruo-toast-warning {
+  border-color: #FCD34D;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFFBEB 100%);
+  box-shadow: 0 14px 34px -4px rgba(245, 158, 11, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+}
+[data-theme="light"] .ruo-toast-item.ruo-toast-info {
+  border-color: #93C5FD;
+  background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 100%);
+  box-shadow: 0 14px 34px -4px rgba(59, 130, 246, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="light"] .ruo-toast-success .ruo-toast-icon-wrap {
+  background: #DCFCE7;
+  border: 1px solid #86EFAC;
+  color: #059669;
+}
+[data-theme="light"] .ruo-toast-error .ruo-toast-icon-wrap {
+  background: #FEE2E2;
+  border: 1px solid #FCA5A5;
+  color: #DC2626;
+}
+[data-theme="light"] .ruo-toast-warning .ruo-toast-icon-wrap {
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  color: #D97706;
+}
+[data-theme="light"] .ruo-toast-info .ruo-toast-icon-wrap {
+  background: #DBEAFE;
+  border: 1px solid #93C5FD;
+  color: #2563EB;
+}
+
+[data-theme="light"] .ruo-toast-success .ruo-toast-title { color: #047857; }
+[data-theme="light"] .ruo-toast-error .ruo-toast-title { color: #B91C1C; }
+[data-theme="light"] .ruo-toast-warning .ruo-toast-title { color: #B45309; }
+[data-theme="light"] .ruo-toast-info .ruo-toast-title { color: #1D4ED8; }
+
+[data-theme="light"] .ruo-toast-time {
+  color: #64748B;
+}
+
+[data-theme="light"] .ruo-toast-message {
+  color: #1E293B;
+  font-weight: 500;
+}
+
+[data-theme="light"] .ruo-toast-close-btn {
+  color: #64748B;
+}
+[data-theme="light"] .ruo-toast-close-btn:hover {
+  background: rgba(15, 23, 42, 0.07);
+  color: #0F172A;
+}
+
+[data-theme="light"] .ruo-toast-success .ruo-toast-progress-bar { background: #059669; }
+[data-theme="light"] .ruo-toast-error .ruo-toast-progress-bar { background: #DC2626; }
+[data-theme="light"] .ruo-toast-warning .ruo-toast-progress-bar { background: #D97706; }
+[data-theme="light"] .ruo-toast-info .ruo-toast-progress-bar { background: #2563EB; }
+
+/* Light mode modal refinements */
+[data-theme="light"] .ruo-modal-backdrop-smooth {
+  background: rgba(15, 23, 42, 0.45);
+}
+[data-theme="light"] .ruo-modal-card-smooth {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16), 0 4px 16px rgba(15, 23, 42, 0.08);
+}
+[data-theme="light"] .ruo-modal-close-btn:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #0F172A;
+}
+[data-theme="light"] .ruo-logout-scope-box {
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+}
+[data-theme="light"] .ruo-scope-item {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+}
+[data-theme="light"] .ruo-scope-item:hover {
+  background: #F1F5F9;
+  border-color: #CBD5E1;
+}
+[data-theme="light"] .ruo-scope-item.selected {
+  background: #EFF6FF;
+  border-color: #3B82F6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+}
+[data-theme="light"] .ruo-scope-item.selected.danger {
+  background: #FEF2F2;
+  border-color: #EF4444;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
+}
+[data-theme="light"] .ruo-logout-audit-note {
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+  color: #1E40AF;
+}
+
+/* ==========================================================================
+   GLOBAL VIEW TRANSITIONS & TACTILE MICRO-INTERACTIONS
+   ========================================================================== */
+
+html {
+  scroll-behavior: smooth;
+}
+
+.ruo-view-enter {
+  animation: ruoViewEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes ruoViewEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ruo-logout-modal-backdrop {
+  z-index: 100005 !important;
+}
+
+/* Tactile micro-interactions for interactive buttons */
+button:active:not(:disabled),
+.laser-btn:active:not(:disabled),
+.ruo-portal-btn-primary:active:not(:disabled),
+.ruo-subnav-btn:active:not(:disabled),
+.ruo-icon-button:active:not(:disabled) {
+  transform: scale(0.976) !important;
+  transition: transform 0.08s ease !important;
+}
+
+@keyframes ruoShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.ruo-shake {
+  animation: ruoShake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes ruoSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .ruo-toast-container {
+    top: 14px;
+    right: 14px;
+    left: 14px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+
+
 
 
 

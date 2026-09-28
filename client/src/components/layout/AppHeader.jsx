@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { Icons } from '../common/SvgIcons';
 import { CommandPaletteModal } from '../ui/CommandPaletteModal';
+import { LogoutConfirmModal } from '../ui/LogoutConfirmModal';
 import { RuoLogo } from '../common/RuoLogo';
 
 export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileModal }) => {
@@ -18,10 +20,55 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
     logout
   } = useAuth();
 
+  const { toast } = useToast();
+
   const [currentTime, setCurrentTime] = useState('');
   const [showNotifPopover, setShowNotifPopover] = useState(false);
   const [showProfilePopover, setShowProfilePopover] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
+  const notifPopoverRef = useRef(null);
+  const profilePopoverRef = useRef(null);
+
+  const handleConfirmLogout = async (allDevices) => {
+    setIsLogoutModalOpen(false);
+    toast.success(
+      allDevices
+        ? 'Đã thu hồi tất cả phiên và đăng xuất khỏi mọi thiết bị an toàn!'
+        : 'Đăng xuất thành công! Phiên làm việc đã kết thúc an toàn.',
+      'Đăng Xuất Thành Công'
+    );
+    try {
+      await logout(allDevices);
+    } catch (err) {
+      toast.error('Có lỗi xảy ra trong quá trình đăng xuất.');
+    }
+  };
+
+  // Close popovers on click outside or Escape
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (notifPopoverRef.current && !notifPopoverRef.current.contains(e.target)) {
+        setShowNotifPopover(false);
+      }
+      if (profilePopoverRef.current && !profilePopoverRef.current.contains(e.target)) {
+        setShowProfilePopover(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowNotifPopover(false);
+        setShowProfilePopover(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     const updateTime = () => {
@@ -180,7 +227,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
             </button>
 
             {/* Notifications Dropdown */}
-            <div style={{ position: 'relative' }}>
+            <div ref={notifPopoverRef} style={{ position: 'relative' }}>
               <button
                 className={`ruo-icon-button ${showNotifPopover ? 'active' : ''}`}
                 onClick={() => {
@@ -230,7 +277,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
             </div>
 
             {/* Human-Crafted User Profile & Workspace Role Switcher */}
-            <div style={{ position: 'relative' }}>
+            <div ref={profilePopoverRef} style={{ position: 'relative' }}>
               <button
                 className={`ruo-profile-button ${showProfilePopover ? 'active' : ''}`}
                 onClick={() => {
@@ -343,9 +390,9 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                       style={{ color: '#EF4444' }}
                       onClick={() => {
                         setShowProfilePopover(false);
-                        logout(false);
+                        setIsLogoutModalOpen(true);
                       }}
-                      title="Đăng xuất khỏi hệ thống Ruo UFMS"
+                      title="Đăng xuất khỏi hệ thống Ruo CSVC"
                     >
                       <Icons.LogOut size={14} color="#EF4444" />
                       <span>Đăng Xuất (UC-1.2)</span>
@@ -406,6 +453,14 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
           onSelectTab(modId);
           setShowCommandPalette(false);
         }}
+      />
+
+      {/* Global Logout Confirmation Modal (UC-1.2) */}
+      <LogoutConfirmModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+        userName={currentUser?.name || 'Người dùng'}
       />
     </>
   );

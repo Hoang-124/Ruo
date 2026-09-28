@@ -1,23 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { ForgotPasswordModal } from '../../components/ui/ForgotPasswordModal';
 import { Building2DIso } from '../../components/common/Building2DIso';
 import { RuoLogo } from '../../components/common/RuoLogo';
-import { USERS } from '../../mock/mockData';
 
 export const LoginPage = ({ onLoginSuccess }) => {
   const { login, register, theme, toggleTheme } = useAuth();
+  const { toast } = useToast();
 
-  // Mode: 'login' | 'register' | 'demo'
+  // Mode: 'login' | 'register'
   const [activeTab, setActiveTab] = useState('login');
   const [selectedFloor, setSelectedFloor] = useState(null);
 
-  // Standard Login form state
-  const [identifier, setIdentifier] = useState('hoang.tb220412@university.edu.vn');
-  const [password, setPassword] = useState('Ruo@2026');
+  // Standard Login form state - Strictly live credentials
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  // Security & Lockout State (UC-1.1 DoD: 15-minute temporary lockout on 5 failed attempts)
+  const [lockoutData, setLockoutData] = useState(null);
+  const [attemptsLeft, setAttemptsLeft] = useState(null);
 
   // Register form state
   const [regFullName, setRegFullName] = useState('');
@@ -28,116 +33,145 @@ export const LoginPage = ({ onLoginSuccess }) => {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [regShowPassword, setRegShowPassword] = useState(false);
+  const [regShowConfirmPassword, setRegShowConfirmPassword] = useState(false);
   const [regAgreed, setRegAgreed] = useState(false);
+
+  // Validation & Touched Tracking
+  const [regErrors, setRegErrors] = useState({});
+  const [regTouched, setRegTouched] = useState({});
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
-  // 6 Demo Roles metadata for 1-Click quick test login
-  const DEMO_ROLES = [
-    {
-      key: 'lecturer',
-      title: 'Giảng Viên',
-      name: 'TS. Nguyễn Văn Nam',
-      code: 'CB198402',
-      email: USERS.lecturer?.email || 'nam.nv@university.edu.vn',
-      dept: 'Khoa Kỹ Thuật Máy Tính',
-      badgeColor: '#6366F1',
-      desc: 'Đăng ký phòng giảng dạy, mượn thiết bị Lab, báo sự cố lớp học.'
-    },
-    {
-      key: 'student',
-      title: 'Sinh Viên',
-      name: 'Trần Bảo Hoàng',
-      code: 'SV20220412',
-      email: USERS.student?.email || 'hoang.tb220412@university.edu.vn',
-      dept: 'Viện CNTT & Truyền Thông',
-      badgeColor: '#3B82F6',
-      desc: 'Tra cứu 108 phòng học, xem lịch biểu, đặt phòng tự học/học nhóm.'
-    },
-    {
-      key: 'facility_staff',
-      title: 'Quản Lý CSVC',
-      name: 'Lê Thị Mai',
-      code: 'NV201901',
-      email: USERS.facility_staff?.email || 'mai.lt@university.edu.vn',
-      dept: 'Phòng Cơ Sở Vật Chất',
-      badgeColor: '#0EA5E9',
-      desc: 'Duyệt đơn mượn phòng, kiểm kê kho thiết bị QR, lập hội đồng thanh lý.'
-    },
-    {
-      key: 'maintenance',
-      title: 'Kỹ Thuật Viên',
-      name: 'Phạm Văn Hùng',
-      code: 'KT201805',
-      email: USERS.maintenance?.email || 'hung.pv@university.edu.vn',
-      dept: 'Tổ Kỹ Thuật & Sửa Chữa',
-      badgeColor: '#F59E0B',
-      desc: 'Tiếp nhận ticket sự cố, đồng hồ đếm ngược SLA, sửa chữa thiết bị.'
-    },
-    {
-      key: 'academic_affairs',
-      title: 'Phòng Đào Tạo',
-      name: 'Hoàng Quốc Dũng',
-      code: 'DT201509',
-      email: USERS.academic_affairs?.email || 'dung.hq@university.edu.vn',
-      dept: 'Phòng Quản Lý Đào Tạo',
-      badgeColor: '#10B981',
-      desc: 'Xếp thời khóa biểu tự động toàn trường bằng giải thuật CSP.'
-    },
-    {
-      key: 'admin',
-      title: 'Quản Trị Viên (Admin)',
-      name: 'Ban Quản Trị Hệ Thống',
-      code: 'AD000001',
-      email: USERS.admin?.email || 'admin@university.edu.vn',
-      dept: 'Trung Tâm CNTT & Viễn Thông',
-      badgeColor: '#EF4444',
-      desc: 'Toàn quyền điều hành, phân quyền 7 nhóm qua RBAC, Audit Log SHA-256.'
-    }
-  ];
+  // Registration password policy checklist
+  const regPasswordCriteria = useMemo(() => {
+    return {
+      minLength: regPassword.length >= 8,
+      hasUpper: /[A-Z]/.test(regPassword),
+      hasLower: /[a-z]/.test(regPassword),
+      hasNumber: /\d/.test(regPassword),
+      hasSpecial: /[^a-zA-Z\d\s]/.test(regPassword),
+      isMatching: regPassword.length > 0 && regPassword === regConfirmPassword
+    };
+  }, [regPassword, regConfirmPassword]);
 
-  // Standard login submit
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setErrorMsg(null);
-    setSuccessMsg(null);
-    setLoading(true);
+  const isRegPasswordValid = Object.values(regPasswordCriteria).every(Boolean);
 
-    const res = await login(identifier, password);
-    setLoading(false);
-
-    if (res.success) {
-      if (onLoginSuccess) {
-        onLoginSuccess();
+  // Individual field validator
+  const validateRegField = (name, value, allValues = {}) => {
+    switch (name) {
+      case 'fullName': {
+        const val = String(value || '').trim();
+        if (!val) return 'Họ và tên là bắt buộc.';
+        if (val.length < 2) return 'Họ và tên phải có tối thiểu 2 ký tự.';
+        if (!/[a-zA-ZÀ-ỹ]/.test(val)) return 'Họ và tên phải chứa các chữ cái hợp lệ (không chỉ là số).';
+        return '';
       }
-    } else {
-      setErrorMsg(res.message || 'Thông tin tài khoản hoặc mật khẩu không chính xác.');
+      case 'email': {
+        const val = String(value || '').trim();
+        if (!val) return 'Email trường là bắt buộc.';
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(val)) return 'Email không đúng định dạng (ví dụ: hoang.tb@university.edu.vn).';
+        return '';
+      }
+      case 'employeeCode': {
+        const val = String(value || '').trim();
+        if (!val) return 'Mã số sinh viên/cán bộ là bắt buộc.';
+        if (val.length < 3) return 'Mã số phải có từ 3 đến 15 ký tự (ví dụ: SV20240123 hoặc CB198402).';
+        if (!/^[a-zA-Z0-9]+$/.test(val)) return 'Mã số chỉ gồm chữ cái và số, không chứa dấu cách.';
+        return '';
+      }
+      case 'password': {
+        const val = String(value || '');
+        if (!val) return 'Mật khẩu là bắt buộc.';
+        if (val.length < 8) return 'Mật khẩu phải có tối thiểu 8 ký tự.';
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d\s])/.test(val)) {
+          return 'Mật khẩu cần gồm chữ hoa, chữ thường, số và ký tự đặc biệt.';
+        }
+        return '';
+      }
+      case 'confirmPassword': {
+        const val = String(value || '');
+        const targetPass = allValues.password !== undefined ? allValues.password : regPassword;
+        if (!val) return 'Vui lòng nhập lại mật khẩu xác nhận.';
+        if (val !== targetPass) return 'Mật khẩu xác nhận không trùng khớp.';
+        return '';
+      }
+      case 'agreed': {
+        if (!value) return 'Vui lòng đồng ý với Quy chế sử dụng CSVC của Nhà trường.';
+        return '';
+      }
+      default:
+        return '';
     }
   };
 
-  // 1-Click quick login from demo role card
-  const handleQuickLogin = async (roleKey) => {
+  const handleFieldChange = (field, value) => {
+    if (regTouched[field]) {
+      const err = validateRegField(field, value, {
+        password: field === 'password' ? value : regPassword,
+        confirmPassword: field === 'confirmPassword' ? value : regConfirmPassword
+      });
+      setRegErrors(prev => ({ ...prev, [field]: err }));
+    }
+  };
+
+  const handleFieldBlur = (field, value) => {
+    setRegTouched(prev => ({ ...prev, [field]: true }));
+    const err = validateRegField(field, value, {
+      password: field === 'password' ? value : regPassword,
+      confirmPassword: field === 'confirmPassword' ? value : regConfirmPassword
+    });
+    setRegErrors(prev => ({ ...prev, [field]: err }));
+  };
+
+  // Standard login submit against real backend API
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!identifier.trim() || !password) {
+      setErrorMsg('Vui lòng nhập đầy đủ mã sinh viên/cán bộ hoặc email cùng mật khẩu.');
+      return;
+    }
+
     setErrorMsg(null);
     setSuccessMsg(null);
-    setLoading(true);
 
-    const mockUser = USERS[roleKey];
-    if (mockUser) {
-      const res = await login(mockUser.email, 'Ruo@2026');
-      setLoading(false);
+    try {
+      setLoading(true);
+      const res = await login(identifier.trim(), password);
+
       if (res.success) {
-        setSuccessMsg(`Đăng nhập thành công với vai trò ${mockUser.roleTitle}!`);
-        setTimeout(() => {
-          if (onLoginSuccess) {
-            onLoginSuccess();
-          }
-        }, 400);
+        setLockoutData(null);
+        setAttemptsLeft(null);
+        setSuccessMsg('Đăng nhập thành công! Đang chuyển hướng vào hệ thống...');
+        toast.success(`Chào mừng ${res.user.fullName || 'bạn'} trở lại hệ thống Ruo CSVC!`, 'Đăng Nhập Thành Công');
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        }
       } else {
-        setErrorMsg(res.message || 'Không thể đăng nhập tài khoản mẫu.');
+        setErrorMsg(res.message || 'Thông tin tài khoản hoặc mật khẩu không chính xác.');
+        if (res.isLocked) {
+          setLockoutData({
+            isLocked: true,
+            remainingMinutes: res.remainingMinutes || 15
+          });
+          setAttemptsLeft(0);
+          toast.error(res.message, 'Tài Khoản Tạm Khóa');
+        } else {
+          setLockoutData(null);
+          if (res.attemptsLeft !== undefined) {
+            setAttemptsLeft(res.attemptsLeft);
+          }
+          toast.error(res.message || 'Đăng nhập không thành công.', 'Đăng Nhập Thất Bại');
+        }
       }
+    } catch (err) {
+      setErrorMsg('Lỗi kết nối máy chủ: ' + err.message);
+      toast.error('Không thể kết nối đến máy chủ Backend.', 'Lỗi Kết Nối');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -147,53 +181,71 @@ export const LoginPage = ({ onLoginSuccess }) => {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    if (!regFullName.trim() || !regEmail.trim() || !regEmployeeCode.trim() || !regPassword) {
-      setErrorMsg('Vui lòng điền đầy đủ tất cả các trường thông tin bắt buộc.');
+    // Touch all fields to show any missing requirements
+    const touchedAll = {
+      fullName: true,
+      email: true,
+      employeeCode: true,
+      password: true,
+      confirmPassword: true,
+      agreed: true
+    };
+    setRegTouched(touchedAll);
+
+    // Validate all fields
+    const errors = {
+      fullName: validateRegField('fullName', regFullName),
+      email: validateRegField('email', regEmail),
+      employeeCode: validateRegField('employeeCode', regEmployeeCode),
+      password: validateRegField('password', regPassword),
+      confirmPassword: validateRegField('confirmPassword', regConfirmPassword, { password: regPassword }),
+      agreed: validateRegField('agreed', regAgreed)
+    };
+    setRegErrors(errors);
+
+    const firstError = Object.values(errors).find(Boolean);
+    if (firstError) {
+      setErrorMsg(firstError);
+      toast.error(firstError, 'Dữ Liệu Chưa Hợp Lệ');
       return;
     }
 
-    if (regPassword.length < 8) {
-      setErrorMsg('Mật khẩu bảo mật phải có độ dài tối thiểu 8 ký tự.');
-      return;
-    }
+    try {
+      setLoading(true);
 
-    if (regPassword !== regConfirmPassword) {
-      setErrorMsg('Mật khẩu xác nhận không trùng khớp. Vui lòng kiểm tra lại.');
-      return;
-    }
+      const res = await register({
+        fullName: regFullName.trim(),
+        email: regEmail.trim(),
+        employeeCode: regEmployeeCode.trim().toUpperCase(),
+        password: regPassword,
+        role: regRole,
+        departmentName: regDepartment
+      });
 
-    if (!regAgreed) {
-      setErrorMsg('Vui lòng đồng ý với Quy chế sử dụng cơ sở vật chất của Nhà trường.');
-      return;
-    }
-
-    setLoading(true);
-
-    const res = await register({
-      fullName: regFullName.trim(),
-      email: regEmail.trim(),
-      employeeCode: regEmployeeCode.trim().toUpperCase(),
-      password: regPassword,
-      role: regRole,
-      departmentName: regDepartment
-    });
-
-    setLoading(false);
-
-    if (res.success) {
-      setSuccessMsg(res.message || 'Đăng ký tài khoản thành công! Đang chuyển hướng...');
-      setTimeout(() => {
-        if (onLoginSuccess) {
-          onLoginSuccess();
-        }
-      }, 1000);
-    } else {
-      setErrorMsg(res.message || 'Đăng ký tài khoản không thành công. Vui lòng thử lại.');
+      if (res && res.success) {
+        setSuccessMsg(res.message || 'Đăng ký tài khoản thành công! Đang chuyển hướng...');
+        toast.success(res.message || `Đăng ký thành công! Chào mừng ${regFullName.trim()}`, 'Đăng Ký Thành Công');
+        setTimeout(() => {
+          if (onLoginSuccess) {
+            onLoginSuccess();
+          }
+        }, 600);
+      } else {
+        const msg = res?.message || 'Đăng ký tài khoản không thành công. Vui lòng thử lại.';
+        setErrorMsg(msg);
+        toast.error(msg, 'Đăng Ký Thất Bại');
+      }
+    } catch (err) {
+      const msg = 'Lỗi kết nối máy chủ: ' + err.message;
+      setErrorMsg(msg);
+      toast.error(msg, 'Lỗi Hệ Thống');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="ruo-split-auth-viewport">
+    <div className="ruo-split-auth-viewport ruo-view-enter">
       {/* ====================================================================
           BÊN TRÁI (LEFT): TÒA NHÀ KIẾN TRÚC 2D & LOGO RUO
           ==================================================================== */}
@@ -335,34 +387,6 @@ export const LoginPage = ({ onLoginSuccess }) => {
               <Icons.User size={14} />
               <span>Đăng Ký</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('demo');
-                setErrorMsg(null);
-                setSuccessMsg(null);
-              }}
-              style={{
-                flex: 1.15,
-                padding: '9px 8px',
-                borderRadius: '8px',
-                border: 'none',
-                background: activeTab === 'demo' ? '#2563EB' : 'transparent',
-                color: activeTab === 'demo' ? '#FFFFFF' : 'var(--ink-muted)',
-                fontWeight: activeTab === 'demo' ? 700 : 500,
-                fontSize: '13px',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}
-            >
-              <Icons.Users size={14} />
-              <span>Tài Khoản Mẫu</span>
-            </button>
           </div>
 
           {/* Feedback Messages */}
@@ -420,6 +444,61 @@ export const LoginPage = ({ onLoginSuccess }) => {
                 </p>
               </div>
 
+              {/* UC-1.1 Brute-Force Lockout Banner (15-Minute Temporary Lock) */}
+              {lockoutData?.isLocked && (
+                <div
+                  style={{
+                    marginBottom: '16px',
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px'
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#EF4444', marginBottom: '3px' }}>
+                      Tài Khoản Đang Bị Khóa Tạm Thời (15 Phút)
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', lineHeight: 1.5 }}>
+                      Hệ thống phát hiện 5 lần nhập sai mật khẩu liên tiếp. Vui lòng chờ <strong>{lockoutData.remainingMinutes} phút</strong> để thử lại, hoặc liên hệ Bộ phận Kỹ thuật CSVC.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Warning: Attempts remaining before lockout */}
+              {!lockoutData?.isLocked && attemptsLeft !== null && attemptsLeft > 0 && attemptsLeft < 5 && (
+                <div
+                  style={{
+                    marginBottom: '16px',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(245, 158, 11, 0.12)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    color: '#F59E0B'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  <div style={{ fontSize: '12.5px', fontWeight: 600 }}>
+                    Cảnh báo: Bạn còn <strong>{attemptsLeft}</strong> lần thử trước khi tài khoản bị khóa tạm 15 phút.
+                  </div>
+                </div>
+              )}
+
               <form onSubmit={handleLogin}>
                 {/* Field 1: Email or MSSV */}
                 <div style={{ marginBottom: '16px' }}>
@@ -435,7 +514,8 @@ export const LoginPage = ({ onLoginSuccess }) => {
                       className="ruo-portal-input"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder="hoang.tb220412@university.edu.vn hoặc SV20220412"
+                      placeholder="e.g. hoang.tb220412@university.edu.vn hoặc SV20220412"
+                      disabled={loading || lockoutData?.isLocked}
                       required
                     />
                   </div>
@@ -500,8 +580,22 @@ export const LoginPage = ({ onLoginSuccess }) => {
                 </div>
 
                 {/* Submit Button */}
-                <button type="submit" disabled={loading} className="ruo-portal-btn-primary">
-                  <span>{loading ? 'Đang xác thực bảo mật...' : 'Đăng Nhập Vào Hệ Thống'}</span>
+                <button
+                  type="submit"
+                  disabled={loading || lockoutData?.isLocked}
+                  className="ruo-portal-btn-primary"
+                  style={{
+                    opacity: lockoutData?.isLocked ? 0.5 : 1,
+                    cursor: lockoutData?.isLocked ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <span>
+                    {lockoutData?.isLocked
+                      ? `Tài khoản tạm khóa (${lockoutData.remainingMinutes}m)`
+                      : loading
+                        ? 'Đang xác thực bảo mật...'
+                        : 'Đăng Nhập Vào Hệ Thống'}
+                  </span>
                   <Icons.ArrowRight size={16} />
                 </button>
               </form>
@@ -522,23 +616,40 @@ export const LoginPage = ({ onLoginSuccess }) => {
                 </p>
               </div>
 
-              <form onSubmit={handleRegister}>
-                <div style={{ marginBottom: '11px' }}>
+              <form onSubmit={handleRegister} noValidate>
+                {/* Field 1: Họ và tên */}
+                <div style={{ marginBottom: '12px' }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-primary)', marginBottom: '5px' }}>
                     Họ và tên đầy đủ *
                   </label>
                   <input
                     type="text"
                     className="ruo-portal-input"
-                    style={{ paddingLeft: '12px' }}
+                    style={{
+                      paddingLeft: '12px',
+                      borderColor: regTouched.fullName && regErrors.fullName ? '#EF4444' : undefined
+                    }}
                     value={regFullName}
-                    onChange={(e) => setRegFullName(e.target.value)}
+                    onChange={(e) => {
+                      setRegFullName(e.target.value);
+                      handleFieldChange('fullName', e.target.value);
+                    }}
+                    onBlur={(e) => handleFieldBlur('fullName', e.target.value)}
                     placeholder="Ví dụ: Nguyễn Văn An"
                     required
                   />
+                  {regTouched.fullName && regErrors.fullName && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px', fontSize: '11px', color: '#EF4444' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <span>{regErrors.fullName}</span>
+                    </div>
+                  )}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '11px' }}>
+                {/* Field 2 & 3: Email trường & MSSV/Mã cán bộ */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-primary)', marginBottom: '5px' }}>
                       Email trường *
@@ -546,13 +657,29 @@ export const LoginPage = ({ onLoginSuccess }) => {
                     <input
                       type="email"
                       className="ruo-portal-input"
-                      style={{ paddingLeft: '10px' }}
+                      style={{
+                        paddingLeft: '10px',
+                        borderColor: regTouched.email && regErrors.email ? '#EF4444' : undefined
+                      }}
                       value={regEmail}
-                      onChange={(e) => setRegEmail(e.target.value)}
+                      onChange={(e) => {
+                        setRegEmail(e.target.value);
+                        handleFieldChange('email', e.target.value);
+                      }}
+                      onBlur={(e) => handleFieldBlur('email', e.target.value)}
                       placeholder="an.nv@university.edu.vn"
                       required
                     />
+                    {regTouched.email && regErrors.email && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px', fontSize: '11px', color: '#EF4444' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span>{regErrors.email}</span>
+                      </div>
+                    )}
                   </div>
+
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-primary)', marginBottom: '5px' }}>
                       MSSV / Mã Cán Bộ *
@@ -560,16 +687,32 @@ export const LoginPage = ({ onLoginSuccess }) => {
                     <input
                       type="text"
                       className="ruo-portal-input"
-                      style={{ paddingLeft: '10px' }}
+                      style={{
+                        paddingLeft: '10px',
+                        borderColor: regTouched.employeeCode && regErrors.employeeCode ? '#EF4444' : undefined
+                      }}
                       value={regEmployeeCode}
-                      onChange={(e) => setRegEmployeeCode(e.target.value)}
-                      placeholder="SV20240123"
+                      onChange={(e) => {
+                        setRegEmployeeCode(e.target.value);
+                        handleFieldChange('employeeCode', e.target.value);
+                      }}
+                      onBlur={(e) => handleFieldBlur('employeeCode', e.target.value)}
+                      placeholder="SV20240123 / CB198402"
                       required
                     />
+                    {regTouched.employeeCode && regErrors.employeeCode && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px', fontSize: '11px', color: '#EF4444' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span>{regErrors.employeeCode}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '11px' }}>
+                {/* Field 4 & 5: Vai trò & Khoa/Viện */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-primary)', marginBottom: '5px' }}>
                       Vai trò *
@@ -580,14 +723,15 @@ export const LoginPage = ({ onLoginSuccess }) => {
                         onClick={() => setRegRole('student')}
                         style={{
                           flex: 1,
-                          padding: '7px 4px',
+                          padding: '8px 4px',
                           borderRadius: '6px',
                           border: 'none',
                           background: regRole === 'student' ? '#2563EB' : 'var(--canvas-subtle)',
                           color: regRole === 'student' ? '#FFFFFF' : 'var(--ink-muted)',
                           fontSize: '11.5px',
                           fontWeight: 600,
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
                         }}
                       >
                         Sinh Viên
@@ -597,14 +741,15 @@ export const LoginPage = ({ onLoginSuccess }) => {
                         onClick={() => setRegRole('lecturer')}
                         style={{
                           flex: 1,
-                          padding: '7px 4px',
+                          padding: '8px 4px',
                           borderRadius: '6px',
                           border: 'none',
                           background: regRole === 'lecturer' ? '#2563EB' : 'var(--canvas-subtle)',
                           color: regRole === 'lecturer' ? '#FFFFFF' : 'var(--ink-muted)',
                           fontSize: '11.5px',
                           fontWeight: 600,
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
                         }}
                       >
                         Giảng Viên
@@ -621,7 +766,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
                       onChange={(e) => setRegDepartment(e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '7px',
+                        padding: '8px',
                         background: 'var(--canvas-subtle)',
                         border: '1px solid var(--hairline-medium)',
                         borderRadius: '6px',
@@ -641,146 +786,199 @@ export const LoginPage = ({ onLoginSuccess }) => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                {/* Field 6 & 7: Mật khẩu & Xác nhận mật khẩu with eye toggles */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '8px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-primary)', marginBottom: '5px' }}>
                       Mật khẩu *
                     </label>
-                    <input
-                      type={regShowPassword ? 'text' : 'password'}
-                      className="ruo-portal-input"
-                      style={{ paddingLeft: '10px' }}
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="Ít nhất 8 ký tự"
-                      required
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={regShowPassword ? 'text' : 'password'}
+                        className="ruo-portal-input"
+                        style={{
+                          paddingLeft: '10px',
+                          paddingRight: '32px',
+                          borderColor: regTouched.password && regErrors.password ? '#EF4444' : undefined
+                        }}
+                        value={regPassword}
+                        onChange={(e) => {
+                          setRegPassword(e.target.value);
+                          handleFieldChange('password', e.target.value);
+                        }}
+                        onBlur={(e) => handleFieldBlur('password', e.target.value)}
+                        placeholder="••••••••"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setRegShowPassword(!regShowPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '11px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--ink-muted)',
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                        title={regShowPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                      >
+                        {regShowPassword ? <Icons.EyeOff size={15} /> : <Icons.Eye size={15} />}
+                      </button>
+                    </div>
                   </div>
+
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-primary)', marginBottom: '5px' }}>
                       Xác nhận lại *
                     </label>
-                    <input
-                      type={regShowPassword ? 'text' : 'password'}
-                      className="ruo-portal-input"
-                      style={{ paddingLeft: '10px' }}
-                      value={regConfirmPassword}
-                      onChange={(e) => setRegConfirmPassword(e.target.value)}
-                      placeholder="Nhập lại mật khẩu"
-                      required
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={regShowConfirmPassword ? 'text' : 'password'}
+                        className="ruo-portal-input"
+                        style={{
+                          paddingLeft: '10px',
+                          paddingRight: '32px',
+                          borderColor: regTouched.confirmPassword && regErrors.confirmPassword ? '#EF4444' : undefined
+                        }}
+                        value={regConfirmPassword}
+                        onChange={(e) => {
+                          setRegConfirmPassword(e.target.value);
+                          handleFieldChange('confirmPassword', e.target.value);
+                        }}
+                        onBlur={(e) => handleFieldBlur('confirmPassword', e.target.value)}
+                        placeholder="••••••••"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setRegShowConfirmPassword(!regShowConfirmPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '11px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--ink-muted)',
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                        title={regShowConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                      >
+                        {regShowConfirmPassword ? <Icons.EyeOff size={15} /> : <Icons.Eye size={15} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
+                {/* Password Criteria Live Checklist */}
+                {(regPassword.length > 0 || regTouched.password) && (
+                  <div
+                    style={{
+                      marginBottom: '12px',
+                      padding: '8px 10px',
+                      background: 'var(--canvas-subtle)',
+                      borderRadius: '8px',
+                      border: '1px solid var(--hairline-medium)',
+                      fontSize: '11px'
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, color: 'var(--ink-secondary)', marginBottom: '5px' }}>
+                      Tiêu chuẩn an toàn mật khẩu:
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                      <div style={{ color: regPasswordCriteria.minLength ? '#10B981' : 'var(--ink-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>{regPasswordCriteria.minLength ? '✓' : '•'}</span>
+                        <span>Tối thiểu 8 ký tự</span>
+                      </div>
+                      <div style={{ color: regPasswordCriteria.hasUpper ? '#10B981' : 'var(--ink-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>{regPasswordCriteria.hasUpper ? '✓' : '•'}</span>
+                        <span>Chữ in hoa (A-Z)</span>
+                      </div>
+                      <div style={{ color: regPasswordCriteria.hasLower ? '#10B981' : 'var(--ink-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>{regPasswordCriteria.hasLower ? '✓' : '•'}</span>
+                        <span>Chữ thường (a-z)</span>
+                      </div>
+                      <div style={{ color: regPasswordCriteria.hasNumber ? '#10B981' : 'var(--ink-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>{regPasswordCriteria.hasNumber ? '✓' : '•'}</span>
+                        <span>Chữ số (0-9)</span>
+                      </div>
+                      <div style={{ color: regPasswordCriteria.hasSpecial ? '#10B981' : 'var(--ink-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>{regPasswordCriteria.hasSpecial ? '✓' : '•'}</span>
+                        <span>Ký tự đặc biệt (@$!%*?&)</span>
+                      </div>
+                      <div style={{ color: regPasswordCriteria.isMatching ? '#10B981' : 'var(--ink-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>{regPasswordCriteria.isMatching ? '✓' : '•'}</span>
+                        <span>Khớp xác nhận</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Field 8: Cam kết quy chế */}
                 <div style={{ marginBottom: '14px' }}>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '11.5px', color: 'var(--ink-muted)', lineHeight: 1.4 }}>
                     <input
                       type="checkbox"
                       checked={regAgreed}
-                      onChange={(e) => setRegAgreed(e.target.checked)}
+                      onChange={(e) => {
+                        setRegAgreed(e.target.checked);
+                        handleFieldChange('agreed', e.target.checked);
+                      }}
                       style={{ width: '14px', height: '14px', accentColor: '#2563EB', marginTop: '2px', cursor: 'pointer' }}
                     />
                     <span>Tôi cam kết tuân thủ Quy chế sử dụng cơ sở vật chất của Nhà trường.</span>
                   </label>
+                  {regTouched.agreed && regErrors.agreed && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px', fontSize: '11px', color: '#EF4444' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <span>{regErrors.agreed}</span>
+                    </div>
+                  )}
                 </div>
 
-                <button type="submit" disabled={loading} className="ruo-portal-btn-primary">
-                  <span>{loading ? 'Đang tạo tài khoản...' : 'Hoàn Tất Đăng Ký'}</span>
-                  <Icons.ArrowRight size={16} />
+                {/* Submit Action */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="ruo-portal-btn-primary"
+                  style={{
+                    opacity: loading ? 0.75 : 1,
+                    cursor: loading ? 'wait' : 'pointer'
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={{ animation: 'spin 1s linear infinite' }}
+                      >
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                      </svg>
+                      <span>Đang tạo tài khoản...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Hoàn Tất Đăng Ký</span>
+                      <Icons.ArrowRight size={16} />
+                    </>
+                  )}
                 </button>
               </form>
             </div>
           )}
 
-          {/* ==============================================================
-              TAB 3: TÀI KHOẢN MẪU (1-CLICK TEST LOGIN)
-              ============================================================== */}
-          {activeTab === 'demo' && (
-            <div>
-              <div style={{ marginBottom: '14px' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-pure)', margin: '0 0 4px 0' }}>
-                  Tài Khoản Mẫu Trải Nghiệm Nhanh
-                </h2>
-                <p style={{ fontSize: '12px', color: 'var(--ink-muted)', margin: 0 }}>
-                  Chọn 1 trong 6 vai trò bên dưới để vào hệ thống ngay mà không cần gõ mật khẩu:
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', maxHeight: '410px', overflowY: 'auto', paddingRight: '4px' }}>
-                {DEMO_ROLES.map((role) => (
-                  <div
-                    key={role.key}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: '10px',
-                      background: 'var(--canvas-subtle)',
-                      border: '1px solid var(--hairline-soft)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '10px',
-                      transition: 'all 0.15s'
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                        <span
-                          style={{
-                            fontSize: '9.5px',
-                            fontWeight: 700,
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            background: `${role.badgeColor}18`,
-                            color: role.badgeColor,
-                            border: `1px solid ${role.badgeColor}35`
-                          }}
-                        >
-                          {role.title}
-                        </span>
-                        <strong style={{ fontSize: '13px', color: 'var(--ink-pure)' }}>{role.name}</strong>
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
-                        {role.dept} • {role.desc}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => handleQuickLogin(role.key)}
-                      style={{
-                        padding: '7px 12px',
-                        borderRadius: '7px',
-                        background: role.badgeColor,
-                        color: '#FFFFFF',
-                        border: 'none',
-                        fontSize: '11.5px',
-                        fontWeight: 700,
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        flexShrink: 0
-                      }}
-                    >
-                      <span>Vào ngay</span>
-                      <Icons.ArrowRight size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ marginTop: '14px', textAlign: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('login')}
-                  style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  ← Quay lại form đăng nhập thông thường
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
