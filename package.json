@@ -5,13 +5,15 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "node scripts/dev.js",
+    "dev": "npm run seed && concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "npm --prefix client run dev",
     "dev:server": "npm --prefix server run dev",
     "client": "npm --prefix client run dev",
     "server": "npm --prefix server run dev",
     "build": "npm --prefix client run build",
-    "seed": "npm --prefix server run seed"
+    "seed": "npm --prefix server run seed",
+    "client:install": "npm install --prefix client --legacy-peer-deps",
+    "client:test": "npm test --prefix client"
   },
   "keywords": [
     "ufms",
@@ -21,5 +23,8 @@
     "sla-reactor"
   ],
   "author": "Ruo Development Team",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
 }
