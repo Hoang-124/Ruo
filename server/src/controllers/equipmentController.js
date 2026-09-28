@@ -4,11 +4,12 @@ import { Room } from '../models/Facility.js';
 import { EquipmentBorrowing } from '../models/EquipmentBorrowing.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { EQUIPMENT_STATUSES } from '../config/constants.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 // @desc    Create new equipment item (UC-3.7)
 // @route   POST /api/equipments
 // @access  Private (Facility Staff, Admin)
-export const createEquipment = async (req, res) => {
+export const createEquipment = asyncHandler(async (req, res) => {
   const {
     assetCode,
     serialNumber,
@@ -26,43 +27,96 @@ export const createEquipment = async (req, res) => {
     qrCodeData: customQrCodeData
   } = req.body;
 
-  if (!assetCode || !name || !category || originalPrice === undefined || !purchaseDate) {
+  // Basic presence & type validation
+  if (!assetCode || typeof assetCode !== 'string' || !assetCode.trim()) {
     return res.status(400).json({
       success: false,
-      message: 'Vui lòng cung cấp đầy đủ thông tin bắt buộc: Mã tài sản, Tên thiết bị, Chủng loại, Nguyên giá và Ngày mua.'
+      message: 'Vui lòng nhập Mã tài sản hợp lệ.'
     });
   }
 
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Vui lòng nhập Tên thiết bị hợp lệ.'
+    });
+  }
+
+  if (!category) {
+    return res.status(400).json({
+      success: false,
+      message: 'Vui lòng chọn Chủng loại thiết bị.'
+    });
+  }
+
+  const numOriginalPrice = Number(originalPrice);
+  if (originalPrice === undefined || isNaN(numOriginalPrice) || numOriginalPrice < 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Vui lòng nhập Nguyên giá là một số dương hợp lệ.'
+    });
+  }
+
+  const pDate = new Date(purchaseDate);
+  if (!purchaseDate || isNaN(pDate.getTime())) {
+    return res.status(400).json({
+      success: false,
+      message: 'Vui lòng chọn Ngày mua hợp lệ.'
+    });
+  }
+
+  const cleanAssetCode = assetCode.toUpperCase().trim();
+
   // Check unique assetCode
-  const existingAsset = await Equipment.findOne({ assetCode: assetCode.toUpperCase().trim() });
+  const existingAsset = await Equipment.findOne({ assetCode: cleanAssetCode });
   if (existingAsset) {
     return res.status(409).json({
       success: false,
-      message: `Mã tài sản '${assetCode.toUpperCase().trim()}' đã tồn tại trong hệ thống. Vui lòng nhập mã khác.`
+      message: `Mã tài sản '${cleanAssetCode}' đã tồn tại trong hệ thống. Vui lòng nhập mã khác.`
     });
   }
 
-  // Auto-generate immutable QR Code Data token if not provided
-  const qrCodeData = customQrCodeData && customQrCodeData.trim() !== ''
-    ? customQrCodeData.trim()
-    : `QR-EQ-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+  // Validate Category existence in DB
+  const categoryExists = await EquipmentCategory.findById(category);
+  if (!categoryExists) {
+    return res.status(404).json({
+      success: false,
+      message: 'Chủng loại thiết bị không tồn tại trong hệ thống.'
+    });
+  }
+
+  // Handle custom or generated QR Code Data
+  let qrCodeData;
+  if (customQrCodeData && typeof customQrCodeData === 'string' && customQrCodeData.trim() !== '') {
+    const cleanCustomQR = customQrCodeData.trim();
+    const existingQR = await Equipment.findOne({ qrCodeData: cleanCustomQR });
+    if (existingQR) {
+      return res.status(409).json({
+        success: false,
+        message: `Mã QR tùy chỉnh '${cleanCustomQR}' đã tồn tại trong hệ thống. Vui lòng nhập mã QR khác.`
+      });
+    }
+    qrCodeData = cleanCustomQR;
+  } else {
+    qrCodeData = `QR-EQ-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+  }
 
   const equipment = await Equipment.create({
-    assetCode: assetCode.toUpperCase().trim(),
+    assetCode: cleanAssetCode,
     qrCodeData,
-    serialNumber: serialNumber || '',
+    serialNumber: typeof serialNumber === 'string' ? serialNumber.trim() : '',
     name: name.trim(),
     category,
     room: room || null,
     supplier: supplier || null,
-    originalPrice: Number(originalPrice),
-    remainingValue: remainingValue !== undefined ? Number(remainingValue) : Number(originalPrice),
-    purchaseDate: new Date(purchaseDate),
+    originalPrice: numOriginalPrice,
+    remainingValue: remainingValue !== undefined && !isNaN(Number(remainingValue)) ? Number(remainingValue) : numOriginalPrice,
+    purchaseDate: pDate,
     warrantyExpiry: warrantyExpiry ? new Date(warrantyExpiry) : null,
     condition: condition || 'brand_new',
     status: 'available',
     specifications: specifications || {},
-    imageUrl: imageUrl || ''
+    imageUrl: typeof imageUrl === 'string' ? imageUrl.trim() : ''
   });
 
   const populatedEquipment = await Equipment.findById(equipment._id)
@@ -92,12 +146,11 @@ export const createEquipment = async (req, res) => {
     message: 'Tạo tài sản mới thành công.',
     equipment: populatedEquipment
   });
-};
-
+});
 
 // @desc    Get all equipment items
 // @route   GET /api/equipments
-export const getEquipments = async (req, res) => {
+export const getEquipments = asyncHandler(async (req, res) => {
   const { category, status, condition, search } = req.query;
   const query = { deletedAt: null };
 
@@ -121,11 +174,11 @@ export const getEquipments = async (req, res) => {
     total: equipments.length,
     equipments
   });
-};
+});
 
 // @desc    Lookup single equipment by QR Code (Mobile scanner endpoint)
 // @route   GET /api/equipments/qr/:qrCode
-export const getEquipmentByQR = async (req, res) => {
+export const getEquipmentByQR = asyncHandler(async (req, res) => {
   const equipment = await Equipment.findOne({ qrCodeData: req.params.qrCode })
     .populate('category')
     .populate('room')
@@ -139,11 +192,11 @@ export const getEquipmentByQR = async (req, res) => {
     success: true,
     equipment
   });
-};
+});
 
 // @desc    Create equipment borrow request
 // @route   POST /api/equipments/borrow
-export const requestBorrowEquipment = async (req, res) => {
+export const requestBorrowEquipment = asyncHandler(async (req, res) => {
   const { equipmentId, startTime, endTime, purpose } = req.body;
 
   const equipment = await Equipment.findById(equipmentId);
@@ -200,4 +253,4 @@ export const requestBorrowEquipment = async (req, res) => {
       : 'Mượn thiết bị thành công.',
     borrowing
   });
-};
+});
