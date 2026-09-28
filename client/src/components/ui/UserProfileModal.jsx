@@ -304,8 +304,6 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const reputeColor = currentUser.reputeScore >= 90 ? '#10B981' : currentUser.reputeScore >= 70 ? '#3B82F6' : currentUser.reputeScore >= 40 ? '#F59E0B' : '#EF4444';
-
   const modalContent = (
     <div
       className="ruo-modal-backdrop-smooth"
@@ -403,7 +401,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
             style={{ padding: '12px 16px', borderRadius: '0', borderBottom: activeTab === 'view' ? '2px solid var(--laser-cyan)' : 'none' }}
           >
             <SvgIcons.User size={14} />
-            <span>Hồ Sơ & Điểm Uy Tín</span>
+            <span>Thông Tin Cá Nhân</span>
           </button>
           <button
             onClick={() => setActiveTab('edit')}
@@ -425,96 +423,59 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
 
         {/* Modal Scrollable Body */}
         <div style={{ padding: '24px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
-          {/* TAB 1: PROFILE VIEW & REPUTE SCORE (UC-1.5) */}
+          {/* TAB 1: PROFILE VIEW */}
           {activeTab === 'view' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Repute Score Card */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {/* Account Status & Privilege Banner */}
               <div
                 style={{
                   background: 'var(--surface-sunken)',
                   border: '1px solid var(--hairline-medium)',
                   borderRadius: 'var(--radius-lg)',
-                  padding: '20px',
+                  padding: '16px 20px',
                   display: 'flex',
-                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: '14px'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ color: reputeColor }}>
-                      <SvgIcons.Award size={22} />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)' }}>
-                        Điểm Uy Tín Mượn Phòng (Repute Score)
-                      </span>
-                      <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-                        Hạng thành viên: <strong style={{ color: reputeColor }}>{currentUser.reputeTier}</strong>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '28px', fontWeight: 900, fontFamily: 'var(--font-sans)', color: reputeColor }}>
-                      {currentUser.reputeScore}
-                    </span>
-                    <span style={{ fontSize: '14px', color: 'var(--ink-muted)' }}>/100</span>
-                  </div>
-                </div>
-
-                {/* Progress bar */}
-                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div
                     style={{
-                      width: `${currentUser.reputeScore}%`,
-                      height: '100%',
-                      background: `linear-gradient(90deg, #3B82F6 0%, ${reputeColor} 100%)`,
-                      transition: 'width 0.6s ease'
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
+                      background: 'rgba(59, 130, 246, 0.12)',
+                      color: 'var(--laser-cyan)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
-                  />
-                </div>
-
-                {/* Privileges & Rules Notice */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '10px',
-                    fontSize: '12px',
-                    color: 'var(--ink-secondary)',
-                    background: 'var(--surface-panel)',
-                    padding: '12px 14px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--hairline-soft)'
-                  }}
-                >
-                  <SvgIcons.Shield size={16} color="var(--laser-cyan)" />
+                  >
+                    <SvgIcons.Shield size={20} />
+                  </div>
                   <div>
-                    <strong style={{ color: 'var(--ink-pure)', display: 'block', marginBottom: '3px' }}>
-                      Quyền hạn đặt phòng hiện tại:
-                    </strong>
-                    {currentUser.bookingPrivilege}
+                    <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink-pure)', display: 'block' }}>
+                      Tài Khoản Xác Thực Nội Bộ (SSO)
+                    </span>
+                    <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
+                      Quyền hạn đặt phòng: <strong style={{ color: 'var(--laser-cyan)' }}>{currentUser.bookingPrivilege || 'Đặt trước tối đa 30 ngày'}</strong>
+                    </span>
                   </div>
                 </div>
-
-                <div
+                <span
                   style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '10px',
-                    fontSize: '11.5px',
-                    color: '#F59E0B',
-                    background: 'rgba(245, 158, 11, 0.08)',
-                    padding: '10px 12px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid rgba(245, 158, 11, 0.2)'
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: '#10B981',
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-full)'
                   }}
                 >
-                  <SvgIcons.AlertTriangle size={15} color="#F59E0B" />
-                  <span>
-                    <strong>Cơ chế tự động:</strong> No-Show (quá 15 phút không quét mã QR Check-in) sẽ bị trừ 10 điểm. Khi điểm uy tín ≤ 30, tài khoản sẽ tự động bị đình chỉ quyền đặt phòng.
-                  </span>
-                </div>
+                  ĐANG HOẠT ĐỘNG
+                </span>
               </div>
 
               {/* Identity & Academic Info Table */}

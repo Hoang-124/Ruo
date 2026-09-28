@@ -254,7 +254,7 @@ export const BookingModal = ({ isOpen, onClose, selectedRoom, onBookingSuccess }
                 </h4>
                 <ul style={{ fontSize: '13px', color: 'var(--color-primary-700)', paddingLeft: '20px', lineHeight: 1.6 }}>
                   <li>Phải có mặt và quét mã QR xác nhận trước cửa phòng trong <strong>15 phút đầu</strong> của ca học.</li>
-                  <li>Nếu không check-in, đơn sẽ bị hủy chuyển <strong>NO_SHOW</strong> và trừ điểm uy tín đặt phòng.</li>
+                  <li>Nếu không check-in, đơn sẽ tự động bị hủy và chuyển trạng thái <strong>NO_SHOW</strong>.</li>
                   <li>Tắt tất cả thiết bị điện, điều hòa, máy chiếu và khóa cửa trước khi rời khỏi phòng.</li>
                   <li>Không mang đồ ăn, nước ngọt vào phòng máy tính và phòng thí nghiệm.</li>
                 </ul>

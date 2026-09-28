@@ -54,7 +54,7 @@ export const QRCheckInModal = ({ isOpen, onClose, bookingRoom = 'A1-302', bookin
                   Thời gian check-in còn lại: {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
                 </div>
                 <div style={{ fontSize: '11px', marginTop: '4px' }}>
-                  Quá 15 phút không xác nhận có mặt, hệ thống tự động hủy slot chuyển <strong>NO_SHOW</strong> và trừ điểm uy tín.
+                  Quá 15 phút không xác nhận có mặt, hệ thống tự động hủy slot chuyển <strong>NO_SHOW</strong> theo quy định.
                 </div>
               </div>
 

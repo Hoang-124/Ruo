@@ -296,11 +296,6 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                     <div style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', marginTop: '4px' }}>
                       Đơn vị: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.department}</strong>
                     </div>
-
-                    <div style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', marginTop: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>Điểm uy tín:</span>
-                      <strong style={{ color: '#10B981', fontFamily: 'var(--font-sans)', fontSize: '12px' }}>{currentUser.reputeScore}/100</strong>
-                    </div>
                   </div>
 
                   {/* Real User Actions */}

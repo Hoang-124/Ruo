@@ -272,12 +272,6 @@ export const Navbar = ({ onOpenQRDemo, onSearchChange, searchQuery = '' }) => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Điểm Uy Tín Check-in:</span>
-                  <span style={{ fontWeight: 700, color: 'var(--laser-emerald)', fontFamily: 'var(--font-sans)' }}>
-                    {currentUser.reputeScore}/100
-                  </span>
-                </div>
                 <div style={{ fontSize: '12px', color: 'var(--ink-secondary)' }}>
                   Đơn vị: <strong style={{ color: 'var(--ink-primary)' }}>{currentUser.department}</strong>
                 </div>
