@@ -42,7 +42,7 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span
               style={{
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 fontSize: '11px',
                 color: 'var(--laser-cyan)',
                 background: 'rgba(6,182,212,0.1)',
@@ -53,7 +53,7 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
             >
               MODULE 01
             </span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontFamily: 'var(--font-sans)' }}>
               TÒA NHÀ A1 • 5 TẦNG HỌC VỤ • 108 PHÒNG
             </span>
           </div>
@@ -96,7 +96,7 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                fontFamily: 'var(--font-mono)'
+                fontFamily: 'var(--font-sans)'
               }}
             >
               [ĐẶT LẠI]
@@ -221,7 +221,7 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
         {/* Room Grid Cards */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div style={{ fontSize: '13px', color: 'var(--ink-secondary)', fontFamily: 'var(--font-mono)' }}>
+            <div style={{ fontSize: '13px', color: 'var(--ink-secondary)', fontFamily: 'var(--font-sans)' }}>
               HIỂN THỊ <strong style={{ color: 'var(--laser-cyan)' }}>{filteredRooms.length}</strong> PHÒNG HỌC KHẢ DỤNG
             </div>
           </div>
@@ -270,7 +270,7 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
                         backdropFilter: 'blur(8px)',
                         padding: '4px 10px',
                         borderRadius: 'var(--radius-sm)',
-                        fontFamily: 'var(--font-mono)',
+                        fontFamily: 'var(--font-sans)',
                         fontWeight: 800,
                         fontSize: '13px'
                       }}
@@ -283,7 +283,7 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
                         <span
                           style={{
                             fontSize: '10px',
-                            fontFamily: 'var(--font-mono)',
+                            fontFamily: 'var(--font-sans)',
                             padding: '3px 8px',
                             borderRadius: 'var(--radius-sm)',
                             background: 'rgba(16, 185, 129, 0.2)',
@@ -302,7 +302,7 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
                         <span
                           style={{
                             fontSize: '10px',
-                            fontFamily: 'var(--font-mono)',
+                            fontFamily: 'var(--font-sans)',
                             padding: '3px 8px',
                             borderRadius: 'var(--radius-sm)',
                             background: 'rgba(245, 158, 11, 0.2)',
@@ -367,13 +367,13 @@ export const RoomListPage = ({ onOpenBookingModal, onSelectRoomDetail, onOpenCal
                         marginBottom: '16px'
                       }}
                     >
-                      <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginBottom: '4px', fontFamily: 'var(--font-mono)' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginBottom: '4px', fontFamily: 'var(--font-sans)' }}>
                         LỊCH HÔM NAY:
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         {room.todaySlots.slice(0, 2).map((slot, idx) => (
                           <div key={idx} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)' }}>{slot.time}</span>
+                            <span style={{ color: 'var(--ink-muted)', fontFamily: 'var(--font-sans)' }}>{slot.time}</span>
                             <span style={{ fontWeight: 600, color: slot.type === 'available' ? 'var(--laser-emerald)' : 'var(--laser-cyan)' }}>
                               {slot.title}
                             </span>

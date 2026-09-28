@@ -35,7 +35,7 @@ export const FloatingPillarDock = ({ activeTab, onSelectTab }) => {
             title={t.label}
           >
             <IconComp size={14} color={isActive ? t.color : 'var(--ink-muted)'} />
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: isActive ? 700 : 500 }}>
+            <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', fontWeight: isActive ? 700 : 500 }}>
               {t.short}
             </span>
           </button>

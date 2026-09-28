@@ -116,7 +116,7 @@ export function EquipmentForm({ onClose, onCreate }) {
             placeholder="Ví dụ: TS-2026-PC12"
             onChange={(e) => setAssetCode(e.target.value)}
             className="form-control"
-            style={{ fontFamily: 'var(--font-mono)' }}
+            style={{ fontFamily: 'var(--font-sans)' }}
           />
         </div>
 
@@ -178,7 +178,7 @@ export function EquipmentForm({ onClose, onCreate }) {
               value={originalPrice}
               onChange={(e) => setOriginalPrice(e.target.value)}
               className="form-control"
-              style={{ fontFamily: 'var(--font-mono)' }}
+              style={{ fontFamily: 'var(--font-sans)' }}
             />
           </div>
         </div>

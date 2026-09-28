@@ -45,10 +45,10 @@
   --ink-muted: #71717A;
   --ink-faint: #3F3F46;
 
-  /* 100% Unified Vietnamese Typography (Be Vietnam Pro Master Family) */
+  /* 100% Unified Vietnamese Typography (Single Master Font: Be Vietnam Pro) */
   --font-sans: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-display: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  --font-mono: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   /* Radii */
   --radius-xs: 4px;
@@ -201,8 +201,8 @@ html, body {
     linear-gradient(to bottom, #F8FAFC 0%, #F1F5F9 100%);
 }
 
-/* Universal Form & Button Typography Inheritance */
-button, input, select, textarea, optgroup, kbd {
+/* Universal Form & Button Typography Inheritance (100% Unified) */
+button, input, select, textarea, optgroup, kbd, code, pre, table, th, td {
   font-family: var(--font-sans);
   font-size: inherit;
   color: inherit;
@@ -215,9 +215,9 @@ h1, h2, h3, h4, h5, h6, .font-display {
   font-weight: 700;
 }
 
-/* Monospace Strictly Reserved For Telemetry, Timestamps & Numeric Codes */
+/* Telemetry, Timestamps & Numeric Codes (Unified to Be Vietnam Pro with Tabular Nums) */
 code, pre, .font-mono {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
@@ -274,7 +274,7 @@ code, pre, .font-mono {
   align-items: center;
   justify-content: space-between;
   font-size: 11px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   color: var(--ink-secondary);
   position: sticky;
   top: 0;
@@ -328,7 +328,7 @@ code, pre, .font-mono {
 
 .role-dock-label {
   font-size: 10px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 700;
   color: var(--laser-cyan);
   display: flex;
@@ -469,7 +469,7 @@ code, pre, .font-mono {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
 }
 
 .user-info-text {
@@ -487,7 +487,7 @@ code, pre, .font-mono {
   font-size: 10px;
   color: var(--ink-muted);
   line-height: 1.2;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
 }
 
 /* Laser Buttons */
@@ -627,7 +627,7 @@ code, pre, .font-mono {
 
 .sidebar-group-label,
 .nav-section-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -797,7 +797,7 @@ code, pre, .font-mono {
 
 .metric-label {
   font-size: 11px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink-secondary);
@@ -810,7 +810,7 @@ code, pre, .font-mono {
 .metric-number {
   font-size: 32px;
   font-weight: 800;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   letter-spacing: -0.04em;
   line-height: 1.1;
   color: var(--ink-pure);
@@ -824,7 +824,7 @@ code, pre, .font-mono {
   padding: 4px 10px;
   border-radius: var(--radius-full);
   font-size: 11px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -922,7 +922,7 @@ code, pre, .font-mono {
   padding: 6px 12px;
   font-size: 11px;
   border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
 }
 
 .btn-secondary {
@@ -1042,7 +1042,7 @@ code, pre, .font-mono {
 .data-table th {
   background: rgba(255, 255, 255, 0.02);
   padding: 12px 18px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1120,7 +1120,7 @@ code, pre, .font-mono {
 .form-label {
   display: block;
   font-size: 12px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1346,7 +1346,7 @@ code, pre, .font-mono {
 
 .ruo-kbd-shortcut {
   font-size: 10px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   background: var(--surface-panel);
   border: 1px solid var(--hairline-medium);
   padding: 1px 5px;
@@ -1414,7 +1414,7 @@ code, pre, .font-mono {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   color: var(--ink-secondary);
   background: var(--canvas-subtle);
   padding: 5px 10px;
@@ -1603,7 +1603,7 @@ code, pre, .font-mono {
 
 .ruo-uid-pill {
   font-size: 10px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   color: var(--laser-cyan);
   background: rgba(37, 99, 235, 0.12);
   padding: 2px 6px;
@@ -1860,7 +1860,7 @@ code, pre, .font-mono {
   padding: 5px 12px;
   border-radius: 4px;
   font-size: 12px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 600;
   color: var(--ink-secondary);
   background: transparent;
@@ -1908,7 +1908,7 @@ code, pre, .font-mono {
 }
 
 .ruo-cad-spec-pill {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 700;
   padding: 2px 8px;
@@ -2010,7 +2010,7 @@ code, pre, .font-mono {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   background: var(--surface-panel);
   padding: 5px 12px;
   border-radius: var(--radius-sm);
@@ -2047,7 +2047,7 @@ code, pre, .font-mono {
   display: flex;
   justify-content: space-between;
   font-size: 10px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   color: var(--ink-muted);
 }
 
@@ -2061,7 +2061,7 @@ code, pre, .font-mono {
   padding: 4px 10px;
   border-radius: 4px;
   font-size: 11px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 600;
   color: var(--ink-secondary);
   background: var(--surface-panel);
@@ -2328,7 +2328,7 @@ code, pre, .font-mono {
   border-radius: var(--radius-full);
   font-size: 11.5px;
   font-weight: 700;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   background: rgba(37, 99, 235, 0.12);
   color: var(--laser-cyan);
   border: 1px solid rgba(37, 99, 235, 0.25);
@@ -2370,7 +2370,7 @@ code, pre, .font-mono {
 .ruo-hero-clock-time {
   font-size: 20px;
   font-weight: 800;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   color: var(--laser-cyan);
 }
 
@@ -2435,7 +2435,7 @@ code, pre, .font-mono {
 .ruo-stat-val {
   font-size: 22px;
   font-weight: 800;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   color: var(--ink-pure);
   line-height: 1.2;
 }
@@ -2737,7 +2737,7 @@ code, pre, .font-mono {
 }
 
 .ruo-room-code {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 800;
   color: var(--ink-pure);
@@ -2802,7 +2802,7 @@ code, pre, .font-mono {
   padding-top: 8px;
   margin-top: 8px;
   font-size: 11px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   color: var(--ink-muted);
 }
 
@@ -2871,7 +2871,7 @@ code, pre, .font-mono {
 
 .ruo-stairs-label {
   font-size: 9.5px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 800;
   color: var(--spatial-corridor-text);
   letter-spacing: 0.06em;
@@ -2895,7 +2895,7 @@ code, pre, .font-mono {
   flex-direction: column;
   gap: 4px;
   font-size: 8.5px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 800;
   color: var(--spatial-corridor-text);
   text-align: center;
@@ -2903,7 +2903,7 @@ code, pre, .font-mono {
 
 .ruo-corridor-axis-title {
   font-size: 11.5px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 800;
   color: var(--spatial-corridor-text);
   letter-spacing: 0.12em;
@@ -2919,7 +2919,7 @@ code, pre, .font-mono {
   flex-direction: column;
   gap: 4px;
   font-size: 8.5px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 800;
   color: var(--spatial-corridor-text);
   text-align: center;
@@ -3015,7 +3015,7 @@ code, pre, .font-mono {
 
 .ruo-deck-label {
   font-size: 11px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 800;
   color: var(--ink-muted);
   text-transform: uppercase;
@@ -3137,7 +3137,7 @@ code, pre, .font-mono {
 .ruo-deck-pill-count {
   font-size: 16px;
   font-weight: 800;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
 }
 
 .ruo-deck-pill-label {
@@ -4134,7 +4134,7 @@ textarea {
 .ruo-toast-info .ruo-toast-title { color: #3B82F6; }
 
 .ruo-toast-time {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
   color: var(--ink-muted);
 }

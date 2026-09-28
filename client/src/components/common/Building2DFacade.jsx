@@ -92,7 +92,7 @@ export const Building2DFacade = ({ onSelectFloor, activeFloor = 3 }) => {
             <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.01em' }}>
               MẶT ĐỨNG KIẾN TRÚC 2D • TÒA NHÀ A1
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--ink-muted)', fontFamily: 'var(--font-sans)' }}>
               Bản vẽ kỹ thuật phân tầng • 108 Phòng Học & Nghiên Cứu
             </div>
           </div>
@@ -102,7 +102,7 @@ export const Building2DFacade = ({ onSelectFloor, activeFloor = 3 }) => {
           <span
             style={{
               fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
               padding: '3px 8px',
               borderRadius: '4px',
               background: 'rgba(37, 99, 235, 0.1)',
@@ -180,7 +180,7 @@ export const Building2DFacade = ({ onSelectFloor, activeFloor = 3 }) => {
                   <text
                     x="20"
                     y={y + 4}
-                    fontFamily="var(--font-mono)"
+                    fontFamily="var(--font-sans)"
                     fontSize="11"
                     fontWeight={isSelected ? '700' : '500'}
                     fill={isSelected ? '#2563EB' : 'var(--ink-muted)'}
@@ -191,7 +191,7 @@ export const Building2DFacade = ({ onSelectFloor, activeFloor = 3 }) => {
                   <text
                     x="62"
                     y={y - 5}
-                    fontFamily="var(--font-mono)"
+                    fontFamily="var(--font-sans)"
                     fontSize="9.5"
                     fill={isSelected ? '#2563EB' : 'var(--ink-muted)'}
                     opacity="0.85"
@@ -319,7 +319,7 @@ export const Building2DFacade = ({ onSelectFloor, activeFloor = 3 }) => {
                       <text
                         x={bayX + 32}
                         y={y + 43}
-                        fontFamily="var(--font-mono)"
+                        fontFamily="var(--font-sans)"
                         fontSize="8.5"
                         fontWeight="600"
                         fill="var(--ink-muted)"
@@ -385,7 +385,7 @@ export const Building2DFacade = ({ onSelectFloor, activeFloor = 3 }) => {
               <g key={`axis-${axis}`}>
                 <line x1={axisX} y1="35" x2={axisX} y2="15" stroke="var(--hairline-medium)" strokeWidth="0.8" strokeDasharray="2 2" />
                 <circle cx={axisX} cy="10" r="7" fill="var(--canvas-subtle)" stroke="var(--hairline-medium)" strokeWidth="1" />
-                <text x={axisX} y="13" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="700" fill="var(--ink-muted)" textAnchor="middle">
+                <text x={axisX} y="13" fontFamily="var(--font-sans)" fontSize="8.5" fontWeight="700" fill="var(--ink-muted)" textAnchor="middle">
                   {axis}
                 </text>
               </g>
@@ -399,7 +399,7 @@ export const Building2DFacade = ({ onSelectFloor, activeFloor = 3 }) => {
             <polygon points="15,4 18,15 15,12" fill="#B91C1C" />
             <polygon points="15,26 12,15 15,18" fill="var(--ink-muted)" />
             <polygon points="15,26 18,15 15,18" fill="var(--hairline-medium)" />
-            <text x="15" y="2" fontFamily="var(--font-mono)" fontSize="7.5" fontWeight="800" fill="#EF4444" textAnchor="middle">
+            <text x="15" y="2" fontFamily="var(--font-sans)" fontSize="7.5" fontWeight="800" fill="#EF4444" textAnchor="middle">
               N
             </text>
           </g>

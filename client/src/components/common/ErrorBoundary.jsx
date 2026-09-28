@@ -41,7 +41,7 @@ export class ErrorBoundary extends React.Component {
             background: '#0B0F19',
             color: '#F8FAFC',
             padding: '24px',
-            fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+            fontFamily: 'var(--font-sans)'
           }}
         >
           <div
@@ -93,7 +93,7 @@ export class ErrorBoundary extends React.Component {
                   borderRadius: '8px',
                   padding: '12px 16px',
                   fontSize: '12px',
-                  fontFamily: 'monospace',
+                  fontFamily: 'var(--font-sans)',
                   color: '#F87171',
                   textAlign: 'left',
                   maxHeight: '140px',

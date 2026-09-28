@@ -161,9 +161,9 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
               }}
             >
               <span className="telemetry-live-dot" style={{ width: '6px', height: '6px' }} />
-              <span><strong style={{ color: 'var(--laser-cyan)', fontFamily: 'var(--font-mono)' }}>84/108</strong> PHÒNG</span>
+              <span><strong style={{ color: 'var(--laser-cyan)', fontFamily: 'var(--font-sans)' }}>84/108</strong> PHÒNG</span>
               <span style={{ color: 'var(--ink-faint)' }}>•</span>
-              <span>SLA: <strong style={{ color: 'var(--laser-emerald)', fontFamily: 'var(--font-mono)' }}>98.4%</strong></span>
+              <span>SLA: <strong style={{ color: 'var(--laser-emerald)', fontFamily: 'var(--font-sans)' }}>98.4%</strong></span>
             </div>
           </div>
 
@@ -208,7 +208,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
             {/* Realtime Clock */}
             <div
               style={{
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 fontSize: '11px',
                 color: 'var(--laser-cyan)',
                 padding: '4px 10px',
@@ -330,7 +330,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                       >
                         <div style={{ fontWeight: 600, fontSize: '12px', color: 'var(--ink-pure)' }}>{n.title}</div>
                         <div style={{ fontSize: '11px', color: 'var(--ink-secondary)', marginTop: '2px' }}>{n.message}</div>
-                        <div style={{ fontSize: '10px', color: 'var(--ink-muted)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>{n.time}</div>
+                        <div style={{ fontSize: '10px', color: 'var(--ink-muted)', marginTop: '4px', fontFamily: 'var(--font-sans)' }}>{n.time}</div>
                       </div>
                     ))}
                   </div>
@@ -358,7 +358,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
             >
               <Icons.Layers size={13} color="var(--laser-cyan)" />
               <span style={{ fontWeight: 600 }}>95 Chức Năng</span>
-              <kbd style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.12)', padding: '1px 4px', borderRadius: '3px', color: 'var(--ink-secondary)' }}>
+              <kbd style={{ fontSize: '9px', fontFamily: 'var(--font-sans)', background: 'rgba(255,255,255,0.12)', padding: '1px 4px', borderRadius: '3px', color: 'var(--ink-secondary)' }}>
                 Ctrl+K
               </kbd>
             </button>
@@ -394,7 +394,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '10px',
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                     fontWeight: 800
                   }}
                 >
@@ -406,7 +406,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                 <span
                   style={{
                     fontSize: '9.5px',
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                     padding: '1px 5px',
                     borderRadius: 'var(--radius-full)',
                     background: 'rgba(161, 101, 38, 0.22)',
@@ -441,7 +441,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                       <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--ink-pure)' }}>
                         {currentUser.name}
                       </div>
-                      <span style={{ fontSize: '9.5px', fontFamily: 'var(--font-mono)', color: 'var(--laser-cyan)', background: 'rgba(161, 101, 38, 0.14)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(161, 101, 38, 0.3)', fontWeight: 700 }}>
+                      <span style={{ fontSize: '9.5px', fontFamily: 'var(--font-sans)', color: 'var(--laser-cyan)', background: 'rgba(161, 101, 38, 0.14)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(161, 101, 38, 0.3)', fontWeight: 700 }}>
                         {currentUser.code}
                       </span>
                     </div>
@@ -550,7 +550,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                             <span
                               style={{
                                 fontSize: '9px',
-                                fontFamily: 'var(--font-mono)',
+                                fontFamily: 'var(--font-sans)',
                                 fontWeight: 800,
                                 padding: '1px 5px',
                                 borderRadius: '4px',
@@ -564,7 +564,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                               {tab.badge}
                             </span>
                           ) : isActive ? (
-                            <span style={{ fontSize: '8.5px', fontFamily: 'var(--font-mono)', color: 'var(--laser-cyan)', fontWeight: 700, flexShrink: 0, marginLeft: '4px' }}>
+                            <span style={{ fontSize: '8.5px', fontFamily: 'var(--font-sans)', color: 'var(--laser-cyan)', fontWeight: 700, flexShrink: 0, marginLeft: '4px' }}>
                               ● MỞ
                             </span>
                           ) : null}
@@ -600,7 +600,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                   <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink-pure)', margin: 0 }}>
                     Danh Mục Toàn Bộ 95 Use Cases • 5 Trụ Cột Kỹ Thuật
                   </h3>
-                  <div style={{ fontSize: '11px', color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--ink-muted)', fontFamily: 'var(--font-sans)' }}>
                     HỆ THỐNG QUẢN LÝ CƠ SỞ VẬT CHẤT ĐẠI HỌC (RUO v2.6 OS)
                   </div>
                 </div>
@@ -683,7 +683,7 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px', gap: '6px' }}>
-                        <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: isAllowed ? 'var(--laser-indigo)' : 'var(--ink-muted)', fontWeight: 700 }}>
+                        <span style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', color: isAllowed ? 'var(--laser-indigo)' : 'var(--ink-muted)', fontWeight: 700 }}>
                           {m.cat}
                         </span>
                         {isActive && (

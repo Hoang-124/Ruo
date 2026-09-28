@@ -163,7 +163,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
           >
             <Icons.Equipment size={14} color={activeSection === 'inventory' ? '#FFFFFF' : 'var(--laser-cyan)'} />
             <span>Kho Thiết Bị & Kiểm Kê QR (Trụ Cột 4)</span>
-            <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.2)', padding: '1px 5px', borderRadius: '3px' }}>
+            <span style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', background: 'rgba(255,255,255,0.2)', padding: '1px 5px', borderRadius: '3px' }}>
               {EQUIPMENT_SEED_DATA.length}
             </span>
           </button>
@@ -187,7 +187,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
           >
             <Icons.Sliders size={14} color={activeSection === 'disposal' ? '#FFFFFF' : 'var(--laser-amber)'} />
             <span>Thanh Lý Tài Sản R ≥ 60% (Trụ Cột 5)</span>
-            <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.2)', padding: '1px 5px', borderRadius: '3px' }}>
+            <span style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', background: 'rgba(255,255,255,0.2)', padding: '1px 5px', borderRadius: '3px' }}>
               RACI
             </span>
           </button>
@@ -201,25 +201,25 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '20px' }}>
             <div className="card" style={{ padding: '14px 18px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
               <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Tổng Thiết Bị & Tài Sản</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--ink-pure)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>148</div>
+              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)', margin: '4px 0' }}>148</div>
               <div style={{ fontSize: '11px', color: 'var(--laser-cyan)' }}>100% định danh mã QR bất biến</div>
             </div>
 
             <div className="card" style={{ padding: '14px 18px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
               <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Đang Phục Vụ Giảng Dạy</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--laser-cyan)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>132</div>
+              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--laser-cyan)', fontFamily: 'var(--font-sans)', margin: '4px 0' }}>132</div>
               <div style={{ fontSize: '11px', color: 'var(--ink-secondary)' }}>Tỷ lệ khả dụng 89.2%</div>
             </div>
 
             <div className="card" style={{ padding: '14px 18px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
               <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Sẵn Sàng Xuất Mượn Lab</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--laser-emerald)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>11</div>
+              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--laser-emerald)', fontFamily: 'var(--font-sans)', margin: '4px 0' }}>11</div>
               <div style={{ fontSize: '11px', color: 'var(--laser-emerald)' }}>Mượn trả qua thẻ sinh viên/GV</div>
             </div>
 
             <div className="card" style={{ padding: '14px 18px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
               <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Báo Hỏng / Cần Giám Định</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--laser-rose)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>5</div>
+              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--laser-rose)', fontFamily: 'var(--font-sans)', margin: '4px 0' }}>5</div>
               <div style={{ fontSize: '11px', color: 'var(--laser-rose)' }}>2 thiết bị đủ điều kiện R ≥ 60%</div>
             </div>
           </div>
@@ -300,7 +300,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
                         className="data-table-row"
                       >
                         <td style={{ padding: '12px 16px' }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px', fontWeight: 700, color: 'var(--laser-cyan)' }}>
+                          <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11.5px', fontWeight: 700, color: 'var(--laser-cyan)' }}>
                             {eq.assetCode}
                           </span>
                         </td>
@@ -317,7 +317,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
                           </span>
                         </td>
 
-                        <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+                        <td style={{ padding: '12px 16px', fontFamily: 'var(--font-sans)', fontSize: '12px' }}>
                           <div style={{ color: 'var(--ink-secondary)' }}>{eq.originalPrice.toLocaleString('vi-VN')} đ</div>
                           <div style={{ fontWeight: 700, color: 'var(--laser-emerald)' }}>
                             {eq.remainingValue.toLocaleString('vi-VN')} đ
@@ -446,7 +446,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
                   className="form-control"
                   value={calcCost}
                   onChange={(e) => setCalcCost(parseInt(e.target.value) || 0)}
-                  style={{ height: '38px', fontSize: '12.5px', fontFamily: 'var(--font-mono)' }}
+                  style={{ height: '38px', fontSize: '12.5px', fontFamily: 'var(--font-sans)' }}
                 />
               </div>
 
@@ -459,7 +459,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
                   className="form-control"
                   value={calcRemaining}
                   onChange={(e) => setCalcRemaining(parseInt(e.target.value) || 1)}
-                  style={{ height: '38px', fontSize: '12.5px', fontFamily: 'var(--font-mono)' }}
+                  style={{ height: '38px', fontSize: '12.5px', fontFamily: 'var(--font-sans)' }}
                 />
               </div>
             </div>
@@ -482,7 +482,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
                 <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
                   Công thức kiểm toán: <code>R = (Chi phí sửa / Giá trị còn lại) × 100%</code>
                 </div>
-                <div style={{ fontSize: '26px', fontWeight: 900, color: isDisposalTriggered ? 'var(--laser-rose)' : 'var(--laser-emerald)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                <div style={{ fontSize: '26px', fontWeight: 900, color: isDisposalTriggered ? 'var(--laser-rose)' : 'var(--laser-emerald)', fontFamily: 'var(--font-sans)', marginTop: '2px' }}>
                   Chỉ số R = {repairRatio}%
                 </div>
               </div>
@@ -612,7 +612,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
                   {/* System State */}
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div style={{ fontSize: '10px', color: 'var(--ink-muted)' }}>Trạng thái hệ thống:</div>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px', fontWeight: 700, color: 'var(--laser-cyan)' }}>
+                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11.5px', fontWeight: 700, color: 'var(--laser-cyan)' }}>
                       {s.status}
                     </span>
                   </div>
@@ -718,7 +718,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
               </svg>
             </div>
 
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 800, color: 'var(--laser-cyan)', marginBottom: '4px' }}>
+            <div style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 800, color: 'var(--laser-cyan)', marginBottom: '4px' }}>
               {selectedQRItem.assetCode}
             </div>
             <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-pure)', marginBottom: '4px' }}>

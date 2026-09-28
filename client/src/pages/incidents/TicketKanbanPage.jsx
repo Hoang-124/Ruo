@@ -165,7 +165,7 @@ export const TicketKanbanPage = () => {
                   >
                     {/* Ticket Code & Priority Badge */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '12px', color: 'var(--color-primary-700)' }}>
+                      <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: '12px', color: 'var(--color-primary-700)' }}>
                         {ticket.id}
                       </span>
                       <span
@@ -245,7 +245,7 @@ export const TicketKanbanPage = () => {
             <div className="modal-header">
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary-700)', fontSize: '16px' }}>
+                  <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, color: 'var(--color-primary-700)', fontSize: '16px' }}>
                     {selectedTicket.id}
                   </span>
                   <span className={`badge ${selectedTicket.priority === 'critical' ? 'badge-danger' : 'badge-warning'}`}>
@@ -364,7 +364,7 @@ export const TicketKanbanPage = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
                   {selectedTicket.timeline.map((item, idx) => (
                     <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', width: '80px' }}>
+                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', color: 'var(--text-muted)', width: '80px' }}>
                         {item.time}
                       </span>
                       <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-primary-500)' }} />

@@ -186,7 +186,7 @@ export const RoomCalendarPage = ({ onOpenBookingModal }) => {
               return (
                 <tr key={room.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '16px', verticalAlign: 'top', background: 'var(--bg-card)' }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary-700)', fontSize: '15px' }}>
+                    <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, color: 'var(--color-primary-700)', fontSize: '15px' }}>
                       {room.code}
                     </div>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>

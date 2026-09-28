@@ -122,7 +122,7 @@ export const RuoLogo = ({ size = 44, showText = true, subtitle = 'CỔNG QUẢN 
             <span
               style={{
                 fontSize: '10.5px',
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 fontWeight: 700,
                 padding: '2px 8px',
                 borderRadius: '4px',

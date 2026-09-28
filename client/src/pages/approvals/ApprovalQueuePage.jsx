@@ -134,7 +134,7 @@ export const ApprovalQueuePage = () => {
           <div className="card" style={{ padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
               <div>
-                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '12px', color: 'var(--color-primary-600)' }}>
+                <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: '12px', color: 'var(--color-primary-600)' }}>
                   {selectedReq.id}
                 </span>
                 <h2 style={{ fontSize: '20px', fontWeight: 800, marginTop: '2px' }}>

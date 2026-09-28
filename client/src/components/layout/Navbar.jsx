@@ -43,7 +43,7 @@ export const Navbar = ({ onOpenQRDemo, onSearchChange, searchQuery = '' }) => {
             <kbd
               style={{
                 fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 background: 'rgba(255,255,255,0.08)',
                 border: '1px solid var(--hairline-medium)',
                 borderRadius: '4px',
@@ -65,7 +65,7 @@ export const Navbar = ({ onOpenQRDemo, onSearchChange, searchQuery = '' }) => {
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-sans)',
             fontSize: '12px',
             color: 'var(--ink-secondary)',
             background: 'rgba(255,255,255,0.03)',
@@ -208,7 +208,7 @@ export const Navbar = ({ onOpenQRDemo, onSearchChange, searchQuery = '' }) => {
                     <p style={{ fontSize: '12px', color: 'var(--ink-secondary)', lineHeight: 1.4, margin: '2px 0 4px 14px' }}>
                       {n.message}
                     </p>
-                    <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginLeft: '14px', fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginLeft: '14px', fontFamily: 'var(--font-sans)' }}>
                       {n.time}
                     </span>
                   </div>
@@ -258,7 +258,7 @@ export const Navbar = ({ onOpenQRDemo, onSearchChange, searchQuery = '' }) => {
                 <div
                   style={{
                     fontSize: '11px',
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                     color: 'var(--laser-cyan)',
                     marginTop: '6px',
                     background: 'rgba(6,182,212,0.1)',
@@ -274,7 +274,7 @@ export const Navbar = ({ onOpenQRDemo, onSearchChange, searchQuery = '' }) => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Điểm Uy Tín Check-in:</span>
-                  <span style={{ fontWeight: 700, color: 'var(--laser-emerald)', fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ fontWeight: 700, color: 'var(--laser-emerald)', fontFamily: 'var(--font-sans)' }}>
                     {currentUser.reputeScore}/100
                   </span>
                 </div>
@@ -287,7 +287,7 @@ export const Navbar = ({ onOpenQRDemo, onSearchChange, searchQuery = '' }) => {
                     color: 'var(--ink-muted)',
                     paddingTop: '8px',
                     borderTop: '1px solid var(--hairline-soft)',
-                    fontFamily: 'var(--font-mono)'
+                    fontFamily: 'var(--font-sans)'
                   }}
                 >
                   RBAC: Level {currentUser.roleKey === 'admin' ? '5 (Full Access)' : '3 (Role-Restricted)'}

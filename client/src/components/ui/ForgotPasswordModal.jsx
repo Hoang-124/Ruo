@@ -346,7 +346,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
                 <span style={{ fontSize: '13px', color: 'var(--ink-secondary)' }}>
                   Gửi tới: <strong style={{ color: 'var(--ink-pure)' }}>{email}</strong>
                 </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12.5px', color: '#F59E0B', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12.5px', color: '#F59E0B', fontFamily: 'var(--font-sans)' }}>
                   <SvgIcons.Clock size={14} color="#F59E0B" />
                   <span>{formatTimer(timeLeft)}</span>
                 </div>
@@ -414,7 +414,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
                     textAlign: 'center',
                     letterSpacing: '8px',
                     fontWeight: 800,
-                    fontFamily: 'var(--font-mono)'
+                    fontFamily: 'var(--font-sans)'
                   }}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}

@@ -68,7 +68,7 @@ export const AuditLogPage = () => {
             <tbody>
               {filteredLogs.map((log) => (
                 <tr key={log.id}>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary-700)' }}>
+                  <td style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, color: 'var(--color-primary-700)' }}>
                     {log.id}
                   </td>
                   <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -77,7 +77,7 @@ export const AuditLogPage = () => {
                   <td>
                     <div style={{ fontWeight: 700 }}>{log.user}</div>
                   </td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+                  <td style={{ fontFamily: 'var(--font-sans)', fontSize: '12px' }}>
                     {log.ip}
                   </td>
                   <td>
@@ -87,7 +87,7 @@ export const AuditLogPage = () => {
                   </td>
                   <td>
                     <span style={{ fontWeight: 600 }}>{log.entity}: </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-primary-600)' }}>{log.target}</span>
+                    <span style={{ fontFamily: 'var(--font-sans)', color: 'var(--color-primary-600)' }}>{log.target}</span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <button
@@ -131,7 +131,7 @@ export const AuditLogPage = () => {
                   color: '#34D399',
                   padding: '16px',
                   borderRadius: 'var(--radius-md)',
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-sans)',
                   fontSize: '13px',
                   lineHeight: 1.5,
                   overflowX: 'auto'

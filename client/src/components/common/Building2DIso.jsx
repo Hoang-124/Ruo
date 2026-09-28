@@ -615,7 +615,7 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
                       fill="var(--ink-muted)"
                       fontWeight="600"
                     >
-                      <tspan fontFamily="var(--font-mono)" fontWeight="700" fill="var(--ink-pure)">
+                      <tspan fontFamily="var(--font-sans)" fontWeight="700" fill="var(--ink-pure)">
                         {floor.avail}/{floor.total}
                       </tspan>{' '}
                       Phòng trống • {floor.highlight}

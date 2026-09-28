@@ -272,7 +272,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '16px' }}>
           <div style={{ textAlign: 'right' }}>
             <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginRight: '6px' }}>Hotline kỹ thuật:</span>
-            <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-mono)' }}>1900 6868</span>
+            <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)' }}>1900 6868</span>
           </div>
 
           {/* Theme Toggle Button */}

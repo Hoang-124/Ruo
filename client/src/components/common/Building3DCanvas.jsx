@@ -364,7 +364,7 @@ export const Building3DCanvas = () => {
           ctx.fillText(`${floor.code} — ${floor.title}`, calloutStartX + 18, calloutStartY - 6);
 
           // Floor Subtitle Specs
-          ctx.font = "10px 'JetBrains Mono', monospace";
+          ctx.font = "10px 'Be Vietnam Pro', sans-serif";
           ctx.fillStyle = isHovered ? '#93C5FD' : '#64748B';
           ctx.fillText(floor.meta, calloutStartX + 18, calloutStartY + 8);
         }
@@ -500,7 +500,7 @@ export const Building3DCanvas = () => {
           <span
             style={{
               fontSize: '11px',
-              fontFamily: 'JetBrains Mono, monospace',
+              fontFamily: 'var(--font-sans)',
               color: '#94A3B8'
             }}
           >
@@ -518,7 +518,7 @@ export const Building3DCanvas = () => {
             border: '1px solid rgba(255, 255, 255, 0.1)',
             color: isExploded ? '#60A5FA' : '#94A3B8',
             fontSize: '11px',
-            fontFamily: 'JetBrains Mono, monospace',
+            fontFamily: 'var(--font-sans)',
             cursor: 'pointer',
             transition: 'all 0.2s'
           }}
@@ -535,7 +535,7 @@ export const Building3DCanvas = () => {
           right: '32px',
           fontSize: '11px',
           color: 'rgba(148, 163, 184, 0.4)',
-          fontFamily: 'JetBrains Mono, monospace',
+          fontFamily: 'var(--font-sans)',
           pointerEvents: 'none'
         }}
       >

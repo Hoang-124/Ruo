@@ -209,7 +209,7 @@ export const FloorPlan2D = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <span
               style={{
-                fontFamily: 'var(--font-mono)',
+                fontFamily: 'var(--font-sans)',
                 fontSize: '11px',
                 fontWeight: 800,
                 color: '#38BDF8',

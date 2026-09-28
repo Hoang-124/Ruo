@@ -173,7 +173,7 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
           <kbd
             style={{
               fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
               padding: '2px 8px',
               borderRadius: '4px',
               background: 'var(--canvas-subtle)',
@@ -295,7 +295,7 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
           }}
         >
           <span>Hệ Thống Quản Lý Cơ Sở Vật Chất Ruo UFMS</span>
-          <span style={{ fontFamily: 'var(--font-mono)' }}>Enter Chọn • ↑↓ Di Chuyển</span>
+          <span style={{ fontFamily: 'var(--font-sans)' }}>Enter Chọn • ↑↓ Di Chuyển</span>
         </div>
       </div>
     </div>

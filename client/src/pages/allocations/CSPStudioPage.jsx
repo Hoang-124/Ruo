@@ -215,7 +215,7 @@ export const CSPStudioPage = () => {
                 {allocatedResults.map((item) => (
                   <tr key={item.classInfo.id}>
                     <td>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary-700)' }}>
+                      <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, color: 'var(--color-primary-700)' }}>
                         {item.classInfo.id}
                       </div>
                       <div style={{ fontWeight: 600 }}>{item.classInfo.name}</div>
@@ -230,7 +230,7 @@ export const CSPStudioPage = () => {
                       </span>
                     </td>
                     <td>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-green-700)' }}>
+                      <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, color: 'var(--color-green-700)' }}>
                         {item.room.code}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -241,7 +241,7 @@ export const CSPStudioPage = () => {
                       <span style={{ color: 'var(--text-secondary)' }}>+{item.wastedSeats} chỗ</span>
                     </td>
                     <td>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: item.penalty < 0 ? 'var(--color-green-600)' : 'var(--text-primary)' }}>
+                      <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, color: item.penalty < 0 ? 'var(--color-green-600)' : 'var(--text-primary)' }}>
                         {item.penalty > 0 ? `+${item.penalty}` : item.penalty} đ
                       </span>
                     </td>
@@ -279,7 +279,7 @@ export const CSPStudioPage = () => {
               <tbody>
                 {CSP_CLASSES_SAMPLE.map((c) => (
                   <tr key={c.id}>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800 }}>{c.id}</td>
+                    <td style={{ fontFamily: 'var(--font-sans)', fontWeight: 800 }}>{c.id}</td>
                     <td style={{ fontWeight: 600 }}>{c.name}</td>
                     <td>{c.lecturer}</td>
                     <td>{c.faculty}</td>

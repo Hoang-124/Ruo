@@ -169,7 +169,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
                 <span
                   style={{
                     fontSize: '9px',
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                     background: 'rgba(6, 182, 212, 0.15)',
                     color: 'var(--laser-cyan)',
                     padding: '1px 5px',
@@ -185,7 +185,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
                   fontSize: '10px',
                   display: 'block',
                   color: 'var(--ink-muted)',
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-sans)',
                   letterSpacing: '0.04em'
                 }}
               >
@@ -217,7 +217,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
               <div
                 className="nav-section-title"
                 style={{
-                  fontFamily: 'var(--font-mono)',
+                  fontFamily: 'var(--font-sans)',
                   fontSize: '10px',
                   letterSpacing: '0.08em',
                   color: 'var(--ink-muted)',
@@ -275,7 +275,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
                         <span
                           style={{
                             fontSize: '10px',
-                            fontFamily: 'var(--font-mono)',
+                            fontFamily: 'var(--font-sans)',
                             padding: '2px 6px',
                             borderRadius: '4px',
                             background:
@@ -346,11 +346,11 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
                 />
                 <span>RUO KERNEL</span>
               </div>
-              <span style={{ fontSize: '10px', color: 'var(--laser-emerald)', fontFamily: 'var(--font-mono)' }}>
+              <span style={{ fontSize: '10px', color: 'var(--laser-emerald)', fontFamily: 'var(--font-sans)' }}>
                 ONLINE
               </span>
             </div>
-            <div style={{ color: 'var(--ink-muted)', fontSize: '10px', fontFamily: 'var(--font-mono)', lineHeight: 1.4 }}>
+            <div style={{ color: 'var(--ink-muted)', fontSize: '10px', fontFamily: 'var(--font-sans)', lineHeight: 1.4 }}>
               95 USE CASES • 5 TRỤ CỘT • 7 ACTORS
             </div>
           </div>

@@ -455,7 +455,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '28px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: reputeColor }}>
+                    <span style={{ fontSize: '28px', fontWeight: 900, fontFamily: 'var(--font-sans)', color: reputeColor }}>
                       {currentUser.reputeScore}
                     </span>
                     <span style={{ fontSize: '14px', color: 'var(--ink-muted)' }}>/100</span>
@@ -530,7 +530,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                     <SvgIcons.User size={13} />
                     <span>MÃ ĐỊNH DANH (MSSV/CB)</span>
                   </div>
-                  <strong style={{ fontSize: '14px', color: 'var(--ink-pure)', fontFamily: 'var(--font-mono)' }}>
+                  <strong style={{ fontSize: '14px', color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)' }}>
                     {currentUser.code}
                   </strong>
                 </div>

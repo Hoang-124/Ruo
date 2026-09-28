@@ -189,7 +189,7 @@ export const RBACMatrixPage = () => {
                       />
                       <div>
                         <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{perm.label}</div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)' }}>
+                        <div style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', color: 'var(--text-muted)' }}>
                           {perm.code}
                         </div>
                       </div>

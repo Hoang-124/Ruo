@@ -132,7 +132,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--ink-muted)', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 800, color: 'var(--ink-muted)', textTransform: 'uppercase' }}>
                   CHI TIẾT PHÒNG ĐANG CHỌN
                 </span>
                 <span
@@ -164,7 +164,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
 
               <div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                  <span style={{ fontSize: '17px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ fontSize: '17px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)' }}>
                     {selectedRoom.code}
                   </span>
                   <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
@@ -260,7 +260,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
               gap: '10px'
             }}
           >
-            <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--ink-muted)', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: '11px', fontFamily: 'var(--font-sans)', fontWeight: 800, color: 'var(--ink-muted)', textTransform: 'uppercase' }}>
               LỐI TẮT NHANH
             </div>
 
@@ -354,7 +354,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
           >
             <div>
               <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Hỗ trợ kỹ thuật giảng đường:</div>
-              <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-mono)' }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)' }}>
                 Hotline 1900 6868
               </div>
             </div>
@@ -400,7 +400,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
             <div style={{ padding: '10px 14px', background: 'var(--canvas-subtle)', borderRadius: '8px', border: '1px solid var(--hairline-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB', fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB', fontFamily: 'var(--font-sans)' }}>
                     13:00 – 15:00
                   </span>
                   <span style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '4px', background: 'rgba(37, 99, 235, 0.10)', color: '#2563EB', fontWeight: 700 }}>
@@ -427,7 +427,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
             <div style={{ padding: '10px 14px', background: 'var(--canvas-subtle)', borderRadius: '8px', border: '1px solid var(--hairline-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#6366F1', fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#6366F1', fontFamily: 'var(--font-sans)' }}>
                     13:30 – 16:30
                   </span>
                   <span style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.10)', color: '#6366F1', fontWeight: 700 }}>
@@ -481,14 +481,14 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <div style={{ padding: '8px 12px', background: 'var(--canvas-subtle)', borderRadius: '8px', border: '1px solid var(--hairline-soft)' }}>
               <div style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>NHIỆT ĐỘ TRUNG BÌNH</div>
-              <div style={{ fontSize: '15px', fontWeight: 800, color: '#059669', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              <div style={{ fontSize: '15px', fontWeight: 800, color: '#059669', fontFamily: 'var(--font-sans)', marginTop: '2px' }}>
                 24.2°C <span style={{ fontSize: '10px', color: 'var(--ink-muted)', fontWeight: 500 }}>Tối ưu</span>
               </div>
             </div>
 
             <div style={{ padding: '8px 12px', background: 'var(--canvas-subtle)', borderRadius: '8px', border: '1px solid var(--hairline-soft)' }}>
               <div style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>TỶ LỆ LẤP ĐẦY TẦNG</div>
-              <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)', marginTop: '2px' }}>
                 33.3% <span style={{ fontSize: '10px', color: 'var(--ink-muted)', fontWeight: 500 }}>2/6 phòng</span>
               </div>
             </div>
@@ -498,7 +498,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
           <div style={{ padding: '10px 12px', background: 'rgba(245, 158, 11, 0.06)', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.20)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', padding: '1px 6px', background: 'rgba(245,158,11,0.15)', color: '#D97706', borderRadius: '3px', fontWeight: 800 }}>
+                <span style={{ fontSize: '10.5px', fontFamily: 'var(--font-sans)', padding: '1px 6px', background: 'rgba(245,158,11,0.15)', color: '#D97706', borderRadius: '3px', fontWeight: 800 }}>
                   #TCK-0042
                 </span>
                 <span style={{ fontSize: '11px', color: 'var(--ink-primary)', fontWeight: 700 }}>Phòng A1-105 • Bảo Trì Định Kỳ</span>
@@ -539,7 +539,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span
                   style={{
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                     fontSize: '11px',
                     color: '#2563EB',
                     background: 'rgba(37, 99, 235, 0.12)',
@@ -593,20 +593,20 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
 
             {/* Environmental & IoT Telemetry Specs Grid */}
             <div>
-              <div style={{ fontSize: '11.5px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)', marginBottom: '10px', fontWeight: 800 }}>
+              <div style={{ fontSize: '11.5px', fontFamily: 'var(--font-sans)', color: 'var(--ink-muted)', marginBottom: '10px', fontWeight: 800 }}>
                 THÔNG SỐ PHÒNG HỌC
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div style={{ background: 'var(--canvas-subtle)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
                   <div style={{ fontSize: '11px', color: 'var(--ink-muted)', fontWeight: 600 }}>SỨC CHỨA GHẾ NGỒI</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)', marginTop: '2px' }}>
                     {selectedRoom.capacity} Chỗ
                   </div>
                 </div>
 
                 <div style={{ background: 'var(--canvas-subtle)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
                   <div style={{ fontSize: '11px', color: 'var(--ink-muted)', fontWeight: 600 }}>DIỆN TÍCH SÀN</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)', marginTop: '2px' }}>
                     {selectedRoom.area || 60} m²
                   </div>
                 </div>
@@ -615,7 +615,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
 
             {/* Equipment Inventory */}
             <div>
-              <div style={{ fontSize: '11.5px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)', marginBottom: '10px', fontWeight: 800 }}>
+              <div style={{ fontSize: '11.5px', fontFamily: 'var(--font-sans)', color: 'var(--ink-muted)', marginBottom: '10px', fontWeight: 800 }}>
                 TRANG THIẾT BỊ SẴN CÓ TRONG PHÒNG
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -647,7 +647,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
 
             {/* Today's Schedule Slots */}
             <div>
-              <div style={{ fontSize: '11.5px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)', marginBottom: '10px', fontWeight: 800 }}>
+              <div style={{ fontSize: '11.5px', fontFamily: 'var(--font-sans)', color: 'var(--ink-muted)', marginBottom: '10px', fontWeight: 800 }}>
                 LỊCH PHÒNG HỌC TRONG NGÀY
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -666,7 +666,7 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                      <span style={{ fontWeight: 700, color: '#2563EB', fontFamily: 'var(--font-mono)' }}>{slot.time}</span>
+                      <span style={{ fontWeight: 700, color: '#2563EB', fontFamily: 'var(--font-sans)' }}>{slot.time}</span>
                       <span style={{ color: 'var(--ink-muted)' }}>{slot.user}</span>
                     </div>
                     <div style={{ color: 'var(--ink-primary)', fontWeight: 600 }}>{slot.title}</div>

@@ -85,7 +85,7 @@ const MainAppContent = () => {
           <span>Quay lại Bản Đồ CAD</span>
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-sans)', fontSize: '11px' }}>
           <span style={{ color: 'var(--ink-muted)' }}>{category}</span>
           <span style={{ color: 'var(--hairline-medium)' }}>/</span>
           <span style={{ color: 'var(--laser-cyan)', fontWeight: 700 }}>{title}</span>

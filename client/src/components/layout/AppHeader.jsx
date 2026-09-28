@@ -233,7 +233,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                         <p style={{ fontSize: '12px', color: 'var(--ink-secondary)', margin: '2px 0 4px 14px' }}>
                           {n.message}
                         </p>
-                        <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginLeft: '14px', fontFamily: 'var(--font-mono)' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginLeft: '14px', fontFamily: 'var(--font-sans)' }}>
                           {n.time}
                         </span>
                       </div>
@@ -299,7 +299,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
 
                     <div style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', marginTop: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>Điểm uy tín:</span>
-                      <strong style={{ color: '#10B981', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>{currentUser.reputeScore}/100</strong>
+                      <strong style={{ color: '#10B981', fontFamily: 'var(--font-sans)', fontSize: '12px' }}>{currentUser.reputeScore}/100</strong>
                     </div>
                   </div>
 
