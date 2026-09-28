@@ -82,51 +82,18 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
     return () => clearInterval(timer);
   }, []);
 
-  // 6 Defined Actors in UFMS RBAC
-  const roles = [
-    {
-      key: 'student',
-      label: 'Sinh viên',
-      desc: 'Tra cứu phòng, đặt phòng học nhóm, báo hỏng sự cố',
-      color: '#3B82F6',
-      icon: Icons.User
-    },
-    {
-      key: 'lecturer',
-      label: 'Giảng viên',
-      desc: 'Đặt phòng giảng dạy, hội thảo chuyên đề, mượn thiết bị Lab',
-      color: '#6366F1',
-      icon: Icons.AcademicCap || Icons.User
-    },
-    {
-      key: 'facility_staff',
-      label: 'Quản Lý CSVC',
-      desc: 'Duyệt yêu cầu phòng, quản lý thiết bị, kiểm kê mã QR',
-      color: '#0EA5E9',
-      icon: Icons.Building
-    },
-    {
-      key: 'maintenance',
-      label: 'Kỹ Thuật Viên',
-      desc: 'Tiếp nhận sự cố Kanban, sửa chữa thiết bị, cam kết SLA',
-      color: '#F59E0B',
-      icon: Icons.Wrench
-    },
-    {
-      key: 'academic_affairs',
-      label: 'Phòng Đào Tạo',
-      desc: 'Xếp thời khóa biểu tự động toàn trường với CSP Engine',
-      color: '#10B981',
-      icon: Icons.Calendar
-    },
-    {
-      key: 'admin',
-      label: 'Quản Trị Hệ Thống',
-      desc: 'Toàn quyền điều hành, phân quyền RBAC 7 nhóm, Audit Log SHA-256',
-      color: '#EF4444',
-      icon: Icons.Shield
-    }
-  ];
+  // Canonical Role Metadata for User Badging
+  const ROLE_METADATA = {
+    student: { label: 'Sinh viên', color: '#2563EB', bg: 'rgba(37, 99, 235, 0.12)' },
+    lecturer: { label: 'Giảng viên', color: '#6366F1', bg: 'rgba(99, 102, 241, 0.12)' },
+    facility_staff: { label: 'Quản lý CSVC', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
+    maintenance: { label: 'Kỹ thuật viên', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' },
+    academic_affairs: { label: 'Phòng Đào tạo', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)' },
+    admin: { label: 'Quản trị viên', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)' }
+  };
+
+  const activeRole = currentUser?.role || currentRoleKey || 'student';
+  const roleInfo = ROLE_METADATA[activeRole] || ROLE_METADATA.student;
 
   // 10 Core Subsystems Navigation Definition
   const allNavTabs = [
@@ -296,71 +263,48 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
               </button>
 
               {showProfilePopover && (
-                <div className="ruo-popover-menu ruo-profile-popover">
+                <div className="ruo-popover-menu ruo-profile-popover" style={{ minWidth: '280px', padding: '16px' }}>
                   {/* Account Overview Header */}
-                  <div className="ruo-profile-meta">
+                  <div className="ruo-profile-meta" style={{ paddingBottom: '14px', borderBottom: '1px solid var(--hairline-soft)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--ink-pure)' }}>
+                      <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--ink-pure)' }}>
                         {currentUser.name}
                       </span>
                       <span className="ruo-uid-pill">{currentUser.code}</span>
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--ink-muted)', marginTop: '2px' }}>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
+                      <span style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>Vai trò:</span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          color: roleInfo.color,
+                          background: roleInfo.bg,
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)'
+                        }}
+                      >
+                        {roleInfo.label}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', marginTop: '6px' }}>
                       {currentUser.email}
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--ink-secondary)', marginTop: '6px' }}>
+
+                    <div style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', marginTop: '4px' }}>
                       Đơn vị: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.department}</strong>
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--ink-secondary)', marginTop: '2px', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Điểm uy tín check-in:</span>
-                      <strong style={{ color: '#10B981', fontFamily: 'var(--font-mono)' }}>{currentUser.reputeScore}/100</strong>
+
+                    <div style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', marginTop: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Điểm uy tín:</span>
+                      <strong style={{ color: '#10B981', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>{currentUser.reputeScore}/100</strong>
                     </div>
                   </div>
 
-                  {/* Clean Role Switcher Section (Anti-AI: Tucked cleanly inside Profile) */}
-                  <div className="ruo-role-section">
-                    <div className="ruo-section-label">
-                      <span>CHUYỂN ĐỔI GÓC NHÌN TÁC NHÂN (RBAC)</span>
-                    </div>
-                    <div className="ruo-role-list">
-                      {roles.map((r) => {
-                        const isCurrent = currentRoleKey === r.key;
-                        const IconComp = r.icon;
-                        return (
-                          <div
-                            key={r.key}
-                            className={`ruo-role-item ${isCurrent ? 'active' : ''}`}
-                            onClick={() => {
-                              switchRole(r.key);
-                              setShowProfilePopover(false);
-                            }}
-                          >
-                            <div className="ruo-role-icon-box" style={{ color: r.color, backgroundColor: `${r.color}15` }}>
-                              <IconComp size={15} />
-                            </div>
-                            <div className="ruo-role-texts">
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ fontWeight: 600, fontSize: '13px', color: isCurrent ? 'var(--ink-pure)' : 'var(--ink-primary)' }}>
-                                  {r.label}
-                                </span>
-                                {isCurrent && (
-                                  <span style={{ fontSize: '10px', color: '#10B981', fontWeight: 700 }}>
-                                    Đang kích hoạt
-                                  </span>
-                                )}
-                              </div>
-                              <span style={{ fontSize: '11px', color: 'var(--ink-muted)', lineHeight: 1.3 }}>
-                                {r.desc}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Footer Action */}
-                  <div className="ruo-profile-footer" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {/* Real User Actions */}
+                  <div className="ruo-profile-footer" style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '12px' }}>
                     <button
                       className="ruo-footer-btn"
                       style={{ color: 'var(--laser-cyan)' }}
@@ -368,21 +312,10 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                         setShowProfilePopover(false);
                         if (onOpenProfileModal) onOpenProfileModal();
                       }}
-                      title="Xem hồ sơ, điểm uy tín, sửa SĐT và đổi mật khẩu"
+                      title="Xem thông tin tài khoản và đổi mật khẩu"
                     >
-                      <Icons.User size={14} color="var(--laser-cyan)" />
-                      <span>Hồ Sơ & Đổi Mật Khẩu (UC-1.4..1.6)</span>
-                    </button>
-
-                    <button
-                      className="ruo-footer-btn"
-                      onClick={() => {
-                        setShowProfilePopover(false);
-                        setShowCommandPalette(true);
-                      }}
-                    >
-                      <Icons.Layers size={14} />
-                      <span>Tra cứu danh mục 95 Use Cases</span>
+                      <Icons.User size={15} color="var(--laser-cyan)" />
+                      <span>Hồ Sơ & Đổi Mật Khẩu</span>
                     </button>
 
                     <button
@@ -394,8 +327,8 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                       }}
                       title="Đăng xuất khỏi hệ thống Ruo CSVC"
                     >
-                      <Icons.LogOut size={14} color="#EF4444" />
-                      <span>Đăng Xuất (UC-1.2)</span>
+                      <Icons.LogOut size={15} color="#EF4444" />
+                      <span>Đăng Xuất</span>
                     </button>
                   </div>
                 </div>
@@ -431,17 +364,6 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
               );
             })}
           </div>
-
-          {/* Quick 95 Use Case Launcher on Subnav Right */}
-          <button
-            onClick={() => setShowCommandPalette(true)}
-            className="ruo-subnav-catalog-btn"
-            title="Mở bảng tra cứu toàn bộ 95 Use Cases (Ctrl+K)"
-          >
-            <Icons.Layers size={13} color="var(--laser-cyan)" />
-            <span>95 Chức Năng</span>
-            <kbd className="ruo-kbd-shortcut">Ctrl+K</kbd>
-          </button>
         </nav>
       </header>
 

@@ -294,7 +294,7 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
             color: 'var(--ink-muted)'
           }}
         >
-          <span>Hệ Thống Ruo • Phân Hạng 95 Chức Năng 5 Trụ Cột</span>
+          <span>Hệ Thống Quản Lý Cơ Sở Vật Chất Ruo UFMS</span>
           <span style={{ fontFamily: 'var(--font-mono)' }}>Enter Chọn • ↑↓ Di Chuyển</span>
         </div>
       </div>
