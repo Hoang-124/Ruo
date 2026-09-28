@@ -508,8 +508,8 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    // Rate Limit Check: Maximum 3 requests in the last 1 hour (configurable in dev mode)
-    const maxRequestsPerHour = process.env.NODE_ENV === 'production' ? 3 : (Number(process.env.RATE_LIMIT_OTP_PER_HOUR) || 10);
+    // Rate Limit Check: Maximum 3 requests in the last 1 hour (per UC-1.3)
+    const maxRequestsPerHour = Number(process.env.RATE_LIMIT_OTP_PER_HOUR) || 3;
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const recentRequestsCount = await PasswordReset.countDocuments({
       email: normalizedEmail,

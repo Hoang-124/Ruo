@@ -39,7 +39,3 @@ Thumbs.db
 # Exported planning & documentation artifacts
 exports/
 
-# Local temporary package for quick client scripts (do not commit)
-package.json
-package-lock.json
-

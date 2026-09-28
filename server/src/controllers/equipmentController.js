@@ -1,10 +1,21 @@
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 import { Equipment, EquipmentCategory, Supplier } from '../models/Equipment.js';
 import { Room } from '../models/Facility.js';
 import { EquipmentBorrowing } from '../models/EquipmentBorrowing.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { EQUIPMENT_STATUSES } from '../config/constants.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+
+// @desc    Get all equipment categories
+// @route   GET /api/equipments/categories
+export const getEquipmentCategories = asyncHandler(async (req, res) => {
+  const categories = await EquipmentCategory.find({ deletedAt: null }).sort({ name: 1 });
+  res.status(200).json({
+    success: true,
+    categories
+  });
+});
 
 // @desc    Create new equipment item (UC-3.7)
 // @route   POST /api/equipments
@@ -16,6 +27,7 @@ export const createEquipment = asyncHandler(async (req, res) => {
     name,
     category,
     room,
+    locationRoom,
     supplier,
     originalPrice,
     remainingValue,
@@ -76,13 +88,33 @@ export const createEquipment = asyncHandler(async (req, res) => {
     });
   }
 
-  // Validate Category existence in DB
-  const categoryExists = await EquipmentCategory.findById(category);
-  if (!categoryExists) {
+  // Validate Category existence in DB (support ObjectId, Code, or Name)
+  let categoryDoc = null;
+  if (mongoose.Types.ObjectId.isValid(category)) {
+    categoryDoc = await EquipmentCategory.findById(category);
+  }
+  if (!categoryDoc) {
+    categoryDoc = await EquipmentCategory.findOne({
+      $or: [{ code: category }, { name: category }]
+    });
+  }
+  if (!categoryDoc) {
     return res.status(404).json({
       success: false,
       message: 'Chủng loại thiết bị không tồn tại trong hệ thống.'
     });
+  }
+
+  // Resolve room if provided by ID or code
+  let roomDoc = null;
+  const targetRoom = room || locationRoom;
+  if (targetRoom) {
+    if (mongoose.Types.ObjectId.isValid(targetRoom)) {
+      roomDoc = await Room.findById(targetRoom);
+    }
+    if (!roomDoc) {
+      roomDoc = await Room.findOne({ code: targetRoom.toString().toUpperCase().trim() });
+    }
   }
 
   // Handle custom or generated QR Code Data
@@ -106,8 +138,8 @@ export const createEquipment = asyncHandler(async (req, res) => {
     qrCodeData,
     serialNumber: typeof serialNumber === 'string' ? serialNumber.trim() : '',
     name: name.trim(),
-    category,
-    room: room || null,
+    category: categoryDoc._id,
+    room: roomDoc ? roomDoc._id : null,
     supplier: supplier || null,
     originalPrice: numOriginalPrice,
     remainingValue: remainingValue !== undefined && !isNaN(Number(remainingValue)) ? Number(remainingValue) : numOriginalPrice,
