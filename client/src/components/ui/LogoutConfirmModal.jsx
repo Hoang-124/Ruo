@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Icons, SvgIcon } from '../common/SvgIcons';
 
 /**
@@ -57,7 +58,7 @@ export const LogoutConfirmModal = ({
     }
   };
 
-  return (
+  const modalContent = (
     <div
       className="ruo-modal-backdrop-smooth ruo-logout-modal-backdrop"
       onClick={(e) => {
@@ -99,7 +100,7 @@ export const LogoutConfirmModal = ({
           </button>
         </div>
 
-        {/* Scope Selector: Single Device vs All Devices (UC-1.2 Standard) */}
+        {/* Scope Selector: Single Device vs All Devices (Standard) */}
         <div className="ruo-logout-scope-box">
           <div className="ruo-scope-label">
             <span>CHỌN PHẠM VI KẾT THÚC PHIÊN LÀM VIỆC:</span>
@@ -166,7 +167,7 @@ export const LogoutConfirmModal = ({
         {/* Audit Note */}
         <div className="ruo-logout-audit-note">
           <Icons.Shield size={13} color="var(--laser-cyan)" />
-          <span>Hành động đăng xuất sẽ được lưu vết vào Nhật Ký Kiểm Toán SHA-256 (Audit Log) theo chuẩn UC-1.2.</span>
+          <span>Hành động đăng xuất sẽ được lưu vết vào Nhật Ký Kiểm Toán SHA-256 (Audit Log) theo chuẩn an toàn thông tin.</span>
         </div>
 
         {/* Modal Actions */}
@@ -214,4 +215,6 @@ export const LogoutConfirmModal = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { LogoutConfirmModal } from './LogoutConfirmModal';
@@ -91,6 +92,8 @@ const SvgIcons = {
 };
 
 export const UserProfileModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+
   const { currentUser, updateProfile, changePassword, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState('view'); // 'view', 'edit', 'password'
@@ -163,7 +166,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
     const res = await updateProfile(phone, avatar);
     if (res.success) {
       setEditStatus({ loading: false, success: res.message, error: null });
-      toast.success(res.message || 'Cập nhật số điện thoại và avatar thành công!', 'Hồ Sơ Cá Nhân (UC-1.6)');
+      toast.success(res.message || 'Cập nhật số điện thoại và avatar thành công!', 'Hồ Sơ Cá Nhân');
     } else {
       setEditStatus({ loading: false, success: null, error: res.message });
       toast.error(res.message || 'Không thể cập nhật hồ sơ.');
@@ -268,7 +271,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
           logoutOtherDevices
             ? 'Đổi mật khẩu thành công! Các phiên đăng nhập trên thiết bị khác đã được thu hồi an toàn.'
             : 'Đổi mật khẩu thành công!',
-          'Đổi Mật Khẩu (UC-1.4)'
+          'Đổi Mật Khẩu'
         );
       } else {
         const errorMsg = res?.message || 'Không thể cập nhật mật khẩu. Vui lòng thử lại.';
@@ -303,7 +306,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
 
   const reputeColor = currentUser.reputeScore >= 90 ? '#10B981' : currentUser.reputeScore >= 70 ? '#3B82F6' : currentUser.reputeScore >= 40 ? '#F59E0B' : '#EF4444';
 
-  return (
+  const modalContent = (
     <div
       className="ruo-modal-backdrop-smooth"
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -315,12 +318,15 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
         style={{
           width: '100%',
           maxWidth: '680px',
-          maxHeight: '90vh',
+          maxHeight: 'min(88vh, 740px)',
+          margin: 'auto',
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--surface-panel)',
           border: '1px solid var(--hairline-medium)',
-          borderRadius: 'var(--radius-xl)'
+          borderRadius: 'var(--radius-xl)',
+          boxShadow: '0 25px 70px rgba(0, 0, 0, 0.55)',
+          overflow: 'hidden'
         }}
       >
         {/* Accent Bar */}
@@ -331,12 +337,13 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
         {/* Modal Header */}
         <div
           style={{
-            padding: '20px 24px',
+            padding: '18px 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: '1px solid var(--hairline-soft)',
-            background: 'var(--surface-subtle)'
+            background: 'var(--surface-subtle)',
+            flexShrink: 0
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -386,7 +393,8 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
             borderBottom: '1px solid var(--hairline-soft)',
             padding: '0 24px',
             background: 'var(--surface-subtle)',
-            gap: '8px'
+            gap: '8px',
+            flexShrink: 0
           }}
         >
           <button
@@ -395,7 +403,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
             style={{ padding: '12px 16px', borderRadius: '0', borderBottom: activeTab === 'view' ? '2px solid var(--laser-cyan)' : 'none' }}
           >
             <SvgIcons.User size={14} />
-            <span>Hồ Sơ & Điểm Uy Tín (UC-1.5)</span>
+            <span>Hồ Sơ & Điểm Uy Tín</span>
           </button>
           <button
             onClick={() => setActiveTab('edit')}
@@ -403,7 +411,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
             style={{ padding: '12px 16px', borderRadius: '0', borderBottom: activeTab === 'edit' ? '2px solid var(--laser-cyan)' : 'none' }}
           >
             <SvgIcons.Edit size={14} />
-            <span>Cập Nhật Liên Hệ (UC-1.6)</span>
+            <span>Cập Nhật Liên Hệ</span>
           </button>
           <button
             onClick={() => setActiveTab('password')}
@@ -411,12 +419,12 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
             style={{ padding: '12px 16px', borderRadius: '0', borderBottom: activeTab === 'password' ? '2px solid var(--laser-cyan)' : 'none' }}
           >
             <SvgIcons.Lock size={14} />
-            <span>Đổi Mật Khẩu (UC-1.4)</span>
+            <span>Đổi Mật Khẩu</span>
           </button>
         </div>
 
         {/* Modal Scrollable Body */}
-        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: '24px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
           {/* TAB 1: PROFILE VIEW & REPUTE SCORE (UC-1.5) */}
           {activeTab === 'view' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -935,7 +943,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
               title="Đăng xuất bảo mật khỏi hệ thống Ruo CSVC"
             >
               <SvgIcons.LogOut size={14} color="#EF4444" />
-              <span>Đăng Xuất Khỏi Hệ Thống (UC-1.2)</span>
+              <span>Đăng Xuất Khỏi Hệ Thống</span>
             </button>
           </div>
 
@@ -958,4 +966,6 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
       />
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

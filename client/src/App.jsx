@@ -208,7 +208,7 @@ const MainAppContent = () => {
   };
 
   return (
-    <div className="panoramic-shell blueprint-canvas-bg ruo-view-enter">
+    <div className="panoramic-shell blueprint-canvas-bg">
       {/* 1. Grounded Two-Tier Enterprise Navigation Header */}
       <AppHeader
         activeTab={activeTab}
