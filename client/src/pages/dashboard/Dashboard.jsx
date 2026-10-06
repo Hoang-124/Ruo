@@ -10,16 +10,15 @@ import { Button, Card, KPI, StatusBadge, EmptyState } from '../../components/ui/
 /**
  * Dashboard - UEMS Operational Command Center
  * 
- * Refined Layout:
+ * Optimized Hierarchy:
  * 1. Top Bar: Greeting, Role, Quick Actions
- * 2. KPI Overview Row: Active, Repairing, Pending Approvals, Total Value
- * 3. SHA-256 Cryptographic Chain Status Strip
- * 4. Mid Section (Split View):
+ * 2. PRIMARY FOCUS (Top of Page):
  *    - Left (~62%): Sơ Đồ Mặt Bằng Phòng Học 2D / 2.5D (FloorPlan2D) với bộ chọn Tầng 1..5
- *    - Right (~38%): Khung Thông Tin Chi Tiết Phòng Học Được Chọn & Danh Sách Thiết Bị Tại Phòng
- * 5. Bottom Section (Split View):
+ *    - Right (~38%): Bảng Thông Tin Chi Tiết Phòng & Danh Sách Thiết Bị Tại Phòng
+ * 3. KPI Overview Row: 4 Metric Cards (Placed below workspace)
+ * 4. Lower Grid:
  *    - Left (~60%): Việc Cần Xử Lý Của Tôi (Action Items)
- *    - Right (~40%): Nhật Ký Kiểm Toán Gần Đây (SHA-256 Ledger)
+ *    - Right (~40%): Nhật Ký Kiểm Toán Gần Đây (với huy hiệu kiểm toán SHA-256 tích hợp)
  */
 export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
   const { currentUser, currentRoleKey } = useAuth();
@@ -189,13 +188,13 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
   }, [selectedRoom, equipmentsList]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       {/* ==============================================================
           1. TOP WELCOME & ROLE BAR
           ============================================================== */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: 'var(--ink-primary)' }}>
+          <h1 style={{ margin: 0, fontSize: '23px', fontWeight: 800, color: 'var(--ink-primary)' }}>
             Trung Tâm Vận Hành Cơ Sở Vật Chất (UEMS Operational Command)
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
@@ -217,81 +216,8 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
       </div>
 
       {/* ==============================================================
-          2. KPI OVERVIEW ROW
-          ============================================================== */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-        <KPI
-          label="Thiết Bị Hoạt Động"
-          value={stats.activeCount}
-          subtext="Sẵn sàng phục vụ đào tạo"
-          icon={Icons.Equipment}
-          color="#2FB37A"
-          onClick={() => onNavigateTab('equipments')}
-        />
-
-        <KPI
-          label="Đang Sửa Chữa"
-          value={stats.repairingCount}
-          subtext="Theo dõi tiến độ Kanban SLA"
-          icon={Icons.Wrench}
-          color="#E5A33B"
-          onClick={() => onNavigateTab('tickets_kanban')}
-        />
-
-        <KPI
-          label="Phiếu Chờ Duyệt"
-          value={stats.pendingTransfers + stats.pendingDisposals}
-          subtext={`${stats.pendingTransfers} điều chuyển • ${stats.pendingDisposals} thanh lý`}
-          icon={Icons.Clock}
-          color="#3E7BFA"
-          onClick={() => onNavigateTab(isManager ? 'transfers' : 'disposal_calc')}
-        />
-
-        <KPI
-          label="Tổng Giá Trị CSVC"
-          value={`${Math.round(stats.totalValuation / 1000000)} Tr đ`}
-          subtext="Khấu hao theo chuẩn tài sản công"
-          icon={Icons.CheckCircle}
-          color="#8B5CF6"
-          onClick={() => onNavigateTab('equipments')}
-        />
-      </div>
-
-      {/* ==============================================================
-          3. CRYPTOGRAPHIC LEDGER HEALTH STRIP (SHA-256)
-          ============================================================== */}
-      <div
-        style={{
-          background: auditChainValid ? 'rgba(47, 179, 122, 0.08)' : 'rgba(229, 72, 77, 0.12)',
-          border: `1px solid ${auditChainValid ? 'rgba(47, 179, 122, 0.25)' : 'rgba(229, 72, 77, 0.35)'}`,
-          borderRadius: 'var(--radius-md)',
-          padding: '12px 18px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: auditChainValid ? '#2FB37A' : '#E5484D' }} />
-          <span style={{ fontSize: '12.5px', color: 'var(--ink-primary)' }}>
-            Chuỗi kiểm toán SHA-256 Tamper-Evident: <strong style={{ color: auditChainValid ? '#2FB37A' : '#E5484D' }}>{auditChainValid ? 'HỢP LỆ & NGUYÊN VẸN' : 'PHÁT HIỆN CAN THIỆP'}</strong>
-          </span>
-        </div>
-
-        <Button
-          size="sm"
-          variant="ghost"
-          style={{ fontSize: '11px', color: 'var(--blueprint-400)' }}
-          onClick={() => onNavigateTab('audit_log')}
-        >
-          Mở Sổ Cái Mật Mã →
-        </Button>
-      </div>
-
-      {/* ==============================================================
-          4. DIGITAL TWIN SPATIAL WORKSPACE (SPLIT 62% MAP : 38% ROOM INFO)
+          2. PRIMARY HERO: DIGITAL TWIN WORKSPACE (SPLIT 62% MAP : 38% ROOM INFO)
+          Đặt ngay tại vị trí cao nhất theo yêu cầu tối ưu UX
           ============================================================== */}
       <div
         style={{
@@ -514,7 +440,49 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
       </div>
 
       {/* ==============================================================
-          5. LOWER GRID: MY ACTION ITEMS (LEFT 60%) + RECENT AUDIT (RIGHT 40%)
+          3. KPI OVERVIEW ROW (ĐƯA XUỐNG DƯỚI KHÔNG GIAN SƠ ĐỒ)
+          ============================================================== */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+        <KPI
+          label="Thiết Bị Hoạt Động"
+          value={stats.activeCount}
+          subtext="Sẵn sàng phục vụ đào tạo"
+          icon={Icons.Equipment}
+          color="#2FB37A"
+          onClick={() => onNavigateTab('equipments')}
+        />
+
+        <KPI
+          label="Đang Sửa Chữa"
+          value={stats.repairingCount}
+          subtext="Theo dõi tiến độ Kanban SLA"
+          icon={Icons.Wrench}
+          color="#E5A33B"
+          onClick={() => onNavigateTab('tickets_kanban')}
+        />
+
+        <KPI
+          label="Phiếu Chờ Duyệt"
+          value={stats.pendingTransfers + stats.pendingDisposals}
+          subtext={`${stats.pendingTransfers} điều chuyển • ${stats.pendingDisposals} thanh lý`}
+          icon={Icons.Clock}
+          color="#3E7BFA"
+          onClick={() => onNavigateTab(isManager ? 'transfers' : 'disposal_calc')}
+        />
+
+        <KPI
+          label="Tổng Giá Trị CSVC"
+          value={`${Math.round(stats.totalValuation / 1000000)} Tr đ`}
+          subtext="Khấu hao theo chuẩn tài sản công"
+          icon={Icons.CheckCircle}
+          color="#8B5CF6"
+          onClick={() => onNavigateTab('equipments')}
+        />
+      </div>
+
+      {/* ==============================================================
+          4. LOWER GRID: MY ACTION ITEMS (LEFT 60%) + RECENT AUDIT (RIGHT 40%)
+          Tích hợp huy hiệu kiểm toán SHA-256 vào thẻ Nhật Ký Kiểm Toán
           ============================================================== */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: '20px' }}>
         {/* Left Column: Role-Tailored "Việc Cần Làm Của Tôi" */}
@@ -575,8 +543,46 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
           </div>
         </Card>
 
-        {/* Right Column: Recent Audit Ledger Feed */}
-        <Card title="Nhật Ký Kiểm Toán Gần Đây" subtitle="Ghi nhận bất biến vào chuỗi SHA-256">
+        {/* Right Column: Recent Audit Ledger Feed With Embedded SHA-256 Chain Badge */}
+        <Card
+          title="Nhật Ký Kiểm Toán Gần Đây"
+          subtitle="Ghi nhận bất biến vào chuỗi SHA-256"
+          action={
+            <Button
+              size="sm"
+              variant="ghost"
+              style={{ fontSize: '11px', color: 'var(--blueprint-400)' }}
+              onClick={() => onNavigateTab('audit_log')}
+            >
+              Mở Sổ Cái →
+            </Button>
+          }
+        >
+          {/* Subtle Inline SHA-256 Integrity Badge (Moved from top banner to here) */}
+          <div
+            style={{
+              background: auditChainValid ? 'rgba(47, 179, 122, 0.08)' : 'rgba(229, 72, 77, 0.12)',
+              border: `1px solid ${auditChainValid ? 'rgba(47, 179, 122, 0.25)' : 'rgba(229, 72, 77, 0.35)'}`,
+              borderRadius: 'var(--radius-sm)',
+              padding: '8px 12px',
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '11.5px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: auditChainValid ? '#2FB37A' : '#E5484D' }} />
+              <span style={{ color: 'var(--ink-primary)' }}>
+                Chuỗi SHA-256: <strong style={{ color: auditChainValid ? '#2FB37A' : '#E5484D' }}>{auditChainValid ? 'HỢP LỆ & NGUYÊN VẸN' : 'PHÁT HIỆN CAN THIỆP'}</strong>
+              </span>
+            </div>
+            <span style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)' }}>
+              TAMPER-EVIDENT
+            </span>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {recentAudits.map(log => (
               <div
