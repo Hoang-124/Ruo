@@ -243,6 +243,14 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const verifyResetOtp = useCallback(async (email, otp) => {
+    try {
+      return await authApi.verifyResetOtp(email, otp);
+    } catch (err) {
+      return { success: false, message: err.message || 'Lỗi xác thực mã OTP.' };
+    }
+  }, []);
+
   const resetPassword = useCallback(async (email, otp, newPassword) => {
     try {
       return await authApi.resetPassword(email, otp, newPassword);
@@ -319,6 +327,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     fetchProfile,
     forgotPassword,
+    verifyResetOtp,
     resetPassword
   }), [
     currentUser,
@@ -340,6 +349,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     fetchProfile,
     forgotPassword,
+    verifyResetOtp,
     resetPassword
   ]);
 

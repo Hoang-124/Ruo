@@ -161,6 +161,7 @@ export const authApi = {
   profile: () => api.get('/auth/me'),
   logout: (refreshToken) => api.post('/auth/logout', { refreshToken }),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  verifyResetOtp: (email, otp) => api.post('/auth/verify-reset-otp', { email, otp }),
   resetPassword: (email, otp, newPassword) => api.post('/auth/reset-password', { email, otp, newPassword })
 };
 

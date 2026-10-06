@@ -54,33 +54,46 @@ class MailQueue {
 
 export const ruoMailQueue = new MailQueue();
 
+let cachedTransporter = null;
+
 /**
- * Create configured Nodemailer transporter
+ * Create configured Nodemailer transporter with connection pooling for maximum speed
  */
 export const createSmtpTransporter = () => {
+  if (cachedTransporter) {
+    return cachedTransporter;
+  }
+
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     return null;
   }
 
   // Preset for popular services (e.g. Gmail)
   if (process.env.SMTP_SERVICE) {
-    return nodemailer.createTransport({
+    cachedTransporter = nodemailer.createTransport({
       service: process.env.SMTP_SERVICE,
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 100,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
       }
     });
+    return cachedTransporter;
   }
 
   // Standard host/port configuration (Outlook, Brevo, SendGrid, Mailgun, Custom)
   const port = Number(process.env.SMTP_PORT) || 587;
   const isSecure = process.env.SMTP_SECURE === 'true' || port === 465;
 
-  return nodemailer.createTransport({
+  cachedTransporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port,
     secure: isSecure,
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 100,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS
@@ -89,6 +102,8 @@ export const createSmtpTransporter = () => {
       rejectUnauthorized: false
     }
   });
+
+  return cachedTransporter;
 };
 
 /**
@@ -128,7 +143,7 @@ export const sendPasswordResetEmail = async (email, otp) => {
       const senderDisplayName = process.env.SMTP_FROM_NAME || 'Ruo — Ban Quản Lý CSVC Đại Học';
       const fromHeader = `"${senderDisplayName}" <${process.env.SMTP_FROM || senderEmail}>`;
 
-      const info = await transporter.sendMail({
+      const sendPromise = transporter.sendMail({
         from: fromHeader,
         to: targetEmail,
         subject: mailPayload.subject,
@@ -198,6 +213,12 @@ export const sendPasswordResetEmail = async (email, otp) => {
           </html>
         `
       });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('SMTP timeout: dịch vụ email phản hồi chậm')), 6000)
+      );
+
+      const info = await Promise.race([sendPromise, timeoutPromise]);
 
       console.log(`[Ruo Mailer] 🚀 REAL EMAIL DELIVERED via SMTP! MessageID: ${info.messageId}`);
       ruoMailQueue.recordDelivered(queueItem, info);
