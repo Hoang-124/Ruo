@@ -175,6 +175,34 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // UC-1.0: Register
+  const register = useCallback(async (userData) => {
+    try {
+      const data = await authApi.register(userData);
+      if (data.success && data.token) {
+        setToken(data.token);
+        setRefreshToken(data.refreshToken);
+        setApiUser(data.user);
+        setIsLoggedIn(true);
+        if (data.user.role) {
+          setCurrentRoleKey(data.user.role);
+        }
+        setStoredTokens(data.token, data.refreshToken);
+        return { success: true, user: data.user, message: data.message };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Đăng ký tài khoản không thành công.'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Không thể kết nối đến máy chủ Backend (Port 5000).'
+      };
+    }
+  }, []);
+
   // UC-1.2: Logout
   const logout = useCallback(async () => {
     try {
@@ -274,6 +302,7 @@ export const AuthProvider = ({ children }) => {
     isLoggedIn,
     token,
     login,
+    register,
     logout,
     fetchProfile,
     forgotPassword,
@@ -293,11 +322,13 @@ export const AuthProvider = ({ children }) => {
     isLoggedIn,
     token,
     login,
+    register,
     logout,
     fetchProfile,
     forgotPassword,
     resetPassword
   ]);
+
 
   return (
     <AuthContext.Provider value={contextValue}>

@@ -184,6 +184,137 @@ export const login = async (req, res) => {
 };
 
 /**
+ * UC-1.0: Register
+ * Public registration for university staff, lecturers, and technicians
+ * Issues 15-minute Access Token and 7-day Refresh Token upon success
+ */
+export const register = async (req, res) => {
+  const jwtSecret = process.env.JWT_SECRET;
+  const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || jwtSecret;
+
+  if (!jwtSecret) {
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi cấu hình hệ thống: JWT_SECRET chưa được thiết lập.'
+    });
+  }
+
+  try {
+    const { fullName, email, employeeCode, password, role, department, phone } = req.body;
+
+    if (!fullName || !email || !employeeCode || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp đầy đủ họ tên, email trường, mã cán bộ và mật khẩu.'
+      });
+    }
+
+    const trimmedEmail = String(email).trim().toLowerCase();
+    const trimmedCode = String(employeeCode).trim().toUpperCase();
+
+    // Check duplicate email or employeeCode
+    const existing = await User.findOne({
+      $or: [{ email: trimmedEmail }, { code: trimmedCode }]
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: existing.email === trimmedEmail
+          ? 'Email trường này đã tồn tại trong hệ thống.'
+          : 'Mã cán bộ / sinh viên này đã được đăng ký.'
+      });
+    }
+
+    // Password validation (min 8 chars)
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mật khẩu phải có độ dài tối thiểu 8 ký tự.'
+      });
+    }
+
+    const validRoles = [USER_ROLES.STAFF, USER_ROLES.MANAGER];
+    const assignedRole = validRoles.includes(role) ? role : USER_ROLES.STAFF;
+
+    const newUser = await User.create({
+      code: trimmedCode,
+      full_name: String(fullName).trim(),
+      email: trimmedEmail,
+      password_hash: password, // Mongoose pre-save hook will bcrypt hash this
+      role: assignedRole,
+      department: department || 'Phòng Hành Chính Quản Trị',
+      phone: phone ? String(phone).trim() : '',
+      status: USER_STATUSES.ACTIVE,
+      avatar: fullName.slice(0, 2).toUpperCase()
+    });
+
+    // Generate JWT access token (15m) & refresh token (7d)
+    const accessToken = jwt.sign(
+      { id: newUser._id, userId: newUser._id, role: newUser.role, code: newUser.code, jti: crypto.randomUUID() },
+      jwtSecret,
+      { expiresIn: ACCESS_TOKEN_EXPIRY }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: newUser._id, userId: newUser._id, role: newUser.role, type: 'refresh', jti: crypto.randomUUID() },
+      jwtRefreshSecret,
+      { expiresIn: REFRESH_TOKEN_EXPIRY }
+    );
+
+    const ipAddress = req.ip || req.socket.remoteAddress || '127.0.0.1';
+    const hashedRefreshToken = hashToken(refreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await RefreshToken.create({
+      user_id: newUser._id,
+      token: hashedRefreshToken,
+      device_info: req.headers['user-agent'] || 'Unknown Browser',
+      ip_address: ipAddress,
+      expires_at: expiresAt,
+      is_revoked: false
+    });
+
+    // Record audit log
+    await AuditLog.logAction({
+      user_id: newUser._id,
+      user_display: `${newUser.full_name} (${newUser.code})`,
+      action: 'USER_REGISTER',
+      target_table: 'users',
+      entity_id: newUser._id.toString(),
+      ip_address: ipAddress,
+      new_value: { code: newUser.code, email: newUser.email, role: newUser.role }
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Đăng ký tài khoản thành công! Chào mừng bạn gia nhập hệ thống Ruo UEMS.',
+      token: accessToken,
+      refreshToken,
+      expiresIn: 15 * 60,
+      user: {
+        id: newUser._id,
+        code: newUser.code,
+        full_name: newUser.full_name,
+        email: newUser.email,
+        role: newUser.role,
+        department: newUser.department,
+        phone: newUser.phone || '',
+        avatar: newUser.avatar,
+        status: newUser.status
+      }
+    });
+  } catch (error) {
+    console.error('[authController:register] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Đã xảy ra lỗi hệ thống trong quá trình đăng ký tài khoản.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * UC-1.1b: Refresh Token with Automatic Token Rotation
  */
 export const refreshToken = async (req, res) => {
