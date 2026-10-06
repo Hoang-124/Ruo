@@ -20,7 +20,7 @@ import { RuoLogo } from '../../components/common/RuoLogo';
  * - 2D Isometric architectural elevation of Tòa A1 on blueprint grid
  */
 export const LoginPage = ({ onLoginSuccess }) => {
-  const { login, register, theme, toggleTheme } = useAuth();
+  const { login, register, checkDuplicate, theme, toggleTheme } = useAuth();
   const { toast } = useToast();
 
   const isLight = theme === 'light';
@@ -46,6 +46,10 @@ export const LoginPage = ({ onLoginSuccess }) => {
   const [regShowPassword, setRegShowPassword] = useState(false);
   const [regShowConfirmPassword, setRegShowConfirmPassword] = useState(false);
   const [regAgreed, setRegAgreed] = useState(false);
+
+  // Asynchronous duplicate availability check states
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [checkingCode, setCheckingCode] = useState(false);
 
   // Validation & Touched Tracking for Register
   const [regErrors, setRegErrors] = useState({});
@@ -209,13 +213,48 @@ export const LoginPage = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleFieldBlur = (field, value) => {
+  const handleFieldBlur = async (field, value) => {
     setRegTouched(prev => ({ ...prev, [field]: true }));
     const err = validateRegField(field, value, {
       password: field === 'password' ? value : regPassword,
       confirmPassword: field === 'confirmPassword' ? value : regConfirmPassword
     });
     setRegErrors(prev => ({ ...prev, [field]: err }));
+
+    // Asynchronously check duplicates if basic format is valid
+    if (!err && field === 'email' && value.trim()) {
+      try {
+        setCheckingEmail(true);
+        const dupRes = await checkDuplicate({ email: value.trim() });
+        if (dupRes && dupRes.emailExists) {
+          setRegErrors(prev => ({
+            ...prev,
+            email: 'Email này đã tồn tại trong hệ thống. Vui lòng đăng nhập hoặc sử dụng email khác.'
+          }));
+        }
+      } catch (e) {
+        console.warn('Check duplicate email error:', e);
+      } finally {
+        setCheckingEmail(false);
+      }
+    }
+
+    if (!err && field === 'employeeCode' && value.trim()) {
+      try {
+        setCheckingCode(true);
+        const dupRes = await checkDuplicate({ code: value.trim() });
+        if (dupRes && dupRes.codeExists) {
+          setRegErrors(prev => ({
+            ...prev,
+            employeeCode: 'Mã cán bộ / MSSV này đã tồn tại trong hệ thống.'
+          }));
+        }
+      } catch (e) {
+        console.warn('Check duplicate code error:', e);
+      } finally {
+        setCheckingCode(false);
+      }
+    }
   };
 
   const handleRegister = async (e) => {
@@ -272,6 +311,20 @@ export const LoginPage = ({ onLoginSuccess }) => {
       } else {
         const msg = res?.message || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.';
         setErrorMsg(msg);
+
+        // Highlight duplicate fields specifically on the inputs with red outline
+        const isEmailDup = res?.duplicateField === 'email' || res?.errorType === 'DUPLICATE_EMAIL' || msg.toLowerCase().includes('email');
+        const isCodeDup = res?.duplicateField === 'employeeCode' || res?.duplicateField === 'both' || res?.errorType === 'DUPLICATE_CODE' || msg.toLowerCase().includes('mã');
+
+        if (isEmailDup) {
+          setRegTouched(prev => ({ ...prev, email: true }));
+          setRegErrors(prev => ({ ...prev, email: msg }));
+        }
+        if (isCodeDup) {
+          setRegTouched(prev => ({ ...prev, employeeCode: true }));
+          setRegErrors(prev => ({ ...prev, employeeCode: msg }));
+        }
+
         toast.error(msg, 'Đăng Ký Thất Bại');
       }
     } catch (err) {
@@ -881,9 +934,16 @@ export const LoginPage = ({ onLoginSuccess }) => {
                 {/* Field 2 & 3: Email trường & Mã cán bộ / MSSV */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '10px', marginBottom: '14px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '5px' }}>
-                      Email công vụ *
-                    </label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink-primary)' }}>
+                        Email công vụ *
+                      </label>
+                      {checkingEmail && (
+                        <span style={{ fontSize: '10.5px', color: 'var(--blueprint-500)', fontWeight: 600 }}>
+                          Đang kiểm tra...
+                        </span>
+                      )}
+                    </div>
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: '10px', top: '12px', color: 'var(--ink-muted)', display: 'flex', alignItems: 'center' }}>
                         <Icons.Mail size={15} />
@@ -912,16 +972,67 @@ export const LoginPage = ({ onLoginSuccess }) => {
                       />
                     </div>
                     {regTouched.email && regErrors.email && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '11px', color: '#EF4444' }}>
-                        <span>{regErrors.email}</span>
+                      <div
+                        style={{
+                          marginTop: '5px',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          background: isLight ? '#FEF2F2' : 'rgba(239, 68, 68, 0.12)',
+                          border: `1px solid ${isLight ? '#FECACA' : 'rgba(239, 68, 68, 0.3)'}`,
+                          fontSize: '11px',
+                          lineHeight: 1.4,
+                          color: isLight ? '#DC2626' : '#F87171'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                          <span style={{ display: 'inline-flex', marginTop: '1px', flexShrink: 0 }}>
+                            <Icons.Shield size={12} color={isLight ? '#DC2626' : '#F87171'} />
+                          </span>
+                          <span style={{ fontWeight: 600 }}>{regErrors.email}</span>
+                        </div>
+                        {regErrors.email.toLowerCase().includes('tồn tại') && (
+                          <div style={{ marginTop: '5px', paddingTop: '4px', borderTop: `1px dashed ${isLight ? '#FCA5A5' : 'rgba(239, 68, 68, 0.25)'}` }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIdentifier(regEmail);
+                                setActiveTab('login');
+                                setErrorMsg(null);
+                                setSuccessMsg('Đã điền email tài khoản của bạn. Vui lòng nhập mật khẩu để đăng nhập.');
+                              }}
+                              style={{
+                                background: isLight ? '#EFF6FF' : 'rgba(59, 130, 246, 0.2)',
+                                border: `1px solid ${isLight ? '#BFDBFE' : 'rgba(59, 130, 246, 0.4)'}`,
+                                borderRadius: '4px',
+                                color: isLight ? '#1D4ED8' : '#93C5FD',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                padding: '3px 8px',
+                                fontSize: '11px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <span>Chuyển sang Đăng nhập với email này →</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '5px' }}>
-                      Mã cán bộ / MSSV *
-                    </label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink-primary)' }}>
+                        Mã cán bộ / MSSV *
+                      </label>
+                      {checkingCode && (
+                        <span style={{ fontSize: '10.5px', color: 'var(--blueprint-500)', fontWeight: 600 }}>
+                          Đang kiểm tra...
+                        </span>
+                      )}
+                    </div>
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: '10px', top: '12px', color: 'var(--ink-muted)', display: 'flex', alignItems: 'center' }}>
                         <Icons.Key size={15} />
@@ -950,8 +1061,52 @@ export const LoginPage = ({ onLoginSuccess }) => {
                       />
                     </div>
                     {regTouched.employeeCode && regErrors.employeeCode && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '11px', color: '#EF4444' }}>
-                        <span>{regErrors.employeeCode}</span>
+                      <div
+                        style={{
+                          marginTop: '5px',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          background: isLight ? '#FEF2F2' : 'rgba(239, 68, 68, 0.12)',
+                          border: `1px solid ${isLight ? '#FECACA' : 'rgba(239, 68, 68, 0.3)'}`,
+                          fontSize: '11px',
+                          lineHeight: 1.4,
+                          color: isLight ? '#DC2626' : '#F87171'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                          <span style={{ display: 'inline-flex', marginTop: '1px', flexShrink: 0 }}>
+                            <Icons.Shield size={12} color={isLight ? '#DC2626' : '#F87171'} />
+                          </span>
+                          <span style={{ fontWeight: 600 }}>{regErrors.employeeCode}</span>
+                        </div>
+                        {regErrors.employeeCode.toLowerCase().includes('tồn tại') && (
+                          <div style={{ marginTop: '5px', paddingTop: '4px', borderTop: `1px dashed ${isLight ? '#FCA5A5' : 'rgba(239, 68, 68, 0.25)'}` }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIdentifier(regEmployeeCode);
+                                setActiveTab('login');
+                                setErrorMsg(null);
+                                setSuccessMsg('Đã điền mã cán bộ của bạn. Vui lòng nhập mật khẩu để đăng nhập.');
+                              }}
+                              style={{
+                                background: isLight ? '#EFF6FF' : 'rgba(59, 130, 246, 0.2)',
+                                border: `1px solid ${isLight ? '#BFDBFE' : 'rgba(59, 130, 246, 0.4)'}`,
+                                borderRadius: '4px',
+                                color: isLight ? '#1D4ED8' : '#93C5FD',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                padding: '3px 8px',
+                                fontSize: '11px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <span>Chuyển sang Đăng nhập với mã này →</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

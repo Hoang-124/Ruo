@@ -2,6 +2,7 @@ import express from 'express';
 import {
   login,
   register,
+  checkDuplicate,
   logout,
   refreshToken,
   forgotPassword,
@@ -31,8 +32,9 @@ const forgotLimiter = createRateLimiter({
   message: 'Quá nhiều yêu cầu OTP từ IP này.'
 });
 
-// UC-1.0: Register (đăng ký tài khoản cán bộ/giảng viên/kỹ thuật)
+// UC-1.0: Register & Real-time Duplicate Check
 router.post('/register', register);
+router.get('/check-duplicate', checkDuplicate);
 
 // UC-1.1: Login (email/mã NV + password) -> Access Token (15m) + Refresh Token (7d)
 router.post('/login', loginLimiter, login);

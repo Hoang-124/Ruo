@@ -157,6 +157,7 @@ export const api = {
 export const authApi = {
   login: (identifier, password) => api.post('/auth/login', { identifier, password }),
   register: (userData) => api.post('/auth/register', userData),
+  checkDuplicate: (params) => api.get('/auth/check-duplicate', params),
   profile: () => api.get('/auth/me'),
   logout: (refreshToken) => api.post('/auth/logout', { refreshToken }),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),

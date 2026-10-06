@@ -218,11 +218,27 @@ export const register = async (req, res) => {
     });
 
     if (existing) {
+      const isEmailDup = existing.email.toLowerCase() === trimmedEmail;
+      const isCodeDup = existing.code.toUpperCase() === trimmedCode;
+
+      let message = 'Thông tin đăng ký đã tồn tại trong hệ thống.';
+      let duplicateField = 'both';
+      if (isEmailDup && isCodeDup) {
+        message = 'Cả email và mã cán bộ này đều đã tồn tại trong hệ thống.';
+        duplicateField = 'both';
+      } else if (isEmailDup) {
+        message = 'Email trường này đã tồn tại trong hệ thống. Vui lòng đăng nhập hoặc sử dụng email khác.';
+        duplicateField = 'email';
+      } else if (isCodeDup) {
+        message = 'Mã cán bộ / sinh viên này đã tồn tại trong hệ thống.';
+        duplicateField = 'employeeCode';
+      }
+
       return res.status(409).json({
         success: false,
-        message: existing.email === trimmedEmail
-          ? 'Email trường này đã tồn tại trong hệ thống.'
-          : 'Mã cán bộ / sinh viên này đã được đăng ký.'
+        errorType: isEmailDup ? 'DUPLICATE_EMAIL' : 'DUPLICATE_CODE',
+        duplicateField,
+        message
       });
     }
 
@@ -311,6 +327,45 @@ export const register = async (req, res) => {
       message: 'Đã xảy ra lỗi hệ thống trong quá trình đăng ký tài khoản.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  }
+};
+
+/**
+ * Check duplicate email or code in real-time
+ */
+export const checkDuplicate = async (req, res) => {
+  try {
+    const { email, code } = req.query;
+    const result = {
+      success: true,
+      emailExists: false,
+      codeExists: false,
+      message: ''
+    };
+
+    if (email) {
+      const cleanEmail = String(email).trim().toLowerCase();
+      const existingEmail = await User.findOne({ email: cleanEmail });
+      if (existingEmail) {
+        result.emailExists = true;
+        result.message = 'Email này đã tồn tại trong hệ thống. Vui lòng đăng nhập hoặc sử dụng email khác.';
+      }
+    }
+
+    if (code) {
+      const cleanCode = String(code).trim().toUpperCase();
+      const existingCode = await User.findOne({ code: cleanCode });
+      if (existingCode) {
+        result.codeExists = true;
+        result.message = result.message
+          ? `${result.message} Mã cán bộ này cũng đã tồn tại.`
+          : 'Mã cán bộ / MSSV này đã tồn tại trong hệ thống.';
+      }
+    }
+
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Lỗi kiểm tra trùng lặp thông tin.' });
   }
 };
 

@@ -192,14 +192,26 @@ export const AuthProvider = ({ children }) => {
       } else {
         return {
           success: false,
+          duplicateField: data.duplicateField,
+          errorType: data.errorType,
           message: data.message || 'Đăng ký tài khoản không thành công.'
         };
       }
     } catch (error) {
       return {
         success: false,
-        message: error.message || 'Không thể kết nối đến máy chủ Backend (Port 5000).'
+        duplicateField: error.data?.duplicateField,
+        errorType: error.data?.errorType,
+        message: error.data?.message || error.message || 'Không thể kết nối đến máy chủ Backend (Port 5000).'
       };
+    }
+  }, []);
+
+  const checkDuplicate = useCallback(async (params) => {
+    try {
+      return await authApi.checkDuplicate(params);
+    } catch (err) {
+      return { success: false, emailExists: false, codeExists: false };
     }
   }, []);
 
@@ -303,6 +315,7 @@ export const AuthProvider = ({ children }) => {
     token,
     login,
     register,
+    checkDuplicate,
     logout,
     fetchProfile,
     forgotPassword,
@@ -323,6 +336,7 @@ export const AuthProvider = ({ children }) => {
     token,
     login,
     register,
+    checkDuplicate,
     logout,
     fetchProfile,
     forgotPassword,
