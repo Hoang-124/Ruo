@@ -528,7 +528,10 @@ export const forgotPassword = async (req, res) => {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const recentCount = await PasswordReset.countDocuments({
       email: normalizedEmail,
-      createdAt: { $gte: oneHourAgo }
+      $or: [
+        { created_at: { $gte: oneHourAgo } },
+        { createdAt: { $gte: oneHourAgo } }
+      ]
     });
 
     if (recentCount >= 3) {
@@ -537,6 +540,12 @@ export const forgotPassword = async (req, res) => {
         message: 'Bạn đã yêu cầu OTP quá 3 lần trong vòng 1 giờ qua. Vui lòng thử lại sau.'
       });
     }
+
+    // Invalidate any older unused OTP records for this email so only the newest code is active
+    await PasswordReset.updateMany(
+      { email: normalizedEmail, isUsed: false },
+      { isUsed: true }
+    );
 
     const otp = generateSixDigitOtp();
     const salt = await bcrypt.genSalt(10);
@@ -585,11 +594,12 @@ export const verifyResetOtp = async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
+    // Sort by _id descending to strictly guarantee the most recent OTP record is checked
     const resetRecord = await PasswordReset.findOne({
       email: normalizedEmail,
       isUsed: false,
       expiresAt: { $gt: new Date() }
-    }).sort({ createdAt: -1 });
+    }).sort({ _id: -1 });
 
     if (!resetRecord) {
       return res.status(400).json({
@@ -599,6 +609,8 @@ export const verifyResetOtp = async (req, res) => {
     }
 
     if (resetRecord.attempts >= 5) {
+      resetRecord.isUsed = true;
+      await resetRecord.save();
       return res.status(400).json({
         success: false,
         message: 'Bạn đã nhập sai mã OTP quá 5 lần. Mã này đã bị vô hiệu hóa, vui lòng yêu cầu mã mới.'
@@ -607,11 +619,24 @@ export const verifyResetOtp = async (req, res) => {
 
     const isMatch = await bcrypt.compare(String(otp).trim(), resetRecord.otpHash);
     if (!isMatch) {
-      resetRecord.attempts = (resetRecord.attempts || 0) + 1;
+      const newAttempts = (resetRecord.attempts || 0) + 1;
+      resetRecord.attempts = newAttempts;
+      if (newAttempts >= 5) {
+        resetRecord.isUsed = true;
+      }
       await resetRecord.save();
+
+      const remaining = Math.max(0, 5 - newAttempts);
+      if (remaining === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Bạn đã nhập sai mã OTP quá 5 lần. Mã này đã bị vô hiệu hóa, vui lòng yêu cầu mã mới.'
+        });
+      }
+
       return res.status(400).json({
         success: false,
-        message: `Mã OTP không chính xác. Bạn còn ${5 - resetRecord.attempts} lần thử.`
+        message: `Mã OTP không chính xác. Bạn còn ${remaining} lần thử.`
       });
     }
 
@@ -649,11 +674,12 @@ export const resetPassword = async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
+    // Sort by _id descending to strictly guarantee the most recent OTP record is checked
     const resetRecord = await PasswordReset.findOne({
       email: normalizedEmail,
       isUsed: false,
       expiresAt: { $gt: new Date() }
-    }).sort({ createdAt: -1 });
+    }).sort({ _id: -1 });
 
     if (!resetRecord) {
       return res.status(400).json({
@@ -662,11 +688,25 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(String(otp).trim(), resetRecord.otpHash);
-    if (!isMatch) {
+    if (resetRecord.attempts >= 5) {
       return res.status(400).json({
         success: false,
-        message: 'Mã xác thực OTP không chính xác.'
+        message: 'Mã OTP này đã bị khóa do nhập sai quá 5 lần. Vui lòng yêu cầu mã mới.'
+      });
+    }
+
+    const isMatch = await bcrypt.compare(String(otp).trim(), resetRecord.otpHash);
+    if (!isMatch) {
+      const newAttempts = (resetRecord.attempts || 0) + 1;
+      resetRecord.attempts = newAttempts;
+      if (newAttempts >= 5) {
+        resetRecord.isUsed = true;
+      }
+      await resetRecord.save();
+      const remaining = Math.max(0, 5 - newAttempts);
+      return res.status(400).json({
+        success: false,
+        message: `Mã OTP không chính xác. Bạn còn ${remaining} lần thử.`
       });
     }
 

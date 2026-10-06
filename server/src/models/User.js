@@ -135,9 +135,13 @@ export const Department = mongoose.models.Department || mongoose.model('Departme
 const passwordResetSchema = new mongoose.Schema({
   email: { type: String, required: true, index: true },
   otpHash: { type: String, required: true },
+  attempts: { type: Number, default: 0 },
   expiresAt: { type: Date, required: true, index: { expires: '15m' } },
   isUsed: { type: Boolean, default: false }
 }, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
+
+passwordResetSchema.alias('created_at', 'createdAt');
+passwordResetSchema.alias('updated_at', 'updatedAt');
 
 export const PasswordReset = mongoose.models.PasswordReset || mongoose.model('PasswordReset', passwordResetSchema);
 
