@@ -102,7 +102,7 @@ const MainAppContent = () => {
     switch (activeTab) {
       case 'dashboard':
         return (
-          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '24px 32px 80px' }}>
+          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '12px 24px 60px' }}>
             <Dashboard
               onNavigateTab={(tab) => setActiveTab(tab)}
               onOpenQRModal={() => setActiveTab('inventory')}
@@ -178,7 +178,7 @@ const MainAppContent = () => {
 
       default:
         return (
-          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '24px 32px 80px' }}>
+          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '10px 24px 40px' }}>
             <Dashboard
               onNavigateTab={(tab) => setActiveTab(tab)}
               onOpenQRModal={() => setActiveTab('inventory')}

@@ -188,29 +188,29 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
   }, [selectedRoom, equipmentsList]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {/* ==============================================================
-          1. TOP WELCOME & ROLE BAR
+          1. TOP WELCOME & ROLE BAR (COMPACT COMMAND HEADER)
           ============================================================== */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '23px', fontWeight: 800, color: 'var(--ink-primary)' }}>
+          <h1 style={{ margin: 0, fontSize: '18.5px', fontWeight: 800, color: 'var(--ink-primary)', letterSpacing: '-0.01em' }}>
             Trung Tâm Vận Hành Cơ Sở Vật Chất (UEMS Operational Command)
           </h1>
-          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
+          <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'var(--ink-muted)' }}>
             Chào mừng <strong>{currentUser?.name}</strong> • Vai trò: <span style={{ color: 'var(--blueprint-400)', fontWeight: 700 }}>{currentUser?.roleTitle}</span>
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Button variant="secondary" icon={Icons.Equipment} onClick={() => onNavigateTab('equipments')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Button size="sm" variant="secondary" icon={Icons.Equipment} onClick={() => onNavigateTab('equipments')}>
             Kho Thiết Bị
           </Button>
-          <Button variant="secondary" icon={Icons.Building} onClick={() => onNavigateTab('map')}>
+          <Button size="sm" variant="secondary" icon={Icons.Building} onClick={() => onNavigateTab('map')}>
             Bản Đồ CAD
           </Button>
-          <Button variant="primary" icon={Icons.Clock} onClick={fetchDashboardData}>
-            Cập Nhật Số Liệu
+          <Button size="sm" variant="primary" icon={Icons.Clock} onClick={fetchDashboardData}>
+            Cập Nhật
           </Button>
         </div>
       </div>
@@ -223,12 +223,13 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
         style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(0, 1.62fr) minmax(320px, 1fr)',
-          gap: '20px',
+          gap: '12px',
           alignItems: 'start'
         }}
       >
         {/* Left Column: Interactive Architectural Map */}
         <Card
+          className="ruo-card-compact"
           title="Mặt Bằng Tòa A1 (Digital Twin CAD)"
           subtitle={`Sơ đồ kiến trúc tầng ${selectedFloor} • Phân bổ phòng học & hành lang`}
           action={
@@ -275,7 +276,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
             </div>
           }
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {/* Visual CAD Canvas */}
             {floorPlanView === 'plan' ? (
               <div style={{ overflowX: 'auto', borderRadius: '8px' }}>
@@ -301,6 +302,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
 
         {/* Right Column: Room Detail & Equipment Inspector Panel */}
         <Card
+          className="ruo-card-compact"
           title={selectedRoom ? `Phòng ${selectedRoom.code}` : "Thông Tin Phòng Học"}
           subtitle={selectedRoom ? `${selectedRoom.name} • Tầng ${selectedFloor}` : "Chọn một phòng trên sơ đồ bên trái"}
           action={

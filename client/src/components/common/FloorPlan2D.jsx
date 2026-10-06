@@ -189,74 +189,69 @@ export const FloorPlan2D = ({
   };
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '6px' }}>
       {/* ==============================================================
-          1. HEADER CONTROLS & FLOOR LEVEL SELECTOR
+          1. HEADER CONTROLS & FLOOR LEVEL SELECTOR (COMPACT SINGLE ROW)
           ============================================================== */}
       <div
         style={{
           display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '8px',
           background: 'var(--surface-panel)',
-          padding: '12px 18px',
-          borderRadius: '14px',
-          border: '1px solid var(--hairline-soft)'
+          padding: '6px 12px',
+          borderRadius: '8px',
+          border: '1px solid var(--hairline-soft)',
+          flexWrap: 'wrap'
         }}
       >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <span
-              style={{
-                fontFamily: 'var(--font-sans)',
-                fontSize: '11px',
-                fontWeight: 800,
-                color: '#38BDF8',
-                background: 'rgba(56, 189, 248, 0.12)',
-                padding: '3px 8px',
-                borderRadius: '6px'
-              }}
-            >
-              {currentFloorData.floorCode}
-            </span>
-            <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink-pure)' }}>
-              {currentFloorData.title}
-            </span>
-          </div>
-          <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '2px' }}>
-            Mặt bằng kiến trúc chuẩn: Cầu thang sát phòng • Hành lang phân luồng quẹo trái / phải thông suốt
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span
+            style={{
+              fontFamily: 'var(--font-sans)',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#38BDF8',
+              background: 'rgba(56, 189, 248, 0.12)',
+              padding: '2px 7px',
+              borderRadius: '5px'
+            }}
+          >
+            {currentFloorData.floorCode}
+          </span>
+          <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--ink-pure)' }}>
+            {currentFloorData.title}
+          </span>
         </div>
 
-        {/* 5-Story Floor Selector Buttons (Left) & Quick Booking Button (Far Right) */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            {[1, 2, 3, 4, 5].map((fl) => {
-              const isActive = selectedFloor === fl;
-              const flData = CAMPUS_FLOORS[fl];
-              return (
-                <button
-                  key={fl}
-                  type="button"
-                  onClick={() => onChangeFloor && onChangeFloor(fl)}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    border: isActive ? '1.5px solid #38BDF8' : '1px solid var(--hairline-medium)',
-                    background: isActive ? 'rgba(56, 189, 248, 0.15)' : 'var(--canvas-subtle)',
-                    color: isActive ? '#38BDF8' : 'var(--ink-primary)',
-                    fontSize: '12px',
-                    fontWeight: isActive ? 700 : 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title={flData?.title}
-                >
-                  <span>Tầng {fl}</span>
-                </button>
-              );
-            })}
-          </div>
+        {/* 5-Story Floor Selector Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          {[1, 2, 3, 4, 5].map((fl) => {
+            const isActive = selectedFloor === fl;
+            const flData = CAMPUS_FLOORS[fl];
+            return (
+              <button
+                key={fl}
+                type="button"
+                onClick={() => onChangeFloor && onChangeFloor(fl)}
+                style={{
+                  padding: '3px 9px',
+                  borderRadius: '6px',
+                  border: isActive ? '1.5px solid #38BDF8' : '1px solid var(--hairline-medium)',
+                  background: isActive ? 'rgba(56, 189, 248, 0.15)' : 'var(--canvas-subtle)',
+                  color: isActive ? '#38BDF8' : 'var(--ink-primary)',
+                  fontSize: '11px',
+                  fontWeight: isActive ? 700 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                title={flData?.title}
+              >
+                <span>Tầng {fl}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -268,15 +263,15 @@ export const FloorPlan2D = ({
           width: '100%',
           overflowX: 'auto',
           background: 'var(--canvas-subtle)',
-          borderRadius: '16px',
+          borderRadius: '10px',
           border: '1px solid var(--hairline-medium)',
-          padding: '16px',
+          padding: '6px 8px',
           boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)'
         }}
       >
         <svg
           viewBox={`0 0 ${canvasW} ${canvasH}`}
-          style={{ width: '100%', height: 'auto', minWidth: '780px', display: 'block' }}
+          style={{ width: '100%', height: 'auto', maxHeight: 'min(412px, 50vh)', minWidth: '660px', display: 'block' }}
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>

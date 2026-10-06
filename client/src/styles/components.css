@@ -194,6 +194,22 @@
   padding: var(--space-5);
 }
 
+.ruo-card-compact .ruo-card-header {
+  padding: 8px 16px;
+}
+
+.ruo-card-compact .ruo-card-body {
+  padding: 10px 14px;
+}
+
+.ruo-card-compact .ruo-card-title {
+  font-size: 14px;
+}
+
+.ruo-card-compact .ruo-card-subtitle {
+  font-size: 11px;
+}
+
 /* ==========================================================================
    KPI SUMMARY CARDS
    ========================================================================== */
