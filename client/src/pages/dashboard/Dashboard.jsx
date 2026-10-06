@@ -1,9 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../../components/common/SvgIcons';
+import { FloorPlan2D } from '../../components/common/FloorPlan2D';
+import { Building2DIso } from '../../components/common/Building2DIso';
+import { CAMPUS_FLOORS } from '../../mock/campusBuildingData';
 import { equipmentApi, transferApi, repairApi, disposalApi, auditApi } from '../../lib/api';
 import { Button, Card, KPI, StatusBadge, Drawer, EmptyState } from '../../components/ui/Primitives';
 
+/**
+ * Dashboard - UEMS Operational Command Center
+ * 
+ * Features:
+ * - Real-time KPI metrics & cryptographic SHA-256 chain indicator
+ * - Role-tailored Action Queue (Manager approvals, Staff repair dispatch)
+ * - Interactive Digital Twin Floor Plan (FloorPlan2D) of Tòa Nhà A1 (5 Floors)
+ * - Recent Immutable Audit Log entries
+ */
 export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
   const { currentUser, currentRoleKey } = useAuth();
 
@@ -23,6 +35,11 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
   const [actionItems, setActionItems] = useState([]);
   const [recentAudits, setRecentAudits] = useState([]);
   const [auditChainValid, setAuditChainValid] = useState(true);
+
+  // Digital Twin Floor Plan State
+  const [selectedFloor, setSelectedFloor] = useState(1);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [floorPlanView, setFloorPlanView] = useState('plan'); // 'plan' | 'iso'
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -108,6 +125,26 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
     fetchDashboardData();
   }, [currentRoleKey]);
 
+  // Determine room simulated status for floor plan
+  const getRoomSimulatedStatus = useCallback((room) => {
+    if (room.statusOverride === 'maintenance') {
+      return {
+        status: 'maintenance',
+        label: 'Bảo Trì',
+        color: '#E5A33B',
+        bg: 'rgba(229, 163, 59, 0.12)',
+        border: 'rgba(229, 163, 59, 0.35)'
+      };
+    }
+    return {
+      status: 'available',
+      label: 'Hoạt Động',
+      color: '#2FB37A',
+      bg: 'rgba(47, 179, 122, 0.12)',
+      border: 'rgba(47, 179, 122, 0.35)'
+    };
+  }, []);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Top Welcome & Role Bar */}
@@ -122,14 +159,13 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Quick Action Dock */}
           <Button variant="secondary" icon={Icons.Equipment} onClick={() => onNavigateTab('equipments')}>
             Kho Thiết Bị
           </Button>
           <Button variant="secondary" icon={Icons.Building} onClick={() => onNavigateTab('map')}>
             Bản Đồ CAD
           </Button>
-          <Button variant="primary" icon={Icons.RefreshCw || Icons.Clock} onClick={fetchDashboardData}>
+          <Button variant="primary" icon={Icons.Clock} onClick={fetchDashboardData}>
             Cập Nhật Số Liệu
           </Button>
         </div>
@@ -168,7 +204,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
           label="Tổng Giá Trị CSVC"
           value={`${Math.round(stats.totalValuation / 1000000)} Tr đ`}
           subtext="Khấu hao theo chuẩn tài sản công"
-          icon={Icons.DollarSign || Icons.Card}
+          icon={Icons.CheckCircle}
           color="#8B5CF6"
           onClick={() => onNavigateTab('equipments')}
         />
@@ -205,7 +241,122 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
         </Button>
       </div>
 
-      {/* Main Grid: My Action Items (Left 60%) + Mini CAD & Audit (Right 40%) */}
+      {/* ==============================================================
+          HERO SECTION: SƠ ĐỒ MẶT BẰNG PHÒNG HỌC TÒA A1 (DIGITAL TWIN)
+          ============================================================== */}
+      <Card
+        title="Sơ Đồ Mặt Bằng Phòng Học — Tòa Nhà A1 (Digital Twin CAD)"
+        subtitle="Mặt bằng kiến trúc các phòng mép Bắc & mép Nam, trục hành lang 3.5m, lõi buồng thang thoát hiểm & thang máy"
+        action={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* View Mode Switcher */}
+            <div style={{ display: 'flex', background: 'var(--surface-base)', padding: '3px', borderRadius: '6px', border: '1px solid var(--border-default)' }}>
+              <button
+                type="button"
+                onClick={() => setFloorPlanView('plan')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '4px',
+                  border: 'none',
+                  background: floorPlanView === 'plan' ? 'var(--blueprint-500)' : 'transparent',
+                  color: floorPlanView === 'plan' ? '#FFFFFF' : 'var(--ink-muted)',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Mặt Bằng 2D
+              </button>
+              <button
+                type="button"
+                onClick={() => setFloorPlanView('iso')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '4px',
+                  border: 'none',
+                  background: floorPlanView === 'iso' ? 'var(--blueprint-500)' : 'transparent',
+                  color: floorPlanView === 'iso' ? '#FFFFFF' : 'var(--ink-muted)',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Phối Cảnh 2.5D
+              </button>
+            </div>
+
+            <Button size="sm" variant="secondary" onClick={() => onNavigateTab('map')}>
+              Mở Rộng Không Gian CAD →
+            </Button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Main Visual Display */}
+          {floorPlanView === 'plan' ? (
+            <FloorPlan2D
+              selectedFloor={selectedFloor}
+              onChangeFloor={(fl) => {
+                setSelectedFloor(fl);
+                setSelectedRoom(null);
+              }}
+              selectedRoom={selectedRoom}
+              onSelectRoom={(room) => {
+                setSelectedRoom(room);
+              }}
+              getRoomSimulatedStatus={getRoomSimulatedStatus}
+              currentTimeString="11:15"
+            />
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0', background: 'var(--surface-base)', borderRadius: '12px' }}>
+              <Building2DIso
+                activeFloor={selectedFloor}
+                onSelectFloor={(fl) => setSelectedFloor(fl)}
+              />
+            </div>
+          )}
+
+          {/* Quick Room Callout If Room is Selected */}
+          {selectedRoom && (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 16px',
+                background: 'var(--surface-3)',
+                borderRadius: '8px',
+                border: '1px solid var(--blueprint-400)',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}
+            >
+              <div>
+                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--blueprint-400)', marginRight: '8px' }}>
+                  {selectedRoom.code}
+                </span>
+                <strong style={{ color: 'var(--ink-primary)', fontSize: '13.5px' }}>
+                  {selectedRoom.name}
+                </strong>
+                <span style={{ color: 'var(--ink-muted)', fontSize: '12px', marginLeft: '8px' }}>
+                  ({selectedRoom.capacity ? `${selectedRoom.capacity} chỗ ngồi` : `${selectedRoom.area || 60} m²`}) • Tầng {selectedFloor}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button size="sm" variant="primary" onClick={() => onNavigateTab('map')}>
+                  Kiểm Tra Chi Tiết Thiết Bị Phòng →
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelectedRoom(null)}>
+                  Đóng
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Lower Grid: My Action Items (Left 60%) + Recent Audit (Right 40%) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: '20px' }}>
         {/* Left Column: Role-Tailored "Việc Cần Làm Của Tôi" */}
         <Card
@@ -265,88 +416,41 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
           </div>
         </Card>
 
-        {/* Right Column: Mini Campus Map & Recent Audit Feed */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Mini CAD Map Widget */}
-          <Card
-            title="Mặt Bằng Tòa Nhà A1 (Khuôn Viên)"
-            subtitle="Giảng đường thông minh & Phòng thực hành mạng"
-            action={
-              <Button size="sm" variant="primary" onClick={() => onNavigateTab('map')}>
-                Xem CAD
-              </Button>
-            }
-          >
-            <div
-              onClick={() => onNavigateTab('map')}
-              style={{
-                background: 'var(--surface-2)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '16px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                border: '1px dashed var(--border-default)'
-              }}
-            >
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '12px' }}>
-                {['A1-101 (P.Học)', 'A1-201 (Hội Thảo)', 'A1-301 (P.Lab)', 'A1-401 (Lý Thuyết)', 'A1-501 (Kho CSVC)', 'A1-Canteen'].map((r, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: 'var(--surface-3)',
-                      padding: '8px 4px',
-                      borderRadius: 'var(--radius-xs)',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      color: 'var(--ink-secondary)'
-                    }}
-                  >
-                    {r}
-                  </div>
-                ))}
-              </div>
-              <span style={{ fontSize: '12px', color: 'var(--blueprint-400)', fontWeight: 600 }}>
-                Nhấn để mở bản đồ số 2.5D mặt bằng 5 tầng →
-              </span>
-            </div>
-          </Card>
-
-          {/* Recent Audit Ledger Feed */}
-          <Card title="Nhật Ký Kiểm Toán Gần Đây" subtitle="Ghi nhận bất biến vào chuỗi SHA-256">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {recentAudits.map(log => (
-                <div
-                  key={log._id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 0',
-                    borderBottom: '1px solid var(--border-subtle)',
-                    fontSize: '12px'
-                  }}
-                >
-                  <div>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--blueprint-400)', marginRight: '6px' }}>
-                      #{log.seq}
-                    </span>
-                    <strong style={{ color: 'var(--ink-primary)' }}>{log.action}</strong>
-                    <span style={{ color: 'var(--ink-muted)', marginLeft: '6px' }}>({log.target_table})</span>
-                  </div>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--ink-muted)' }}>
-                    {log.hashed_at ? new Date(log.hashed_at).toLocaleTimeString('vi-VN') : '—'}
+        {/* Right Column: Recent Audit Ledger Feed */}
+        <Card title="Nhật Ký Kiểm Toán Gần Đây" subtitle="Ghi nhận bất biến vào chuỗi SHA-256">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {recentAudits.map(log => (
+              <div
+                key={log._id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '8px 0',
+                  borderBottom: '1px solid var(--border-subtle)',
+                  fontSize: '12px'
+                }}
+              >
+                <div>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--blueprint-400)', marginRight: '6px' }}>
+                    #{log.seq}
                   </span>
+                  <strong style={{ color: 'var(--ink-primary)' }}>{log.action}</strong>
+                  <span style={{ color: 'var(--ink-muted)', marginLeft: '6px' }}>({log.target_table})</span>
                 </div>
-              ))}
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--ink-muted)' }}>
+                  {log.hashed_at ? new Date(log.hashed_at).toLocaleTimeString('vi-VN') : '—'}
+                </span>
+              </div>
+            ))}
 
-              {recentAudits.length === 0 && (
-                <div style={{ textAlign: 'center', color: 'var(--ink-muted)', padding: '12px 0', fontSize: '12px' }}>
-                  Chưa có nhật ký
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
+            {recentAudits.length === 0 && (
+              <div style={{ textAlign: 'center', color: 'var(--ink-muted)', padding: '12px 0', fontSize: '12px' }}>
+                Chưa có nhật ký
+              </div>
+            )}
+          </div>
+        </Card>
       </div>
     </div>
   );

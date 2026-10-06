@@ -741,7 +741,7 @@ export const FloorPlan2D = ({
         </div>
 
         <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-          💡 Nhấp vào bất kỳ phòng nào để xem trang thiết bị & đặt phòng bên phải
+          💡 Nhấp vào bất kỳ phòng nào để xem danh sách trang thiết bị, tình trạng vận hành & điều chuyển
         </div>
       </div>
     </div>
