@@ -58,9 +58,14 @@ export const TRANSFER_STATUSES = {
 
 export const REPAIR_PRIORITIES = {
   CRITICAL: 'critical', // 8 hours SLA
+  HIGH: 'high',         // 12 hours SLA
   MAJOR: 'major',       // 24 hours SLA
+  MEDIUM: 'medium',     // 24 hours SLA
+  LOW: 'low',           // 48 hours SLA
   MINOR: 'minor'        // 48 hours SLA
 };
+
+export const TICKET_PRIORITIES = REPAIR_PRIORITIES;
 
 export const REPAIR_STATUSES = {
   REPORTED: 'reported',
