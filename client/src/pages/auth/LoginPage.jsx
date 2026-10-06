@@ -12,15 +12,16 @@ import { RuoLogo } from '../../components/common/RuoLogo';
  * Clean, agency-grade authentication screen tailored for the University Equipment Management System (UEMS 3.0).
  * Features:
  * - 3 Canonical Actor Quick-Fill buttons (Admin, Manager, Staff)
+ * - Calibrated for both Dark Mode and Light Mode (zero color inversion or broken contrast)
  * - UC-1.1 Brute-Force lockout detection (15-min lockout on 5 consecutive failures)
  * - Pure Native Inline SVG icons only (Strict compliance with AGENTS.md / GEMINI.md)
  * - 2D Isometric architectural elevation of Tòa A1 on blueprint grid
- * - Dark-first command center with warm graphite tokens & instant theme toggle
  */
 export const LoginPage = ({ onLoginSuccess }) => {
   const { login, theme, toggleTheme } = useAuth();
   const { toast } = useToast();
 
+  const isLight = theme === 'light';
   const [selectedFloor, setSelectedFloor] = useState(null);
 
   // Live credentials state
@@ -38,7 +39,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
   const [successMsg, setSuccessMsg] = useState(null);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
-  // Canonical demo accounts
+  // Canonical demo accounts calibrated for both light and dark modes
   const DEMO_ACCOUNTS = [
     {
       role: 'admin',
@@ -46,8 +47,9 @@ export const LoginPage = ({ onLoginSuccess }) => {
       email: 'admin@ruo.edu.vn',
       code: 'AD000001',
       desc: 'Toàn quyền cấu hình & duyệt thanh lý BGH',
-      badgeColor: '#EF4444',
-      badgeBg: 'rgba(239, 68, 68, 0.12)'
+      badgeColor: isLight ? '#DC2626' : '#EF4444',
+      badgeBg: isLight ? '#FEF2F2' : 'rgba(239, 68, 68, 0.12)',
+      badgeBorder: isLight ? '#FECACA' : 'rgba(239, 68, 68, 0.3)'
     },
     {
       role: 'manager',
@@ -55,8 +57,9 @@ export const LoginPage = ({ onLoginSuccess }) => {
       email: 'manager@ruo.edu.vn',
       code: 'QL000001',
       desc: 'Duyệt điều chuyển, phân công kỹ thuật',
-      badgeColor: '#10B981',
-      badgeBg: 'rgba(16, 185, 129, 0.12)'
+      badgeColor: isLight ? '#059669' : '#10B981',
+      badgeBg: isLight ? '#ECFDF5' : 'rgba(16, 185, 129, 0.12)',
+      badgeBorder: isLight ? '#A7F3D0' : 'rgba(16, 185, 129, 0.3)'
     },
     {
       role: 'staff',
@@ -64,8 +67,9 @@ export const LoginPage = ({ onLoginSuccess }) => {
       email: 'staff@ruo.edu.vn',
       code: 'NV000001',
       desc: 'Báo hỏng, bảo trì & kiểm kê thực địa QR',
-      badgeColor: '#3E7BFA',
-      badgeBg: 'rgba(62, 123, 250, 0.12)'
+      badgeColor: isLight ? '#2563EB' : '#3E7BFA',
+      badgeBg: isLight ? '#EFF6FF' : 'rgba(62, 123, 250, 0.12)',
+      badgeBorder: isLight ? '#BFDBFE' : 'rgba(62, 123, 250, 0.3)'
     }
   ];
 
@@ -123,7 +127,14 @@ export const LoginPage = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="ruo-split-auth-viewport ruo-view-enter" style={{ minHeight: '100vh', display: 'flex', background: 'var(--canvas-base, #0B0C0E)' }}>
+    <div
+      className="ruo-split-auth-viewport ruo-view-enter"
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        background: 'var(--bg-app)'
+      }}
+    >
       {/* ====================================================================
           BÊN TRÁI (LEFT): 2D ISOMETRIC BUILDING ELEVATION & CAMPUS TWIN
           ==================================================================== */}
@@ -131,8 +142,8 @@ export const LoginPage = ({ onLoginSuccess }) => {
         className="ruo-split-auth-left"
         style={{
           flex: '1.15',
-          background: 'var(--surface-panel, #111316)',
-          borderRight: '1px solid var(--hairline-soft, rgba(255,255,255,0.06))',
+          background: isLight ? '#F4F4F0' : 'var(--surface-1)',
+          borderRight: '1px solid var(--border-subtle)',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -144,8 +155,21 @@ export const LoginPage = ({ onLoginSuccess }) => {
         {/* Header Left: Official Bespoke Logo */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', zIndex: 2 }}>
           <RuoLogo size={42} subtitle="HỆ THỐNG QUẢN LÝ THIẾT BỊ ĐẠI HỌC" />
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '16px', background: 'rgba(62,123,250,0.12)', border: '1px solid rgba(62,123,250,0.25)', color: '#3E7BFA', fontSize: '11px', fontWeight: 700 }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3E7BFA', display: 'inline-block' }} />
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 10px',
+              borderRadius: '16px',
+              background: isLight ? '#EFF6FF' : 'rgba(62,123,250,0.12)',
+              border: `1px solid ${isLight ? '#BFDBFE' : 'rgba(62,123,250,0.25)'}`,
+              color: isLight ? '#2563EB' : '#3E7BFA',
+              fontSize: '11px',
+              fontWeight: 700
+            }}
+          >
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isLight ? '#2563EB' : '#3E7BFA', display: 'inline-block' }} />
             UEMS 3.0 OPERATIONAL
           </div>
         </div>
@@ -159,12 +183,14 @@ export const LoginPage = ({ onLoginSuccess }) => {
         </div>
 
         {/* Bottom Left Note */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--ink-muted, #71717A)', borderTop: '1px solid var(--hairline-soft, rgba(255,255,255,0.06))', paddingTop: '16px', zIndex: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--ink-muted)', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px', zIndex: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icons.Shield size={14} color="#3E7BFA" />
+            <Icons.Shield size={14} color="var(--blueprint-500)" />
             <span>Mặt bằng số hóa Tòa A1 • 5 tầng vận hành</span>
           </div>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>SHA-256 LEDGER GUARDED</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--ink-muted)' }}>
+            SHA-256 LEDGER GUARDED
+          </span>
         </div>
       </div>
 
@@ -175,7 +201,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
         className="ruo-split-auth-right"
         style={{
           flex: '0.95',
-          background: 'var(--canvas-base, #0B0C0E)',
+          background: 'var(--bg-app)',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -187,8 +213,8 @@ export const LoginPage = ({ onLoginSuccess }) => {
         {/* Top Header: Hotline & Theme Switch */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '20px' }}>
           <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '11px', color: 'var(--ink-muted, #71717A)', marginRight: '6px' }}>Hotline CSVC:</span>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-primary, #F4F4F5)', fontFamily: 'var(--font-mono)' }}>1900 6868</span>
+            <span style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginRight: '6px' }}>Hotline CSVC:</span>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--ink-primary)', fontFamily: 'var(--font-mono)' }}>1900 6868</span>
           </div>
 
           <button
@@ -197,15 +223,16 @@ export const LoginPage = ({ onLoginSuccess }) => {
             style={{
               padding: '6px 12px',
               borderRadius: '8px',
-              background: 'var(--surface-card, #16191D)',
-              border: '1px solid var(--border-default, rgba(255,255,255,0.08))',
-              color: 'var(--ink-secondary, #A1A1AA)',
+              background: 'var(--surface-card)',
+              border: '1px solid var(--border-default)',
+              color: 'var(--ink-secondary)',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
               fontSize: '12px',
               fontWeight: 600,
+              boxShadow: 'var(--shadow-card)',
               transition: 'all 0.15s ease'
             }}
             title={theme === 'dark' ? 'Chuyển sang giao diện Sáng' : 'Chuyển sang giao diện Tối'}
@@ -241,19 +268,19 @@ export const LoginPage = ({ onLoginSuccess }) => {
             width: '100%',
             maxWidth: '460px',
             margin: 'auto',
-            background: 'var(--surface-card, #16191D)',
-            border: '1px solid var(--border-default, rgba(255,255,255,0.08))',
+            background: 'var(--surface-card)',
+            border: '1px solid var(--border-default)',
             borderRadius: '16px',
             padding: '32px 30px',
-            boxShadow: 'var(--shadow-card, 0 12px 32px rgba(0,0,0,0.35))'
+            boxShadow: isLight ? '0 10px 30px rgba(0, 0, 0, 0.08)' : '0 12px 32px rgba(0, 0, 0, 0.45)'
           }}
         >
           {/* Header Title */}
           <div style={{ marginBottom: '22px' }}>
-            <h2 style={{ fontSize: '21px', fontWeight: 800, color: 'var(--ink-primary, #F4F4F5)', margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
+            <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--ink-primary)', margin: '0 0 6px 0', letterSpacing: '-0.01em' }}>
               Đăng Nhập Vận Hành
             </h2>
-            <p style={{ fontSize: '13px', color: 'var(--ink-secondary, #A1A1AA)', margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontSize: '13px', color: 'var(--ink-secondary)', margin: 0, lineHeight: 1.5 }}>
               Cổng quản lý tài sản, trang thiết bị & chuỗi cung ứng cơ sở vật chất
             </p>
           </div>
@@ -280,7 +307,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#EF4444', marginBottom: '3px' }}>
                   Tài Khoản Đang Bị Khóa Tạm Thời (15 Phút)
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--ink-secondary, #A1A1AA)', lineHeight: 1.5 }}>
+                <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', lineHeight: 1.5 }}>
                   Hệ thống phát hiện 5 lần nhập sai mật khẩu liên tiếp. Vui lòng chờ <strong>{lockoutData.remainingMinutes} phút</strong> để thử lại, hoặc liên hệ Ban Quản Trị Hệ Thống.
                 </div>
               </div>
@@ -355,10 +382,32 @@ export const LoginPage = ({ onLoginSuccess }) => {
           )}
 
           {/* Quick Fill Demo Accounts Matrix (Phase 1.1 Canonical Roles) */}
-          <div style={{ marginBottom: '20px', padding: '12px 14px', background: 'var(--surface-base, #111316)', borderRadius: '10px', border: '1px solid var(--border-subtle, rgba(255,255,255,0.05))' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-muted, #71717A)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div
+            style={{
+              marginBottom: '20px',
+              padding: '12px 14px',
+              background: isLight ? '#F0EFEA' : 'var(--surface-2)',
+              borderRadius: '10px',
+              border: '1px solid var(--border-default)'
+            }}
+          >
+            <div
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'var(--ink-muted)',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
               <span>Tài khoản mẫu thử nghiệm (1-Click):</span>
-              <span style={{ fontSize: '10px', color: 'var(--blueprint-400, #5B8FFB)' }}>MK: Ruo@2026</span>
+              <span style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', color: 'var(--blueprint-500)', fontWeight: 700 }}>
+                MK: Ruo@2026
+              </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
               {DEMO_ACCOUNTS.map((acc) => (
@@ -370,7 +419,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
                     padding: '8px',
                     borderRadius: '8px',
                     background: acc.badgeBg,
-                    border: `1px solid ${acc.badgeColor}33`,
+                    border: `1px solid ${acc.badgeBorder}`,
                     color: acc.badgeColor,
                     cursor: 'pointer',
                     textAlign: 'left',
@@ -378,8 +427,8 @@ export const LoginPage = ({ onLoginSuccess }) => {
                   }}
                   title={acc.desc}
                 >
-                  <div style={{ fontSize: '11px', fontWeight: 800 }}>{acc.roleLabel}</div>
-                  <div style={{ fontSize: '10px', opacity: 0.85, fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: '11.5px', fontWeight: 800 }}>{acc.roleLabel}</div>
+                  <div style={{ fontSize: '10.5px', opacity: 0.9, fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {acc.code}
                   </div>
                 </button>
@@ -390,11 +439,11 @@ export const LoginPage = ({ onLoginSuccess }) => {
           <form onSubmit={handleLogin}>
             {/* Field 1: Email or Employee Code */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink-primary, #F4F4F5)', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '6px' }}>
                 Email công vụ hoặc Mã cán bộ
               </label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--ink-muted, #71717A)', display: 'flex', alignItems: 'center' }}>
+                <span style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--ink-muted)', display: 'flex', alignItems: 'center' }}>
                   <Icons.Mail size={16} />
                 </span>
                 <input
@@ -408,12 +457,21 @@ export const LoginPage = ({ onLoginSuccess }) => {
                     width: '100%',
                     padding: '10px 14px 10px 38px',
                     borderRadius: '8px',
-                    background: 'var(--surface-base, #111316)',
-                    border: '1px solid var(--border-default, rgba(255,255,255,0.1))',
-                    color: 'var(--ink-primary, #F4F4F5)',
+                    background: isLight ? '#FFFFFF' : 'var(--surface-2)',
+                    border: `1px solid ${isLight ? '#D4D4D8' : 'var(--border-default)'}`,
+                    color: 'var(--ink-primary)',
                     fontSize: '13px',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'var(--blueprint-500)';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(62, 123, 250, 0.15)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = isLight ? '#D4D4D8' : 'var(--border-default)';
+                    e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
@@ -421,11 +479,11 @@ export const LoginPage = ({ onLoginSuccess }) => {
 
             {/* Field 2: Password */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink-primary, #F4F4F5)', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '6px' }}>
                 Mật khẩu hệ thống
               </label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--ink-muted, #71717A)', display: 'flex', alignItems: 'center' }}>
+                <span style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--ink-muted)', display: 'flex', alignItems: 'center' }}>
                   <Icons.Lock size={16} />
                 </span>
                 <input
@@ -438,12 +496,21 @@ export const LoginPage = ({ onLoginSuccess }) => {
                     width: '100%',
                     padding: '10px 38px 10px 38px',
                     borderRadius: '8px',
-                    background: 'var(--surface-base, #111316)',
-                    border: '1px solid var(--border-default, rgba(255,255,255,0.1))',
-                    color: 'var(--ink-primary, #F4F4F5)',
+                    background: isLight ? '#FFFFFF' : 'var(--surface-2)',
+                    border: `1px solid ${isLight ? '#D4D4D8' : 'var(--border-default)'}`,
+                    color: 'var(--ink-primary)',
                     fontSize: '13px',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'var(--blueprint-500)';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(62, 123, 250, 0.15)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = isLight ? '#D4D4D8' : 'var(--border-default)';
+                    e.target.style.boxShadow = 'none';
                   }}
                 />
                 <button
@@ -453,7 +520,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
                     position: 'absolute',
                     right: '12px',
                     top: '11px',
-                    color: 'var(--ink-muted, #71717A)',
+                    color: 'var(--ink-muted)',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
@@ -468,12 +535,12 @@ export const LoginPage = ({ onLoginSuccess }) => {
 
             {/* Remember & Forgot Password */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', fontSize: '12.5px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--ink-secondary, #A1A1AA)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--ink-secondary)' }}>
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  style={{ width: '15px', height: '15px', accentColor: '#3E7BFA', cursor: 'pointer' }}
+                  style={{ width: '15px', height: '15px', accentColor: 'var(--blueprint-500)', cursor: 'pointer' }}
                 />
                 <span>Ghi nhớ phiên 7 ngày</span>
               </label>
@@ -481,7 +548,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
               <button
                 type="button"
                 onClick={() => setIsForgotPasswordOpen(true)}
-                style={{ background: 'none', border: 'none', padding: 0, color: 'var(--blueprint-400, #5B8FFB)', fontWeight: 600, cursor: 'pointer', fontSize: '12.5px' }}
+                style={{ background: 'none', border: 'none', padding: 0, color: 'var(--blueprint-500)', fontWeight: 600, cursor: 'pointer', fontSize: '12.5px' }}
               >
                 Quên mật khẩu?
               </button>
@@ -495,7 +562,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
                 width: '100%',
                 padding: '11px 18px',
                 borderRadius: '8px',
-                background: 'var(--blueprint-500, #3E7BFA)',
+                background: 'var(--blueprint-500)',
                 border: 'none',
                 color: '#FFFFFF',
                 fontWeight: 700,
@@ -507,7 +574,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
                 justifyContent: 'center',
                 gap: '8px',
                 transition: 'all 0.15s ease',
-                boxShadow: '0 4px 12px rgba(62, 123, 250, 0.25)'
+                boxShadow: '0 4px 14px rgba(62, 123, 250, 0.28)'
               }}
             >
               <span>
@@ -522,13 +589,13 @@ export const LoginPage = ({ onLoginSuccess }) => {
           </form>
 
           {/* Micro Footer Notice */}
-          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.06))', textAlign: 'center', fontSize: '11.5px', color: 'var(--ink-muted, #71717A)', lineHeight: 1.6 }}>
+          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)', textAlign: 'center', fontSize: '11.5px', color: 'var(--ink-muted)', lineHeight: 1.6 }}>
             Bảo mật phiên đăng nhập bằng mã hóa JWT & chuỗi kiểm toán bất biến SHA-256. Mọi quyền truy cập được phân định theo ma trận RBAC.
           </div>
         </div>
 
         {/* Bottom Right: Version mark */}
-        <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--ink-muted, #71717A)', paddingBottom: '8px' }}>
+        <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--ink-muted)', paddingBottom: '8px' }}>
           RUO UEMS v3.0 • Phòng Hành Chính - Quản Trị • Bản quyền 2026
         </div>
       </div>

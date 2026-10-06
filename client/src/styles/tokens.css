@@ -144,6 +144,19 @@
 
   /* Technical Blueprint Grid */
   --blueprint-grid: radial-gradient(rgba(62, 123, 250, 0.08) 1px, transparent 1px);
+
+  /* Legacy & Surface Compatibility Aliases */
+  --surface-base: var(--slate-900);
+  --surface-panel: var(--slate-850);
+  --surface-sunken: var(--slate-950);
+  --surface-subtle: var(--slate-800);
+  --canvas-base: var(--slate-900);
+  --canvas-subtle: var(--slate-850);
+  --hairline-soft: var(--border-subtle);
+  --hairline-medium: var(--border-default);
+  --hairline-strong: var(--border-strong);
+  --ink-pure: #FFFFFF;
+  --laser-cyan: var(--blueprint-400);
 }
 
 /* Light Theme Overrides (Warm Archival Paper) */
@@ -171,4 +184,18 @@
   --shadow-drawer: -12px 0 36px rgba(0, 0, 0, 0.12);
 
   --blueprint-grid: radial-gradient(rgba(37, 99, 235, 0.06) 1px, transparent 1px);
+  
+  /* Legacy & Surface Compatibility Aliases */
+  --surface-base: #F7F7F5;
+  --surface-panel: #FFFFFF;
+  --surface-sunken: #ECEAE4;
+  --surface-subtle: #F0EFEA;
+  --canvas-base: #F7F7F5;
+  --canvas-subtle: #F0EFEA;
+  --hairline-soft: #ECEAE4;
+  --hairline-medium: #E2E0D8;
+  --hairline-strong: #CDC9BD;
+  --ink-pure: #0F172A;
+  --laser-cyan: var(--blueprint-600);
 }
+

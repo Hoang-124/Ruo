@@ -432,3 +432,59 @@
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
 }
+
+/* ==========================================================================
+   INPUTS & FORM CONTROLS
+   ========================================================================== */
+.ruo-input,
+.ruo-portal-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--ink-primary);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+.ruo-input:focus,
+.ruo-portal-input:focus {
+  border-color: var(--blueprint-500);
+  box-shadow: 0 0 0 3px rgba(62, 123, 250, 0.16);
+}
+
+.ruo-input::placeholder,
+.ruo-portal-input::placeholder {
+  color: var(--ink-muted);
+}
+
+.ruo-input:disabled,
+.ruo-portal-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--surface-3);
+}
+
+/* Browser Autofill Styling - Prevents unreadable jarring browser autofill colors */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--ink-primary) !important;
+  transition: background-color 5000s ease-in-out 0s;
+  box-shadow: 0 0 0 1000px var(--surface-2) inset !important;
+}
+
+[data-theme='light'] input:-webkit-autofill,
+[data-theme='light'] input:-webkit-autofill:hover,
+[data-theme='light'] input:-webkit-autofill:focus,
+[data-theme='light'] input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--ink-primary) !important;
+  transition: background-color 5000s ease-in-out 0s;
+  box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+}
+
