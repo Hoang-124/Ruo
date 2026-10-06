@@ -1,20 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../../components/common/SvgIcons';
 import { FloorPlan2D } from '../../components/common/FloorPlan2D';
 import { Building2DIso } from '../../components/common/Building2DIso';
-import { CAMPUS_FLOORS } from '../../mock/campusBuildingData';
+import { CAMPUS_FLOORS, ROOM_CATEGORIES } from '../../mock/campusBuildingData';
 import { equipmentApi, transferApi, repairApi, disposalApi, auditApi } from '../../lib/api';
-import { Button, Card, KPI, StatusBadge, Drawer, EmptyState } from '../../components/ui/Primitives';
+import { Button, Card, KPI, StatusBadge, EmptyState } from '../../components/ui/Primitives';
 
 /**
  * Dashboard - UEMS Operational Command Center
  * 
- * Features:
- * - Real-time KPI metrics & cryptographic SHA-256 chain indicator
- * - Role-tailored Action Queue (Manager approvals, Staff repair dispatch)
- * - Interactive Digital Twin Floor Plan (FloorPlan2D) of Tòa Nhà A1 (5 Floors)
- * - Recent Immutable Audit Log entries
+ * Refined Layout:
+ * 1. Top Bar: Greeting, Role, Quick Actions
+ * 2. KPI Overview Row: Active, Repairing, Pending Approvals, Total Value
+ * 3. SHA-256 Cryptographic Chain Status Strip
+ * 4. Mid Section (Split View):
+ *    - Left (~62%): Sơ Đồ Mặt Bằng Phòng Học 2D / 2.5D (FloorPlan2D) với bộ chọn Tầng 1..5
+ *    - Right (~38%): Khung Thông Tin Chi Tiết Phòng Học Được Chọn & Danh Sách Thiết Bị Tại Phòng
+ * 5. Bottom Section (Split View):
+ *    - Left (~60%): Việc Cần Xử Lý Của Tôi (Action Items)
+ *    - Right (~40%): Nhật Ký Kiểm Toán Gần Đây (SHA-256 Ledger)
  */
 export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
   const { currentUser, currentRoleKey } = useAuth();
@@ -35,11 +40,16 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
   const [actionItems, setActionItems] = useState([]);
   const [recentAudits, setRecentAudits] = useState([]);
   const [auditChainValid, setAuditChainValid] = useState(true);
+  const [equipmentsList, setEquipmentsList] = useState([]);
 
   // Digital Twin Floor Plan State
   const [selectedFloor, setSelectedFloor] = useState(1);
-  const [selectedRoom, setSelectedRoom] = useState(null);
   const [floorPlanView, setFloorPlanView] = useState('plan'); // 'plan' | 'iso'
+
+  // Pre-select first room of selected floor by default
+  const [selectedRoom, setSelectedRoom] = useState(() => {
+    return CAMPUS_FLOORS[1]?.topRooms?.[0] || null;
+  });
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -54,6 +64,8 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
       ]);
 
       const equipments = eqRes.items || eqRes.equipments || [];
+      setEquipmentsList(equipments);
+
       const activeCount = equipments.filter(e => e.status === 'active').length;
       const repairingCount = equipments.filter(e => e.status === 'repairing').length;
       const totalVal = equipments.reduce((acc, e) => acc + (Number(e.price) || 0), 0);
@@ -125,6 +137,15 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
     fetchDashboardData();
   }, [currentRoleKey]);
 
+  // Synchronize default selected room when switching floors
+  const handleFloorChange = (floorNum) => {
+    setSelectedFloor(floorNum);
+    const floorRooms = CAMPUS_FLOORS[floorNum]?.topRooms || [];
+    if (floorRooms.length > 0) {
+      setSelectedRoom(floorRooms[0]);
+    }
+  };
+
   // Determine room simulated status for floor plan
   const getRoomSimulatedStatus = useCallback((room) => {
     if (room.statusOverride === 'maintenance') {
@@ -145,9 +166,33 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
     };
   }, []);
 
+  // Compute matched equipments for selected room
+  const roomEquipments = useMemo(() => {
+    if (!selectedRoom) return [];
+
+    const realMatches = equipmentsList.filter(e => {
+      const roomCode = e.room_id?.code || e.room_code || '';
+      return roomCode.toLowerCase().includes(selectedRoom.code?.toLowerCase()) ||
+             selectedRoom.name?.toLowerCase().includes(e.room_id?.name?.toLowerCase() || '___');
+    });
+
+    if (realMatches.length > 0) return realMatches;
+
+    // Architectural mock equipment fallback from CAMPUS_FLOORS
+    return (selectedRoom.equipments || []).map((name, idx) => ({
+      _id: `room-eq-${idx}`,
+      code: `${selectedRoom.code}-EQ-${101 + idx}`,
+      name,
+      status: idx === 1 && selectedRoom.statusOverride === 'maintenance' ? 'repairing' : 'active',
+      rRatio: idx === 1 && selectedRoom.statusOverride === 'maintenance' ? 62 : 12 + idx * 8
+    }));
+  }, [selectedRoom, equipmentsList]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Top Welcome & Role Bar */}
+      {/* ==============================================================
+          1. TOP WELCOME & ROLE BAR
+          ============================================================== */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: 'var(--ink-primary)' }}>
@@ -171,7 +216,9 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
         </div>
       </div>
 
-      {/* KPI Overview Row */}
+      {/* ==============================================================
+          2. KPI OVERVIEW ROW
+          ============================================================== */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         <KPI
           label="Thiết Bị Hoạt Động"
@@ -210,7 +257,9 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
         />
       </div>
 
-      {/* Cryptographic Ledger Health Strip (Immutable SHA-256) */}
+      {/* ==============================================================
+          3. CRYPTOGRAPHIC LEDGER HEALTH STRIP (SHA-256)
+          ============================================================== */}
       <div
         style={{
           background: auditChainValid ? 'rgba(47, 179, 122, 0.08)' : 'rgba(229, 72, 77, 0.12)',
@@ -242,121 +291,231 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
       </div>
 
       {/* ==============================================================
-          HERO SECTION: SƠ ĐỒ MẶT BẰNG PHÒNG HỌC TÒA A1 (DIGITAL TWIN)
+          4. DIGITAL TWIN SPATIAL WORKSPACE (SPLIT 62% MAP : 38% ROOM INFO)
           ============================================================== */}
-      <Card
-        title="Sơ Đồ Mặt Bằng Phòng Học — Tòa Nhà A1 (Digital Twin CAD)"
-        subtitle="Mặt bằng kiến trúc các phòng mép Bắc & mép Nam, trục hành lang 3.5m, lõi buồng thang thoát hiểm & thang máy"
-        action={
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {/* View Mode Switcher */}
-            <div style={{ display: 'flex', background: 'var(--surface-base)', padding: '3px', borderRadius: '6px', border: '1px solid var(--border-default)' }}>
-              <button
-                type="button"
-                onClick={() => setFloorPlanView('plan')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '4px',
-                  border: 'none',
-                  background: floorPlanView === 'plan' ? 'var(--blueprint-500)' : 'transparent',
-                  color: floorPlanView === 'plan' ? '#FFFFFF' : 'var(--ink-muted)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Mặt Bằng 2D
-              </button>
-              <button
-                type="button"
-                onClick={() => setFloorPlanView('iso')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '4px',
-                  border: 'none',
-                  background: floorPlanView === 'iso' ? 'var(--blueprint-500)' : 'transparent',
-                  color: floorPlanView === 'iso' ? '#FFFFFF' : 'var(--ink-muted)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Phối Cảnh 2.5D
-              </button>
-            </div>
-
-            <Button size="sm" variant="secondary" onClick={() => onNavigateTab('map')}>
-              Mở Rộng Không Gian CAD →
-            </Button>
-          </div>
-        }
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.62fr) minmax(320px, 1fr)',
+          gap: '20px',
+          alignItems: 'start'
+        }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Main Visual Display */}
-          {floorPlanView === 'plan' ? (
-            <FloorPlan2D
-              selectedFloor={selectedFloor}
-              onChangeFloor={(fl) => {
-                setSelectedFloor(fl);
-                setSelectedRoom(null);
-              }}
-              selectedRoom={selectedRoom}
-              onSelectRoom={(room) => {
-                setSelectedRoom(room);
-              }}
-              getRoomSimulatedStatus={getRoomSimulatedStatus}
-              currentTimeString="11:15"
-            />
-          ) : (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0', background: 'var(--surface-base)', borderRadius: '12px' }}>
-              <Building2DIso
-                activeFloor={selectedFloor}
-                onSelectFloor={(fl) => setSelectedFloor(fl)}
-              />
-            </div>
-          )}
+        {/* Left Column: Interactive Architectural Map */}
+        <Card
+          title="Mặt Bằng Tòa A1 (Digital Twin CAD)"
+          subtitle={`Sơ đồ kiến trúc tầng ${selectedFloor} • Phân bổ phòng học & hành lang`}
+          action={
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* 2D / 2.5D View Toggle */}
+              <div style={{ display: 'flex', background: 'var(--surface-base)', padding: '3px', borderRadius: '6px', border: '1px solid var(--border-default)' }}>
+                <button
+                  type="button"
+                  onClick={() => setFloorPlanView('plan')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '4px',
+                    border: 'none',
+                    background: floorPlanView === 'plan' ? 'var(--blueprint-500)' : 'transparent',
+                    color: floorPlanView === 'plan' ? '#FFFFFF' : 'var(--ink-muted)',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Mặt Bằng 2D
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFloorPlanView('iso')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '4px',
+                    border: 'none',
+                    background: floorPlanView === 'iso' ? 'var(--blueprint-500)' : 'transparent',
+                    color: floorPlanView === 'iso' ? '#FFFFFF' : 'var(--ink-muted)',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Khối 2.5D
+                </button>
+              </div>
 
-          {/* Quick Room Callout If Room is Selected */}
-          {selectedRoom && (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px 16px',
-                background: 'var(--surface-3)',
-                borderRadius: '8px',
-                border: '1px solid var(--blueprint-400)',
-                flexWrap: 'wrap',
-                gap: '12px'
-              }}
-            >
+              <Button size="sm" variant="ghost" onClick={() => onNavigateTab('map')} style={{ fontSize: '11.5px', color: 'var(--blueprint-400)' }}>
+                Mở Rộng CAD →
+              </Button>
+            </div>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {/* Visual CAD Canvas */}
+            {floorPlanView === 'plan' ? (
+              <div style={{ overflowX: 'auto', borderRadius: '8px' }}>
+                <FloorPlan2D
+                  selectedFloor={selectedFloor}
+                  onChangeFloor={handleFloorChange}
+                  selectedRoom={selectedRoom}
+                  onSelectRoom={(room) => setSelectedRoom(room)}
+                  getRoomSimulatedStatus={getRoomSimulatedStatus}
+                  currentTimeString="11:15"
+                />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0', background: 'var(--surface-base)', borderRadius: '8px' }}>
+                <Building2DIso
+                  activeFloor={selectedFloor}
+                  onSelectFloor={handleFloorChange}
+                />
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Right Column: Room Detail & Equipment Inspector Panel */}
+        <Card
+          title={selectedRoom ? `Phòng ${selectedRoom.code}` : "Thông Tin Phòng Học"}
+          subtitle={selectedRoom ? `${selectedRoom.name} • Tầng ${selectedFloor}` : "Chọn một phòng trên sơ đồ bên trái"}
+          action={
+            selectedRoom && (
+              <Button size="sm" variant="ghost" onClick={() => onNavigateTab('map')} style={{ fontSize: '11px', color: 'var(--blueprint-400)' }}>
+                Xem Vị Trí CAD →
+              </Button>
+            )
+          }
+        >
+          {selectedRoom ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Room Top Specs Grid */}
+              <div
+                style={{
+                  background: 'var(--surface-2)',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-default)',
+                  padding: '12px 14px',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '10px',
+                  fontSize: '12px'
+                }}
+              >
+                <div>
+                  <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Phân loại:</span>
+                  <strong style={{ color: 'var(--ink-primary)' }}>
+                    {ROOM_CATEGORIES[selectedRoom.category]?.name || 'Học tập'}
+                  </strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Trạng thái:</span>
+                  <span style={{ color: selectedRoom.statusOverride === 'maintenance' ? '#E5A33B' : '#2FB37A', fontWeight: 700 }}>
+                    ● {selectedRoom.statusOverride === 'maintenance' ? 'Đang bảo trì' : 'Vận hành tốt'}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Sức chứa:</span>
+                  <strong style={{ color: 'var(--ink-primary)' }}>
+                    {selectedRoom.capacity ? `${selectedRoom.capacity} chỗ` : 'Không cố định'}
+                  </strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Diện tích sàn:</span>
+                  <strong style={{ color: 'var(--ink-primary)' }}>
+                    {selectedRoom.area || 60} m²
+                  </strong>
+                </div>
+              </div>
+
+              {/* Quick Operational Action Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={Icons.Wrench}
+                  onClick={() => onNavigateTab('tickets_kanban')}
+                >
+                  Báo Hỏng Tại Phòng
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={Icons.Repeat}
+                  onClick={() => onNavigateTab('transfers')}
+                >
+                  Điều Chuyển Đến
+                </Button>
+              </div>
+
+              {/* Equipment Inventory in This Room */}
               <div>
-                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--blueprint-400)', marginRight: '8px' }}>
-                  {selectedRoom.code}
-                </span>
-                <strong style={{ color: 'var(--ink-primary)', fontSize: '13.5px' }}>
-                  {selectedRoom.name}
-                </strong>
-                <span style={{ color: 'var(--ink-muted)', fontSize: '12px', marginLeft: '8px' }}>
-                  ({selectedRoom.capacity ? `${selectedRoom.capacity} chỗ ngồi` : `${selectedRoom.area || 60} m²`}) • Tầng {selectedFloor}
-                </span>
-              </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Thiết Bị Tại Phòng ({roomEquipments.length})
+                  </span>
+                  <span style={{ fontSize: '10.5px', color: 'var(--blueprint-400)', fontFamily: 'var(--font-mono)' }}>
+                    TẦNG {selectedFloor}
+                  </span>
+                </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <Button size="sm" variant="primary" onClick={() => onNavigateTab('map')}>
-                  Kiểm Tra Chi Tiết Thiết Bị Phòng →
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setSelectedRoom(null)}>
-                  Đóng
-                </Button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '230px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {roomEquipments.map((eq, idx) => (
+                    <div
+                      key={eq._id || idx}
+                      style={{
+                        background: 'var(--surface-2)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-xs)',
+                        padding: '8px 10px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div style={{ minWidth: 0, paddingRight: '8px' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 800, color: 'var(--blueprint-400)' }}>
+                          {eq.code}
+                        </div>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {eq.name}
+                        </div>
+                      </div>
+
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <StatusBadge status={eq.status} />
+                        <div style={{ fontSize: '10.5px', color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                          R: {eq.rRatio || 0}%
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {roomEquipments.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '12px', color: 'var(--ink-muted)' }}>
+                      Chưa có thiết bị đăng ký tại phòng này.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--ink-muted)' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--surface-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px', color: 'var(--blueprint-400)' }}>
+                <Icons.Building size={22} />
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '4px' }}>
+                Chưa Chọn Phòng Học
+              </div>
+              <div style={{ fontSize: '12px', lineHeight: 1.5, maxWidth: '240px', margin: '0 auto' }}>
+                Nhấp vào bất kỳ phòng nào trên sơ đồ mặt bằng bên trái để xem thông tin chi tiết và danh sách thiết bị.
               </div>
             </div>
           )}
-        </div>
-      </Card>
+        </Card>
+      </div>
 
-      {/* Lower Grid: My Action Items (Left 60%) + Recent Audit (Right 40%) */}
+      {/* ==============================================================
+          5. LOWER GRID: MY ACTION ITEMS (LEFT 60%) + RECENT AUDIT (RIGHT 40%)
+          ============================================================== */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: '20px' }}>
         {/* Left Column: Role-Tailored "Việc Cần Làm Của Tôi" */}
         <Card
