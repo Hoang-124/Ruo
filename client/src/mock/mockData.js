@@ -4,82 +4,15 @@
  */
 
 export const USERS = {
-  lecturer: {
-    id: 'USR_002',
-    code: 'CB198402',
-    name: 'TS. Nguyễn Văn Nam',
-    role: 'lecturer',
-    roleTitle: 'Giảng viên',
-    email: 'nam.nv@university.edu.vn',
-    department: 'Khoa Kỹ Thuật Máy Tính',
-    phone: '0912 345 678',
-    avatar: 'NN',
-    stats: {
-      activeTickets: 2,
-      assignedRooms: 3,
-      teachingHoursWeek: 16
-    }
-  },
-  maintenance_staff: {
-    id: 'USR_003',
-    code: 'NV201901',
-    name: 'Lê Thị Mai',
-    role: 'maintenance_staff',
-    roleTitle: 'Quản lý CSVC & Kỹ thuật',
-    email: 'mai.lt@university.edu.vn',
-    department: 'Phòng Quản Lý Cơ Sở Vật Chất',
-    phone: '0903 112 233',
-    avatar: 'LM',
-    stats: {
-      pendingTransfers: 4,
-      openTickets: 12,
-      slaOverdueCount: 1,
-      totalEquipments: 1240
-    }
-  },
-  facility_staff: {
-    id: 'USR_003',
-    code: 'NV201901',
-    name: 'Lê Thị Mai',
-    role: 'facility_staff',
-    roleTitle: 'Quản lý CSVC',
-    email: 'mai.lt@university.edu.vn',
-    department: 'Phòng Cơ Sở Vật Chất',
-    phone: '0903 112 233',
-    avatar: 'LM',
-    stats: {
-      pendingTransfers: 4,
-      openTickets: 12,
-      slaOverdueCount: 1,
-      totalEquipments: 1240
-    }
-  },
-  maintenance: {
-    id: 'USR_004',
-    code: 'KT201805',
-    name: 'Phạm Văn Hùng',
-    role: 'maintenance',
-    roleTitle: 'Kỹ thuật viên Bảo trì',
-    email: 'hung.pv@university.edu.vn',
-    department: 'Tổ Kỹ Thuật & Sửa Chữa',
-    phone: '0934 889 900',
-    avatar: 'PH',
-    stats: {
-      assignedTickets: 5,
-      inProgressTickets: 3,
-      completedMonth: 28,
-      avgMTTR: '2.4h'
-    }
-  },
   admin: {
-    id: 'USR_000',
+    id: 'USR_001',
     code: 'AD000001',
-    name: 'Ban Quản Trị Hệ Thống',
+    name: 'Ban Giám Hiệu / Quản Trị Hệ Thống',
     role: 'admin',
-    roleTitle: 'System Admin',
-    email: 'admin@university.edu.vn',
-    department: 'Trung Tâm Quản Trị CSVC & Hạ Tầng',
-    phone: '024 3869 1234',
+    roleTitle: 'Ban Giám Hiệu (Admin)',
+    email: 'admin@ruo.edu.vn',
+    department: 'Ban Giám Hiệu & Quản Trị Hệ Thống',
+    phone: '0901 234 567',
     avatar: 'AD',
     stats: {
       onlineUsers: 48,
@@ -87,6 +20,89 @@ export const USERS = {
       activeRoles: 3,
       auditLogsToday: 320
     }
+  },
+  manager: {
+    id: 'USR_002',
+    code: 'QL000001',
+    name: 'Trưởng Phòng HC-QT Lê Hoàng Hải',
+    role: 'manager',
+    roleTitle: 'Quản Lý Phòng / Trưởng Phòng HC-QT',
+    email: 'manager@ruo.edu.vn',
+    department: 'Phòng Hành Chính - Quản Trị CSVC',
+    phone: '0912 345 678',
+    avatar: 'LH',
+    stats: {
+      pendingTransfers: 3,
+      pendingDisposals: 1,
+      totalRooms: 45,
+      activeStaff: 12
+    }
+  },
+  staff: {
+    id: 'USR_003',
+    code: 'NV000001',
+    name: 'Kỹ Thuật Viên Trần Minh Tuấn',
+    role: 'staff',
+    roleTitle: 'Kỹ Thuật Viên CSVC',
+    email: 'staff@ruo.edu.vn',
+    department: 'Tổ Kỹ Thuật & Bảo Trì Thiết Bị',
+    phone: '0987 654 321',
+    avatar: 'TT',
+    stats: {
+      pendingTransfers: 2,
+      openTickets: 5,
+      slaOverdueCount: 0,
+      totalEquipments: 1240
+    }
+  },
+  // Backward compatibility aliases
+  maintenance_staff: {
+    id: 'USR_003',
+    code: 'NV000001',
+    name: 'Kỹ Thuật Viên Trần Minh Tuấn',
+    role: 'staff',
+    roleTitle: 'Kỹ Thuật Viên CSVC',
+    email: 'staff@ruo.edu.vn',
+    department: 'Tổ Kỹ Thuật CSVC',
+    phone: '0987 654 321',
+    avatar: 'TT',
+    stats: { pendingTransfers: 2, openTickets: 5, slaOverdueCount: 0, totalEquipments: 1240 }
+  },
+  facility_staff: {
+    id: 'USR_002',
+    code: 'QL000001',
+    name: 'Trưởng Phòng HC-QT Lê Hoàng Hải',
+    role: 'manager',
+    roleTitle: 'Quản Lý Phòng / Trưởng Phòng HC-QT',
+    email: 'manager@ruo.edu.vn',
+    department: 'Phòng Hành Chính - Quản Trị',
+    phone: '0912 345 678',
+    avatar: 'LH',
+    stats: { pendingTransfers: 3, pendingDisposals: 1, totalRooms: 45, activeStaff: 12 }
+  },
+  maintenance: {
+    id: 'USR_003',
+    code: 'NV000001',
+    name: 'Kỹ Thuật Viên Trần Minh Tuấn',
+    role: 'staff',
+    roleTitle: 'Kỹ Thuật Viên CSVC',
+    email: 'staff@ruo.edu.vn',
+    department: 'Tổ Kỹ Thuật CSVC',
+    phone: '0987 654 321',
+    avatar: 'TT',
+    stats: { pendingTransfers: 2, openTickets: 5, slaOverdueCount: 0, totalEquipments: 1240 }
+  },
+  lecturer: {
+    id: 'USR_003',
+    code: 'NV000001',
+    name: 'Kỹ Thuật Viên Trần Minh Tuấn',
+    role: 'staff',
+    roleTitle: 'Kỹ Thuật Viên CSVC',
+    email: 'staff@ruo.edu.vn',
+    department: 'Tổ Kỹ Thuật CSVC',
+    phone: '0987 654 321',
+    avatar: 'TT',
+    stats: { pendingTransfers: 2, openTickets: 5, slaOverdueCount: 0, totalEquipments: 1240 }
   }
 };
 

@@ -1,4 +1,4 @@
-import { Building, Floor, Room } from '../models/Facility.js';
+import { Building, Floor, Room } from '../models/Room.js';
 import { Equipment } from '../models/Equipment.js';
 import { ROOM_STATUSES } from '../config/constants.js';
 

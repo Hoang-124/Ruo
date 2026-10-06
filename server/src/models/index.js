@@ -16,7 +16,7 @@ export { SparePart } from './SparePart.js';
 // Module 3: Equipment Management
 export { Equipment } from './Equipment.js';
 export { Transfer } from './Transfer.js';
-export { Disposal, DisposalProposal } from './Disposal.js';
+export { Disposal } from './Disposal.js';
 export { ImportSession } from './ImportSession.js';
 
 // Module 4: Incident & Repair Management

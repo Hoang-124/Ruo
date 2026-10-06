@@ -1,11 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { USERS, NOTIFICATIONS as initialNotifs } from '../mock/mockData';
+import { authApi, getStoredToken, getStoredRefreshToken, setStoredTokens, clearStoredTokens } from '../lib/api';
 
 const AuthContext = createContext();
 
-const API_BASE_URL = 'http://localhost:5000/api/auth';
-
-// Helper utility: freeze transitions during theme switch to prevent GPU stutter / dropped frames
+// Helper utility: freeze transitions during theme switch
 const freezeTransitionsTemporarily = () => {
   const css = document.createElement('style');
   css.setAttribute('id', 'ruo-theme-transition-lock');
@@ -35,53 +34,61 @@ const freezeTransitionsTemporarily = () => {
 
 // Domain Actors & Role-Based Access Control (RBAC) Mapping (3 Canonical Actors)
 export const ROLE_PERMISSIONS = {
-  lecturer: {
-    title: 'Giảng viên',
-    desc: 'Báo cáo sự cố thiết bị phòng học, theo dõi tiến độ sửa chữa, đánh giá chất lượng sửa chữa, tra cứu thiết bị phòng học',
-    allowedTabs: ['dashboard', 'equipments', 'tickets_kanban']
-  },
-  maintenance_staff: {
-    title: 'Quản lý CSVC & Kỹ thuật',
-    desc: 'Quản lý kho thiết bị & QR, điều chuyển phòng, sửa chữa SLA, bảo trì định kỳ, kiểm kê kho thực tế, đề xuất thanh lý R ≥ 60%',
-    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc']
-  },
   admin: {
-    title: 'Quản trị viên (Admin)',
-    desc: 'Toàn quyền điều hành CSVC, phân quyền vai trò qua ma trận RBAC, giám sát chuỗi kiểm toán SHA-256, phê duyệt thanh lý cuối cùng',
-    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc', 'rbac', 'audit_log']
+    title: 'Ban Giám Hiệu / Quản Trị Viên (Admin)',
+    desc: 'Toàn quyền cấu hình, phê duyệt quyết định thanh lý BGH, giám sát chuỗi kiểm toán SHA-256',
+    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc', 'cad_canvas', 'rbac', 'audit_log']
+  },
+  manager: {
+    title: 'Quản Lý Phòng / Trưởng Phòng HC-QT',
+    desc: 'Phê duyệt điều chuyển, xét duyệt thanh lý cấp phòng HC, lập dự trù mua sắm, kiểm soát tài sản',
+    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc', 'cad_canvas']
+  },
+  staff: {
+    title: 'Kỹ Thuật Viên / Chuyên Viên CSVC',
+    desc: 'Quản lý tài sản, kiểm kê mã QR, đề xuất điều chuyển, sửa chữa sự cố, đề xuất thanh lý khi R>=60%',
+    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc', 'cad_canvas']
   },
   // Backward compatibility aliases
+  maintenance_staff: {
+    title: 'Kỹ Thuật Viên CSVC',
+    desc: 'Quản lý tài sản, kiểm kê mã QR, đề xuất điều chuyển, sửa chữa sự cố',
+    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc', 'cad_canvas']
+  },
   facility_staff: {
-    title: 'Quản lý CSVC & Kỹ thuật',
-    desc: 'Quản lý kho thiết bị & QR, điều chuyển phòng, sửa chữa SLA, bảo trì định kỳ, kiểm kê kho thực tế, đề xuất thanh lý',
-    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc']
+    title: 'Quản Lý Phòng / Trưởng Phòng HC-QT',
+    desc: 'Phê duyệt điều chuyển, xét duyệt thanh lý cấp phòng HC',
+    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc', 'cad_canvas']
   },
   maintenance: {
-    title: 'Kỹ thuật viên',
-    desc: 'Tiếp nhận ticket sự cố, đếm ngược SLA sửa chữa, đánh giá kỹ thuật và đề xuất thanh lý máy hỏng',
-    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc']
+    title: 'Kỹ Thuật Viên CSVC',
+    desc: 'Tiếp nhận ticket sự cố, đếm ngược SLA sửa chữa',
+    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc', 'cad_canvas']
+  },
+  lecturer: {
+    title: 'Kỹ Thuật Viên CSVC',
+    desc: 'Báo cáo sự cố thiết bị phòng học',
+    allowedTabs: ['dashboard', 'equipments', 'tickets_kanban']
   }
 };
 
 export const AuthProvider = ({ children }) => {
   // Authentication Token State
-  const [token, setToken] = useState(() => localStorage.getItem('ruo_token') || null);
-  const [refreshToken, setRefreshToken] = useState(() => localStorage.getItem('ruo_refresh_token') || null);
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return Boolean(localStorage.getItem('ruo_token') || localStorage.getItem('ruo_is_logged_in') === 'true');
-  });
+  const [token, setToken] = useState(() => getStoredToken());
+  const [refreshToken, setRefreshToken] = useState(() => getStoredRefreshToken());
+  const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getStoredToken()));
 
-  // Current active role key: lecturer, maintenance_staff, admin
+  // Current active role key: admin, manager, staff
   const [currentRoleKey, setCurrentRoleKey] = useState(() => {
-    return localStorage.getItem('ruo_role') || 'maintenance_staff';
+    return localStorage.getItem('ruo_role') || 'staff';
   });
 
   // Live profile details from Backend
   const [apiUser, setApiUser] = useState(null);
 
-  // Dark/Light Theme (Default to Obsidian Dark Command Center)
+  // Dark/Light Theme (Default to Warm Graphite Dark Command Center)
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('ruo_theme') || localStorage.getItem('ufms_theme') || 'dark';
+    return localStorage.getItem('ruo_theme') || 'dark';
   });
 
   // Notifications
@@ -97,53 +104,49 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('ruo_role', currentRoleKey);
   }, [currentRoleKey]);
 
+  // Handle session expiration broadcast from API client
+  useEffect(() => {
+    const handleExpired = () => {
+      setToken(null);
+      setRefreshToken(null);
+      setApiUser(null);
+      setIsLoggedIn(false);
+    };
+    window.addEventListener('ruo:session-expired', handleExpired);
+    return () => window.removeEventListener('ruo:session-expired', handleExpired);
+  }, []);
+
   // Fetch real profile from backend when token changes
-  const fetchProfile = useCallback(async (activeToken = token) => {
+  const fetchProfile = useCallback(async () => {
+    const activeToken = getStoredToken();
     if (!activeToken) return null;
     try {
-      const res = await fetch(`${API_BASE_URL}/me`, {
-        headers: { 'Authorization': `Bearer ${activeToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.user) {
-          setApiUser(data.user);
-          if (data.user.role) {
-            setCurrentRoleKey(data.user.role);
-          }
-          return data.user;
+      const data = await authApi.profile();
+      if (data.success && data.user) {
+        setApiUser(data.user);
+        if (data.user.role) {
+          setCurrentRoleKey(data.user.role);
         }
-      } else if (res.status === 401) {
-        // Token expired or revoked
-        setToken(null);
-        setIsLoggedIn(false);
-        localStorage.removeItem('ruo_token');
-        localStorage.removeItem('ruo_refresh_token');
-        localStorage.removeItem('ruo_is_logged_in');
+        setIsLoggedIn(true);
+        return data.user;
       }
     } catch (err) {
-      console.warn('[AuthContext] Backend offline or fetch error, operating in resilient mode:', err.message);
+      console.warn('[AuthContext] Backend offline or profile error:', err.message);
     }
     return null;
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     if (token) {
-      fetchProfile(token);
+      fetchProfile();
     }
   }, [token, fetchProfile]);
 
   // UC-1.1: Login (Authenticates strictly against real Backend API & MongoDB)
   const login = useCallback(async (identifier, password) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password })
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const data = await authApi.login(identifier, password);
+      if (data.success && data.token) {
         setToken(data.token);
         setRefreshToken(data.refreshToken);
         setApiUser(data.user);
@@ -152,17 +155,11 @@ export const AuthProvider = ({ children }) => {
           setCurrentRoleKey(data.user.role);
         }
 
-        localStorage.setItem('ruo_token', data.token);
-        if (data.refreshToken) {
-          localStorage.setItem('ruo_refresh_token', data.refreshToken);
-        }
-        localStorage.setItem('ruo_is_logged_in', 'true');
-
+        setStoredTokens(data.token, data.refreshToken);
         return { success: true, user: data.user };
       } else {
         return {
           success: false,
-          status: res.status,
           message: data.message || 'Thông tin tài khoản hoặc mật khẩu không chính xác.',
           isLocked: Boolean(data.isLocked),
           remainingMinutes: data.remainingMinutes,
@@ -171,178 +168,48 @@ export const AuthProvider = ({ children }) => {
         };
       }
     } catch (error) {
-      console.error('[AuthContext] Backend connection error:', error.message);
       return {
         success: false,
-        message: 'Không thể kết nối đến máy chủ Backend (Port 5000). Vui lòng đảm bảo dịch vụ máy chủ đang chạy.'
+        message: error.message || 'Không thể kết nối đến máy chủ Backend (Port 5000).'
       };
     }
   }, []);
 
-  // Register: New institutional account registration
-  const register = useCallback(async (registrationData) => {
+  // UC-1.2: Logout
+  const logout = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(registrationData)
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setToken(data.token);
-        setRefreshToken(data.refreshToken);
-        setApiUser(data.user);
-        setIsLoggedIn(true);
-        if (data.user.role) {
-          setCurrentRoleKey(data.user.role);
-        }
-
-        localStorage.setItem('ruo_token', data.token);
-        if (data.refreshToken) {
-          localStorage.setItem('ruo_refresh_token', data.refreshToken);
-        }
-        localStorage.setItem('ruo_is_logged_in', 'true');
-
-        return { success: true, message: data.message, user: data.user };
-      } else {
-        return { success: false, message: data.message || 'Đăng ký không thành công.' };
-      }
-    } catch (error) {
-      console.warn('[AuthContext] Real backend register error, fallback offline mode:', error.message);
-      const mockUser = {
-        id: 'usr_' + Date.now(),
-        fullName: registrationData.fullName,
-        email: registrationData.email,
-        employeeCode: registrationData.employeeCode,
-        role: registrationData.role || 'lecturer',
-        department: registrationData.departmentName || 'Khoa Công nghệ Thông tin',
-        className: registrationData.className || 'K68-CNTT',
-        phone: registrationData.phone || ''
-      };
-      setApiUser(mockUser);
-      setCurrentRoleKey(mockUser.role);
-      setIsLoggedIn(true);
-      localStorage.setItem('ruo_is_logged_in', 'true');
-      return { success: true, message: 'Đăng ký tài khoản thành công (Offline Mode).', user: mockUser };
-    }
-  }, []);
-
-  // UC-1.2: Logout (Hủy token trên server & dọn dẹp triệt để client)
-  const logout = useCallback(async (allDevices = false) => {
-    try {
-      if (token) {
-        await fetch(`${API_BASE_URL}/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ allDevices })
-        });
+      const refToken = getStoredRefreshToken();
+      if (refToken) {
+        await authApi.logout(refToken);
       }
     } catch (err) {
-      console.warn('[AuthContext] Logout remote call failed:', err.message);
+      console.warn('[AuthContext] Remote logout error:', err.message);
     } finally {
+      clearStoredTokens();
       setToken(null);
       setRefreshToken(null);
       setApiUser(null);
       setIsLoggedIn(false);
-      localStorage.removeItem('ruo_token');
-      localStorage.removeItem('ruo_refresh_token');
-      localStorage.removeItem('ruo_is_logged_in');
-      localStorage.removeItem('ruo_role');
-      localStorage.removeItem('ufms_role');
-      setCurrentRoleKey('lecturer');
+      setCurrentRoleKey('staff');
     }
-  }, [token]);
+  }, []);
 
   // UC-1.3: Forgot Password APIs
   const forgotPassword = useCallback(async (email) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      return await res.json();
+      return await authApi.forgotPassword(email);
     } catch (err) {
-      return { success: false, message: 'Lỗi mạng khi yêu cầu mã OTP khôi phục mật khẩu.' };
-    }
-  }, []);
-
-  const verifyResetOtp = useCallback(async (email, otp) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/verify-reset-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
-      });
-      return await res.json();
-    } catch (err) {
-      return { success: false, message: 'Lỗi mạng khi xác thực mã OTP.' };
+      return { success: false, message: err.message || 'Lỗi gửi yêu cầu khôi phục mật khẩu.' };
     }
   }, []);
 
   const resetPassword = useCallback(async (email, otp, newPassword) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp, newPassword })
-      });
-      return await res.json();
+      return await authApi.resetPassword(email, otp, newPassword);
     } catch (err) {
-      return { success: false, message: 'Lỗi mạng khi đặt lại mật khẩu.' };
+      return { success: false, message: err.message || 'Lỗi đặt lại mật khẩu.' };
     }
   }, []);
-
-  // UC-1.4: Change Password API
-  const changePassword = useCallback(async (oldPassword, newPassword, logoutOtherDevices = true) => {
-    if (!token) {
-      return { success: false, message: 'Bạn chưa đăng nhập vào hệ thống.' };
-    }
-    try {
-      const res = await fetch(`${API_BASE_URL}/change-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ oldPassword, newPassword, logoutOtherDevices })
-      });
-      return await res.json();
-    } catch (err) {
-      return { success: false, message: 'Lỗi mạng khi thay đổi mật khẩu.' };
-    }
-  }, [token]);
-
-  // UC-1.6: Update Profile API (SĐT, Avatar)
-  const updateProfile = useCallback(async (phone, avatar) => {
-    if (!token) {
-      // Local fallback
-      setApiUser(prev => ({ ...(prev || USERS[currentRoleKey]), phone, avatar }));
-      return { success: true, message: 'Đã cập nhật thông tin thành công (chế độ cục bộ)!' };
-    }
-    try {
-      const res = await fetch(`${API_BASE_URL}/me`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ phone, avatar })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setApiUser(data.user);
-        return { success: true, message: data.message || 'Cập nhật thông tin thành công!', user: data.user };
-      }
-      return { success: false, message: data.message || 'Không thể cập nhật hồ sơ.' };
-    } catch (err) {
-      return { success: false, message: 'Lỗi mạng khi gửi thông tin cập nhật hồ sơ.' };
-    }
-  }, [token, currentRoleKey]);
 
   const toggleTheme = useCallback(() => {
     const unlock = freezeTransitionsTemporarily();
@@ -365,26 +232,25 @@ export const AuthProvider = ({ children }) => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   }, []);
 
-  // Merge backend user profile with mock data defaults to prevent any UI break
-  const defaultMock = USERS[currentRoleKey] || USERS.maintenance_staff || USERS.lecturer;
+  // Merge backend user profile with mock data defaults
+  const defaultMock = USERS[currentRoleKey] || USERS.staff || USERS.admin;
   const currentUser = useMemo(() => {
     if (!apiUser) return defaultMock;
     return {
-      id: apiUser.id || defaultMock.id,
-      name: apiUser.fullName || defaultMock.name,
-      code: apiUser.employeeCode || defaultMock.code,
+      id: apiUser._id || apiUser.id || defaultMock.id,
+      name: apiUser.full_name || apiUser.fullName || defaultMock.name,
+      code: apiUser.code || apiUser.employeeCode || defaultMock.code,
       email: apiUser.email || defaultMock.email,
       role: apiUser.role || defaultMock.role,
       roleTitle: ROLE_PERMISSIONS[apiUser.role]?.title || defaultMock.roleTitle,
       department: typeof apiUser.department === 'string' ? apiUser.department : (apiUser.department?.name || defaultMock.department),
-      className: apiUser.className || defaultMock.className || '',
       phone: apiUser.phone || defaultMock.phone || '',
-      avatar: apiUser.avatar || defaultMock.avatar || 'QL'
+      avatar: apiUser.avatar || defaultMock.avatar || 'TT'
     };
   }, [apiUser, defaultMock]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
-  const currentRoleMeta = ROLE_PERMISSIONS[currentRoleKey] || ROLE_PERMISSIONS.maintenance_staff;
+  const currentRoleMeta = ROLE_PERMISSIONS[currentRoleKey] || ROLE_PERMISSIONS.staff;
   const allowedTabs = currentRoleMeta.allowedTabs;
 
   const isTabAllowed = useCallback((tabId) => {
@@ -405,17 +271,12 @@ export const AuthProvider = ({ children }) => {
     markAllNotificationsRead,
     allRoles: USERS,
     allRolePermissions: ROLE_PERMISSIONS,
-    // Auth & Profile operations (UC-1.1 -> UC-1.6)
     isLoggedIn,
     token,
     login,
-    register,
     logout,
     fetchProfile,
-    updateProfile,
-    changePassword,
     forgotPassword,
-    verifyResetOtp,
     resetPassword
   }), [
     currentUser,
@@ -432,13 +293,9 @@ export const AuthProvider = ({ children }) => {
     isLoggedIn,
     token,
     login,
-    register,
     logout,
     fetchProfile,
-    updateProfile,
-    changePassword,
     forgotPassword,
-    verifyResetOtp,
     resetPassword
   ]);
 
@@ -456,3 +313,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export default AuthContext;

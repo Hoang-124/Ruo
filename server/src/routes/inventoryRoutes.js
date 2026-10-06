@@ -6,7 +6,8 @@ import {
   scanEquipmentInRoom, 
   reconcileSession 
 } from '../controllers/inventoryController.js';
-import { protect, authorize } from '../middlewares/authMiddleware.js';
+import { protect, requireRole } from '../middlewares/authMiddleware.js';
+import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
 
@@ -14,12 +15,12 @@ router.use(protect);
 
 router.route('/sessions')
   .get(getSessions)
-  .post(authorize('admin', 'maintenance_staff'), createSession);
+  .post(requireRole(USER_ROLES.MANAGER, USER_ROLES.ADMIN), createSession);
 
 router.route('/sessions/:id')
   .get(getSessionById);
 
-router.post('/sessions/:id/scan', authorize('admin', 'maintenance_staff'), scanEquipmentInRoom);
-router.put('/sessions/:id/reconcile', authorize('admin', 'maintenance_staff'), reconcileSession);
+router.post('/sessions/:id/scan', requireRole(USER_ROLES.STAFF, USER_ROLES.ADMIN), scanEquipmentInRoom);
+router.put('/sessions/:id/reconcile', requireRole(USER_ROLES.MANAGER, USER_ROLES.ADMIN), reconcileSession);
 
 export default router;

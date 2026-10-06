@@ -6,24 +6,31 @@ import {
   assignRepairTask, 
   addRepairLog, 
   resolveRepair, 
-  submitRepairFeedback 
+  closeRepair 
 } from '../controllers/repairController.js';
-import { protect, authorize } from '../middlewares/authMiddleware.js';
+import { protect, requireRole } from '../middlewares/authMiddleware.js';
+import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
 
 router.use(protect);
 
-router.route('/')
-  .get(getRepairs)
-  .post(createRepairReport); // Lecturer & Staff can report
+router.get('/', getRepairs);
+router.get('/:id', getRepairById);
 
-router.route('/:id')
-  .get(getRepairById);
+// Staff or Manager can report equipment malfunction
+router.post('/', requireRole(USER_ROLES.STAFF, USER_ROLES.MANAGER, USER_ROLES.ADMIN), createRepairReport);
 
-router.put('/:id/assign', authorize('admin', 'maintenance_staff'), assignRepairTask);
-router.post('/:id/logs', authorize('admin', 'maintenance_staff'), addRepairLog);
-router.put('/:id/resolve', authorize('admin', 'maintenance_staff'), resolveRepair);
-router.post('/:id/feedback', submitRepairFeedback); // Lecturer evaluates
+// Manager assigns task to staff/external unit
+router.put('/:id/assign', requireRole(USER_ROLES.MANAGER, USER_ROLES.ADMIN), assignRepairTask);
+
+// Staff logs progress and material costs
+router.post('/:id/logs', requireRole(USER_ROLES.STAFF, USER_ROLES.ADMIN), addRepairLog);
+
+// Staff resolves technical repair
+router.put('/:id/resolve', requireRole(USER_ROLES.STAFF, USER_ROLES.ADMIN), resolveRepair);
+
+// Manager reviews and signs off / closes ticket
+router.put('/:id/close', requireRole(USER_ROLES.MANAGER, USER_ROLES.ADMIN), closeRepair);
 
 export default router;

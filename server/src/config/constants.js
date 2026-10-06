@@ -1,11 +1,9 @@
-// Domain Constants and Enumerations for Ruo University Facility Management System
+// Domain Constants and Enumerations for Ruo University Equipment Management System (UEMS)
 
 export const USER_ROLES = {
   ADMIN: 'admin',
-  LECTURER: 'lecturer',
-  MAINTENANCE_STAFF: 'maintenance_staff',
-  MAINTENANCE: 'maintenance_staff',
-  FACILITY_STAFF: 'maintenance_staff'
+  MANAGER: 'manager',
+  STAFF: 'staff'
 };
 
 export const USER_STATUSES = {
@@ -20,13 +18,17 @@ export const ROOM_TYPES = {
   HALL: 'hall',
   SMART: 'smart',
   MEETING: 'meeting',
-  STORAGE: 'storage'
+  STORAGE: 'storage',
+  LECTURE: 'lecture',
+  OFFICE: 'office',
+  PRACTICE: 'practice'
 };
 
 export const ROOM_STATUSES = {
   AVAILABLE: 'available',
   OCCUPIED: 'occupied',
   MAINTENANCE: 'maintenance',
+  INACTIVE: 'inactive',
   LOCKED: 'locked'
 };
 
@@ -39,42 +41,34 @@ export const EQUIPMENT_CONDITIONS = {
 };
 
 export const EQUIPMENT_STATUSES = {
-  AVAILABLE: 'available',
-  IN_USE: 'in_use',
-  UNDER_MAINTENANCE: 'under_maintenance',
-  UNDER_REPAIR: 'under_repair',
+  ACTIVE: 'active',
+  REPAIRING: 'repairing',
+  TRANSFERRING: 'transferring',
   PENDING_DISPOSAL: 'pending_disposal',
-  DISPOSED: 'disposed'
+  DISPOSED: 'disposed',
+  LOST: 'lost'
 };
 
 export const TRANSFER_STATUSES = {
   PENDING: 'pending',
   APPROVED: 'approved',
-  COMPLETED: 'completed',
-  REJECTED: 'rejected'
+  REJECTED: 'rejected',
+  COMPLETED: 'completed'
 };
 
 export const REPAIR_PRIORITIES = {
-  CRITICAL: 'critical', // 4 hours
-  HIGH: 'high',         // 8 hours
-  MEDIUM: 'medium',     // 24 hours
-  LOW: 'low'            // 48 hours
+  CRITICAL: 'critical', // 8 hours SLA
+  MAJOR: 'major',       // 24 hours SLA
+  MINOR: 'minor'        // 48 hours SLA
 };
-
-export const TICKET_PRIORITIES = REPAIR_PRIORITIES;
 
 export const REPAIR_STATUSES = {
-  PENDING: 'pending',
-  OPEN: 'open',
+  REPORTED: 'reported',
   ASSIGNED: 'assigned',
   IN_PROGRESS: 'in_progress',
-  PENDING_PARTS: 'pending_parts',
   RESOLVED: 'resolved',
-  CLOSED: 'closed',
-  CANCELLED: 'cancelled'
+  CLOSED: 'closed'
 };
-
-export const TICKET_STATUSES = REPAIR_STATUSES;
 
 export const SLA_STATES = {
   ON_TRACK: 'on_track',
@@ -96,12 +90,18 @@ export const INVENTORY_STATUSES = {
   CANCELLED: 'cancelled'
 };
 
+// RACI 5-Step Asset Disposal Flow:
+// 1. Proposed by Staff (R)
+// 2. HC Approved by Manager (A)
+// 3. BGH Approved by Admin (A)
+// 4. Procurement replacement by Manager (C)
+// 5. New Receipt by Staff (I)
 export const DISPOSAL_STATUSES = {
-  DRAFT: 'draft',
-  TECHNICAL_ASSESSMENT: 'technical_assessment',
-  COMMITTEE_REVIEW: 'committee_review',
-  APPROVED: 'approved',
-  SCRAP_COMPLETED: 'scrap_completed',
+  PROPOSED: 'proposed',
+  HC_APPROVED: 'hc_approved',
+  BGH_APPROVED: 'bgh_approved',
+  PROCURING: 'procuring',
+  RECEIVED: 'received',
   REJECTED: 'rejected'
 };
 
@@ -115,4 +115,3 @@ export const BUSINESS_HOURS = {
 
 // Economic threshold for disposal review (R = Repair Cost / Remaining Value >= 60%)
 export const DISPOSAL_R_RATIO_THRESHOLD = 60;
-

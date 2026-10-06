@@ -621,10 +621,31 @@ export const LoginPage = ({ onLoginSuccess }) => {
                       cursor: 'pointer',
                       textAlign: 'left'
                     }}
-                    title="Click để điền tài khoản Quản trị viên"
+                    title="Click để điền tài khoản Ban Giám Hiệu / Quản trị viên"
                   >
-                    <div style={{ fontSize: '11px', fontWeight: 800 }}>Admin</div>
+                    <div style={{ fontSize: '11px', fontWeight: 800 }}>Admin BGH</div>
                     <div style={{ fontSize: '10px', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>admin@ruo.edu.vn</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdentifier('manager@ruo.edu.vn');
+                      setPassword('Ruo@2026');
+                    }}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      background: 'rgba(16, 185, 129, 0.08)',
+                      border: '1px solid rgba(16, 185, 129, 0.25)',
+                      color: '#10B981',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                    title="Click để điền tài khoản Trưởng Phòng HC-QT"
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 800 }}>Quản Lý HC</div>
+                    <div style={{ fontSize: '10px', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>manager@ruo.edu.vn</div>
                   </button>
 
                   <button
@@ -642,31 +663,10 @@ export const LoginPage = ({ onLoginSuccess }) => {
                       cursor: 'pointer',
                       textAlign: 'left'
                     }}
-                    title="Click để điền tài khoản Kỹ thuật viên"
+                    title="Click để điền tài khoản Kỹ thuật viên CSVC"
                   >
-                    <div style={{ fontSize: '11px', fontWeight: 800 }}>Kỹ Thuật</div>
+                    <div style={{ fontSize: '11px', fontWeight: 800 }}>Kỹ Thuật Viên</div>
                     <div style={{ fontSize: '10px', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>staff@ruo.edu.vn</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIdentifier('lecturer@ruo.edu.vn');
-                      setPassword('Ruo@2026');
-                    }}
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      background: 'rgba(99, 102, 241, 0.08)',
-                      border: '1px solid rgba(99, 102, 241, 0.25)',
-                      color: '#6366F1',
-                      cursor: 'pointer',
-                      textAlign: 'left'
-                    }}
-                    title="Click để điền tài khoản Giảng viên"
-                  >
-                    <div style={{ fontSize: '11px', fontWeight: 800 }}>Giảng Viên</div>
-                    <div style={{ fontSize: '10px', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>lecturer@ruo.edu.vn</div>
                   </button>
                 </div>
               </div>

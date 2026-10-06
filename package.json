@@ -5,13 +5,14 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "npm run seed && concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "npm --prefix client run dev",
     "dev:server": "npm --prefix server run dev",
     "client": "npm --prefix client run dev",
     "server": "npm --prefix server run dev",
     "build": "npm --prefix client run build",
     "seed": "npm --prefix server run seed",
+    "test": "npm --prefix server test",
     "client:install": "npm install --prefix client --legacy-peer-deps",
     "client:test": "npm test --prefix client"
   },

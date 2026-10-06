@@ -1,6 +1,15 @@
-import { Repair, RepairLog, Equipment, SparePart, PartsRequest, RepairPart, AuditLog, Notification } from '../models/index.js';
+import { Repair } from '../models/Repair.js';
+import { RepairLog } from '../models/RepairLog.js';
+import { Equipment } from '../models/Equipment.js';
+import { PartsRequest } from '../models/PartsRequest.js';
+import { AuditLog } from '../models/AuditLog.js';
+import { Notification } from '../models/Notification.js';
+import { User } from '../models/User.js';
+import { computeSlaDeadlines, evaluateSlaStatus } from '../services/slaReactor.js';
+import { assertTransition } from '../domain/stateMachines.js';
+import { USER_ROLES, USER_STATUSES, EQUIPMENT_STATUSES, REPAIR_PRIORITIES } from '../config/constants.js';
 
-// @desc    Get all repairs
+// @desc    Get all repairs with SLA evaluation
 // @route   GET /api/repairs
 export const getRepairs = async (req, res) => {
   try {
@@ -11,27 +20,31 @@ export const getRepairs = async (req, res) => {
     if (assigned_to) filter.assigned_to = assigned_to;
     if (damage_level) filter.damage_level = damage_level;
 
-    // If user is Lecturer, default to showing their own reports unless admin/staff
-    if (req.user.role === 'lecturer' && !filter.reported_by) {
-      filter.reported_by = req.user._id;
-    }
-
     const repairs = await Repair.find(filter)
-      .populate('equipment_id', 'code name brand model qr_code room_id')
+      .populate('equipment_id', 'code name brand model qr_code room_id price remaining_value estimated_repair_cost')
       .populate('reported_by', 'full_name code email role department')
       .populate('assigned_to', 'full_name code email role')
       .populate('repair_unit_id', 'code name specialty phone')
       .populate('return_room_id', 'code name building floor')
-      .populate('feedback_by', 'full_name code email')
       .sort({ created_at: -1 });
 
-    res.json({ success: true, count: repairs.length, data: repairs });
+    const enriched = repairs.map(rep => {
+      const repObj = rep.toObject();
+      if (rep.deadline && rep.status !== 'closed' && rep.status !== 'resolved') {
+        const sla = evaluateSlaStatus({ resolutionDeadline: rep.deadline });
+        repObj.deadline_status = sla.state;
+        repObj.remaining_minutes = sla.remainingMinutes;
+      }
+      return repObj;
+    });
+
+    res.json({ success: true, count: enriched.length, data: enriched });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Get single repair detail with timeline logs
+// @desc    Get single repair detail with timeline logs and parts requests
 // @route   GET /api/repairs/:id
 export const getRepairById = async (req, res) => {
   try {
@@ -43,13 +56,13 @@ export const getRepairById = async (req, res) => {
       .populate('return_room_id');
 
     if (!repair) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa.' });
     }
 
     const logs = await RepairLog.find({ repair_id: repair._id })
       .populate('performed_by', 'full_name code email role')
       .populate('parts_used.part_id', 'code name unit price')
-      .sort({ timestamp: 1 });
+      .sort({ created_at: 1 });
 
     const partsRequests = await PartsRequest.find({ repair_id: repair._id })
       .populate('requested_by', 'full_name code')
@@ -62,37 +75,42 @@ export const getRepairById = async (req, res) => {
   }
 };
 
-// @desc    Report malfunction (Lecturer flow: UC Report equipment malfunction)
+// @desc    Report equipment malfunction (Staff, Manager, Admin)
 // @route   POST /api/repairs
 export const createRepairReport = async (req, res) => {
   try {
     const { equipment_id, incident_description, incident_images = [], damage_level = 'minor' } = req.body;
 
     if (!equipment_id || !incident_description) {
-      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã thiết bị và mô tả sự cố' });
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp mã thiết bị và mô tả sự cố kỹ thuật.'
+      });
     }
 
     const equipment = await Equipment.findById(equipment_id);
     if (!equipment) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị.' });
     }
 
-    // Default SLA deadline: 48h for minor, 24h for major, 8h for critical
-    const hours = damage_level === 'critical' ? 8 : (damage_level === 'major' ? 24 : 48);
-    const deadline = new Date(Date.now() + hours * 3600 * 1000);
+    const validLevels = Object.values(REPAIR_PRIORITIES);
+    const finalLevel = validLevels.includes(damage_level) ? damage_level : REPAIR_PRIORITIES.MINOR;
+
+    // SLA calculation respecting university business hours
+    const { resolutionDeadline } = computeSlaDeadlines(finalLevel, new Date());
 
     const repair = await Repair.create({
       equipment_id,
       reported_by: req.user._id,
-      incident_description,
+      incident_description: String(incident_description).trim(),
       incident_images,
-      damage_level,
-      deadline,
+      damage_level: finalLevel,
+      deadline: resolutionDeadline,
       status: 'reported'
     });
 
     // Update equipment status
-    equipment.status = 'repairing';
+    equipment.status = EQUIPMENT_STATUSES.REPAIRING;
     equipment.repair_count = (equipment.repair_count || 0) + 1;
     await equipment.save();
 
@@ -108,29 +126,48 @@ export const createRepairReport = async (req, res) => {
     // SHA-256 Audit Log
     await AuditLog.logAction({
       user_id: req.user._id,
-      user_display: req.user.full_name || req.user.fullName,
+      user_display: `${req.user.full_name} (${req.user.code})`,
       action: 'INCIDENT_REPORT',
       target_table: 'repairs',
       entity_id: repair._id.toString(),
-      ip_address: req.ip,
-      new_value: { equipment_id, incident_description, damage_level }
+      ip_address: req.ip || '127.0.0.1',
+      new_value: { equipment_id, incident_description, damage_level: finalLevel, deadline: resolutionDeadline }
     });
 
-    res.status(201).json({ success: true, message: 'Báo cáo sự cố thành công', data: repair });
+    // Notify Managers
+    const managers = await User.find({ role: USER_ROLES.MANAGER, status: USER_STATUSES.ACTIVE });
+    for (const mgr of managers) {
+      await Notification.create({
+        user_id: mgr._id,
+        type: 'repair_reported',
+        title: 'Sự cố thiết bị mới cần phân công',
+        message: `Thiết bị ${equipment.code} - ${equipment.name} được báo hỏng mức độ [${finalLevel.toUpperCase()}].`,
+        reference_type: 'repair',
+        reference_id: repair._id
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Ghi nhận báo cáo sự cố thành công.',
+      data: repair
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Assign repair task (UC: Assign repair task)
+// @desc    Assign repair task to technician (Manager, Admin)
 // @route   PUT /api/repairs/:id/assign
 export const assignRepairTask = async (req, res) => {
   try {
     const { assigned_to, repair_unit_id, deadline, repair_location = 'on_site' } = req.body;
     const repair = await Repair.findById(req.params.id);
     if (!repair) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa.' });
     }
+
+    assertTransition('REPAIR', repair.status, 'assigned', req.user.role);
 
     repair.assigned_to = assigned_to || req.user._id;
     if (repair_unit_id) repair.repair_unit_id = repair_unit_id;
@@ -143,143 +180,193 @@ export const assignRepairTask = async (req, res) => {
       repair_id: repair._id,
       action: 'assigned',
       performed_by: req.user._id,
-      description: `Phân công nhiệm vụ xử lý kỹ thuật cho kỹ thuật viên`
+      description: `Phân công kỹ thuật viên xử lý`
     });
 
     // Audit Log SHA-256
     await AuditLog.logAction({
       user_id: req.user._id,
-      user_display: req.user.full_name || req.user.fullName,
+      user_display: `${req.user.full_name} (${req.user.code})`,
       action: 'REPAIR_ASSIGN',
       target_table: 'repairs',
       entity_id: repair._id.toString(),
-      ip_address: req.ip,
+      ip_address: req.ip || '127.0.0.1',
       new_value: { assigned_to: repair.assigned_to, repair_location }
     });
 
-    res.json({ success: true, message: 'Phân công nhiệm vụ thành công', data: repair });
+    // Notify assigned staff
+    if (repair.assigned_to) {
+      await Notification.create({
+        user_id: repair.assigned_to,
+        type: 'repair_assigned',
+        title: 'Nhiệm vụ sửa chữa mới được giao',
+        message: `Bạn được phân công xử lý sự cố thiết bị mã phiếu ${repair.ticket_code}.`,
+        reference_type: 'repair',
+        reference_id: repair._id
+      });
+    }
+
+    res.json({ success: true, message: 'Phân công nhiệm vụ thành công.', data: repair });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Log repair progress (UC: Log repair progress)
+// @desc    Log repair progress and update equipment R% economic indicator (Staff, Admin)
 // @route   POST /api/repairs/:id/logs
 export const addRepairLog = async (req, res) => {
   try {
     const { action = 'in_progress', description, cost = 0, parts_used = [], images = [] } = req.body;
     const repair = await Repair.findById(req.params.id);
     if (!repair) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa.' });
     }
+
+    if (repair.status === 'assigned') {
+      assertTransition('REPAIR', repair.status, 'in_progress', req.user.role);
+      repair.status = 'in_progress';
+    }
+
+    const numCost = Number(cost) || 0;
 
     const log = await RepairLog.create({
       repair_id: repair._id,
       action,
       performed_by: req.user._id,
-      description,
-      cost,
+      description: String(description || 'Cập nhật tiến độ xử lý kỹ thuật').trim(),
+      cost: numCost,
       parts_used,
       images
     });
 
-    repair.status = 'in_progress';
-    if (cost > 0) repair.total_cost = (repair.total_cost || 0) + Number(cost);
-    await repair.save();
+    if (numCost > 0) {
+      repair.total_cost = (repair.total_cost || 0) + numCost;
+      await repair.save();
 
-    res.status(201).json({ success: true, message: 'Đã cập nhật tiến độ sửa chữa', data: log });
+      // Crucial: Update equipment's estimated repair cost so R% (rRatio) is live!
+      const equipment = await Equipment.findById(repair.equipment_id);
+      if (equipment) {
+        equipment.estimated_repair_cost = (equipment.estimated_repair_cost || 0) + numCost;
+        await equipment.save();
+      }
+    } else {
+      await repair.save();
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Cập nhật tiến độ sửa chữa thành công.',
+      data: log
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Mark repair resolved (UC: Close repair ticket step 1)
+// @desc    Mark repair resolved (Staff, Admin)
 // @route   PUT /api/repairs/:id/resolve
 export const resolveRepair = async (req, res) => {
   try {
     const { post_repair_warranty, return_room_id, notes = '' } = req.body;
-    const repair = await Repair.findById(req.params.id).populate('equipment_id');
+    const repair = await Repair.findById(req.params.id);
     if (!repair) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa.' });
     }
 
+    assertTransition('REPAIR', repair.status, 'resolved', req.user.role);
+
     repair.status = 'resolved';
+    repair.resolved_at = new Date();
     if (post_repair_warranty) repair.post_repair_warranty = new Date(post_repair_warranty);
     if (return_room_id) repair.return_room_id = return_room_id;
     await repair.save();
 
-    // Mark equipment back to active
-    if (repair.equipment_id) {
-      await Equipment.findByIdAndUpdate(repair.equipment_id._id, {
-        status: 'active',
-        warranty_status: post_repair_warranty ? 'extended' : 'active'
-      });
+    // Restore equipment back to active status
+    const equipment = await Equipment.findById(repair.equipment_id);
+    if (equipment) {
+      equipment.status = EQUIPMENT_STATUSES.ACTIVE;
+      if (return_room_id) equipment.room_id = return_room_id;
+      if (post_repair_warranty) {
+        equipment.warranty_expiry = new Date(post_repair_warranty);
+        equipment.warranty_status = 'extended';
+      }
+      await equipment.save();
     }
 
     await RepairLog.create({
       repair_id: repair._id,
       action: 'resolved',
       performed_by: req.user._id,
-      description: `Đã hoàn thành sửa chữa kỹ thuật. ${notes}`
+      description: `Đã hoàn thành sửa chữa kỹ thuật. ${notes}`.trim()
     });
 
-    // Notify Lecturer to evaluate repair
-    await Notification.create({
-      user_id: repair.reported_by,
-      type: 'feedback_requested',
-      title: 'Thiết bị đã được sửa xong - Mời đánh giá',
-      message: `Sự cố trên thiết bị đã được kỹ thuật viên xử lý. Vui lòng kiểm tra và đánh giá chất lượng.`,
-      reference_type: 'repair',
-      reference_id: repair._id
-    });
+    // Notify Managers for final sign-off / closure
+    const managers = await User.find({ role: USER_ROLES.MANAGER, status: USER_STATUSES.ACTIVE });
+    for (const mgr of managers) {
+      await Notification.create({
+        user_id: mgr._id,
+        type: 'repair_resolved',
+        title: 'Thiết bị đã xử lý xong - Chờ nghiệm thu',
+        message: `Kỹ thuật viên đã hoàn tất sửa chữa phiếu ${repair.ticket_code}. Quản lý vui lòng nghiệm thu và đóng phiếu.`,
+        reference_type: 'repair',
+        reference_id: repair._id
+      });
+    }
 
-    res.json({ success: true, message: 'Đã hoàn tất xử lý kỹ thuật, gửi yêu cầu đánh giá cho giảng viên', data: repair });
+    res.json({
+      success: true,
+      message: 'Hoàn tất xử lý kỹ thuật, gửi thông báo nghiệm thu cho Quản lý.',
+      data: repair
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Lecturer evaluates repair quality (UC: Evaluate repair quality)
-// @route   POST /api/repairs/:id/feedback
-export const submitRepairFeedback = async (req, res) => {
+// @desc    Close repair ticket after verification (Manager, Admin)
+// @route   PUT /api/repairs/:id/close
+export const closeRepair = async (req, res) => {
   try {
-    const { rating, comment } = req.body;
-    if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ success: false, message: 'Số sao đánh giá phải từ 1 đến 5' });
-    }
-
+    const { close_notes = '' } = req.body;
     const repair = await Repair.findById(req.params.id);
     if (!repair) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa.' });
     }
 
-    repair.feedback_rating = rating;
-    repair.feedback_comment = comment || '';
-    repair.feedback_by = req.user._id;
-    repair.feedback_at = new Date();
-    repair.status = 'closed'; // Final ticket closure after evaluation
+    assertTransition('REPAIR', repair.status, 'closed', req.user.role);
+
+    repair.status = 'closed';
+    repair.closed_at = new Date();
+    repair.closed_by = req.user._id;
     await repair.save();
 
     await RepairLog.create({
       repair_id: repair._id,
       action: 'closed',
       performed_by: req.user._id,
-      description: `Giảng viên đã đánh giá ${rating}⭐: "${comment || 'Hài lòng'}" - Đóng ticket sự cố.`
+      description: `Quản lý đã nghiệm thu đạt chất lượng và đóng phiếu sửa chữa. ${close_notes}`.trim()
     });
 
-    // Audit Log SHA-256
     await AuditLog.logAction({
       user_id: req.user._id,
-      user_display: req.user.full_name || req.user.fullName,
-      action: 'REPAIR_FEEDBACK',
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'REPAIR_CLOSE',
       target_table: 'repairs',
       entity_id: repair._id.toString(),
-      ip_address: req.ip,
-      new_value: { rating, comment, status: 'closed' }
+      ip_address: req.ip || '127.0.0.1',
+      new_value: { status: 'closed', closed_at: repair.closed_at }
     });
 
-    res.json({ success: true, message: 'Cảm ơn bạn đã đánh giá chất lượng sửa chữa!', data: repair });
+    res.json({
+      success: true,
+      message: 'Nghiệm thu và đóng phiếu sửa chữa thành công.',
+      data: repair
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, message: error.message });
   }
 };

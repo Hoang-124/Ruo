@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { USER_ROLES } from '../config/constants.js';
 
 // Role Schema (Module 1: Authentication & Authorization)
 const roleSchema = new mongoose.Schema({
@@ -7,7 +8,7 @@ const roleSchema = new mongoose.Schema({
     required: true, 
     unique: true, 
     trim: true, 
-    enum: ['lecturer', 'maintenance_staff', 'admin'] 
+    enum: Object.values(USER_ROLES)
   },
   title: { type: String, default: '' },
   description: { type: String, default: '' },

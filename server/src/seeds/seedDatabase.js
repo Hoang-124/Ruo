@@ -3,8 +3,6 @@ import dotenv from 'dotenv';
 import { 
   User, 
   Role, 
-  RefreshToken, 
-  LoginHistory,
   Room, 
   Building, 
   Floor, 
@@ -15,20 +13,12 @@ import {
   Equipment, 
   Transfer, 
   Disposal, 
-  ImportSession,
   Repair, 
   RepairLog, 
-  PartsRequest, 
-  RepairPart,
   MaintenancePlan, 
-  MaintenanceLog, 
-  InventorySession, 
-  InventoryLog,
-  Notification, 
-  NotificationTemplate, 
   AuditLog 
 } from '../models/index.js';
-import { USER_ROLES } from '../config/constants.js';
+import { USER_ROLES, EQUIPMENT_STATUSES, TRANSFER_STATUSES, DISPOSAL_STATUSES } from '../config/constants.js';
 
 dotenv.config();
 
@@ -37,7 +27,7 @@ const seed = async () => {
   console.log(`[Ruo Seeder] Connecting to MongoDB: ${mongoURI}`);
   await mongoose.connect(mongoURI);
 
-  console.log('[Ruo Seeder] Dropping old collections & stale indexes to ensure clean state...');
+  console.log('[Ruo Seeder] Dropping old collections & stale indexes for clean state...');
   const collections = await mongoose.connection.db.listCollections().toArray();
   for (const col of collections) {
     try {
@@ -45,65 +35,65 @@ const seed = async () => {
     } catch (e) {}
   }
 
-  console.log('[Ruo Seeder] 1. Seeding Roles (3 Actors)...');
-  const [roleLecturer, roleStaff, roleAdmin] = await Role.create([
+  console.log('[Ruo Seeder] 1. Seeding UEMS Canonical Roles (3 Roles)...');
+  const [roleStaff, roleManager, roleAdmin] = await Role.create([
     {
-      name: 'lecturer',
-      title: 'Giảng viên',
-      description: 'Báo cáo sự cố thiết bị phòng học, theo dõi tiến độ sửa chữa, đánh giá chất lượng sửa chữa, kiểm tra danh mục phòng',
-      permissions: ['incident:create', 'incident:read_own', 'repair:rate', 'room:read', 'equipment:read']
+      name: USER_ROLES.STAFF,
+      title: 'Kỹ Thuật Viên / Chuyên Viên CSVC',
+      description: 'Quản lý tài sản thiết bị, kiểm kê QR, đề xuất điều chuyển, báo cáo hỏng hóc, sửa chữa và thay linh kiện, đề xuất thanh lý khi R>=60%, tiếp nhận thiết bị mới.',
+      permissions: ['equipment:*', 'room:read', 'transfer:propose', 'transfer:complete', 'repair:*', 'parts:*', 'maintenance:*', 'inventory:scan', 'disposal:propose', 'disposal:receipt']
     },
     {
-      name: 'maintenance_staff',
-      title: 'Chuyên viên CSVC & Kỹ thuật viên',
-      description: 'Quản lý toàn diện tài sản thiết bị, điều chuyển, tiếp nhận xử lý sự cố, bảo trì định kỳ, kiểm kê kho QR, đề xuất thanh lý',
-      permissions: ['equipment:*', 'room:*', 'transfer:*', 'repair:*', 'parts:*', 'maintenance:*', 'inventory:*', 'disposal:propose', 'disposal:approve_staff', 'dashboard:read']
+      name: USER_ROLES.MANAGER,
+      title: 'Quản Lý Phòng / Trưởng Phòng HC-QT',
+      description: 'Phê duyệt điều chuyển thiết bị giữa các phòng, phê duyệt thanh lý cấp phòng HC, lập dự trù mua sắm tài sản thay thế, điều phối nhân viên kỹ thuật.',
+      permissions: ['equipment:read', 'transfer:approve', 'disposal:hc_approve', 'disposal:procure', 'maintenance:plan', 'inventory:reconcile', 'report:read', 'dashboard:read']
     },
     {
-      name: 'admin',
-      title: 'Quản trị viên Hệ thống (Admin)',
-      description: 'Quản lý người dùng, phân quyền vai trò, danh mục chuẩn, báo cáo thống kê KPI, giám sát chuỗi kiểm toán SHA-256, ký duyệt thanh lý cuối cùng',
-      permissions: ['user:*', 'role:*', 'catalog:*', 'report:*', 'audit:*', 'system:*', 'disposal:authorize', 'equipment:read', 'equipment:create', 'equipment:import']
+      name: USER_ROLES.ADMIN,
+      title: 'Ban Giám Hiệu / Quản Trị Hệ Thống (Admin)',
+      description: 'Toàn quyền cấu hình hệ thống, quản lý tài khoản người dùng, phê duyệt thanh lý cấp BGH (Quyết định thanh lý), giám sát chuỗi kiểm toán SHA-256 tamper-evident.',
+      permissions: ['*']
     }
   ]);
 
   console.log('[Ruo Seeder] 2. Seeding Canonical Users (Password: Ruo@2026)...');
   const commonPassword = 'Ruo@2026';
 
-  const [admin, staff, lecturer] = await User.create([
+  const [admin, manager, staff] = await User.create([
     {
-      code: 'ADM001',
+      code: 'AD000001',
       email: 'admin@ruo.edu.vn',
       password_hash: commonPassword,
-      full_name: 'Quản Trị Viên Đại Học',
-      role: 'admin',
-      department: 'Ban Giám Hiệu & Phòng Quản Trị Hệ Thống',
+      full_name: 'Ban Giám Hiệu / Quản Trị Viên',
+      role: USER_ROLES.ADMIN,
+      department: 'Ban Giám Hiệu & Quản Trị Hệ Thống',
       phone: '0901234567',
       avatar: 'AD'
     },
     {
-      code: 'KT202601',
-      email: 'staff@ruo.edu.vn',
+      code: 'QL000001',
+      email: 'manager@ruo.edu.vn',
       password_hash: commonPassword,
-      full_name: 'Trần Minh Tuấn',
-      role: 'maintenance_staff',
-      department: 'Phòng Quản Lý Cơ Sở Vật Chất & Kỹ Thuật',
+      full_name: 'Trưởng Phòng HC-QT Lê Hoàng Hải',
+      role: USER_ROLES.MANAGER,
+      department: 'Phòng Hành Chính - Quản Trị Cơ Sở Vật Chất',
       phone: '0912345678',
-      avatar: 'TT'
+      avatar: 'LH'
     },
     {
-      code: 'GV202602',
-      email: 'lecturer@ruo.edu.vn',
+      code: 'NV000001',
+      email: 'staff@ruo.edu.vn',
       password_hash: commonPassword,
-      full_name: 'TS. Nguyễn Văn Nam',
-      role: 'lecturer',
-      department: 'Khoa Công Nghệ Thông Tin',
+      full_name: 'Kỹ Thuật Viên Trần Minh Tuấn',
+      role: USER_ROLES.STAFF,
+      department: 'Tổ Kỹ Thuật CSVC',
       phone: '0987654321',
-      avatar: 'NN'
+      avatar: 'TT'
     }
   ]);
 
-  console.log('[Ruo Seeder] 3. Seeding Campus Master Data (Building, Floors, Rooms)...');
+  console.log('[Ruo Seeder] 3. Seeding Campus Master Data (Building & Rooms)...');
   const buildingA1 = await Building.create({
     code: 'A1',
     name: 'Tòa Nhà Học Vụ A1',
@@ -201,7 +191,7 @@ const seed = async () => {
     { code: 'SP-HDMI-10M', name: 'Cáp HDMI 2.1 8K Dài 10m', stock: 25, min_stock: 5, price: 450000, unit: 'Sợi', supplier_id: supplierSony._id }
   ]);
 
-  console.log('[Ruo Seeder] 6. Seeding Equipment with QR & Life-Cycle Economics...');
+  console.log('[Ruo Seeder] 6. Seeding Equipments with Life-Cycle Economics...');
   const eq1 = await Equipment.create({
     code: 'EQ-PRJ-101',
     qr_code: 'RUO-EQ-PRJ-101',
@@ -217,8 +207,9 @@ const seed = async () => {
     warranty_expiry: new Date('2027-01-15'),
     warranty_status: 'active',
     depreciation_rate: 20,
-    status: 'active',
-    remaining_value: 36000000
+    status: EQUIPMENT_STATUSES.ACTIVE,
+    remaining_value: 36000000,
+    estimated_repair_cost: 0
   });
 
   const eq2 = await Equipment.create({
@@ -236,8 +227,9 @@ const seed = async () => {
     warranty_expiry: new Date('2025-09-01'),
     warranty_status: 'expired',
     depreciation_rate: 20,
-    status: 'active',
-    remaining_value: 19200000
+    status: EQUIPMENT_STATUSES.ACTIVE,
+    remaining_value: 19200000,
+    estimated_repair_cost: 0
   });
 
   const eq3Damaged = await Equipment.create({
@@ -255,45 +247,47 @@ const seed = async () => {
     warranty_expiry: new Date('2021-03-10'),
     warranty_status: 'expired',
     depreciation_rate: 20,
-    status: 'repairing',
+    status: EQUIPMENT_STATUSES.PENDING_DISPOSAL,
     remaining_value: 3600000,
-    estimated_repair_cost: 2500000 // R = 69.4% >= 60% -> candidate for disposal!
+    estimated_repair_cost: 2500000 // R = 69.4% >= 60% -> flagged candidate for disposal
   });
 
-  console.log('[Ruo Seeder] 7. Seeding Transfers, Repairs & Maintenance Plans...');
-  // Transfer
+  console.log('[Ruo Seeder] 7. Seeding Transfers, Repairs & RACI 5-Step Disposal...');
+  // Transfer: Staff requested, Manager approved, Staff completed
   const transfer = await Transfer.create({
     equipment_id: eq2._id,
     from_room_id: rooms[0]._id,
     to_room_id: rooms[1]._id,
     requested_by: staff._id,
-    approved_by: admin._id,
+    approved_by: manager._id,
     completed_by: staff._id,
     reason: 'Phục vụ hội nghị khoa học công nghệ tại phòng A1-201',
-    status: 'completed',
+    status: TRANSFER_STATUSES.COMPLETED,
     approved_at: new Date(),
     completed_at: new Date()
   });
 
-  // Repair
+  // Repair ticket
   const repair = await Repair.create({
     ticket_code: 'REP-2026-001',
     equipment_id: eq1._id,
-    reported_by: lecturer._id,
+    reported_by: staff._id,
     incident_description: 'Máy chiếu phòng A1-101 báo nhấp nháy đèn cam, hình ảnh bị tối nửa màn hình',
     damage_level: 'major',
     deadline: new Date(Date.now() + 24 * 3600 * 1000),
     assigned_to: staff._id,
     repair_unit_id: unitBaoTri._id,
     status: 'resolved',
-    total_cost: 450000
+    total_cost: 450000,
+    closed_at: new Date(),
+    closed_by: manager._id
   });
 
   await RepairLog.create({
     repair_id: repair._id,
     action: 'reported',
-    performed_by: lecturer._id,
-    description: 'Giảng viên phát hiện sự cố trước giờ dạy và tạo báo cáo hệ thống'
+    performed_by: staff._id,
+    description: 'Kỹ thuật viên phát hiện sự cố trước giờ dạy và tạo báo cáo hệ thống'
   });
 
   await RepairLog.create({
@@ -304,7 +298,7 @@ const seed = async () => {
   });
 
   // Maintenance Plan
-  const plan = await MaintenancePlan.create({
+  await MaintenancePlan.create({
     name: 'Bảo Dưỡng Định Kỳ Máy Chiếu Toàn Trường Quý 4/2026',
     target_type: 'category',
     frequency: 'quarterly',
@@ -314,51 +308,61 @@ const seed = async () => {
       { item: 'Kiểm tra độ suy hao của cáp HDMI/VGA âm tường', required: true }
     ],
     next_due: new Date(Date.now() + 14 * 24 * 3600 * 1000),
-    created_by: staff._id,
+    created_by: manager._id,
     status: 'active'
   });
 
-  // Disposal Proposal for eq3Damaged (R = 69.4% >= 60%)
+  // Disposal Proposal for eq3Damaged (R = 69.4% >= 60%) at Step 2 (HC Manager Approved)
   const disposal = await Disposal.create({
     equipment_id: eq3Damaged._id,
     proposed_by: staff._id,
-    staff_approved_by: staff._id,
-    current_step: 3,
+    manager_approved_by: manager._id,
+    manager_approved_at: new Date(),
+    current_step: 2,
     reason: 'Thiết bị hỏng chip DMD và khối nguồn quang học. Chi phí sửa chữa vượt 69.4% giá trị còn lại (R >= 60%).',
     recovery_value: 800000,
     procurement_plan: 'Mua bổ sung 01 máy chiếu Sony Laser mới trong dự toán quý tới',
-    status: 'admin_reviewing'
+    status: DISPOSAL_STATUSES.HC_APPROVED
   });
 
-  console.log('[Ruo Seeder] 8. Seeding SHA-256 Audit Log Block Ledger...');
+  console.log('[Ruo Seeder] 8. Seeding SHA-256 Cryptographic Audit Ledger...');
   await AuditLog.logAction({
     user_id: admin._id,
-    user_display: admin.full_name,
+    user_display: `${admin.full_name} (${admin.code})`,
     action: 'SYSTEM_BOOTSTRAP',
     target_table: 'system',
-    entity_id: 'RUO-UFMS-INIT',
-    new_value: { version: '3.0.0', modules: 6, actors: 3, collections: 24 }
+    entity_id: 'RUO-UEMS-INIT',
+    new_value: { version: '3.0.0', actors: 3, collections: 24 }
   });
 
   await AuditLog.logAction({
     user_id: staff._id,
-    user_display: staff.full_name,
+    user_display: `${staff.full_name} (${staff.code})`,
     action: 'DISPOSAL_PROPOSE',
     target_table: 'disposals',
     entity_id: disposal._id.toString(),
     new_value: { equipment_code: eq3Damaged.code, r_ratio: 69.4, threshold: 60 }
   });
 
+  await AuditLog.logAction({
+    user_id: manager._id,
+    user_display: `${manager.full_name} (${manager.code})`,
+    action: 'DISPOSAL_HC_APPROVE',
+    target_table: 'disposals',
+    entity_id: disposal._id.toString(),
+    new_value: { status: DISPOSAL_STATUSES.HC_APPROVED, current_step: 2 }
+  });
+
   console.log('[Ruo Seeder] Verifying SHA-256 Audit Ledger Chain Integrity...');
   const auditResult = await AuditLog.verifyIntegrity();
-  console.log(`[Ruo Seeder] Audit Chain Status: ${auditResult.message}`);
+  console.log(`[Ruo Seeder] Audit Chain Integrity: ${auditResult.valid ? 'VALID (Tamper-Free)' : 'COMPROMISED'} - Checked ${auditResult.total_checked} blocks.`);
 
   console.log('[Ruo Seeder] ========================================');
   console.log('[Ruo Seeder] SEED DATABASE COMPLETED SUCCESSFULLY!');
-  console.log('[Ruo Seeder] 3 Canonical Actors:');
-  console.log('[Ruo Seeder] - Admin: admin@ruo.edu.vn / Ruo@2026');
-  console.log('[Ruo Seeder] - Maintenance Staff: staff@ruo.edu.vn / Ruo@2026');
-  console.log('[Ruo Seeder] - Lecturer: lecturer@ruo.edu.vn / Ruo@2026');
+  console.log('[Ruo Seeder] Canonical UEMS Accounts:');
+  console.log('[Ruo Seeder] 1. Admin:   admin@ruo.edu.vn   (Code: AD000001) / Password: Ruo@2026');
+  console.log('[Ruo Seeder] 2. Manager: manager@ruo.edu.vn (Code: QL000001) / Password: Ruo@2026');
+  console.log('[Ruo Seeder] 3. Staff:   staff@ruo.edu.vn   (Code: NV000001) / Password: Ruo@2026');
   console.log('[Ruo Seeder] ========================================');
 
   await mongoose.disconnect();

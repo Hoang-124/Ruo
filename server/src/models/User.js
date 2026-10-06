@@ -20,16 +20,32 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     index: true 
   },
-  password_hash: { type: String, required: true },
-  full_name: { type: String, required: true, trim: true },
-  phone: { type: String, default: '' },
-  avatar: { type: String, default: '' },
-  department: { type: String, default: '' },
+  password_hash: { 
+    type: String, 
+    required: true 
+  },
+  full_name: { 
+    type: String, 
+    required: true, 
+    trim: true 
+  },
+  phone: { 
+    type: String, 
+    default: '' 
+  },
+  avatar: { 
+    type: String, 
+    default: '' 
+  },
+  department: { 
+    type: String, 
+    default: 'Phòng Hành Chính Quản Trị' 
+  },
   role: { 
     type: String, 
     required: true, 
     enum: Object.values(USER_ROLES),
-    default: USER_ROLES.LECTURER,
+    default: USER_ROLES.STAFF,
     index: true 
   },
   status: { 
@@ -38,20 +54,30 @@ const userSchema = new mongoose.Schema({
     default: USER_STATUSES.ACTIVE,
     index: true 
   },
-  force_change_pw: { type: Boolean, default: false },
-  failedLoginAttempts: { type: Number, default: 0 },
-  lockUntil: { type: Date, default: null, index: true },
-  last_login_at: { type: Date, default: null },
-  last_login_ip: { type: String, default: '' },
-  deletedAt: { type: Date, default: null }
+  force_change_pw: { 
+    type: Boolean, 
+    default: false 
+  },
+  failed_login_attempts: { 
+    type: Number, 
+    default: 0 
+  },
+  lock_until: { 
+    type: Date, 
+    default: null, 
+    index: true 
+  },
+  last_login_at: { 
+    type: Date, 
+    default: null 
+  },
+  last_login_ip: { 
+    type: String, 
+    default: '' 
+  }
 }, { 
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
 });
-
-// Virtual compatibility aliases
-userSchema.virtual('employeeCode').get(function() { return this.code; }).set(function(v) { this.code = v; });
-userSchema.virtual('fullName').get(function() { return this.full_name; }).set(function(v) { this.full_name = v; });
-userSchema.virtual('passwordHash').get(function() { return this.password_hash; }).set(function(v) { this.password_hash = v; });
 
 // Pre-save hook: Hash password if modified
 userSchema.pre('save', async function (next) {
@@ -68,63 +94,51 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
 
 // Check if account is temporarily locked (15-min lockout)
 userSchema.methods.isLocked = function () {
-  return Boolean(this.lockUntil && this.lockUntil.getTime() > Date.now());
+  return Boolean(this.lock_until && this.lock_until.getTime() > Date.now());
 };
 
 // Handle failed login attempt (15-min lockout on 5 attempts)
 userSchema.methods.handleFailedLogin = async function () {
-  this.failedLoginAttempts = (this.failedLoginAttempts || 0) + 1;
-  const isNowLocked = this.failedLoginAttempts >= 5;
+  this.failed_login_attempts = (this.failed_login_attempts || 0) + 1;
+  const isNowLocked = this.failed_login_attempts >= 5;
   if (isNowLocked) {
-    this.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes lockout
+    this.lock_until = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes lockout
   }
   await this.save();
   return {
     isLocked: isNowLocked,
-    attemptsLeft: Math.max(0, 5 - this.failedLoginAttempts),
-    failedAttempts: this.failedLoginAttempts
+    attemptsLeft: Math.max(0, 5 - this.failed_login_attempts),
+    failedAttempts: this.failed_login_attempts
   };
 };
 
-// Reset failed login counter on success
+// Reset failed login counter upon successful login
 userSchema.methods.resetFailedLogin = async function (ipAddress = '') {
-  this.failedLoginAttempts = 0;
-  this.lockUntil = null;
+  this.failed_login_attempts = 0;
+  this.lock_until = null;
   this.last_login_at = new Date();
   if (ipAddress) this.last_login_ip = ipAddress;
   return await this.save();
 };
 
-userSchema.methods.incrementFailedAttempts = userSchema.methods.handleFailedLogin;
-userSchema.methods.resetFailedAttempts = userSchema.methods.resetFailedLogin;
-
 export const User = mongoose.model('User', userSchema);
 
-// Department compatibility model
+// Department Model
 const departmentSchema = new mongoose.Schema({
-  code: { type: String, required: true },
+  code: { type: String, required: true, unique: true },
   name: { type: String, required: true }
-});
+}, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
+
 export const Department = mongoose.models.Department || mongoose.model('Department', departmentSchema);
 
-// UserSession compatibility model
-const userSessionSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  tokenHash: { type: String },
-  deviceInfo: { type: String, default: '' },
-  ipAddress: { type: String, default: '' },
-  expiresAt: { type: Date },
-  isRevoked: { type: Boolean, default: false }
-}, { timestamps: true });
-export const UserSession = mongoose.models.UserSession || mongoose.model('UserSession', userSessionSchema);
-
-// PasswordReset compatibility model
+// PasswordReset Model
 const passwordResetSchema = new mongoose.Schema({
-  email: { type: String, required: true },
+  email: { type: String, required: true, index: true },
   otpHash: { type: String, required: true },
-  expiresAt: { type: Date, required: true },
+  expiresAt: { type: Date, required: true, index: { expires: '15m' } },
   isUsed: { type: Boolean, default: false }
-}, { timestamps: true });
+}, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
+
 export const PasswordReset = mongoose.models.PasswordReset || mongoose.model('PasswordReset', passwordResetSchema);
 
 export default User;
