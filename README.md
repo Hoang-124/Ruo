@@ -110,9 +110,9 @@ Hệ thống phục vụ riêng cho **Phòng Hành chính** với 3 vai trò. D�
 
 | Họ và Tên | Vai trò (Role) | Email Đăng Nhập | Mã Nhân Viên | Mật Khẩu | Đặc Quyền Chính |
 | :--- | :--- | :--- | :---: | :---: | :--- |
-| **Trần Bảo Hoàng** | **Quản lý Phòng HC** *(Manager)* | `hoang.tb@university.edu.vn` | `QL000001` | `Ruo@2026` | Duyệt phiếu luân chuyển, duyệt sửa chữa, xem báo cáo thống kê, theo dõi deadline & bảo hành |
-| **Phạm Văn Hùng** | **Nhân viên Phòng HC** *(Staff)* | `hung.pv@university.edu.vn` | `NV000001` | `Ruo@2026` | Tạo/cập nhật thiết bị, ghi nhận hỏng, tạo phiếu luân chuyển, thực hiện sửa chữa, kiểm kê QR |
-| **Ban Quản Trị** | **Quản trị viên** *(Admin)* | `admin@university.edu.vn` | `AD000001` | `Ruo@2026` | Quản trị tài khoản, phân quyền RBAC, danh mục hệ thống, kiểm toán SHA-256 |
+| **Ban Giám Hiệu / Quản Trị Hệ Thống** | **Quản trị viên** *(Admin)* | `admin@ruo.edu.vn` | `AD000001` | `Ruo@2026` | Toàn quyền quản trị, phê duyệt thanh lý BGH (bước 3), kiểm toán SHA-256 |
+| **Trưởng Phòng HC-QT Lê Hoàng Hải** | **Quản lý Phòng HC** *(Manager)* | `manager@ruo.edu.vn` | `QL000001` | `Ruo@2026` | Duyệt phiếu điều chuyển (bước 2), duyệt thanh lý HC (bước 2), lập dự trù mua sắm (bước 4), điều phối nhân viên kỹ thuật |
+| **Kỹ Thuật Viên Trần Minh Tuấn** | **Nhân viên Phòng HC** *(Staff)* | `staff@ruo.edu.vn` | `NV000001` | `Ruo@2026` | Kiểm kê QR, đề xuất điều chuyển, báo cáo hỏng hóc, sửa chữa/thay linh kiện, đề xuất thanh lý khi R>=60%, tiếp nhận thiết bị mới (bước 5) |
 
 > **Ghi chú đăng nhập:**
 > - Đăng nhập bằng **Email** hoặc **Mã nhân viên**.
@@ -175,22 +175,22 @@ d:/Ruo/
 
 | STT | Collection | Chức năng | Chỉ mục trọng yếu |
 | :---: | :--- | :--- | :--- |
-| **1** | `users` | Tài khoản nhân viên HC & admin | `{ email: 1 }`, `{ employeeCode: 1 }`, `{ role: 1 }` |
+| **1** | `users` | Tài khoản nhân viên HC & admin | `{ email: 1 }`, `{ code: 1 }`, `{ role: 1 }` |
 | **2** | `roles` | Ma trận vai trò & permissions | `{ name: 1 }` (unique) |
-| **3** | `rooms` | Phòng học, tọa độ CAD 2.5D | `{ code: 1 }`, `{ building: 1, floorNumber: 1 }` |
-| **4** | `equipments` | Thiết bị, mã QR, khấu hao, bảo hành | `{ assetCode: 1 }`, `{ qrCodeData: 1 }`, `{ room: 1, status: 1 }` |
+| **3** | `rooms` | Phòng học, tọa độ CAD 2.5D | `{ code: 1 }`, `{ building: 1, floor: 1 }` |
+| **4** | `equipments` | Thiết bị, mã QR, khấu hao, bảo hành | `{ code: 1 }`, `{ qr_code: 1 }`, `{ room_id: 1, status: 1 }` |
 | **5** | `equipment_categories` | Loại thiết bị (TV, Máy chiếu, Bàn...) | `{ code: 1 }` (unique) |
 | **6** | `suppliers` | Nhà cung cấp thiết bị | `{ code: 1 }` (unique) |
 | **7** | `repair_units` | Đơn vị sửa chữa bên ngoài | `{ code: 1 }` (unique) |
-| **8** | `spare_parts` | Kho linh kiện thay thế (tên, SL, giá, NCC) | `{ code: 1 }`, `{ quantity: 1 }` |
-| **9** | `parts_requests` | Phiếu yêu cầu xuất kho linh kiện | `{ repairTicket: 1 }`, `{ status: 1 }` |
-| **10** | `equipment_transfers` | Phiếu luân chuyển thiết bị giữa các phòng | `{ equipment: 1 }`, `{ status: 1 }`, `{ fromRoom: 1, toRoom: 1 }` |
-| **11** | `repair_tickets` | Phiếu sửa chữa, timeline, vật tư | `{ equipment: 1 }`, `{ status: 1 }`, `{ deadline: 1 }` |
-| **12** | `maintenance_plans` | Kế hoạch bảo trì dự phòng (chu kỳ, checklist) | `{ nextDue: 1 }`, `{ targetType: 1 }` |
-| **13** | `disposals` | Hồ sơ thanh lý RACI 5 bước | `{ equipment: 1 }`, `{ currentStep: 1 }` |
-| **14** | `inventory_sessions` | Đợt kiểm kê chính thức (Draft/InProgress/Completed) | `{ status: 1 }`, `{ createdAt: -1 }` |
-| **15** | `notifications` | Thông báo in-app (duyệt, sự cố, BH, deadline) | `{ userId: 1, isRead: 1 }`, `{ createdAt: -1 }` |
-| **16** | `audit_logs` | Chuỗi băm kiểm toán SHA-256 | `{ timestamp: -1 }`, `{ sha256Hash: 1 }`, `{ action: 1 }` |
+| **8** | `spare_parts` | Kho linh kiện thay thế (tên, SL, giá, NCC) | `{ code: 1 }`, `{ stock: 1 }` |
+| **9** | `parts_requests` | Phiếu yêu cầu xuất kho linh kiện | `{ repair_id: 1 }`, `{ status: 1 }` |
+| **10** | `transfers` | Phiếu điều chuyển thiết bị giữa các phòng | `{ equipment_id: 1 }`, `{ status: 1 }`, `{ from_room_id: 1, to_room_id: 1 }` |
+| **11** | `repairs` | Phiếu sửa chữa, timeline, vật tư | `{ equipment_id: 1 }`, `{ status: 1 }`, `{ deadline: 1 }` |
+| **12** | `maintenance_plans` | Kế hoạch bảo trì dự phòng (chu kỳ, checklist) | `{ next_due: 1 }`, `{ target_type: 1 }` |
+| **13** | `disposals` | Hồ sơ thanh lý RACI 5 bước | `{ equipment_id: 1 }`, `{ current_step: 1 }` |
+| **14** | `inventory_sessions` | Đợt kiểm kê chính thức (Draft/InProgress/Reconciled) | `{ status: 1 }`, `{ created_at: -1 }` |
+| **15** | `notifications` | Thông báo in-app (duyệt, sự cố, BH, deadline) | `{ user_id: 1, is_read: 1 }`, `{ created_at: -1 }` |
+| **16** | `audit_logs` | Chuỗi băm kiểm toán SHA-256 (Tamper-evident) | `{ seq: 1 }`, `{ hash_sha256: 1 }`, `{ action: 1 }` |
 
 ---
 

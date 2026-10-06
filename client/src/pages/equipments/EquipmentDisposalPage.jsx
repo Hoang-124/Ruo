@@ -1,810 +1,697 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
-import EquipmentForm from '../../components/ui/EquipmentForm';
-import { EQUIPMENT_SEED_DATA } from '../../mock/mockData';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { equipmentApi, disposalApi, facilityApi } from '../../lib/api';
+import { Button, Card, DataTable, StatusBadge, Drawer, EmptyState } from '../../components/ui/Primitives';
 
 export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
   const { currentRoleKey } = useAuth();
-  const isLecturer = currentRoleKey === 'lecturer';
+  const { toast } = useToast();
+
+  const isStaff = currentRoleKey === 'staff';
+  const isManager = currentRoleKey === 'manager';
   const isAdmin = currentRoleKey === 'admin';
-  const isStaffOrAdmin = !isLecturer;
+  const isManagerOrAdmin = ['manager', 'admin'].includes(currentRoleKey);
+  const isStaffOrAdmin = ['staff', 'admin'].includes(currentRoleKey);
 
-  // If lecturer tries to access disposal tab directly, fall back to inventory
-  const [activeSection, setActiveSection] = useState(isLecturer ? 'inventory' : initialTab);
-  const [equipmentsList, setEquipmentsList] = useState(EQUIPMENT_SEED_DATA);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState(initialTab); // 'inventory' | 'disposal'
+  const [equipments, setEquipments] = useState([]);
+  const [disposals, setDisposals] = useState([]);
+  const [flaggedCandidates, setFlaggedCandidates] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [selectedQRItem, setSelectedQRItem] = useState(null);
 
+  // Detail Drawer
+  const [selectedEq, setSelectedEq] = useState(null);
 
-  // Disposal Calculator State
-  const [selectedEq, setSelectedEq] = useState(EQUIPMENT_SEED_DATA[1]); // Daikin damaged
-  const [calcCost, setCalcCost] = useState(5200000);
-  const [calcRemaining, setCalcRemaining] = useState(8000000);
-  const [currentStep, setCurrentStep] = useState(2);
+  // Proposal Modal State
+  const [showProposeModal, setShowProposeModal] = useState(false);
+  const [proposeData, setProposeData] = useState({
+    equipment_id: '',
+    reason: 'Chi phí sửa chữa tích lũy vượt 60% giá trị còn lại (R >= 60%)',
+    recovery_value: 0
+  });
 
-  const repairRatio = Math.round((calcCost / (calcRemaining || 1)) * 100);
-  const isDisposalTriggered = repairRatio >= 60;
+  // Decision Modal State for Admin BGH
+  const [showBghModal, setShowBghModal] = useState(false);
+  const [selectedDisposalId, setSelectedDisposalId] = useState(null);
+  const [decisionNumber, setDecisionNumber] = useState('QD-TL-2026/01');
 
-  const raciSteps = [
-    {
-      step: 1,
-      role: 'Kỹ thuật viên (Responsible - R)',
-      actorBadge: 'Chuyên viên Kỹ thuật (maintenance_staff)',
-      actorColor: 'var(--laser-cyan)',
-      action: 'Khảo sát hiện trường; tính chỉ số R ≥ 60%; tạo Biên bản Giám định Kỹ thuật kèm ảnh hư hỏng.',
-      status: 'MAINTENANCE → UNREPAIRABLE',
-      completed: currentStep > 1,
-      active: currentStep === 1
-    },
-    {
-      step: 2,
-      role: 'Cán bộ CSVC (Accountable - A)',
-      actorBadge: 'Quản lý CSVC (maintenance_staff)',
-      actorColor: 'var(--laser-cyan)',
-      action: 'Tra cứu hồ sơ gốc tài sản (nguyên giá, khấu hao); tổng hợp danh mục và lập Hồ sơ Đề xuất Thanh lý theo Đợt.',
-      status: 'UNREPAIRABLE → DISPOSAL_PENDING',
-      completed: currentStep > 2,
-      active: currentStep === 2
-    },
-    {
-      step: 3,
-      role: 'Hội Đồng Thanh Lý & Thẩm Định (Consulted - C)',
-      actorBadge: 'Hội Đồng CSVC (maintenance_staff / admin)',
-      actorColor: 'var(--laser-amber)',
-      action: 'Thẩm định hồ sơ kỹ thuật, kiểm tra tính pháp lý và tính bất khả phục hồi của trang thiết bị.',
-      status: 'DISPOSAL_PENDING → REVIEWED',
-      completed: currentStep > 3,
-      active: currentStep === 3
-    },
-    {
-      step: 4,
-      role: 'Ban Giám Hiệu Phê Duyệt (Approver - A)',
-      actorBadge: 'Ban Giám Hiệu / Quản Trị Viên (admin)',
-      actorColor: 'var(--laser-rose)',
-      action: 'Ra quyết định chính thức phê duyệt thanh lý tài sản nhà trường theo thẩm quyền quy định.',
-      status: 'REVIEWED → DISPOSED',
-      completed: currentStep > 4,
-      active: currentStep === 4
-    },
-    {
-      step: 5,
-      role: 'Thủ Kho & Admin Tiếp Nhận (Informed - I)',
-      actorBadge: 'Bộ Phận Mua Sắm & Kho (admin)',
-      actorColor: 'var(--laser-emerald)',
-      action: 'Bán phế liệu, thanh toán hủy sổ sách kế toán và lập dự trù trang bị mới cho phòng học.',
-      status: 'Hủy sổ tài sản & Cấp mới',
-      completed: currentStep > 5,
-      active: currentStep === 5
+  // Procurement Modal State for Manager
+  const [showProcureModal, setShowProcureModal] = useState(false);
+  const [procurementPlan, setProcurementPlan] = useState('');
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [eqRes, dispRes] = await Promise.all([
+        equipmentApi.list({ limit: 100 }),
+        disposalApi.list()
+      ]);
+
+      if (eqRes.success) {
+        setEquipments(eqRes.items || eqRes.equipments || []);
+      }
+      if (dispRes.success) {
+        setDisposals(dispRes.proposals || []);
+        setFlaggedCandidates(dispRes.candidates || []);
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tải dữ liệu thiết bị: ' + err.message);
+    } finally {
+      setLoading(false);
     }
-  ];
-
-
-  // Switch to disposal section with preselected equipment
-  const handleProposeDisposal = (eq) => {
-    setSelectedEq(eq);
-    setCalcCost(eq.estimatedRepairCost || Math.round(eq.remainingValue * 0.65));
-    setCalcRemaining(eq.remainingValue || 1000000);
-    setActiveSection('disposal');
   };
 
-  const handleCreateSuccess = (newEq) => {
-    // prepend created equipment to list for immediate feedback
-    setEquipmentsList(prev => [
-      {
-        id: newEq.id || `EQ_${Date.now()}`,
-        assetCode: newEq.assetCode || 'TS-NEW',
-        name: newEq.name || 'Thiết bị mới',
-        category: newEq.category || 'Thiết bị chung',
-        originalPrice: newEq.originalPrice || 0,
-        remainingValue: newEq.remainingValue || newEq.originalPrice || 0,
-        purchaseDate: newEq.purchaseDate || new Date().toISOString().slice(0,10),
-        locationRoom: newEq.locationRoom || 'Kho',
-        status: 'available',
-        repairCount: 0,
-        estimatedRepairCost: 0
-      },
-      ...prev
-    ]);
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Handlers for RACI 5 Steps
+  const handleProposeSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await disposalApi.propose({
+        equipment_id: proposeData.equipment_id,
+        reason: proposeData.reason,
+        recovery_value: Number(proposeData.recovery_value) || 0
+      });
+      if (res.success) {
+        toast.success('Đã lập đề xuất thanh lý tài sản. Chuyển Quản lý HC duyệt bước 2!');
+        setShowProposeModal(false);
+        fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi lập đề xuất thanh lý: ' + err.message);
+    }
+  };
+
+  const handleHcApprove = async (id) => {
+    try {
+      const res = await disposalApi.hcApprove(id);
+      if (res.success) {
+        toast.success('Phòng HC đã phê duyệt hồ sơ. Chuyển tiếp lên Ban Giám Hiệu!');
+        fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi phê duyệt cấp phòng HC: ' + err.message);
+    }
+  };
+
+  const handleBghApproveSubmit = async () => {
+    if (!decisionNumber.trim()) {
+      toast.error('Vui lòng nhập số quyết định thanh lý của BGH.');
+      return;
+    }
+    try {
+      const res = await disposalApi.bghApprove(selectedDisposalId, decisionNumber.trim());
+      if (res.success) {
+        toast.success('Ban Giám Hiệu đã ban hành quyết định thanh lý tài sản!');
+        setShowBghModal(false);
+        fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi phê duyệt cấp BGH: ' + err.message);
+    }
+  };
+
+  const handleProcureSubmit = async () => {
+    if (!procurementPlan.trim()) {
+      toast.error('Vui lòng nhập kế hoạch mua sắm tài sản thay thế.');
+      return;
+    }
+    try {
+      const res = await disposalApi.procure(selectedDisposalId, procurementPlan.trim());
+      if (res.success) {
+        toast.success('Đã cập nhật dự toán mua sắm tài sản mới!');
+        setShowProcureModal(false);
+        fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi cập nhật dự trù mua sắm: ' + err.message);
+    }
+  };
+
+  const handleReceipt = async (id) => {
+    try {
+      const res = await disposalApi.receipt(id, null);
+      if (res.success) {
+        toast.success('Hoàn tất quy trình thanh lý RACI 5 bước và nhập kho tài sản mới!');
+        fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tiếp nhận tài sản mới: ' + err.message);
+    }
+  };
+
+  const handleReject = async (id) => {
+    const reason = prompt('Nhập lý do từ chối hồ sơ thanh lý:');
+    if (!reason) return;
+    try {
+      const res = await disposalApi.reject(id, reason);
+      if (res.success) {
+        toast.warning('Đã từ chối hồ sơ thanh lý.');
+        fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi từ chối hồ sơ: ' + err.message);
+    }
   };
 
   // Filter equipments
-  const filteredEquipments = equipmentsList.filter((eq) => {
+  const filteredEquipments = equipments.filter(eq => {
+    const q = searchQuery.toLowerCase();
     const matchSearch =
-      eq.assetCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      eq.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      eq.locationRoom.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchCat = categoryFilter === 'ALL' || eq.category === categoryFilter;
+      (eq.code || '').toLowerCase().includes(q) ||
+      (eq.name || '').toLowerCase().includes(q) ||
+      (eq.brand || '').toLowerCase().includes(q);
     const matchStatus = statusFilter === 'ALL' || eq.status === statusFilter;
-    return matchSearch && matchCat && matchStatus;
+    return matchSearch && matchStatus;
   });
 
-  const categories = ['ALL', ...Array.from(new Set(EQUIPMENT_SEED_DATA.map(e => e.category)))];
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'in_use':
-        return { label: 'Đang sử dụng', color: 'var(--laser-cyan)', bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.3)' };
-      case 'available':
-        return { label: 'Sẵn sàng xuất mượn', color: 'var(--laser-emerald)', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)' };
-      case 'damaged':
-        return { label: 'Báo hỏng / Cần thẩm định', color: 'var(--laser-crimson)', bg: 'rgba(244,63,94,0.12)', border: 'rgba(244,63,94,0.3)' };
-      case 'disposal_pending':
-        return { label: 'Chờ thanh lý (R ≥ 60%)', color: 'var(--laser-amber)', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' };
-      default:
-        return { label: status, color: 'var(--ink-muted)', bg: 'rgba(255,255,255,0.08)', border: 'var(--hairline-soft)' };
-    }
-  };
-
-  return (
-    <div>
-      {/* Top Header & Navigation Switcher */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+  const eqColumns = [
+    {
+      title: 'Mã Tài Sản',
+      key: 'code',
+      width: '140px',
+      sortable: true,
+      render: (val) => (
+        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--blueprint-400)' }}>
+          {val}
+        </span>
+      )
+    },
+    {
+      title: 'Tên Thiết Bị',
+      key: 'name',
+      render: (val, row) => (
         <div>
-          <h1 className="page-title" style={{ margin: 0, fontSize: '22px', fontWeight: 900 }}>
-            Quản Lý Thiết Bị & Chu Trình Vòng Đời Tài Sản (Trụ Cột 4 & 5)
-          </h1>
-          <div className="page-subtitle" style={{ margin: '4px 0 0 0' }}>
-            Quản lý kho thiết bị 108 phòng học qua mã QR định danh và Quy trình thanh lý theo chỉ số R ≥ 60%
-          </div>
+          <div style={{ fontWeight: 600, color: 'var(--ink-primary)' }}>{val}</div>
+          <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>{row.brand} {row.model}</div>
         </div>
-        {isStaffOrAdmin && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              onClick={() => setIsCreateOpen(true)}
-              className="laser-btn laser-btn-primary"
-              style={{ padding: '8px 14px', borderRadius: 'var(--radius-full)', fontSize: '12px' }}
-            >
-              <Icons.Plus size={14} />
-              <span>Thêm Thiết Bị</span>
-            </button>
-          </div>
-        )}
-        {/* Tab Switcher Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--surface-panel)', padding: '4px', borderRadius: 'var(--radius-full)', border: '1px solid var(--hairline-medium)' }}>
-          <button
-            onClick={() => setActiveSection('inventory')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '12px',
-              fontWeight: activeSection === 'inventory' ? 700 : 500,
-              background: activeSection === 'inventory' ? 'linear-gradient(135deg, var(--laser-indigo), var(--laser-cyan))' : 'transparent',
-              color: activeSection === 'inventory' ? '#FFFFFF' : 'var(--ink-secondary)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all var(--transition-fast)'
-            }}
-          >
-            <Icons.Equipment size={14} color={activeSection === 'inventory' ? '#FFFFFF' : 'var(--laser-cyan)'} />
-            <span>Kho Thiết Bị & Kiểm Kê QR (Trụ Cột 4)</span>
-            <span style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', background: 'rgba(255,255,255,0.2)', padding: '1px 5px', borderRadius: '3px' }}>
-              {EQUIPMENT_SEED_DATA.length}
-            </span>
-          </button>
-
-          {isStaffOrAdmin && (
-            <button
-              onClick={() => setActiveSection('disposal')}
+      )
+    },
+    {
+      title: 'Vị Trí Phòng',
+      key: 'room_id',
+      render: (val) => (
+        <span className="ruo-badge ruo-badge-neutral">
+          {val ? (typeof val === 'object' ? val.code : val) : 'Kho CSVC'}
+        </span>
+      )
+    },
+    {
+      title: 'Nguyên Giá',
+      key: 'price',
+      sortable: true,
+      render: (val) => (
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+          {val ? `${Number(val).toLocaleString('vi-VN')} đ` : '—'}
+        </span>
+      )
+    },
+    {
+      title: 'Giá Trị Còn Lại',
+      key: 'remaining_value',
+      sortable: true,
+      render: (val) => (
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--ink-primary)' }}>
+          {val ? `${Number(val).toLocaleString('vi-VN')} đ` : '0 đ'}
+        </span>
+      )
+    },
+    {
+      title: 'Chỉ Số R%',
+      key: 'rRatio',
+      width: '120px',
+      sortable: true,
+      render: (val, row) => {
+        const r = typeof row.rRatio === 'number' ? row.rRatio : (row.estimated_repair_cost / (row.remaining_value || 1) * 100);
+        const isHigh = r >= 60;
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-full)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: '12px',
-                fontWeight: activeSection === 'disposal' ? 700 : 500,
-                background: activeSection === 'disposal' ? 'linear-gradient(135deg, var(--laser-amber), var(--laser-rose))' : 'transparent',
-                color: activeSection === 'disposal' ? '#FFFFFF' : 'var(--ink-secondary)',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all var(--transition-fast)'
+                fontWeight: 800,
+                color: isHigh ? '#E5484D' : '#2FB37A'
               }}
             >
-              <Icons.Sliders size={14} color={activeSection === 'disposal' ? '#FFFFFF' : 'var(--laser-amber)'} />
-              <span>Thanh Lý Tài Sản R ≥ 60% (Trụ Cột 5)</span>
-              <span style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', background: 'rgba(255,255,255,0.2)', padding: '1px 5px', borderRadius: '3px' }}>
-                RACI
+              {Math.round(r)}%
+            </span>
+            {isHigh && (
+              <span className="ruo-badge" style={{ background: 'rgba(229,72,77,0.15)', color: '#E5484D', borderColor: 'rgba(229,72,77,0.3)', fontSize: '9px', padding: '1px 4px' }}>
+                R≥60%
               </span>
-            </button>
-          )}
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      title: 'Trạng Thái',
+      key: 'status',
+      render: (val) => <StatusBadge status={val} />
+    },
+    {
+      title: 'Thao Tác',
+      key: 'actions',
+      align: 'right',
+      render: (_, row) => (
+        <Button size="sm" variant="ghost" onClick={() => setSelectedEq(row)}>
+          Xem Chi Tiết
+        </Button>
+      )
+    }
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: 'var(--ink-primary)' }}>
+            Quản Lý Vòng Đời Thiết Bị & Thanh Lý Tài Sản
+          </h1>
+          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
+            Quản lý tài sản theo vòng đời: Mua sắm → Định danh QR → Điều chuyển → Sửa chữa → Thanh lý RACI 5 bước khi R ≥ 60%
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Button
+            variant={activeSection === 'inventory' ? 'primary' : 'secondary'}
+            onClick={() => setActiveSection('inventory')}
+          >
+            Kho Thiết Bị ({equipments.length})
+          </Button>
+
+          <Button
+            variant={activeSection === 'disposal' ? 'primary' : 'secondary'}
+            onClick={() => setActiveSection('disposal')}
+          >
+            Hồ Sơ Thanh Lý RACI ({disposals.length})
+            {flaggedCandidates.length > 0 && (
+              <span style={{ marginLeft: '6px', background: '#E5484D', color: '#FFF', padding: '1px 6px', borderRadius: '10px', fontSize: '10px' }}>
+                {flaggedCandidates.length}
+              </span>
+            )}
+          </Button>
         </div>
       </div>
 
-      {/* SECTION 1: KHO THIẾT BỊ & KIỂM KÊ MÃ QR (TRỤ CỘT 4) */}
+      {/* ==============================================================
+          SECTION 1: KHO THIẾT BỊ
+          ============================================================== */}
       {activeSection === 'inventory' && (
-        <div>
-          {/* Inventory Metrics Summary */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '20px' }}>
-            <div className="card" style={{ padding: '14px 18px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Tổng Thiết Bị & Tài Sản</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)', margin: '4px 0' }}>148</div>
-              <div style={{ fontSize: '11px', color: 'var(--laser-cyan)' }}>100% định danh mã QR bất biến</div>
-            </div>
-
-            <div className="card" style={{ padding: '14px 18px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Đang Phục Vụ Giảng Dạy</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--laser-cyan)', fontFamily: 'var(--font-sans)', margin: '4px 0' }}>132</div>
-              <div style={{ fontSize: '11px', color: 'var(--ink-secondary)' }}>Tỷ lệ khả dụng 89.2%</div>
-            </div>
-
-            <div className="card" style={{ padding: '14px 18px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Sẵn Sàng Cấp Phát / Dự Phòng</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--laser-emerald)', fontFamily: 'var(--font-sans)', margin: '4px 0' }}>11</div>
-              <div style={{ fontSize: '11px', color: 'var(--laser-emerald)' }}>Dự phòng thay thế nhanh phòng học</div>
-            </div>
-
-            <div className="card" style={{ padding: '14px 18px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Báo Hỏng / Cần Giám Định</div>
-              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--laser-rose)', fontFamily: 'var(--font-sans)', margin: '4px 0' }}>5</div>
-              <div style={{ fontSize: '11px', color: 'var(--laser-rose)' }}>2 thiết bị đủ điều kiện R ≥ 60%</div>
-            </div>
-          </div>
-
-
-          {/* Search and Filters Bar */}
-          <div className="card" style={{ padding: '14px 18px', marginBottom: '20px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-                <div style={{ position: 'absolute', left: '12px', top: '10px' }}>
-                  <Icons.Search size={15} color="var(--ink-muted)" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Tra cứu theo mã tài sản (TS-2021-MC01), tên thiết bị, phòng học..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="form-control"
-                  style={{ paddingLeft: '36px', height: '36px', fontSize: '12.5px' }}
-                />
-              </div>
-
-              {/* Status Filter */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '11.5px', color: 'var(--ink-muted)', fontWeight: 600 }}>Tình trạng:</span>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="form-control"
-                  style={{ height: '36px', fontSize: '12px', minWidth: '150px' }}
-                >
-                  <option value="ALL">Tất cả trạng thái</option>
-                  <option value="in_use">Đang sử dụng</option>
-                  <option value="available">Sẵn sàng mượn</option>
-                  <option value="damaged">Báo hỏng</option>
-                  <option value="disposal_pending">Chờ thanh lý (R ≥ 60%)</option>
-                </select>
-              </div>
-
-              {/* Category Filter */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '11.5px', color: 'var(--ink-muted)', fontWeight: 600 }}>Nhóm:</span>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="form-control"
-                  style={{ height: '36px', fontSize: '12px', minWidth: '160px' }}
-                >
-                  {categories.map(c => (
-                    <option key={c} value={c}>{c === 'ALL' ? 'Tất cả phân loại' : c}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Equipment Table */}
-          <div className="card" style={{ padding: 0, background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', overflow: 'hidden' }}>
-            <div className="data-table-container">
-              <table className="data-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: 'var(--spatial-bar-bg)', borderBottom: '1px solid var(--hairline-medium)' }}>
-                    <th style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>Mã Tài Sản</th>
-                    <th style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>Tên Thiết Bị</th>
-                    <th style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>Vị Trí Phòng</th>
-                    <th style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>Nguyên Giá / Còn Lại</th>
-                    <th style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>Trạng Thái</th>
-                    <th style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--ink-secondary)', textTransform: 'uppercase', textAlign: 'center' }}>Mã QR</th>
-                    <th style={{ padding: '12px 16px', fontSize: '11px', color: 'var(--ink-secondary)', textTransform: 'uppercase', textAlign: 'right' }}>Thao Tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredEquipments.map((eq) => {
-                    const badge = getStatusBadge(eq.status);
-                    return (
-                      <tr
-                        key={eq.id}
-                        style={{ borderBottom: '1px solid var(--hairline-soft)', transition: 'background 120ms ease' }}
-                        className="data-table-row"
-                      >
-                        <td style={{ padding: '12px 16px' }}>
-                          <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11.5px', fontWeight: 700, color: 'var(--laser-cyan)' }}>
-                            {eq.assetCode}
-                          </span>
-                        </td>
-
-                        <td style={{ padding: '12px 16px' }}>
-                          <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-pure)' }}>{eq.name}</div>
-                          <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>{eq.category} • Ngày nhập: {eq.purchaseDate}</div>
-                        </td>
-
-                        <td style={{ padding: '12px 16px' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: 'var(--ink-primary)', background: 'var(--spatial-bar-bg)', padding: '3px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
-                            <Icons.Room size={12} color="var(--laser-cyan)" />
-                            <span>{eq.locationRoom}</span>
-                          </span>
-                        </td>
-
-                        <td style={{ padding: '12px 16px', fontFamily: 'var(--font-sans)', fontSize: '12px' }}>
-                          <div style={{ color: 'var(--ink-secondary)' }}>{eq.originalPrice.toLocaleString('vi-VN')} đ</div>
-                          <div style={{ fontWeight: 700, color: 'var(--laser-emerald)' }}>
-                            {eq.remainingValue.toLocaleString('vi-VN')} đ
-                          </div>
-                        </td>
-
-                        <td style={{ padding: '12px 16px' }}>
-                          <span
-                            style={{
-                              fontSize: '10.5px',
-                              fontWeight: 700,
-                              padding: '3px 8px',
-                              borderRadius: 'var(--radius-full)',
-                              color: badge.color,
-                              background: badge.bg,
-                              border: `1px solid ${badge.border}`,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: badge.color }} />
-                            <span>{badge.label}</span>
-                          </span>
-                        </td>
-
-                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                          <button
-                            onClick={() => setSelectedQRItem(eq)}
-                            className="laser-btn laser-btn-ghost"
-                            style={{ padding: '4px 8px', borderRadius: 'var(--radius-sm)', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                            title="Quét hoặc xem mã QR định danh tài sản"
-                          >
-                            <Icons.QrCode size={13} color="var(--laser-cyan)" />
-                            <span>QR Code</span>
-                          </button>
-                        </td>
-
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                          {isLecturer ? (
-                            eq.status === 'damaged' || eq.status === 'disposal_pending' ? (
-                              <span
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  fontSize: '11px',
-                                  color: 'var(--laser-rose)',
-                                  background: 'rgba(244,63,94,0.1)',
-                                  border: '1px solid rgba(244,63,94,0.25)',
-                                  padding: '3px 8px',
-                                  borderRadius: 'var(--radius-full)'
-                                }}
-                              >
-                                <Icons.Wrench size={11} />
-                                <span>Đang xử lý SLA</span>
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  setEquipmentsList(prev => prev.map(item => item.id === eq.id ? { ...item, status: 'damaged', estimatedRepairCost: Math.round(item.remainingValue * 0.65) } : item));
-                                  alert(`Đã gửi báo cáo sự cố thiết bị "${eq.name}" tại phòng ${eq.locationRoom} tới Đội Kỹ Thuật CSVC.`);
-                                }}
-                                className="laser-btn laser-btn-ghost"
-                                style={{ padding: '4px 10px', fontSize: '11px', borderRadius: 'var(--radius-full)' }}
-                                title="Báo cáo thiết bị gặp trục trặc tại phòng này"
-                              >
-                                <Icons.Wrench size={12} color="var(--laser-amber)" />
-                                <span>Báo Hỏng Thiết Bị</span>
-                              </button>
-                            )
-                          ) : (
-                            eq.status === 'damaged' || eq.status === 'disposal_pending' ? (
-                              <button
-                                onClick={() => handleProposeDisposal(eq)}
-                                className="laser-btn laser-btn-rose"
-                                style={{ padding: '4px 10px', fontSize: '11px', borderRadius: 'var(--radius-full)' }}
-                                title="Chuyển sang Bộ tính toán R và Quy trình thanh lý RACI"
-                              >
-                                <Icons.Sliders size={12} />
-                                <span>Giám Định R ≥ 60%</span>
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  setEquipmentsList(prev => prev.map(item => item.id === eq.id ? { ...item, status: 'damaged', estimatedRepairCost: Math.round(item.remainingValue * 0.65) } : item));
-                                  alert(`Đã ghi nhận báo hỏng cho thiết bị ${eq.name}. Kỹ thuật viên sẽ tiến hành khảo sát!`);
-                                }}
-                                className="laser-btn laser-btn-ghost"
-                                style={{ padding: '4px 10px', fontSize: '11px', borderRadius: 'var(--radius-full)' }}
-                                title="Báo cáo thiết bị gặp trục trặc hoặc cần khảo sát"
-                              >
-                                <Icons.Wrench size={12} />
-                                <span>Báo Hỏng / Khảo Sát</span>
-                              </button>
-                            )
-                          )}
-                        </td>
-
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SECTION 2: QUY TRÌNH THANH LÝ & MÁY TÍNH CHỈ SỐ R ≥ 60% (TRỤ CỘT 5) */}
-      {activeSection === 'disposal' && (
-        <div>
-          {/* R Ratio Calculator Banner */}
-          <div className="card" style={{ marginBottom: '24px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 800, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-pure)' }}>
-              <Icons.Sliders size={18} color="var(--laser-cyan)" />
-              <span>Bộ Tính Toán Chỉ Số Tài Chính R (Repair vs. Disposal Ratio Calculator)</span>
-            </h3>
-
-            <div className="grid-cols-3" style={{ marginBottom: '16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', fontWeight: 700, marginBottom: '6px', display: 'block' }}>
-                  Thiết bị thẩm định kỹ thuật
-                </label>
-                <select
-                  className="form-control"
-                  value={selectedEq?.id || ''}
-                  onChange={(e) => {
-                    const eq = EQUIPMENT_SEED_DATA.find(item => item.id === e.target.value);
-                    if (eq) {
-                      setSelectedEq(eq);
-                      setCalcCost(eq.estimatedRepairCost || 3000000);
-                      setCalcRemaining(eq.remainingValue);
-                    }
-                  }}
-                  style={{ height: '38px', fontSize: '12.5px' }}
-                >
-                  {EQUIPMENT_SEED_DATA.map((eq) => (
-                    <option key={eq.id} value={eq.id}>
-                      {eq.assetCode} - {eq.name} ({eq.locationRoom})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', fontWeight: 700, marginBottom: '6px', display: 'block' }}>
-                  Chi phí sửa chữa ước tính (VNĐ)
-                </label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={calcCost}
-                  onChange={(e) => setCalcCost(parseInt(e.target.value) || 0)}
-                  style={{ height: '38px', fontSize: '12.5px', fontFamily: 'var(--font-sans)' }}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', fontWeight: 700, marginBottom: '6px', display: 'block' }}>
-                  Giá trị sổ sách còn lại (VNĐ)
-                </label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={calcRemaining}
-                  onChange={(e) => setCalcRemaining(parseInt(e.target.value) || 1)}
-                  style={{ height: '38px', fontSize: '12.5px', fontFamily: 'var(--font-sans)' }}
-                />
-              </div>
-            </div>
-
-            {/* Ratio Result Box */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Flagged Banner */}
+          {flaggedCandidates.length > 0 && (
             <div
               style={{
-                padding: '16px 20px',
+                background: 'rgba(224, 122, 62, 0.12)',
+                border: '1px solid rgba(224, 122, 62, 0.35)',
                 borderRadius: 'var(--radius-md)',
-                background: isDisposalTriggered ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                border: `1px solid ${isDisposalTriggered ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+                padding: '14px 18px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                flexWrap: 'wrap',
                 gap: '12px'
               }}
             >
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
-                  Công thức kiểm toán: <code>R = (Chi phí sửa / Giá trị còn lại) × 100%</code>
-                </div>
-                <div style={{ fontSize: '26px', fontWeight: 900, color: isDisposalTriggered ? 'var(--laser-rose)' : 'var(--laser-emerald)', fontFamily: 'var(--font-sans)', marginTop: '2px' }}>
-                  Chỉ số R = {repairRatio}%
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Icons.AlertTriangle size={18} color="#E07A3E" />
+                <span style={{ fontSize: '13px', color: 'var(--ink-primary)' }}>
+                  Phát hiện <strong>{flaggedCandidates.length} thiết bị</strong> có tỷ lệ sửa chữa <strong>R ≥ 60%</strong> so với giá trị còn lại. Cần lập hồ sơ thanh lý.
+                </span>
+              </div>
+              <Button size="sm" variant="danger" onClick={() => setActiveSection('disposal')}>
+                Xem Danh Sách Thanh Lý
+              </Button>
+            </div>
+          )}
+
+          {/* Search & Filters */}
+          <Card style={{ padding: '12px 16px' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+                <Icons.Search size={15} style={{ position: 'absolute', left: '12px', top: '10px', color: 'var(--ink-muted)' }} />
+                <input
+                  type="text"
+                  className="ruo-portal-input"
+                  style={{ paddingLeft: '36px', height: '34px', fontSize: '13px' }}
+                  placeholder="Tìm theo mã tài sản, tên thiết bị hoặc hãng sản xuất..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
 
-              <div style={{ textAlign: 'right' }}>
-                {isDisposalTriggered ? (
-                  <div>
-                    <span style={{ background: 'rgba(239,68,68,0.2)', color: 'var(--laser-rose)', border: '1px solid rgba(239,68,68,0.4)', padding: '6px 14px', borderRadius: 'var(--radius-full)', fontWeight: 800, fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                      <Icons.AlertTriangle size={14} /> ĐỦ ĐIỀU KIỆN ĐỀ XUẤT THANH LÝ (R ≥ 60%)
-                    </span>
-                    <div style={{ fontSize: '11.5px', color: 'var(--laser-rose)', marginTop: '6px' }}>
-                      Hệ thống tự động khóa tính năng mượn và kích hoạt tiến trình 5 bước theo Hội đồng CSVC.
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <span style={{ background: 'rgba(16,185,129,0.2)', color: 'var(--laser-emerald)', border: '1px solid rgba(16,185,129,0.4)', padding: '6px 14px', borderRadius: 'var(--radius-full)', fontWeight: 800, fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                      <Icons.CheckCircle size={14} /> TIẾN HÀNH SỬA CHỮA / BẢO DƯỠNG (R &lt; 60%)
-                    </span>
-                    <div style={{ fontSize: '11.5px', color: 'var(--laser-emerald)', marginTop: '6px' }}>
-                      Xuất linh kiện thay thế từ kho kỹ thuật để tiếp tục phục vụ phòng học.
-                    </div>
-                  </div>
-                )}
+              <select
+                className="ruo-portal-input"
+                style={{ height: '34px', fontSize: '12px', padding: '0 10px', width: '180px' }}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="ALL">Tất cả trạng thái</option>
+                <option value="active">Đang hoạt động</option>
+                <option value="repairing">Đang sửa chữa</option>
+                <option value="transferring">Đang điều chuyển</option>
+                <option value="pending_disposal">Chờ thanh lý</option>
+                <option value="disposed">Đã thanh lý</option>
+              </select>
+            </div>
+          </Card>
+
+          {/* Table */}
+          <DataTable
+            columns={eqColumns}
+            data={filteredEquipments}
+            loading={loading}
+            emptyMessage="Không tìm thấy thiết bị phù hợp."
+            onRowClick={(row) => setSelectedEq(row)}
+          />
+        </div>
+      )}
+
+      {/* ==============================================================
+          SECTION 2: QUY TRÌNH THANH LÝ RACI 5 BƯỚC
+          ============================================================== */}
+      {activeSection === 'disposal' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* RACI Matrix Banner */}
+          <Card style={{ padding: '16px 20px', background: 'var(--surface-1)' }}>
+            <div style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--blueprint-400)', fontWeight: 800, marginBottom: '8px' }}>
+              Quy Trình Thanh Lý Tài Sản 5 Bước (RACI Institutional Flow)
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', fontSize: '12px' }}>
+              <div style={{ background: 'var(--surface-2)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--ink-primary)' }}>Bước 1: R (Responsible)</div>
+                <div style={{ color: 'var(--ink-muted)', fontSize: '11px', marginTop: '2px' }}>Kỹ thuật viên lập đề xuất khi R ≥ 60%</div>
+              </div>
+              <div style={{ background: 'var(--surface-2)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--ink-primary)' }}>Bước 2: A (Accountable)</div>
+                <div style={{ color: 'var(--ink-muted)', fontSize: '11px', marginTop: '2px' }}>Quản lý Phòng HC xét duyệt hồ sơ</div>
+              </div>
+              <div style={{ background: 'var(--surface-2)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--ink-primary)' }}>Bước 3: A (Approver)</div>
+                <div style={{ color: 'var(--ink-muted)', fontSize: '11px', marginTop: '2px' }}>Ban Giám Hiệu ký Quyết định thanh lý</div>
+              </div>
+              <div style={{ background: 'var(--surface-2)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--ink-primary)' }}>Bước 4: C (Consulted)</div>
+                <div style={{ color: 'var(--ink-muted)', fontSize: '11px', marginTop: '2px' }}>Quản lý phòng lập dự trù mua sắm thay thế</div>
+              </div>
+              <div style={{ background: 'var(--surface-2)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--ink-primary)' }}>Bước 5: I (Informed)</div>
+                <div style={{ color: 'var(--ink-muted)', fontSize: '11px', marginTop: '2px' }}>Kỹ thuật viên nhập kho tài sản thay thế</div>
               </div>
             </div>
+          </Card>
+
+          {/* Proposals List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {disposals.map(disp => {
+              const eq = disp.equipment_id;
+              return (
+                <Card key={disp._id} style={{ padding: '18px 20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--blueprint-400)', fontSize: '14px' }}>
+                          {eq?.code || 'EQ-UNKNOWN'}
+                        </span>
+                        <StatusBadge status={disp.status} />
+                        <span className="ruo-badge" style={{ background: 'rgba(62,123,250,0.1)', color: 'var(--blueprint-400)' }}>
+                          Bước {disp.current_step} / 5
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--ink-primary)' }}>
+                        {eq?.name} • Nguyên giá: {Number(eq?.price || 0).toLocaleString('vi-VN')} đ
+                      </div>
+                    </div>
+
+                    {/* RACI Step Actions */}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {disp.status === 'proposed' && isManagerOrAdmin && (
+                        <>
+                          <Button size="sm" variant="primary" onClick={() => handleHcApprove(disp._id)}>
+                            Bước 2: Phòng HC Duyệt
+                          </Button>
+                          <Button size="sm" variant="danger" onClick={() => handleReject(disp._id)}>
+                            Từ Chối
+                          </Button>
+                        </>
+                      )}
+
+                      {disp.status === 'hc_approved' && isAdmin && (
+                        <>
+                          <Button size="sm" variant="primary" onClick={() => {
+                            setSelectedDisposalId(disp._id);
+                            setShowBghModal(true);
+                          }}>
+                            Bước 3: BGH Ban Hành Quyết Định
+                          </Button>
+                          <Button size="sm" variant="danger" onClick={() => handleReject(disp._id)}>
+                            Từ Chối
+                          </Button>
+                        </>
+                      )}
+
+                      {disp.status === 'bgh_approved' && isManagerOrAdmin && (
+                        <Button size="sm" variant="primary" onClick={() => {
+                          setSelectedDisposalId(disp._id);
+                          setShowProcureModal(true);
+                        }}>
+                          Bước 4: Cập Nhật Kế Hoạch Mua Sắm
+                        </Button>
+                      )}
+
+                      {disp.status === 'procuring' && isStaffOrAdmin && (
+                        <Button size="sm" variant="primary" onClick={() => handleReceipt(disp._id)}>
+                          Bước 5: Tiếp Nhận Tài Sản & Hoàn Tất
+                        </Button>
+                      )}
+
+                      {disp.status === 'received' && (
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#2FB37A' }}>
+                          ✓ Đã hoàn tất thanh lý & nhập kho
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'var(--surface-2)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', fontSize: '12.5px' }}>
+                    <div>Lý do đề xuất: <strong>{disp.reason}</strong></div>
+                    {disp.decision_number && (
+                      <div style={{ marginTop: '4px' }}>Số quyết định BGH: <strong style={{ color: 'var(--blueprint-400)' }}>{disp.decision_number}</strong></div>
+                    )}
+                    {disp.procurement_plan && (
+                      <div style={{ marginTop: '4px' }}>Dự toán thay thế: <strong>{disp.procurement_plan}</strong></div>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+
+            {disposals.length === 0 && (
+              <EmptyState title="Chưa có hồ sơ thanh lý" message="Hiện tại chưa có thiết bị nào đang trong quy trình thanh lý RACI." />
+            )}
           </div>
+        </div>
+      )}
 
-          {/* 5-Step RACI Matrix Stepper */}
-          <div className="card" style={{ background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+      {/* Equipment Detail Drawer */}
+      {selectedEq && (
+        <Drawer
+          isOpen={Boolean(selectedEq)}
+          onClose={() => setSelectedEq(null)}
+          title={selectedEq.name}
+          subtitle={`Mã tài sản: ${selectedEq.code}`}
+          width="540px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Status & Lifecycle Gauge */}
+            <div style={{ background: 'var(--surface-2)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <StatusBadge status={selectedEq.status} />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--ink-muted)' }}>
+                  QR: {selectedEq.qr_code}
+                </span>
+              </div>
+
+              {/* R-Ratio Indicator */}
               <div>
-                <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--ink-pure)', margin: 0 }}>
-                  Tiến Trình 5 Bước Thanh Lý Tài Sản (RACI Matrix)
-                </h3>
-                <div style={{ fontSize: '12px', color: 'var(--ink-muted)', marginTop: '4px' }}>
-                  Đảm bảo tính pháp lý, minh bạch trách nhiệm và bảo toàn lịch sử kiểm toán tài sản công nhà trường
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
+                  <span>Tỷ lệ sửa chữa R% (Ngưỡng thanh lý: 60%)</span>
+                  <strong style={{ color: (selectedEq.rRatio || 0) >= 60 ? '#E5484D' : '#2FB37A', fontFamily: 'var(--font-mono)' }}>
+                    {Math.round(selectedEq.rRatio || 0)}%
+                  </strong>
                 </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button
-                  className="laser-btn laser-btn-ghost"
-                  disabled={currentStep <= 1}
-                  onClick={() => setCurrentStep(prev => prev - 1)}
-                  style={{ opacity: currentStep <= 1 ? 0.5 : 1, fontSize: '12px', padding: '6px 14px' }}
-                >
-                  <Icons.ChevronLeft size={14} />
-                  <span>Bước trước</span>
-                </button>
-                <button
-                  className="laser-btn laser-btn-primary"
-                  disabled={currentStep >= 5 || (currentStep === 3 && !isAdmin)}
-                  onClick={() => {
-                    if (currentStep === 3 && !isAdmin) {
-                      alert('Chỉ Ban Giám Hiệu / Quản Trị Viên (Admin) mới có thẩm quyền phê duyệt quyết định thanh lý tài sản nhà trường (Bước 4)!');
-                      return;
-                    }
-                    setCurrentStep(prev => prev + 1);
-                  }}
-                  title={currentStep === 3 && !isAdmin ? 'Yêu cầu tài khoản Admin/BGH phê duyệt Bước 4' : ''}
-                  style={{ opacity: (currentStep >= 5 || (currentStep === 3 && !isAdmin)) ? 0.5 : 1, fontSize: '12px', padding: '6px 14px' }}
-                >
-                  <span>{currentStep === 3 ? (isAdmin ? 'BGH Phê Duyệt Bước 4' : 'Chờ BGH Duyệt Bước 4') : 'Bước tiếp theo'}</span>
-                  <Icons.ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {raciSteps.map((s) => (
-                <div
-                  key={s.step}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '16px',
-                    padding: '16px 20px',
-                    borderRadius: 'var(--radius-md)',
-                    border: s.active ? '1.5px solid var(--laser-cyan)' : '1px solid var(--hairline-soft)',
-                    background: s.completed
-                      ? 'rgba(16, 185, 129, 0.05)'
-                      : s.active
-                      ? 'rgba(6, 182, 212, 0.08)'
-                      : 'rgba(255, 255, 255, 0.02)',
-                    transition: 'all var(--transition-fast)'
-                  }}
-                >
-                  {/* Step circle */}
+                <div style={{ height: '8px', background: 'var(--surface-3)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div
                     style={{
-                      width: '34px',
-                      height: '34px',
-                      borderRadius: '50%',
-                      background: s.completed
-                        ? 'linear-gradient(135deg, var(--laser-emerald), #059669)'
-                        : s.active
-                        ? 'linear-gradient(135deg, var(--laser-indigo), var(--laser-cyan))'
-                        : 'rgba(255, 255, 255, 0.06)',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: '13px',
-                      flexShrink: 0
+                      height: '100%',
+                      width: `${Math.min(100, Math.round(selectedEq.rRatio || 0))}%`,
+                      background: (selectedEq.rRatio || 0) >= 60 ? '#E5484D' : '#2FB37A',
+                      transition: 'width 0.3s'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {(selectedEq.rRatio || 0) >= 60 && (
+                <div style={{ marginTop: '14px' }}>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => {
+                      setProposeData({
+                        equipment_id: selectedEq._id,
+                        reason: `Tỷ lệ R% đạt ${Math.round(selectedEq.rRatio)}% >= 60%. Đề xuất thanh lý tài sản.`,
+                        recovery_value: Math.round((selectedEq.remaining_value || 0) * 0.2)
+                      });
+                      setShowProposeModal(true);
                     }}
                   >
-                    {s.completed ? <Icons.Check size={16} /> : s.step}
-                  </div>
-
-                  {/* Step info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--ink-pure)' }}>
-                        Bước {s.step}: {s.role}
-                      </span>
-                      {s.actorBadge && (
-                        <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.06)', color: s.actorColor || 'var(--ink-secondary)', padding: '2px 8px', borderRadius: '4px', border: `1px solid ${s.actorColor || 'var(--hairline-medium)'}44`, fontWeight: 700 }}>
-                          {s.actorBadge}
-                        </span>
-                      )}
-                      {s.active && (
-                        <span style={{ fontSize: '9.5px', background: 'rgba(6,182,212,0.2)', color: 'var(--laser-cyan)', padding: '2px 8px', borderRadius: '4px', fontWeight: 800, border: '1px solid rgba(6,182,212,0.3)' }}>
-                          ĐANG THỰC HIỆN
-                        </span>
-                      )}
-                      {s.completed && (
-                        <span style={{ fontSize: '9.5px', background: 'rgba(16,185,129,0.2)', color: 'var(--laser-emerald)', padding: '2px 8px', borderRadius: '4px', fontWeight: 800, border: '1px solid rgba(16,185,129,0.3)' }}>
-                          ĐÃ HOÀN TẤT
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', lineHeight: 1.5 }}>
-                      {s.action}
-                    </div>
-                  </div>
-
-
-                  {/* System State */}
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: '10px', color: 'var(--ink-muted)' }}>Trạng thái hệ thống:</div>
-                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11.5px', fontWeight: 700, color: 'var(--laser-cyan)' }}>
-                      {s.status}
-                    </span>
-                  </div>
+                    Lập Đề Xuất Thanh Lý RACI (Bước 1)
+                  </Button>
                 </div>
-              ))}
+              )}
+            </div>
+
+            {/* Financial Specs */}
+            <div>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--ink-muted)', marginBottom: '6px' }}>
+                Kinh Phí & Khấu Hao
+              </div>
+              <div style={{ background: 'var(--surface-2)', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '12.5px' }}>
+                <div>Nguyên giá mua sắm: <strong style={{ fontFamily: 'var(--font-mono)' }}>{Number(selectedEq.price || 0).toLocaleString('vi-VN')} đ</strong></div>
+                <div>Giá trị còn lại: <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--blueprint-400)' }}>{Number(selectedEq.remaining_value || 0).toLocaleString('vi-VN')} đ</strong></div>
+                <div>Chi phí sửa chữa tích lũy: <strong style={{ fontFamily: 'var(--font-mono)', color: '#E5A33B' }}>{Number(selectedEq.estimated_repair_cost || 0).toLocaleString('vi-VN')} đ</strong></div>
+              </div>
+            </div>
+
+            {/* Technical Specifications */}
+            <div>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--ink-muted)', marginBottom: '6px' }}>
+                Thông Số Kỹ Thuật
+              </div>
+              <div style={{ background: 'var(--surface-2)', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '12.5px' }}>
+                <div>Thương hiệu / Model: <strong>{selectedEq.brand} {selectedEq.model}</strong></div>
+                <div>Số sê-ri: <strong style={{ fontFamily: 'var(--font-mono)' }}>{selectedEq.serial_number || 'N/A'}</strong></div>
+                <div>Vị trí: <strong>{selectedEq.room_id?.name || selectedEq.room_id?.code || 'Kho'}</strong></div>
+              </div>
+            </div>
+          </div>
+        </Drawer>
+      )}
+
+      {/* Propose Modal */}
+      {showProposeModal && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowProposeModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '460px', height: 'auto', margin: 'auto', borderRadius: 'var(--radius-md)' }} onClick={e => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <h2 className="ruo-drawer-title">Đề Xuất Thanh Lý Tài Sản (Bước 1)</h2>
+              <button onClick={() => setShowProposeModal(false)} className="ruo-drawer-close-btn">
+                <Icons.X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleProposeSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '4px' }}>Lý do thanh lý *</label>
+                <textarea
+                  className="ruo-portal-input"
+                  style={{ minHeight: '80px', padding: '10px' }}
+                  value={proposeData.reason}
+                  onChange={e => setProposeData({ ...proposeData, reason: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '4px' }}>Giá trị thu hồi dự kiến (VND)</label>
+                <input
+                  type="number"
+                  className="ruo-portal-input"
+                  value={proposeData.recovery_value}
+                  onChange={e => setProposeData({ ...proposeData, recovery_value: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <Button variant="ghost" onClick={() => setShowProposeModal(false)}>Hủy</Button>
+                <Button type="submit" variant="danger">Gửi Đề Xuất</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* BGH Decision Modal */}
+      {showBghModal && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowBghModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '420px', height: 'auto', margin: 'auto', borderRadius: 'var(--radius-md)' }} onClick={e => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <h2 className="ruo-drawer-title">Ban Giám Hiệu Phê Duyệt Thanh Lý (Bước 3)</h2>
+              <button onClick={() => setShowBghModal(false)} className="ruo-drawer-close-btn">
+                <Icons.X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '4px' }}>Số quyết định thanh lý BGH *</label>
+                <input
+                  type="text"
+                  className="ruo-portal-input"
+                  value={decisionNumber}
+                  onChange={e => setDecisionNumber(e.target.value)}
+                  placeholder="Ví dụ: QD-TL-2026/01"
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <Button variant="ghost" onClick={() => setShowBghModal(false)}>Hủy</Button>
+                <Button variant="primary" onClick={handleBghApproveSubmit}>Ký Duyệt Quyết Định</Button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* QR MODAL SIMULATOR */}
-
-      {isCreateOpen && (
-        <div
-          className="modal-overlay"
-          onClick={() => setIsCreateOpen(false)}
-          style={{ zIndex: 300, backdropFilter: 'blur(10px)' }}
-        >
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '620px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-glow)', borderRadius: 'var(--radius-xl)', padding: '20px', boxShadow: '0 25px 70px rgba(0,0,0,0.8)' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--ink-pure)' }}>Tạo Thiết Bị Mới (UC-3.7)</div>
-              <button onClick={() => setIsCreateOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-muted)' }}>
-                <Icons.Close size={18} />
+      {/* Procurement Modal */}
+      {showProcureModal && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowProcureModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '420px', height: 'auto', margin: 'auto', borderRadius: 'var(--radius-md)' }} onClick={e => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <h2 className="ruo-drawer-title">Dự Trù Mua Sắm Thay Thế (Bước 4)</h2>
+              <button onClick={() => setShowProcureModal(false)} className="ruo-drawer-close-btn">
+                <Icons.X size={18} />
               </button>
             </div>
-
-            <EquipmentForm
-              onClose={() => setIsCreateOpen(false)}
-              onCreate={(data) => handleCreateSuccess(data)}
-            />
-          </div>
-        </div>
-      )}
-      {selectedQRItem && (
-        <div
-          className="modal-overlay"
-          onClick={() => setSelectedQRItem(null)}
-          style={{ zIndex: 300, backdropFilter: 'blur(20px)' }}
-        >
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '420px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-glow)', borderRadius: 'var(--radius-xl)', padding: '24px', textAlign: 'center', boxShadow: '0 25px 70px rgba(0,0,0,0.8)' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--ink-pure)' }}>Mã Định Danh QR Thiết Bị</div>
-              <button
-                onClick={() => setSelectedQRItem(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-muted)' }}
-              >
-                <Icons.Close size={18} />
-              </button>
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '4px' }}>Kế hoạch mua sắm tài sản thay thế *</label>
+                <textarea
+                  className="ruo-portal-input"
+                  style={{ minHeight: '80px', padding: '10px' }}
+                  placeholder="Ví dụ: Mua mới 01 Máy chiếu Laser 5000 lumens trang bị cho phòng học..."
+                  value={procurementPlan}
+                  onChange={e => setProcurementPlan(e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <Button variant="ghost" onClick={() => setShowProcureModal(false)}>Hủy</Button>
+                <Button variant="primary" onClick={handleProcureSubmit}>Lưu Kế Hoạch</Button>
+              </div>
             </div>
-
-            {/* QR Pattern Display */}
-            <div style={{ background: '#FFFFFF', padding: '20px', borderRadius: 'var(--radius-lg)', display: 'inline-block', marginBottom: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
-              <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Corner Position Detection Patterns */}
-                <rect x="10" y="10" width="40" height="40" rx="4" fill="#0F172A" />
-                <rect x="18" y="18" width="24" height="24" fill="#FFFFFF" />
-                <rect x="24" y="24" width="12" height="12" fill="#0F172A" />
-
-                <rect x="130" y="10" width="40" height="40" rx="4" fill="#0F172A" />
-                <rect x="138" y="18" width="24" height="24" fill="#FFFFFF" />
-                <rect x="144" y="24" width="12" height="12" fill="#0F172A" />
-
-                <rect x="10" y="130" width="40" height="40" rx="4" fill="#0F172A" />
-                <rect x="18" y="138" width="24" height="24" fill="#FFFFFF" />
-                <rect x="24" y="144" width="12" height="12" fill="#0F172A" />
-
-                {/* Simulated Data Grid Cells */}
-                <rect x="60" y="15" width="10" height="10" fill="#0F172A" />
-                <rect x="80" y="15" width="10" height="10" fill="#0F172A" />
-                <rect x="100" y="15" width="10" height="10" fill="#0F172A" />
-
-                <rect x="60" y="35" width="20" height="10" fill="#0F172A" />
-                <rect x="90" y="35" width="10" height="20" fill="#0F172A" />
-                <rect x="110" y="35" width="10" height="10" fill="#0F172A" />
-
-                <rect x="15" y="60" width="10" height="20" fill="#0F172A" />
-                <rect x="35" y="60" width="20" height="10" fill="#0F172A" />
-                <rect x="35" y="80" width="10" height="20" fill="#0F172A" />
-
-                {/* Center QR Data Matrix */}
-                <rect x="60" y="60" width="60" height="60" rx="2" fill="#0F172A" />
-                <rect x="70" y="70" width="40" height="40" fill="#FFFFFF" />
-                <circle cx="90" cy="90" r="12" fill="#2563EB" />
-
-                <rect x="130" y="60" width="20" height="10" fill="#0F172A" />
-                <rect x="140" y="80" width="20" height="20" fill="#0F172A" />
-                <rect x="130" y="110" width="10" height="10" fill="#0F172A" />
-
-                <rect x="60" y="130" width="20" height="10" fill="#0F172A" />
-                <rect x="70" y="150" width="10" height="20" fill="#0F172A" />
-                <rect x="90" y="130" width="30" height="10" fill="#0F172A" />
-                <rect x="100" y="150" width="20" height="20" fill="#0F172A" />
-                <rect x="130" y="130" width="10" height="20" fill="#0F172A" />
-                <rect x="150" y="140" width="20" height="10" fill="#0F172A" />
-              </svg>
-            </div>
-
-            <div style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 800, color: 'var(--laser-cyan)', marginBottom: '4px' }}>
-              {selectedQRItem.assetCode}
-            </div>
-            <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-pure)', marginBottom: '4px' }}>
-              {selectedQRItem.name}
-            </div>
-            <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginBottom: '16px' }}>
-              Vị trí định vị: <strong style={{ color: 'var(--laser-cyan)' }}>{selectedQRItem.locationRoom}</strong> • Giá trị: {selectedQRItem.remainingValue.toLocaleString('vi-VN')} đ
-            </div>
-
-            <button
-              onClick={() => {
-                alert(`Đã sao chép đường dẫn định danh kiểm kê thiết bị: https://ruo.university.edu.vn/qr/${selectedQRItem.assetCode}`);
-                setSelectedQRItem(null);
-              }}
-              className="laser-btn laser-btn-primary"
-              style={{ width: '100%', padding: '8px 16px', borderRadius: 'var(--radius-full)', fontSize: '12px' }}
-            >
-              <Icons.QrCode size={14} />
-              <span>Sao Chép Liên Kết Mã QR</span>
-            </button>
           </div>
         </div>
       )}
     </div>
   );
 };
+
+export default EquipmentDisposalPage;

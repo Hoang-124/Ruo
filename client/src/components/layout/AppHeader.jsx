@@ -84,23 +84,26 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
 
   // Canonical Role Metadata for User Badging (3 Canonical Actors)
   const ROLE_METADATA = {
-    lecturer: { label: 'Giảng viên', color: '#6366F1', bg: 'rgba(99, 102, 241, 0.12)' },
-    maintenance_staff: { label: 'Quản lý CSVC & Kỹ thuật', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
-    admin: { label: 'Quản trị viên', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)' },
+    admin: { label: 'Ban Giám Hiệu (Admin)', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)' },
+    manager: { label: 'Quản Lý Phòng HC-QT', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)' },
+    staff: { label: 'Kỹ Thuật Viên CSVC', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
     // Backward compatibility aliases
-    facility_staff: { label: 'Quản lý CSVC & Kỹ thuật', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
-    maintenance: { label: 'Kỹ thuật viên', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' }
+    maintenance_staff: { label: 'Kỹ Thuật Viên CSVC', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
+    facility_staff: { label: 'Quản Lý Phòng HC-QT', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)' },
+    maintenance: { label: 'Kỹ Thuật Viên CSVC', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
+    lecturer: { label: 'Kỹ Thuật Viên CSVC', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' }
   };
 
-  const activeRole = currentUser?.role || currentRoleKey || 'maintenance_staff';
-  const roleInfo = ROLE_METADATA[activeRole] || ROLE_METADATA.maintenance_staff;
+  const activeRole = currentUser?.role || currentRoleKey || 'staff';
+  const roleInfo = ROLE_METADATA[activeRole] || ROLE_METADATA.staff;
 
-  // 9 Core Subsystems Navigation Definition (6 Modules Architecture)
+  // 10 Core Subsystems Navigation Definition (UEMS Architecture)
   const allNavTabs = [
-    { id: 'dashboard', label: 'Bản Đồ CAD', short: 'Mặt Bằng CAD', icon: Icons.Building },
+    { id: 'dashboard', label: 'Tổng Quan Vận Hành', short: 'Tổng Quan', icon: Icons.Dashboard },
+    { id: 'map', label: 'Bản Đồ CAD A1', short: 'Bản Đồ CAD', icon: Icons.Building },
     { id: 'equipments', label: 'Kho Thiết Bị', short: 'Thiết Bị & QR', icon: Icons.Equipment },
     { id: 'transfers', label: 'Điều Chuyển', short: 'Điều Chuyển', icon: Icons.RefreshCw },
-    { id: 'tickets_kanban', label: 'Sự Cố & Sửa Chữa', short: 'Sửa Chữa', icon: Icons.Wrench, badge: '2', badgeColor: '#EF4444' },
+    { id: 'tickets_kanban', label: 'Sự Cố & Sửa Chữa', short: 'Sửa Chữa', icon: Icons.Wrench },
     { id: 'maintenance', label: 'Bảo Trì Định Kỳ', short: 'Bảo Trì', icon: Icons.Calendar },
     { id: 'inventory', label: 'Kiểm Kê Kho QR', short: 'Kiểm Kê', icon: Icons.CheckCircle },
     { id: 'disposal_calc', label: 'Thanh Lý CSVC', short: 'Thanh Lý R≥60%', icon: Icons.Sliders },

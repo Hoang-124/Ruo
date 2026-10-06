@@ -2,334 +2,380 @@ import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { transferApi, equipmentApi, facilityApi } from '../../lib/api';
+import { Button, Card, DataTable, StatusBadge, Drawer, EmptyState } from '../../components/ui/Primitives';
 
 export const TransferListPage = () => {
-  const { currentRoleKey, token } = useAuth();
-  const isLecturer = currentRoleKey === 'lecturer';
-  const isAdmin = currentRoleKey === 'admin';
-  const isStaff = ['maintenance_staff', 'facility_staff', 'maintenance'].includes(currentRoleKey);
-  const isStaffOrAdmin = !isLecturer;
+  const { currentUser, currentRoleKey } = useAuth();
   const { toast } = useToast();
 
-  const [transfers, setTransfers] = useState([
-    {
-      _id: 'TRF001',
-      equipment_id: { code: 'EQ-TV-201', name: 'Smart TV Samsung 75" QLED 4K', qr_code: 'RUO-EQ-TV-201' },
-      from_room_id: { code: 'A1-101', name: 'Giảng Đường A1-101', building: 'A1', floor: 1 },
-      to_room_id: { code: 'A1-201', name: 'Phòng Hội Thảo A1-201', building: 'A1', floor: 2 },
-      requested_by: { full_name: 'Trần Minh Tuấn', code: 'KT202601' },
-      approved_by: { full_name: 'Ban Giám Hiệu Đại Học' },
-      reason: 'Phục vụ hội thảo khoa học quốc tế tại phòng A1-201',
-      status: 'completed',
-      created_at: '2026-09-28T09:00:00Z'
-    },
-    {
-      _id: 'TRF002',
-      equipment_id: { code: 'EQ-PRJ-101', name: 'Máy Chiếu Laser Sony VPL-FHZ75', qr_code: 'RUO-EQ-PRJ-101' },
-      from_room_id: { code: 'A1-101', name: 'Giảng Đường A1-101', building: 'A1', floor: 1 },
-      to_room_id: { code: 'A1-301', name: 'Phòng Lab Mạng A1-301', building: 'A1', floor: 3 },
-      requested_by: { full_name: 'Trần Minh Tuấn', code: 'KT202601' },
-      reason: 'Cung cấp máy chiếu laser cho chuyên đề bảo mật thông tin',
-      status: 'pending',
-      created_at: '2026-09-30T08:30:00Z'
-    }
-  ]);
+  const isManagerOrAdmin = ['manager', 'admin'].includes(currentRoleKey);
+  const isStaffOrAdmin = ['staff', 'admin'].includes(currentRoleKey);
 
+  const [transfers, setTransfers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTransfer, setSelectedTransfer] = useState(null);
+
+  // Rejection modal
+  const [rejectId, setRejectId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  // Propose form state
   const [newTransfer, setNewTransfer] = useState({
     equipment_code: '',
-    from_room: 'A1-101',
     to_room: 'A1-201',
     reason: ''
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  // Filter transfers
+  const fetchTransfers = async () => {
+    setLoading(true);
+    try {
+      const res = await transferApi.list();
+      if (res.success) {
+        setTransfers(res.transfers || []);
+      }
+    } catch (err) {
+      toast.error('Lỗi tải danh sách điều chuyển: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransfers();
+  }, []);
+
+  const handleApprove = async (id) => {
+    try {
+      const res = await transferApi.approve(id);
+      if (res.success) {
+        toast.success('Đã phê duyệt lệnh điều chuyển thiết bị!');
+        fetchTransfers();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi phê duyệt điều chuyển: ' + err.message);
+    }
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!rejectId || !rejectReason.trim()) {
+      toast.error('Vui lòng nhập lý do từ chối.');
+      return;
+    }
+    try {
+      const res = await transferApi.reject(rejectId, rejectReason.trim());
+      if (res.success) {
+        toast.warning('Đã từ chối lệnh điều chuyển.');
+        setRejectId(null);
+        setRejectReason('');
+        fetchTransfers();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi từ chối điều chuyển: ' + err.message);
+    }
+  };
+
+  const handleComplete = async (id) => {
+    try {
+      const res = await transferApi.complete(id);
+      if (res.success) {
+        toast.success('Đã hoàn tất bàn giao thiết bị vào phòng đích!');
+        fetchTransfers();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi hoàn tất bàn giao: ' + err.message);
+    }
+  };
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!newTransfer.equipment_code || !newTransfer.reason) {
+      toast.error('Vui lòng nhập mã thiết bị và lý do điều chuyển.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Find equipment by code first
+      const eqRes = await equipmentApi.getByCode(newTransfer.equipment_code.trim().toUpperCase());
+      if (!eqRes.success || !eqRes.equipment) {
+        toast.error('Không tìm thấy thiết bị với mã: ' + newTransfer.equipment_code);
+        setSubmitting(false);
+        return;
+      }
+
+      // Propose transfer
+      const res = await transferApi.propose({
+        equipment_id: eqRes.equipment._id,
+        to_room_code: newTransfer.to_room,
+        reason: newTransfer.reason.trim()
+      });
+
+      if (res.success) {
+        toast.success('Đã lập đề xuất điều chuyển thành công. Chờ Quản lý phòng duyệt.');
+        setIsModalOpen(false);
+        setNewTransfer({ equipment_code: '', to_room: 'A1-201', reason: '' });
+        fetchTransfers();
+      }
+    } catch (err) {
+      toast.error('Lỗi tạo đề xuất điều chuyển: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const filteredTransfers = transfers.filter(t => {
     if (filterStatus === 'all') return true;
     return t.status === filterStatus;
   });
 
-  const handleApprove = (id) => {
-    if (!isAdmin) {
-      toast.error('Chỉ Quản trị viên / Ban Giám Hiệu (Admin) mới có quyền phê duyệt điều chuyển thiết bị!');
-      return;
+  const columns = [
+    {
+      title: 'Mã Thiết Bị',
+      key: 'equipment',
+      width: '180px',
+      render: (_, row) => {
+        const eq = row.equipment_id;
+        return (
+          <div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--blueprint-400)' }}>
+              {eq?.code || 'EQ-UNKNOWN'}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>{eq?.name || 'Tài sản'}</div>
+          </div>
+        );
+      }
+    },
+    {
+      title: 'Tuyến Điều Chuyển',
+      key: 'route',
+      render: (_, row) => {
+        const from = row.from_room_id?.code || 'Kho CSVC';
+        const to = row.to_room_id?.code || 'Chưa rõ';
+        return (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <span className="ruo-badge ruo-badge-neutral">{from}</span>
+            <span style={{ color: 'var(--blueprint-400)', fontWeight: 800 }}>→</span>
+            <span className="ruo-badge ruo-badge-neutral" style={{ borderColor: 'var(--blueprint-500)', color: 'var(--blueprint-400)' }}>
+              {to}
+            </span>
+          </div>
+        );
+      }
+    },
+    {
+      title: 'Lý Do Điều Chuyển',
+      key: 'reason',
+      render: (val) => (
+        <span style={{ fontSize: '12.5px', color: 'var(--ink-secondary)' }}>{val}</span>
+      )
+    },
+    {
+      title: 'Người Đề Xuất',
+      key: 'requested_by',
+      render: (val) => (
+        <span style={{ fontSize: '12px' }}>{val?.full_name || val?.code || 'Kỹ thuật viên'}</span>
+      )
+    },
+    {
+      title: 'Trạng Thái',
+      key: 'status',
+      render: (val) => <StatusBadge status={val} />
+    },
+    {
+      title: 'Thao Tác Nghiệp Vụ',
+      key: 'actions',
+      align: 'right',
+      render: (_, row) => {
+        return (
+          <div style={{ display: 'inline-flex', gap: '6px' }}>
+            {row.status === 'pending' && isManagerOrAdmin && (
+              <>
+                <Button size="sm" variant="primary" onClick={() => handleApprove(row._id)}>
+                  Duyệt
+                </Button>
+                <Button size="sm" variant="danger" onClick={() => setRejectId(row._id)}>
+                  Từ Chối
+                </Button>
+              </>
+            )}
+
+            {row.status === 'approved' && isStaffOrAdmin && (
+              <Button size="sm" variant="primary" onClick={() => handleComplete(row._id)}>
+                Hoàn Tất Bàn Giao
+              </Button>
+            )}
+
+            {row.status === 'completed' && (
+              <span style={{ fontSize: '11px', color: '#2FB37A', fontWeight: 600 }}>
+                Đã tiếp nhận
+              </span>
+            )}
+
+            {row.status === 'rejected' && (
+              <span style={{ fontSize: '11px', color: '#E5484D', fontWeight: 600 }}>
+                Không phê duyệt
+              </span>
+            )}
+          </div>
+        );
+      }
     }
-    setTransfers(prev => prev.map(t => t._id === id ? { ...t, status: 'approved', approved_by: { full_name: 'Ban Giám Hiệu (Đã duyệt)' } } : t));
-    toast.success('Đã phê duyệt đề xuất điều chuyển thiết bị!');
-  };
-
-  const handleReject = (id) => {
-    if (!isAdmin) {
-      toast.error('Chỉ Quản trị viên / Ban Giám Hiệu (Admin) mới có quyền từ chối lệnh điều chuyển!');
-      return;
-    }
-    setTransfers(prev => prev.map(t => t._id === id ? { ...t, status: 'rejected' } : t));
-    toast.warning('Đã từ chối đề xuất điều chuyển thiết bị.');
-  };
-
-  const handleComplete = (id) => {
-    setTransfers(prev => prev.map(t => t._id === id ? { ...t, status: 'completed' } : t));
-    toast.success('Đã hoàn tất bàn giao thiết bị vào phòng mới!');
-  };
-
-
-  const handleCreate = (e) => {
-    e.preventDefault();
-    if (!newTransfer.equipment_code || !newTransfer.reason) {
-      toast.error('Vui lòng nhập mã thiết bị và lý do điều chuyển');
-      return;
-    }
-
-    const created = {
-      _id: 'TRF' + Date.now().toString().slice(-4),
-      equipment_id: { code: newTransfer.equipment_code.toUpperCase(), name: 'Thiết bị CSVC', qr_code: `RUO-${newTransfer.equipment_code}` },
-      from_room_id: { code: newTransfer.from_room, name: `Phòng ${newTransfer.from_room}`, building: 'A1', floor: 1 },
-      to_room_id: { code: newTransfer.to_room, name: `Phòng ${newTransfer.to_room}`, building: 'A1', floor: 2 },
-      requested_by: { full_name: 'Bạn (Kỹ thuật viên)', code: 'KT-CURRENT' },
-      reason: newTransfer.reason,
-      status: 'pending',
-      created_at: new Date().toISOString()
-    };
-
-    setTransfers([created, ...transfers]);
-    setIsModalOpen(false);
-    setNewTransfer({ equipment_code: '', from_room: 'A1-101', to_room: 'A1-201', reason: '' });
-    toast.success('Đã tạo đề xuất điều chuyển thiết bị!');
-  };
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'pending':
-        return <span style={{ padding: '4px 10px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.12)', color: '#F59E0B', border: '1px solid rgba(245, 158, 11, 0.25)', fontSize: '11px', fontWeight: 700 }}>Chờ Duyệt</span>;
-      case 'approved':
-        return <span style={{ padding: '4px 10px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.12)', color: '#3B82F6', border: '1px solid rgba(59, 130, 246, 0.25)', fontSize: '11px', fontWeight: 700 }}>Đã Duyệt</span>;
-      case 'completed':
-        return <span style={{ padding: '4px 10px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.12)', color: '#10B981', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '11px', fontWeight: 700 }}>Hoàn Tất</span>;
-      case 'rejected':
-        return <span style={{ padding: '4px 10px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.12)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.25)', fontSize: '11px', fontWeight: 700 }}>Từ Chối</span>;
-      default:
-        return <span>{status}</span>;
-    }
-  };
+  ];
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--laser-cyan)', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>MODULE 03</span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>QUẢN LÝ THIẾT BỊ • VÒNG ĐỜI TÀI SẢN</span>
-          </div>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
+          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: 'var(--ink-primary)' }}>
             Điều Chuyển Trang Thiết Bị Giữa Các Phòng
           </h1>
+          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
+            Quy trình điều phối tài sản: Kỹ thuật viên đề xuất → Quản lý phòng duyệt → Kỹ thuật viên bàn giao thực tế
+          </p>
         </div>
 
-        {isStaffOrAdmin && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="laser-btn laser-btn-primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
-          >
-            <Icons.Plus size={16} />
-            <span>Tạo Đề Xuất Điều Chuyển</span>
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {isStaffOrAdmin && (
+            <Button variant="primary" icon={Icons.Plus} onClick={() => setIsModalOpen(true)}>
+              Lập Phiếu Điều Chuyển
+            </Button>
+          )}
+          <Button variant="secondary" onClick={fetchTransfers}>
+            Làm Mới
+          </Button>
+        </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--hairline-medium)', paddingBottom: '12px' }}>
-        {['all', 'pending', 'approved', 'completed', 'rejected'].map(st => (
-          <button
-            key={st}
-            onClick={() => setFilterStatus(st)}
-            className={`laser-btn ${filterStatus === st ? 'laser-btn-primary' : 'laser-btn-ghost'}`}
-            style={{ padding: '6px 14px', borderRadius: 'var(--radius-sm)', fontSize: '12.5px', textTransform: 'capitalize' }}
+      {/* Tabs Filter */}
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-default)', paddingBottom: '8px' }}>
+        {[
+          { id: 'all', label: 'Tất cả phiếu' },
+          { id: 'pending', label: 'Chờ Quản lý duyệt' },
+          { id: 'approved', label: 'Đã duyệt (Chờ bàn giao)' },
+          { id: 'completed', label: 'Đã hoàn tất' },
+          { id: 'rejected', label: 'Bị từ chối' }
+        ].map(tab => (
+          <Button
+            key={tab.id}
+            size="sm"
+            variant={filterStatus === tab.id ? 'primary' : 'ghost'}
+            onClick={() => setFilterStatus(tab.id)}
           >
-            {st === 'all' ? 'Tất cả trạng thái' : st === 'pending' ? 'Chờ phê duyệt' : st === 'approved' ? 'Đã phê duyệt' : st === 'completed' ? 'Đã bàn giao' : 'Từ chối'}
-          </button>
+            {tab.label}
+          </Button>
         ))}
       </div>
 
-      {/* Transfers Table */}
-      <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-          <thead>
-            <tr style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--hairline-medium)', color: 'var(--ink-secondary)' }}>
-              <th style={{ padding: '12px 16px' }}>Mã Đơn</th>
-              <th style={{ padding: '12px 16px' }}>Thiết Bị</th>
-              <th style={{ padding: '12px 16px' }}>Phòng Nguồn ➔ Phòng Đích</th>
-              <th style={{ padding: '12px 16px' }}>Người Đề Xuất</th>
-              <th style={{ padding: '12px 16px' }}>Lý Do</th>
-              <th style={{ padding: '12px 16px' }}>Trạng Thái</th>
-              <th style={{ padding: '12px 16px', textAlign: 'right' }}>Thao Tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTransfers.map((t, idx) => (
-              <tr key={t._id} style={{ borderBottom: '1px solid var(--hairline-soft)', transition: 'background 0.15s ease' }}>
-                <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--laser-cyan)' }}>{t._id}</td>
-                <td style={{ padding: '14px 16px' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{t.equipment_id.name}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)' }}>{t.equipment_id.code} • {t.equipment_id.qr_code}</div>
-                </td>
-                <td style={{ padding: '14px 16px' }}>
-                  <span style={{ fontWeight: 600, color: '#EF4444' }}>{t.from_room_id.code}</span>
-                  <span style={{ margin: '0 8px', color: 'var(--ink-muted)' }}>➔</span>
-                  <span style={{ fontWeight: 600, color: '#10B981' }}>{t.to_room_id.code}</span>
-                </td>
-                <td style={{ padding: '14px 16px', color: 'var(--ink-secondary)' }}>
-                  <div>{t.requested_by.full_name}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>{new Date(t.created_at).toLocaleDateString('vi-VN')}</div>
-                </td>
-                <td style={{ padding: '14px 16px', color: 'var(--ink-secondary)', maxWidth: '240px' }}>{t.reason}</td>
-                <td style={{ padding: '14px 16px' }}>{getStatusBadge(t.status)}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                  {t.status === 'pending' && (
-                    isAdmin ? (
-                      <div style={{ display: 'inline-flex', gap: '6px' }}>
-                        <button
-                          onClick={() => handleApprove(t._id)}
-                          className="laser-btn laser-btn-primary"
-                          style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '4px' }}
-                          title="Ban Giám Hiệu phê duyệt điều chuyển thiết bị"
-                        >
-                          Duyệt (BGH)
-                        </button>
-                        <button
-                          onClick={() => handleReject(t._id)}
-                          className="laser-btn laser-btn-rose"
-                          style={{ padding: '4px 8px', fontSize: '11px', borderRadius: '4px' }}
-                          title="Từ chối đề xuất điều chuyển"
-                        >
-                          Từ Chối
-                        </button>
-                      </div>
-                    ) : isStaff ? (
-                      <span style={{ fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)', padding: '3px 8px', borderRadius: '4px', border: '1px solid rgba(245,158,11,0.25)' }}>
-                        Chờ BGH Duyệt
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Chờ xét duyệt</span>
-                    )
-                  )}
-                  {t.status === 'approved' && (
-                    isStaffOrAdmin ? (
-                      <button
-                        onClick={() => handleComplete(t._id)}
-                        className="laser-btn"
-                        style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '4px', background: 'rgba(16,185,129,0.2)', color: '#10B981', border: '1px solid rgba(16,185,129,0.3)' }}
-                        title="Xác nhận đã di dời và bàn giao thiết bị vào phòng đích"
-                      >
-                        Xác Nhận Bàn Giao
-                      </button>
-                    ) : (
-                      <span style={{ fontSize: '11px', color: 'var(--laser-cyan)' }}>Đã duyệt (Chờ bàn giao)</span>
-                    )
-                  )}
-                  {t.status === 'completed' && (
-                    <span style={{ fontSize: '11px', color: '#10B981', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <Icons.CheckCircle size={12} /> Đã chốt vị trí
-                    </span>
-                  )}
-                  {t.status === 'rejected' && (
-                    <span style={{ fontSize: '11px', color: '#EF4444' }}>Đã từ chối</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* DataTable */}
+      <DataTable
+        columns={columns}
+        data={filteredTransfers}
+        loading={loading}
+        emptyMessage="Không có phiếu điều chuyển nào trong mục này."
+      />
 
-
-      {/* Modal Đề Xuất Điều Chuyển */}
+      {/* Create Proposal Modal */}
       {isModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-xl)', maxWidth: '520px', width: '100%', padding: '28px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-pure)', margin: 0 }}>Đề Xuất Điều Chuyển Thiết Bị</h3>
-              <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--ink-muted)', cursor: 'pointer' }}>
+        <div className="ruo-drawer-backdrop" onClick={() => setIsModalOpen(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '480px' }} onClick={e => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <h2 className="ruo-drawer-title">Đề Xuất Điều Chuyển Thiết Bị</h2>
+              <button onClick={() => setIsModalOpen(false)} className="ruo-drawer-close-btn">
                 <Icons.X size={18} />
               </button>
             </div>
-
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleCreate} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-secondary)', marginBottom: '6px' }}>Mã Thiết Bị (Asset Code)</label>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                  Mã thiết bị điều chuyển *
+                </label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: EQ-PRJ-101"
+                  className="ruo-portal-input"
+                  placeholder="Ví dụ: EQ-PRJ-101 hoặc EQ-TV-201"
                   value={newTransfer.equipment_code}
                   onChange={e => setNewTransfer({ ...newTransfer, equipment_code: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-pure)', fontSize: '13px' }}
+                  required
                 />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-secondary)', marginBottom: '6px' }}>Từ Phòng</label>
-                  <select
-                    value={newTransfer.from_room}
-                    onChange={e => setNewTransfer({ ...newTransfer, from_room: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-pure)', fontSize: '13px' }}
-                  >
-                    <option value="A1-101">A1-101 (Tầng 1)</option>
-                    <option value="A1-201">A1-201 (Tầng 2)</option>
-                    <option value="A1-301">A1-301 (Tầng 3)</option>
-                    <option value="A1-501">A1-501 (Kho Tầng 5)</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-secondary)', marginBottom: '6px' }}>Đến Phòng Đích</label>
-                  <select
-                    value={newTransfer.to_room}
-                    onChange={e => setNewTransfer({ ...newTransfer, to_room: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-pure)', fontSize: '13px' }}
-                  >
-                    <option value="A1-201">A1-201 (Tầng 2)</option>
-                    <option value="A1-301">A1-301 (Tầng 3)</option>
-                    <option value="A1-401">A1-401 (Tầng 4)</option>
-                    <option value="A1-501">A1-501 (Kho Tầng 5)</option>
-                  </select>
-                </div>
+                <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '4px', display: 'block' }}>
+                  Hệ thống sẽ tự động đối soát vị trí phòng hiện tại của thiết bị từ cơ sở dữ liệu.
+                </span>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-secondary)', marginBottom: '6px' }}>Lý Do Điều Chuyển</label>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                  Chuyển đến phòng đích *
+                </label>
+                <select
+                  className="ruo-portal-input"
+                  value={newTransfer.to_room}
+                  onChange={e => setNewTransfer({ ...newTransfer, to_room: e.target.value })}
+                >
+                  <option value="A1-101">A1-101 (Giảng Đường Thông Minh 1)</option>
+                  <option value="A1-201">A1-201 (Phòng Hội Thảo Khoa Học)</option>
+                  <option value="A1-301">A1-301 (Phòng Thực Hành Mạng & An Ninh)</option>
+                  <option value="A1-401">A1-401 (Phòng Học Lý Thuyết Đa Phương Tiện)</option>
+                  <option value="A1-501">A1-501 (Kho Lưu Trữ CSVC)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px' }}>
+                  Lý do điều chuyển *
+                </label>
                 <textarea
-                  rows="3"
-                  placeholder="Nêu rõ mục đích điều chuyển phục vụ giảng dạy hoặc bảo trì..."
+                  className="ruo-portal-input"
+                  style={{ minHeight: '80px', padding: '10px' }}
+                  placeholder="Mô tả mục đích sử dụng, phục vụ kỳ học hoặc sự kiện khoa học..."
                   value={newTransfer.reason}
                   onChange={e => setNewTransfer({ ...newTransfer, reason: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-pure)', fontSize: '13px' }}
+                  required
                 />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="laser-btn laser-btn-ghost"
-                  style={{ padding: '8px 16px', borderRadius: 'var(--radius-sm)' }}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="laser-btn laser-btn-primary"
-                  style={{ padding: '8px 20px', borderRadius: 'var(--radius-sm)', fontWeight: 700 }}
-                >
-                  Gửi Đề Xuất
-                </button>
+                <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Hủy</Button>
+                <Button type="submit" variant="primary" loading={submitting}>Gửi Đề Xuất</Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {rejectId && (
+        <div className="ruo-drawer-backdrop" onClick={() => setRejectId(null)}>
+          <div className="ruo-drawer-panel" style={{ width: '420px', height: 'auto', margin: 'auto', borderRadius: 'var(--radius-md)' }} onClick={e => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <h2 className="ruo-drawer-title">Từ Chối Lệnh Điều Chuyển</h2>
+              <button onClick={() => setRejectId(null)} className="ruo-drawer-close-btn">
+                <Icons.X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <label style={{ fontSize: '12.5px', fontWeight: 600 }}>Lý do từ chối *</label>
+              <textarea
+                className="ruo-portal-input"
+                style={{ minHeight: '80px', padding: '10px' }}
+                placeholder="Nhập lý do không phê duyệt để phản hồi cho nhân viên kỹ thuật..."
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <Button variant="ghost" onClick={() => setRejectId(null)}>Hủy</Button>
+                <Button variant="danger" onClick={handleRejectSubmit}>Xác Nhận Từ Chối</Button>
+              </div>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 };
+
 export default TransferListPage;

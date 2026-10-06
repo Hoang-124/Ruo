@@ -59,9 +59,9 @@ Mỗi thành viên phụ trách trọn vẹn 1 Feature Module (Schema → Contro
 
 | Tác nhân | Vai trò | Phạm vi nghiệp vụ chính |
 | :--- | :--- | :--- |
-| **Quản lý Phòng HC** *(Manager / role: `lecturer`)* | Giám sát tổng thể | Duyệt điều chuyển, duyệt sửa chữa, duyệt xuất kho linh kiện, duyệt thanh lý, xem báo cáo, cảnh báo deadline & BH, tạo kế hoạch bảo trì |
-| **Nhân viên Phòng HC** *(Staff / role: `maintenance`)* | Thao tác hằng ngày | Tạo/cập nhật TB, ghi nhận hỏng, tạo phiếu luân chuyển, thực hiện sửa chữa, yêu cầu linh kiện, kiểm kê QR, log bảo trì, đề xuất thanh lý |
-| **Quản trị viên** *(Admin / role: `admin`)* | Quản trị hệ thống | Quản lý tài khoản, phân quyền RBAC, danh mục (loại TB, NCC, đơn vị sửa, kho linh kiện), kiểm toán SHA-256, cấu hình template email |
+| **Quản lý Phòng HC** *(Manager / role: `manager`)* | Giám sát tổng thể | Duyệt điều chuyển (bước 2), duyệt thanh lý cấp phòng HC (bước 2), duyệt xuất kho linh kiện, lập dự trù mua sắm (bước 4), xem báo cáo, cảnh báo deadline & BH, tạo kế hoạch bảo trì |
+| **Nhân viên Phòng HC** *(Staff / role: `staff`)* | Thao tác hằng ngày | Tạo/cập nhật TB, ghi nhận hỏng, tạo phiếu điều chuyển, thực hiện sửa chữa, yêu cầu linh kiện, kiểm kê QR, log bảo trì, đề xuất thanh lý khi R>=60%, tiếp nhận thiết bị mới (bước 5) |
+| **Ban Giám Hiệu / Quản Trị Viên** *(Admin / role: `admin`)* | Quản trị hệ thống | Quản lý tài khoản, phân quyền RBAC, danh mục chuẩn, phê duyệt quyết định thanh lý BGH (bước 3), kiểm toán SHA-256 bất biến, cấu hình template email |
 
 ---
 

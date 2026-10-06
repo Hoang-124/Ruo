@@ -1,0 +1,434 @@
+/**
+ * RUO UEMS COMPONENT PRIMITIVE STYLES
+ * High-Density Operational Ledger Components
+ */
+
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
+.ruo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.ruo-btn:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.ruo-btn-sm {
+  padding: 5px 10px;
+  font-size: var(--text-xs);
+  height: 28px;
+}
+
+.ruo-btn-md {
+  padding: 7px 14px;
+  font-size: var(--text-sm);
+  height: 34px;
+}
+
+.ruo-btn-lg {
+  padding: 10px 18px;
+  font-size: var(--text-base);
+  height: 42px;
+}
+
+.ruo-btn-primary {
+  background: var(--blueprint-500);
+  color: var(--white);
+  border-color: var(--blueprint-600);
+}
+.ruo-btn-primary:hover:not(:disabled) {
+  background: var(--blueprint-600);
+}
+
+.ruo-btn-secondary {
+  background: var(--surface-2);
+  color: var(--ink-primary);
+  border-color: var(--border-default);
+}
+.ruo-btn-secondary:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+
+.ruo-btn-ghost {
+  background: transparent;
+  color: var(--ink-secondary);
+}
+.ruo-btn-ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink-primary);
+}
+
+.ruo-btn-danger {
+  background: rgba(229, 72, 77, 0.12);
+  color: var(--crimson-500);
+  border-color: rgba(229, 72, 77, 0.3);
+}
+.ruo-btn-danger:hover:not(:disabled) {
+  background: rgba(229, 72, 77, 0.2);
+}
+
+.ruo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   BADGES & STATUS INDICATORS
+   ========================================================================== */
+.ruo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border: 1px solid var(--border-default);
+}
+.ruo-badge-neutral {
+  background: var(--surface-2);
+  color: var(--ink-secondary);
+}
+
+.ruo-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.ruo-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ruo-status-active {
+  background: var(--status-active-bg);
+  color: var(--status-active-color);
+  border-color: var(--status-active-border);
+}
+.ruo-status-repairing {
+  background: var(--status-repairing-bg);
+  color: var(--status-repairing-color);
+  border-color: var(--status-repairing-border);
+}
+.ruo-status-transferring {
+  background: var(--status-transferring-bg);
+  color: var(--status-transferring-color);
+  border-color: var(--status-transferring-border);
+}
+.ruo-status-disposal {
+  background: var(--status-disposal-bg);
+  color: var(--status-disposal-color);
+  border-color: var(--status-disposal-border);
+}
+.ruo-status-disposed {
+  background: var(--status-disposed-bg);
+  color: var(--status-disposed-color);
+  border-color: var(--status-disposed-border);
+}
+.ruo-status-danger {
+  background: var(--status-overdue-bg);
+  color: var(--status-overdue-color);
+  border-color: var(--status-overdue-border);
+}
+
+/* ==========================================================================
+   CARDS & PANELS
+   ========================================================================== */
+.ruo-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+.ruo-card:hover {
+  border-color: var(--border-strong);
+}
+
+.ruo-card-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.ruo-card-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+
+.ruo-card-subtitle {
+  margin: 2px 0 0 0;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.ruo-card-body {
+  padding: var(--space-5);
+}
+
+/* ==========================================================================
+   KPI SUMMARY CARDS
+   ========================================================================== */
+.ruo-kpi-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--duration-fast) var(--ease-out), border-color var(--duration-fast);
+}
+.ruo-kpi-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.ruo-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.ruo-kpi-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.ruo-kpi-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--ink-primary);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: var(--space-2);
+}
+
+.ruo-kpi-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.ruo-kpi-subtext {
+  color: var(--ink-muted);
+}
+
+.ruo-kpi-trend.positive {
+  color: var(--emerald-500);
+  font-weight: 600;
+}
+.ruo-kpi-trend.negative {
+  color: var(--crimson-500);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   DATA TABLE
+   ========================================================================== */
+.ruo-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+
+.ruo-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--text-sm);
+}
+
+.ruo-table th {
+  padding: 10px 14px;
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-default);
+  white-space: nowrap;
+}
+
+.ruo-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--ink-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ruo-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ruo-table tbody tr {
+  transition: background-color var(--duration-fast);
+}
+
+.ruo-table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.ruo-table .code-cell {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--blueprint-400);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   SLIDE-OVER DRAWER
+   ========================================================================== */
+.ruo-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+  animation: fadeIn var(--duration-fast) var(--ease-out);
+}
+
+.ruo-drawer-panel {
+  height: 100%;
+  background: var(--surface-1);
+  border-left: 1px solid var(--border-default);
+  box-shadow: var(--shadow-drawer);
+  display: flex;
+  flex-direction: column;
+  animation: slideLeft var(--duration-normal) var(--ease-out);
+}
+
+.ruo-drawer-header {
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ruo-drawer-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+
+.ruo-drawer-subtitle {
+  margin: 2px 0 0 0;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.ruo-drawer-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+}
+.ruo-drawer-close-btn:hover {
+  background: var(--surface-2);
+  color: var(--ink-primary);
+}
+
+.ruo-drawer-body {
+  padding: var(--space-5);
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ==========================================================================
+   EMPTY STATE & SKELETON
+   ========================================================================== */
+.ruo-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+.ruo-empty-state.compact {
+  padding: 24px 12px;
+}
+
+.ruo-empty-icon {
+  color: var(--ink-muted);
+  margin-bottom: var(--space-3);
+  opacity: 0.6;
+}
+
+.ruo-empty-title {
+  margin: 0 0 var(--space-1) 0;
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+
+.ruo-empty-desc {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  max-width: 360px;
+  line-height: 1.5;
+}
+
+.ruo-skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s infinite;
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideLeft {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}

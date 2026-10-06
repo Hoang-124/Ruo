@@ -1,126 +1,184 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
-import { SLABadge } from '../../components/ui/SLABadge';
-import { TICKETS as initialTickets } from '../../mock/mockData';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { repairApi, equipmentApi } from '../../lib/api';
+import { Button, Card, StatusBadge, Drawer, EmptyState } from '../../components/ui/Primitives';
 
 export const TicketKanbanPage = () => {
   const { currentUser, currentRoleKey } = useAuth();
-  const isLecturer = currentRoleKey === 'lecturer';
-  const isAdmin = currentRoleKey === 'admin';
-  const isStaffOrAdmin = !isLecturer;
+  const { toast } = useToast();
 
-  const [tickets, setTickets] = useState(initialTickets);
+  const isManagerOrAdmin = ['manager', 'admin'].includes(currentRoleKey);
+  const isStaffOrAdmin = ['staff', 'admin'].includes(currentRoleKey);
+
+  const [repairs, setRepairs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [newTicketData, setNewTicketData] = useState({
-    roomCode: 'A1-302',
-    equipmentName: 'Máy chiếu Sony',
-    title: '',
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(false);
+
+  // New ticket state
+  const [newTicket, setNewTicket] = useState({
+    equipment_code: '',
+    incident_description: '',
+    damage_level: 'minor'
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  // New log / cost state
+  const [logData, setLogData] = useState({
+    action: 'repaired',
     description: '',
-    priority: 'high'
+    cost: 0
   });
 
   const columns = [
-    { id: 'open', title: 'MỚI TẠO', badgeType: 'neutral', icon: Icons.Clock },
-    { id: 'assigned', title: 'ĐÃ PHÂN CÔNG', badgeType: 'primary', icon: Icons.User },
-    { id: 'in_progress', title: 'ĐANG XỬ LÝ', badgeType: 'warning', icon: Icons.Wrench },
-    { id: 'resolved', title: 'ĐÃ KHẮC PHỤC (CHỜ DUYỆT)', badgeType: 'purple', icon: Icons.CheckCircle },
-    { id: 'closed', title: 'ĐÃ ĐÓNG (HOÀN TẤT)', badgeType: 'success', icon: Icons.Shield }
+    { id: 'reported', title: 'MỚI BÁO SỰ CỐ', color: '#64748B', count: 0 },
+    { id: 'assigned', title: 'ĐÃ PHÂN CÔNG', color: '#3E7BFA', count: 0 },
+    { id: 'in_progress', title: 'ĐANG XỬ LÝ', color: '#E5A33B', count: 0 },
+    { id: 'resolved', title: 'ĐÃ KHẮC PHỤC', color: '#8B5CF6', count: 0 },
+    { id: 'closed', title: 'ĐÃ ĐÓNG / NGHIỆM THU', color: '#2FB37A', count: 0 }
   ];
 
-  const handleCreateTicket = () => {
-    if (!newTicketData.title) {
-      alert('Vui lòng nhập mô tả tóm tắt sự cố!');
-      return;
+  const fetchRepairs = async () => {
+    setLoading(true);
+    try {
+      const res = await repairApi.list();
+      if (res.success) {
+        setRepairs(res.repairs || []);
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tải danh sách sửa chữa: ' + err.message);
+    } finally {
+      setLoading(false);
     }
-    const newT = {
-      id: `TCK-2026-${String(tickets.length + 45).padStart(4, '0')}`,
-      roomCode: newTicketData.roomCode,
-      equipmentName: newTicketData.equipmentName,
-      title: newTicketData.title,
-      description: newTicketData.description || 'Không có mô tả thêm.',
-      priority: newTicketData.priority,
-      priorityLabel: newTicketData.priority.toUpperCase(),
-      status: 'open',
-      statusLabel: 'Mới tạo',
-      reporterName: currentUser?.name || 'TS. Lê Hoàng Nam',
-      reporterRole: currentUser?.roleTitle || (isLecturer ? 'Giảng viên' : 'Kỹ thuật viên CSVC'),
-      reportedAt: 'Vừa xong',
-      slaRemainingMinutes: newTicketData.priority === 'critical' ? 240 : 480,
-      slaTotalHours: newTicketData.priority === 'critical' ? 4 : 8,
-      slaState: 'on_track',
-      assignedTo: 'Chưa phân công',
-      images: [],
-      timeline: [{ time: 'Vừa xong', event: 'Khởi tạo phiếu báo sự cố' }]
-    };
-
-    setTickets([newT, ...tickets]);
-    setShowNewModal(false);
-    setNewTicketData({ roomCode: 'A1-302', equipmentName: '', title: '', description: '', priority: 'high' });
   };
 
-  const handleMoveStatus = (ticketId, nextStatus) => {
-    setTickets(prev => prev.map(t => {
-      if (t.id === ticketId) {
-        return {
-          ...t,
-          status: nextStatus,
-          timeline: [...t.timeline, { time: 'Vừa xong', event: `Chuyển trạng thái sang ${nextStatus.toUpperCase()}` }]
-        };
+  useEffect(() => {
+    fetchRepairs();
+  }, []);
+
+  const handleCreateTicket = async (e) => {
+    e.preventDefault();
+    if (!newTicket.equipment_code || !newTicket.incident_description) {
+      toast.error('Vui lòng cung cấp mã thiết bị và mô tả sự cố.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const eqRes = await equipmentApi.getByCode(newTicket.equipment_code.trim().toUpperCase());
+      if (!eqRes.success || !eqRes.equipment) {
+        toast.error('Không tìm thấy thiết bị với mã: ' + newTicket.equipment_code);
+        setSubmitting(false);
+        return;
       }
-      return t;
-    }));
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket(prev => ({ ...prev, status: nextStatus }));
+
+      const res = await repairApi.create({
+        equipment_id: eqRes.equipment._id,
+        incident_description: newTicket.incident_description.trim(),
+        damage_level: newTicket.damage_level
+      });
+
+      if (res.success) {
+        toast.success('Đã tạo phiếu báo hỏng thiết bị thành công!');
+        setShowCreateModal(false);
+        setNewTicket({ equipment_code: '', incident_description: '', damage_level: 'minor' });
+        fetchRepairs();
+      }
+    } catch (err) {
+      toast.error('Lỗi tạo phiếu báo hỏng: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleStatusChange = async (repairId, nextStatus) => {
+    try {
+      const res = await repairApi.updateStatus(repairId, nextStatus, `Chuyển trạng thái sang ${nextStatus}`);
+      if (res.success) {
+        toast.success(`Đã cập nhật trạng thái phiếu sang ${nextStatus}!`);
+        fetchRepairs();
+        if (selectedTicket && selectedTicket._id === repairId) {
+          setSelectedTicket(prev => ({ ...prev, status: nextStatus }));
+        }
+      }
+    } catch (err) {
+      toast.error('Không thể chuyển trạng thái: ' + err.message);
+    }
+  };
+
+  const handleAddLogSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedTicket || !logData.description) return;
+
+    try {
+      const res = await repairApi.addLog(selectedTicket._id, {
+        action: logData.action,
+        description: logData.description,
+        cost: Number(logData.cost) || 0
+      });
+
+      if (res.success) {
+        toast.success('Đã ghi nhận nhật ký kỹ thuật & cập nhật chi phí khấu hao!');
+        setShowLogModal(false);
+        setLogData({ action: 'repaired', description: '', cost: 0 });
+        fetchRepairs();
+      }
+    } catch (err) {
+      toast.error('Lỗi thêm nhật ký sửa chữa: ' + err.message);
     }
   };
 
   return (
-    <div>
-      {/* Page Header */}
-      <div className="page-header">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 className="page-title">Quản Lý Sự Cố & Kanban Giám Sát SLA (Trụ Cột 3)</h1>
-          <div className="page-subtitle">
-            Hệ thống tính giờ làm việc hành chính (Business Hours Only) và cảnh báo sớm 3 giai đoạn: On Track • At Risk • Overdue
-          </div>
+          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: 'var(--ink-primary)' }}>
+            Sự Cố & Sửa Chữa Thiết Bị (Kanban SLA)
+          </h1>
+          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
+            Theo dõi tiến độ sửa chữa, nhật ký kỹ thuật và cập nhật tỷ lệ chi phí sửa chữa R% theo thời gian thực
+          </p>
         </div>
 
-        <div className="header-actions">
-          <button className="btn btn-primary" onClick={() => setShowNewModal(true)}>
-            <Icons.Plus size={16} />
-            <span>Báo Cáo Sự Cố Mới</span>
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {isStaffOrAdmin && (
+            <Button variant="primary" icon={Icons.Plus} onClick={() => setShowCreateModal(true)}>
+              Báo Cáo Sự Cố Mới
+            </Button>
+          )}
+          <Button variant="secondary" onClick={fetchRepairs}>
+            Làm Mới
+          </Button>
         </div>
       </div>
 
-      {/* Kanban Board Columns Container */}
+      {/* Kanban Board Container */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(5, 1fr)',
+          gridTemplateColumns: 'repeat(5, minmax(260px, 1fr))',
           gap: '16px',
-          alignItems: 'start',
           overflowX: 'auto',
-          minWidth: '1100px',
           paddingBottom: '20px'
         }}
       >
-        {columns.map((col) => {
-          const colTickets = tickets.filter(t => t.status === col.id);
-          const ColIcon = col.icon;
+        {columns.map(col => {
+          const colTickets = repairs.filter(r => r.status === col.id);
           return (
             <div
               key={col.id}
               style={{
-                background: 'var(--bg-card)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-color)',
-                padding: '14px',
-                minHeight: '520px',
+                background: 'var(--surface-1)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                padding: '12px',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                minHeight: '600px'
               }}
             >
               {/* Column Header */}
@@ -129,110 +187,91 @@ export const TicketKanbanPage = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: '14px',
-                  paddingBottom: '10px',
-                  borderBottom: '1px solid var(--border-color)'
+                  paddingBottom: '12px',
+                  marginBottom: '12px',
+                  borderBottom: `2px solid ${col.color}`
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '13px' }}>
-                  <ColIcon size={16} color="var(--color-primary-600)" />
-                  <span>{col.title}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: col.color }} />
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink-primary)', letterSpacing: '0.04em' }}>
+                    {col.title}
+                  </span>
                 </div>
-                <span className={`badge badge-${col.badgeType}`}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '1px 6px',
+                    borderRadius: 'var(--radius-xs)',
+                    background: 'var(--surface-3)',
+                    color: 'var(--ink-muted)'
+                  }}
+                >
                   {colTickets.length}
                 </span>
               </div>
 
-              {/* Tickets in this Column */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-                {colTickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    onClick={() => setSelectedTicket(ticket)}
-                    style={{
-                      background: 'var(--bg-page)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '14px',
-                      cursor: 'pointer',
-                      transition: 'all var(--transition-fast)',
-                      boxShadow: 'var(--shadow-xs)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--color-primary-400)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border-color)';
-                      e.currentTarget.style.transform = 'none';
-                    }}
-                  >
-                    {/* Ticket Code & Priority Badge */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: '12px', color: 'var(--color-primary-700)' }}>
-                        {ticket.id}
-                      </span>
-                      <span
-                        className={`badge ${
-                          ticket.priority === 'critical'
-                            ? 'badge-danger sla-overdue-pulse'
-                            : ticket.priority === 'high'
-                            ? 'badge-warning'
-                            : 'badge-primary'
-                        }`}
-                        style={{ fontSize: '10px' }}
-                      >
-                        {ticket.priority.toUpperCase()}
-                      </span>
-                    </div>
+              {/* Cards List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+                {colTickets.map(ticket => {
+                  const eq = ticket.equipment_id;
+                  return (
+                    <div
+                      key={ticket._id}
+                      onClick={() => setSelectedTicket(ticket)}
+                      style={{
+                        background: 'var(--surface-card)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '12px',
+                        cursor: 'pointer',
+                        boxShadow: 'var(--shadow-card)',
+                        transition: 'transform var(--duration-fast)',
+                        borderLeft: `3px solid ${col.color}`
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700, color: 'var(--blueprint-400)' }}>
+                          {ticket.ticket_code || ticket._id.slice(-6)}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            padding: '1px 5px',
+                            borderRadius: 'var(--radius-xs)',
+                            background: ticket.damage_level === 'major' ? 'rgba(229,72,77,0.15)' : 'rgba(229,163,59,0.15)',
+                            color: ticket.damage_level === 'major' ? '#E5484D' : '#E5A33B'
+                          }}
+                        >
+                          {ticket.damage_level === 'major' ? 'HỎNG NẶNG' : 'HỎNG NHẸ'}
+                        </span>
+                      </div>
 
-                    {/* Title & Room */}
-                    <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.3, wordBreak: 'break-word' }}>
-                      {ticket.title}
-                    </div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '4px' }}>
+                        {eq?.name || 'Thiết bị'}
+                      </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-                        <Icons.Room size={12} /> {ticket.roomCode}
-                      </span>
-                      <span>•</span>
-                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{ticket.equipmentName}</span>
-                    </div>
+                      <div style={{ fontSize: '12px', color: 'var(--ink-muted)', marginBottom: '10px', lineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {ticket.incident_description}
+                      </div>
 
-                    {/* SLA Badge */}
-                    <div style={{ marginTop: '4px' }}>
-                      <SLABadge
-                        slaState={ticket.slaState}
-                        remainingMinutes={ticket.slaRemainingMinutes}
-                        totalHours={ticket.slaTotalHours}
-                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)', fontSize: '11px', color: 'var(--ink-muted)' }}>
+                        <span>Mã: <strong style={{ color: 'var(--ink-secondary)', fontFamily: 'var(--font-mono)' }}>{eq?.code || '—'}</strong></span>
+                        {ticket.total_cost > 0 && (
+                          <span style={{ color: '#E5A33B', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                            {Number(ticket.total_cost).toLocaleString('vi-VN')} đ
+                          </span>
+                        )}
+                      </div>
                     </div>
-
-                    {/* Assigned info */}
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                      <Icons.User size={12} />
-                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                        {ticket.assignedTo}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {colTickets.length === 0 && (
-                  <div
-                    style={{
-                      border: '2px dashed var(--border-color)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '32px 16px',
-                      textAlign: 'center',
-                      color: 'var(--text-muted)',
-                      fontSize: '12px'
-                    }}
-                  >
-                    Không có ticket nào
+                  <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--ink-muted)', fontSize: '12px' }}>
+                    Không có phiếu
                   </div>
                 )}
               </div>
@@ -241,247 +280,196 @@ export const TicketKanbanPage = () => {
         })}
       </div>
 
-      {/* Ticket Detail Drawer Panel */}
+      {/* Ticket Detail Drawer */}
       {selectedTicket && (
-        <div className="modal-overlay" onClick={() => setSelectedTicket(null)}>
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '600px' }}
-          >
-            <div className="modal-header">
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 800, color: 'var(--color-primary-700)', fontSize: '16px' }}>
-                    {selectedTicket.id}
-                  </span>
-                  <span className={`badge ${selectedTicket.priority === 'critical' ? 'badge-danger' : 'badge-warning'}`}>
-                    {selectedTicket.priorityLabel}
-                  </span>
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  Báo cáo bởi: {selectedTicket.reporterName} ({selectedTicket.reporterRole}) lúc {selectedTicket.reportedAt}
-                </div>
+        <Drawer
+          isOpen={Boolean(selectedTicket)}
+          onClose={() => setSelectedTicket(null)}
+          title={`Phiếu Sửa Chữa #${selectedTicket.ticket_code || selectedTicket._id.slice(-6)}`}
+          subtitle={selectedTicket.equipment_id?.name}
+          width="540px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            {/* Status & Actions */}
+            <div style={{ background: 'var(--surface-2)', padding: '14px', borderRadius: 'var(--radius-sm)' }}>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--ink-muted)', marginBottom: '8px' }}>
+                Trạng Thái & Thao Tác Chuyển Giao
               </div>
-              <button onClick={() => setSelectedTicket(null)} className="icon-btn">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <StatusBadge status={selectedTicket.status} />
+
+                {selectedTicket.status === 'reported' && isStaffOrAdmin && (
+                  <Button size="sm" variant="primary" onClick={() => handleStatusChange(selectedTicket._id, 'assigned')}>
+                    Tiếp Nhận & Giao Việc
+                  </Button>
+                )}
+
+                {selectedTicket.status === 'assigned' && isStaffOrAdmin && (
+                  <Button size="sm" variant="primary" onClick={() => handleStatusChange(selectedTicket._id, 'in_progress')}>
+                    Bắt Đầu Xử Lý
+                  </Button>
+                )}
+
+                {selectedTicket.status === 'in_progress' && isStaffOrAdmin && (
+                  <>
+                    <Button size="sm" variant="secondary" onClick={() => setShowLogModal(true)}>
+                      + Ghi Nhật Ký / Chi Phí
+                    </Button>
+                    <Button size="sm" variant="primary" onClick={() => handleStatusChange(selectedTicket._id, 'resolved')}>
+                      Khắc Phục Xong
+                    </Button>
+                  </>
+                )}
+
+                {selectedTicket.status === 'resolved' && isManagerOrAdmin && (
+                  <Button size="sm" variant="primary" onClick={() => handleStatusChange(selectedTicket._id, 'closed')}>
+                    Quản Lý Xác Nhận & Đóng Phiếu
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                Mô tả hiện tượng hỏng hóc
+              </div>
+              <p style={{ background: 'var(--surface-2)', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', margin: 0, color: 'var(--ink-primary)' }}>
+                {selectedTicket.incident_description}
+              </p>
+            </div>
+
+            {/* Equipment Info */}
+            <div>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                Thiết Bị Liên Quan
+              </div>
+              <div style={{ background: 'var(--surface-2)', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '12.5px' }}>
+                <div>Mã thiết bị: <strong style={{ fontFamily: 'var(--font-mono)' }}>{selectedTicket.equipment_id?.code}</strong></div>
+                <div>Tên thiết bị: {selectedTicket.equipment_id?.name}</div>
+                <div>Mức độ thiệt hại: <strong style={{ color: selectedTicket.damage_level === 'major' ? '#E5484D' : '#E5A33B' }}>{selectedTicket.damage_level}</strong></div>
+                <div>Tổng chi phí sửa chữa: <strong style={{ fontFamily: 'var(--font-mono)', color: '#E5A33B' }}>{Number(selectedTicket.total_cost || 0).toLocaleString('vi-VN')} đ</strong></div>
+              </div>
+            </div>
+          </div>
+        </Drawer>
+      )}
+
+      {/* Log Cost Modal */}
+      {showLogModal && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowLogModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '440px', height: 'auto', margin: 'auto', borderRadius: 'var(--radius-md)' }} onClick={e => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <h2 className="ruo-drawer-title">Ghi Nhật Ký Sửa Chữa & Chi Phí</h2>
+              <button onClick={() => setShowLogModal(false)} className="ruo-drawer-close-btn">
                 <Icons.X size={18} />
               </button>
             </div>
-
-            <div className="modal-body">
-              <h3 style={{ fontSize: '17px', fontWeight: 800, marginBottom: '8px' }}>
-                {selectedTicket.title}
-              </h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
-                {selectedTicket.description}
-              </p>
-
-              {/* SLA Engine Metrics Card */}
-              <div
-                style={{
-                  background: 'var(--bg-card-subtle)',
-                  padding: '16px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-color)',
-                  marginBottom: '20px'
-                }}
-              >
-                <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Icons.Clock size={16} color="var(--color-primary-600)" />
-                  Cam Kết Thời Gian Giải Quyết (SLA Matrix):
-                </div>
-                <div className="grid-cols-2" style={{ gap: '10px', fontSize: '13px' }}>
-                  <div>
-                    <span style={{ color: 'var(--text-secondary)' }}>Tiêu chuẩn SLA:</span>{' '}
-                    <strong>{selectedTicket.slaTotalHours} giờ hành chính</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-secondary)' }}>Kỹ thuật viên phụ trách:</span>{' '}
-                    <strong>{selectedTicket.assignedTo}</strong>
-                  </div>
-                </div>
-                <div style={{ marginTop: '10px' }}>
-                  <SLABadge
-                    slaState={selectedTicket.slaState}
-                    remainingMinutes={selectedTicket.slaRemainingMinutes}
-                    totalHours={selectedTicket.slaTotalHours}
-                  />
-                </div>
-              </div>
-
-              {/* Double Confirmation Flow (UC-1.18: Nghiệm thu 2 chiều) */}
-              {selectedTicket.status === 'resolved' && (
-                <div
-                  style={{
-                    background: 'var(--color-purple-50)',
-                    border: '1px solid var(--color-purple-500)',
-                    padding: '16px',
-                    borderRadius: 'var(--radius-md)',
-                    marginBottom: '20px'
-                  }}
-                >
-                  <h4 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-purple-700)', marginBottom: '6px' }}>
-                    Quy trình Nghiệm thu Đóng Ticket 2 Chiều:
-                  </h4>
-                  <p style={{ fontSize: '13px', color: 'var(--color-purple-700)', marginBottom: '12px' }}>
-                    Kỹ thuật viên đã báo cáo sửa chữa xong. Bạn vui lòng xác nhận kết quả hoạt động tại hiện trường:
-                  </p>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                      className="btn btn-success btn-sm"
-                      onClick={() => handleMoveStatus(selectedTicket.id, 'closed')}
-                    >
-                      <Icons.CheckCircle size={14} /> Hài Lòng & Đóng Ticket (5 Sao)
-                    </button>
-                    <button
-                      className="btn btn-outline btn-sm"
-                      style={{ color: 'var(--color-danger-600)', borderColor: 'var(--color-danger-500)' }}
-                      onClick={() => handleMoveStatus(selectedTicket.id, 'in_progress')}
-                    >
-                      Chưa khắc phục xong (Yêu cầu làm lại)
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Two-way acceptance notice for lecturer */}
-              {isLecturer && selectedTicket.status !== 'resolved' && (
-                <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', marginBottom: '20px', fontSize: '12.5px', color: 'var(--ink-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Icons.Clock size={15} color="var(--laser-cyan)" />
-                  <span>Sự cố đang được Kỹ thuật viên CSVC xử lý theo cam kết SLA. Khi hoàn tất khắc phục, bạn sẽ nhận được thông báo nghiệm thu tại đây.</span>
-                </div>
-              )}
-
-              {/* Action Buttons to Move Ticket - Strictly Staff & Admin */}
-              {isStaffOrAdmin && (
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                    CHUYỂN TRẠNG THÁI TIẾN TRÌNH (KỸ THUẬT & ADMIN):
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'assigned')}>
-                      Đã Gán
-                    </button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'in_progress')}>
-                      Đang Xử Lý
-                    </button>
-                    <button className="btn btn-purple btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'resolved')}>
-                      Đã Khắc Phục (Resolved)
-                    </button>
-                    <button className="btn btn-success btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'closed')}>
-                      Đóng Ticket (Closed)
-                    </button>
-                  </div>
-                </div>
-              )}
-
-
-              {/* Timeline */}
+            <form onSubmit={handleAddLogSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <h4 style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Dòng Thời Gian Xử Lý:</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-                  {selectedTicket.timeline.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', color: 'var(--text-muted)', width: '80px' }}>
-                        {item.time}
-                      </span>
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-primary-500)' }} />
-                      <span>{item.event}</span>
-                    </div>
-                  ))}
-                </div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '4px' }}>Hành động kỹ thuật</label>
+                <select
+                  className="ruo-portal-input"
+                  value={logData.action}
+                  onChange={e => setLogData({ ...logData, action: e.target.value })}
+                >
+                  <option value="repaired">Sửa chữa / Căn chỉnh thiết bị</option>
+                  <option value="parts_replaced">Thay thế linh kiện</option>
+                  <option value="tested">Kiểm thử hoạt động</option>
+                </select>
               </div>
-            </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '4px' }}>Chi phí phát sinh (VND)</label>
+                <input
+                  type="number"
+                  className="ruo-portal-input"
+                  value={logData.cost}
+                  onChange={e => setLogData({ ...logData, cost: e.target.value })}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '4px', display: 'block' }}>
+                  Chi phí này sẽ tự động cập nhật vào chi phí tích lũy của thiết bị để tính toán chỉ số R%.
+                </span>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '4px' }}>Mô tả chi tiết</label>
+                <textarea
+                  className="ruo-portal-input"
+                  style={{ minHeight: '70px', padding: '10px' }}
+                  placeholder="Ghi rõ bộ phận đã sửa hoặc linh kiện thay thế..."
+                  value={logData.description}
+                  onChange={e => setLogData({ ...logData, description: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <Button variant="ghost" onClick={() => setShowLogModal(false)}>Hủy</Button>
+                <Button type="submit" variant="primary">Lưu Nhật Ký</Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* New Incident Report Modal */}
-      {showNewModal && (
-        <div className="modal-overlay" onClick={() => setShowNewModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Tạo Báo Cáo Sự Cố Cơ Sở Vật Chất</h3>
-              <button onClick={() => setShowNewModal(false)} className="icon-btn">
+      {/* Create Ticket Modal */}
+      {showCreateModal && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowCreateModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '480px' }} onClick={e => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <h2 className="ruo-drawer-title">Báo Cáo Sự Cố Thiết Bị Mới</h2>
+              <button onClick={() => setShowCreateModal(false)} className="ruo-drawer-close-btn">
                 <Icons.X size={18} />
               </button>
             </div>
-            <div className="modal-body">
-              <div className="grid-cols-2">
-                <div className="form-group">
-                  <label className="form-label">Phòng xảy ra sự cố</label>
-                  <select
-                    className="form-control"
-                    value={newTicketData.roomCode}
-                    onChange={(e) => setNewTicketData({ ...newTicketData, roomCode: e.target.value })}
-                  >
-                    <option value="A1-302">A1-302 (Phòng lý thuyết)</option>
-                    <option value="B2-105">B2-105 (Lab máy tính)</option>
-                    <option value="A1-405">A1-405 (Hội trường)</option>
-                    <option value="B1-201">B1-201 (Lab vi mạch)</option>
-                    <option value="C1-304">C1-304 (Smart classroom)</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Mức độ khẩn cấp (SLA)</label>
-                  <select
-                    className="form-control"
-                    value={newTicketData.priority}
-                    onChange={(e) => setNewTicketData({ ...newTicketData, priority: e.target.value })}
-                  >
-                    <option value="critical">[CRITICAL] Khẩn cấp (Cháy nổ, ngập, cúp điện - SLA 4h 24/7)</option>
-                    <option value="high">[HIGH] Cao (Hỏng máy chiếu, điều hòa - SLA 8h)</option>
-                    <option value="medium">[MEDIUM] Trung bình (Cháy bóng đèn, micro rè - SLA 24h)</option>
-                    <option value="low">[LOW] Thấp (Bàn ghế lỏng vít, rách rèm - SLA 48h)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Thiết bị gặp sự cố</label>
+            <form onSubmit={handleCreateTicket} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '4px' }}>Mã thiết bị gặp sự cố *</label>
                 <input
                   type="text"
-                  className="form-control"
-                  placeholder="VD: Máy chiếu Sony, Điều hòa Daikin, Bóng đèn trần..."
-                  value={newTicketData.equipmentName}
-                  onChange={(e) => setNewTicketData({ ...newTicketData, equipmentName: e.target.value })}
+                  className="ruo-portal-input"
+                  placeholder="Ví dụ: EQ-PRJ-101 hoặc EQ-TV-201"
+                  value={newTicket.equipment_code}
+                  onChange={e => setNewTicket({ ...newTicket, equipment_code: e.target.value })}
+                  required
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Tiêu đề sự cố</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Mô tả vắn tắt hiện tượng hỏng hóc..."
-                  value={newTicketData.title}
-                  onChange={(e) => setNewTicketData({ ...newTicketData, title: e.target.value })}
-                />
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '4px' }}>Mức độ hỏng hóc *</label>
+                <select
+                  className="ruo-portal-input"
+                  value={newTicket.damage_level}
+                  onChange={e => setNewTicket({ ...newTicket, damage_level: e.target.value })}
+                >
+                  <option value="minor">Hỏng nhẹ (Sửa chữa trong ngày - SLA 4h)</option>
+                  <option value="major">Hỏng nặng (Cần thay thế linh kiện bo mạch - SLA 24h)</option>
+                </select>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Mô tả chi tiết & vị trí hiện trường</label>
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '4px' }}>Mô tả hiện tượng sự cố *</label>
                 <textarea
-                  rows="3"
-                  className="form-control"
-                  placeholder="Nhập chi tiết hiện tượng để kỹ thuật viên chuẩn bị sẵn linh kiện thay thế..."
-                  value={newTicketData.description}
-                  onChange={(e) => setNewTicketData({ ...newTicketData, description: e.target.value })}
+                  className="ruo-portal-input"
+                  style={{ minHeight: '90px', padding: '10px' }}
+                  placeholder="Mô tả cụ thể hiện tượng: mất nguồn, chập cháy, nhấp nháy đèn báo lỗi..."
+                  value={newTicket.incident_description}
+                  onChange={e => setNewTicket({ ...newTicket, incident_description: e.target.value })}
+                  required
                 />
               </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowNewModal(false)}>
-                Hủy bỏ
-              </button>
-              <button className="btn btn-primary" onClick={handleCreateTicket}>
-                <Icons.CheckCircle size={16} /> Gửi Báo Cáo
-              </button>
-            </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <Button variant="ghost" onClick={() => setShowCreateModal(false)}>Hủy</Button>
+                <Button type="submit" variant="primary" loading={submitting}>Tạo Phiếu Sự Cố</Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
     </div>
   );
 };
+
+export default TicketKanbanPage;

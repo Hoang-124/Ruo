@@ -1,0 +1,174 @@
+/**
+ * RUO UEMS DESIGN SYSTEM TOKENS (OPERATIONAL LEDGER)
+ * 3-Layer Token Architecture: Primitive -> Semantic -> Component
+ * Calibrated for Agency-grade University Asset Management
+ */
+
+:root {
+  /* ==========================================================================
+     1. PRIMITIVE TOKENS
+     ========================================================================== */
+  
+  /* Neutral Slate / Warm Graphite */
+  --slate-950: #07080A;
+  --slate-900: #0B0C0E;
+  --slate-850: #111316;
+  --slate-800: #16191D;
+  --slate-750: #1C2025;
+  --slate-700: #252A31;
+  --slate-600: #333942;
+  --slate-500: #4B5563;
+  --slate-400: #71717A;
+  --slate-300: #A1A1AA;
+  --slate-200: #D4D4D8;
+  --slate-100: #F4F4F5;
+  --slate-50:  #FAFAFA;
+  --white:     #FFFFFF;
+
+  /* Blueprint Brand Accent (Technical Precision) */
+  --blueprint-900: #1E3A8A;
+  --blueprint-700: #1D4ED8;
+  --blueprint-600: #2563EB;
+  --blueprint-500: #3E7BFA;
+  --blueprint-400: #60A5FA;
+  --blueprint-300: #93C5FD;
+  --blueprint-100: #DBEAFE;
+  --blueprint-50:  #EFF6FF;
+
+  /* Functional Status Primitives */
+  --emerald-500: #2FB37A;
+  --emerald-600: #229A64;
+  --emerald-900: #064E3B;
+  
+  --amber-500:   #E5A33B;
+  --amber-600:   #D97706;
+  --amber-900:   #78350F;
+  
+  --orange-500:  #E07A3E;
+  --orange-600:  #EA580C;
+  --orange-900:  #7C2D12;
+  
+  --crimson-500: #E5484D;
+  --crimson-600: #DC2626;
+  --crimson-900: #7F1D1D;
+
+  /* Typography Scales */
+  --font-sans: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, 'Fira Code', monospace;
+
+  --text-xs:   11px;
+  --text-sm:   12.5px;
+  --text-base: 13.5px;
+  --text-md:   15px;
+  --text-lg:   18px;
+  --text-xl:   22px;
+  --text-2xl:  28px;
+  --text-3xl:  36px;
+
+  /* Spacing 4px Grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-full: 9999px;
+
+  /* Easing & Transition */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+
+  /* ==========================================================================
+     2. SEMANTIC TOKENS (DARK MODE DEFAULT)
+     ========================================================================== */
+  --bg-app: var(--slate-900);
+  --surface-1: var(--slate-850);
+  --surface-2: var(--slate-800);
+  --surface-3: var(--slate-750);
+  --surface-card: var(--slate-850);
+  --surface-elevated: var(--slate-800);
+  --surface-glass: rgba(17, 19, 22, 0.85);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-focus: var(--blueprint-500);
+
+  --ink-primary: #FFFFFF;
+  --ink-secondary: var(--slate-200);
+  --ink-muted: var(--slate-400);
+  --ink-faint: var(--slate-600);
+
+  /* Status Tokens */
+  --status-active-color: var(--emerald-500);
+  --status-active-bg: rgba(47, 179, 122, 0.12);
+  --status-active-border: rgba(47, 179, 122, 0.28);
+
+  --status-repairing-color: var(--amber-500);
+  --status-repairing-bg: rgba(229, 163, 59, 0.12);
+  --status-repairing-border: rgba(229, 163, 59, 0.28);
+
+  --status-transferring-color: var(--blueprint-500);
+  --status-transferring-bg: rgba(62, 123, 250, 0.12);
+  --status-transferring-border: rgba(62, 123, 250, 0.28);
+
+  --status-disposal-color: var(--orange-500);
+  --status-disposal-bg: rgba(224, 122, 62, 0.12);
+  --status-disposal-border: rgba(224, 122, 62, 0.28);
+
+  --status-disposed-color: var(--slate-400);
+  --status-disposed-bg: rgba(113, 113, 122, 0.12);
+  --status-disposed-border: rgba(113, 113, 122, 0.24);
+
+  --status-overdue-color: var(--crimson-500);
+  --status-overdue-bg: rgba(229, 72, 77, 0.12);
+  --status-overdue-border: rgba(229, 72, 77, 0.28);
+
+  /* Inset highlight elevation */
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-dropdown: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 32px rgba(0, 0, 0, 0.6);
+  --shadow-drawer: -12px 0 36px rgba(0, 0, 0, 0.7);
+
+  /* Technical Blueprint Grid */
+  --blueprint-grid: radial-gradient(rgba(62, 123, 250, 0.08) 1px, transparent 1px);
+}
+
+/* Light Theme Overrides (Warm Archival Paper) */
+[data-theme='light'] {
+  --bg-app: #F7F7F5;
+  --surface-1: #FFFFFF;
+  --surface-2: #F0EFEA;
+  --surface-3: #E8E6DF;
+  --surface-card: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+  --surface-glass: rgba(255, 255, 255, 0.88);
+
+  --border-subtle: #ECEAE4;
+  --border-default: #E2E0D8;
+  --border-strong: #CDC9BD;
+  --border-focus: var(--blueprint-600);
+
+  --ink-primary: #18191B;
+  --ink-secondary: #4A4D53;
+  --ink-muted: #737882;
+  --ink-faint: #A6ABB5;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.03);
+  --shadow-dropdown: 0 12px 32px rgba(0, 0, 0, 0.12);
+  --shadow-drawer: -12px 0 36px rgba(0, 0, 0, 0.12);
+
+  --blueprint-grid: radial-gradient(rgba(37, 99, 235, 0.06) 1px, transparent 1px);
+}
