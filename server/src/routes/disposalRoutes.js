@@ -9,9 +9,11 @@ import { protect, requireRole } from '../middlewares/authMiddleware.js';
 const router = express.Router();
 
 router.use(protect);
+router.use(requireRole('maintenance_staff', 'admin'));
 
 router.get('/', getDisposalList);
-router.post('/', requireRole('facility_staff', 'maintenance', 'admin'), createDisposalProposal);
-router.put('/:id/step', requireRole('facility_staff', 'maintenance', 'admin'), advanceDisposalStep);
+router.post('/', createDisposalProposal);
+router.put('/:id/step', advanceDisposalStep);
 
 export default router;
+

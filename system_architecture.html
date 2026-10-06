@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1.1 System Architecture - RUO University Facility Management System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: #ffffff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #1e293b;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 15px 35px;
+    min-width: 1260px;
+  }
+
+  .diagram-container {
+    width: 1220px;
+    height: 870px;
+    position: relative;
+    background: #ffffff;
+  }
+
+  /* ── 1.1 TITLE (WRAPPED 2 LINES TO AVOID VERCEL COLLISION) ── */
+  .diagram-title-wrap {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 195px;
+  }
+  .diagram-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.15;
+    letter-spacing: -0.3px;
+  }
+  .diagram-subtitle {
+    font-size: 11px;
+    font-weight: 500;
+    color: #64748b;
+    margin-top: 3px;
+    line-height: 1.25;
+  }
+
+  /* ── TOP DEVOPS & API SERVICES ROW (ABSOLUTE PLACEMENT) ── */
+  .devops-box {
+    position: absolute;
+    top: 15px;
+    height: 44px;
+    border: 1.5px solid #64748b;
+    border-radius: 8px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .box-label-top {
+    position: absolute;
+    top: -17px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+  }
+
+  .devops-vercel { left: 220px; width: 110px; }
+  .devops-github { left: 395px; width: 120px; }
+  .devops-render { left: 580px; width: 110px; }
+  .devops-cloudinary { left: 865px; width: 130px; }
+
+  /* ── MAIN SYSTEM CONTAINER ── */
+  .system-frame {
+    position: absolute;
+    top: 92px;
+    left: 175px;
+    width: 885px;
+    height: 605px;
+    border: 1.8px solid #475569;
+    border-radius: 26px;
+    background: #ffffff;
+  }
+
+  .system-badge {
+    position: absolute;
+    top: 81px;
+    left: 490px;
+    background: #fff59d;
+    border: 1.5px solid #eab308;
+    color: #000000;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 3px 20px;
+    border-radius: 4px;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* ── ACTORS (UML STICK FIGURES) ── */
+  .actor-block {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 125px;
+  }
+  .actor-block svg {
+    width: 44px;
+    height: 64px;
+  }
+  .actor-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #0f172a;
+    text-align: center;
+    margin-top: 3px;
+    line-height: 1.2;
+  }
+  .actor-sub {
+    font-size: 9.5px;
+    color: #64748b;
+    text-align: center;
+    margin-top: 1px;
+  }
+
+  .actor-admin { top: 130px; left: 15px; }
+  .actor-lecturer { top: 290px; left: 15px; }
+  .actor-maint { top: 715px; left: 220px; }
+
+  /* ── FRONT END CONTAINERS ── */
+  .fe-container {
+    position: absolute;
+    width: 235px;
+    background: #eef6ff;
+    border: 1.5px solid #93c5fd;
+    border-radius: 16px;
+    padding: 8px 10px;
+  }
+  .fe-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #0f172a;
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .fe-card {
+    background: #ffffff;
+    border: 1.2px solid #cbd5e1;
+    border-radius: 9px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 90px;
+  }
+
+  .fe-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 80px;
+  }
+  .fe-brand-text {
+    font-size: 12px;
+    font-weight: 700;
+    color: #0f172a;
+    text-align: center;
+    line-height: 1.15;
+  }
+  .fe-brand-sub {
+    font-size: 9px;
+    color: #64748b;
+    font-weight: 600;
+  }
+
+  .redux-cycle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    width: 115px;
+  }
+  .cycle-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: #475569;
+  }
+  .cycle-arrows {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin: 2px 0;
+  }
+  .cycle-box {
+    background: #f1f5f9;
+    border: 1px solid #94a3b8;
+    border-radius: 5px;
+    padding: 3px 4px;
+    font-size: 8.5px;
+    font-weight: 700;
+    color: #334155;
+    text-align: center;
+    line-height: 1.15;
+  }
+
+  .fe-web { top: 120px; left: 195px; }
+  .fe-mobile { top: 280px; left: 195px; }
+
+  /* BUILD / VITE BOX */
+  .build-box {
+    position: absolute;
+    top: 440px;
+    left: 45px;
+    width: 105px;
+    height: 42px;
+    border: 1.5px solid #64748b;
+    border-radius: 8px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  /* ── BACK END CONTAINER (NODE.JS / EXPRESS) ── */
+  .be-container {
+    position: absolute;
+    top: 120px;
+    left: 550px;
+    width: 370px;
+    height: 330px;
+    background: #f5f0ff;
+    border: 1.5px solid #d8b4fe;
+    border-radius: 18px;
+    padding: 9px 12px;
+  }
+  .be-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    padding: 0 4px;
+  }
+  .be-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .be-badge {
+    background: #15803d;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* LAYERS */
+  .be-layer {
+    background: #ffffff;
+    border: 1.2px solid #cbd5e1;
+    border-radius: 7px;
+    padding: 5px 7px;
+    margin-bottom: 6px;
+  }
+  .layer-heading {
+    font-size: 9px;
+    font-weight: 700;
+    color: #334155;
+    text-align: center;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    border-bottom: 1px dashed #e2e8f0;
+    padding-bottom: 2px;
+  }
+  .layer-row {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+  }
+  .layer-item {
+    flex: 1;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    padding: 4px 3px;
+    text-align: center;
+    font-size: 9.5px;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.2;
+  }
+  .layer-item-sub {
+    font-size: 8px;
+    color: #64748b;
+    font-weight: 500;
+    margin-top: 1px;
+  }
+
+  /* ── DATABASE CYLINDERS (RIGHT SIDE) ── */
+  .db-block {
+    position: absolute;
+    left: 1040px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 145px;
+  }
+  .db-block-1 { top: 135px; }
+  .db-block-2 { top: 310px; }
+
+  .db-tag {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+  }
+  .db-cylinder-card {
+    width: 130px;
+    border: 1.5px solid #64748b;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 7px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .db-name {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .db-host {
+    font-size: 8.5px;
+    color: #64748b;
+    margin-top: 1px;
+    line-height: 1.2;
+  }
+
+  /* ── QR SCANNER & EQUIPMENT INSPECTION MODULE (BOTTOM INSIDE MAIN CONTAINER) ── */
+  .hw-container {
+    position: absolute;
+    top: 490px;
+    left: 205px;
+    width: 380px;
+    height: 165px;
+    border: 1.5px solid #64748b;
+    border-radius: 14px;
+    background: #ffffff;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .hw-header {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #334155;
+    text-align: center;
+    border-bottom: 1px dashed #cbd5e1;
+    padding-bottom: 3px;
+    margin-bottom: 2px;
+  }
+  .hw-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .hw-box {
+    border: 1.2px solid #64748b;
+    border-radius: 6px;
+    background: #f8fafc;
+    padding: 5px 4px;
+    font-size: 9px;
+    font-weight: 600;
+    color: #0f172a;
+    text-align: center;
+    min-width: 82px;
+    line-height: 1.2;
+  }
+
+  /* Clean internal vertical arrow between Validator and Feedback */
+  .hw-internal-arrow {
+    display: flex;
+    justify-content: flex-end;
+    padding-right: 60px;
+    margin: 2px 0;
+  }
+
+  .hw-subbox {
+    align-self: flex-end;
+    margin-right: 6px;
+    border: 1.2px solid #64748b;
+    border-radius: 6px;
+    background: #f8fafc;
+    padding: 4px 6px;
+    font-size: 9px;
+    font-weight: 600;
+    color: #0f172a;
+    text-align: center;
+    width: 135px;
+  }
+
+  /* ── EXTERNAL SERVICES (BOTTOM ROW OUTSIDE CONTAINER) ── */
+  .ext-box {
+    position: absolute;
+    height: 48px;
+    border: 1.5px solid #64748b;
+    border-radius: 8px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .ext-gmail { top: 725px; left: 650px; width: 115px; }
+  .ext-export { top: 725px; left: 810px; width: 125px; }
+
+  /* ── FIGURE CAPTION ── */
+  .figure-caption {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-top: 15px;
+    text-align: center;
+  }
+
+  /* ── SVG OVERLAY FOR ALL CONNECTOR ARROWS ── */
+  .svg-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .line-solid {
+    stroke: #334155;
+    stroke-width: 1.3;
+    fill: none;
+  }
+  .line-dashed {
+    stroke: #334155;
+    stroke-width: 1.3;
+    stroke-dasharray: 4, 3;
+    fill: none;
+  }
+
+  /* ── HTML WHITE-PILL LABELS (ABSOLUTELY POSITIONED FOR ZERO BLUR / OVERLAP) ── */
+  .lbl {
+    position: absolute;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 9px;
+    font-weight: 600;
+    color: #334155;
+    white-space: nowrap;
+    z-index: 20;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .lbl-blue {
+    color: #2563eb;
+    border-color: #93c5fd;
+    background: #eff6ff;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<div class="diagram-container">
+
+  <!-- 1.1 SYSTEM ARCHITECTURE TITLE (CLEAN 2 LINES) -->
+  <div class="diagram-title-wrap">
+    <div class="diagram-title">1.1 System Architecture</div>
+    <div class="diagram-subtitle">RUO University Facility Management System</div>
+  </div>
+
+  <!-- ── TOP DEVOPS & API SERVICES ROW (ABSOLUTE PLACEMENT) ── -->
+  <!-- 1. VERCEL -->
+  <div class="devops-box devops-vercel">
+    <div class="box-label-top">Web Frontend</div>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="#000000"><path d="M12 2L2 20h20L12 2z"/></svg>
+    <span>Vercel</span>
+  </div>
+
+  <!-- 2. GITHUB -->
+  <div class="devops-box devops-github">
+    <div class="box-label-top">Source Version Control</div>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="#24292e"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+    <span>GitHub</span>
+  </div>
+
+  <!-- 3. RENDER VPS -->
+  <div class="devops-box devops-render">
+    <div class="box-label-top">Backend Host</div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="#0ea5e9"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    <span>Render VPS</span>
+  </div>
+
+  <!-- 4. CLOUDINARY -->
+  <div class="devops-box devops-cloudinary">
+    <div class="box-label-top">API Services</div>
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="#2563eb"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
+    <span style="color:#2563eb; font-size:12.5px; font-weight:700;">Cloudinary</span>
+  </div>
+
+  <!-- MAIN SYSTEM CONTAINER FRAME -->
+  <div class="system-frame"></div>
+  <div class="system-badge">RUO System Architecture</div>
+
+  <!-- ── ACTORS ON THE LEFT ── -->
+  <!-- 1. ADMIN (QUẢN TRỊ VIÊN) -->
+  <div class="actor-block actor-admin">
+    <svg viewBox="0 0 50 70">
+      <circle cx="25" cy="12" r="10" fill="#fef08a" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="25" y1="22" x2="25" y2="48" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="8" y1="32" x2="42" y2="32" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="25" y1="48" x2="10" y2="68" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="25" y1="48" x2="40" y2="68" stroke="#d97706" stroke-width="1.8"/>
+    </svg>
+    <div class="actor-title">Admin</div>
+    <div class="actor-sub">Quản trị viên</div>
+  </div>
+
+  <!-- 2. LECTURER & STAFF (GIẢNG VIÊN / ĐƠN VỊ SỬ DỤNG) -->
+  <div class="actor-block actor-lecturer">
+    <svg viewBox="0 0 50 70">
+      <circle cx="25" cy="12" r="10" fill="#fef08a" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="25" y1="22" x2="25" y2="48" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="8" y1="32" x2="42" y2="32" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="25" y1="48" x2="10" y2="68" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="25" y1="48" x2="40" y2="68" stroke="#d97706" stroke-width="1.8"/>
+    </svg>
+    <div class="actor-title">Lecturer & Staff</div>
+    <div class="actor-sub">Giảng viên / Đơn vị</div>
+  </div>
+
+  <!-- 3. MAINTENANCE STAFF (NHÂN VIÊN BẢO TRÌ / THỦ KHO) -->
+  <div class="actor-block actor-maint">
+    <svg viewBox="0 0 50 70">
+      <circle cx="25" cy="12" r="10" fill="#fef08a" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="25" y1="22" x2="25" y2="48" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="8" y1="32" x2="42" y2="32" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="25" y1="48" x2="10" y2="68" stroke="#d97706" stroke-width="1.8"/>
+      <line x1="25" y1="48" x2="40" y2="68" stroke="#d97706" stroke-width="1.8"/>
+    </svg>
+    <div class="actor-title">Maintenance Staff</div>
+    <div class="actor-sub">Kỹ thuật viên / Thủ kho</div>
+  </div>
+
+  <!-- ── FRONT END - WEB (ADMIN & LECTURER PORTAL) ── -->
+  <div class="fe-container fe-web">
+    <div class="fe-title">Front End — Web Application</div>
+    <div class="fe-card">
+      <div class="fe-brand">
+        <svg width="32" height="32" viewBox="0 0 115 102" fill="none">
+          <ellipse rx="10" ry="4.5" cx="57.5" cy="51" fill="#00D8FF"/>
+          <ellipse rx="50" ry="19" cx="57.5" cy="51" stroke="#00D8FF" stroke-width="4.5" fill="none"/>
+          <ellipse rx="50" ry="19" cx="57.5" cy="51" stroke="#00D8FF" stroke-width="4.5" fill="none" transform="rotate(60 57.5 51)"/>
+          <ellipse rx="50" ry="19" cx="57.5" cy="51" stroke="#00D8FF" stroke-width="4.5" fill="none" transform="rotate(120 57.5 51)"/>
+        </svg>
+        <div class="fe-brand-text">React 19</div>
+        <div class="fe-brand-sub">+ Vite SPA</div>
+      </div>
+      <div class="redux-cycle">
+        <span class="cycle-label">Dispatch</span>
+        <div class="cycle-arrows">
+          <svg width="20" height="10" viewBox="0 0 20 10">
+            <line x1="0" y1="5" x2="15" y2="5" stroke="#334155" stroke-width="1.2" marker-end="url(#arr-m)"/>
+          </svg>
+          <div class="cycle-box">AuthContext<br>SocketContext</div>
+          <svg width="20" height="10" viewBox="0 0 20 10">
+            <line x1="20" y1="5" x2="5" y2="5" stroke="#334155" stroke-width="1.2" marker-end="url(#arr-left)"/>
+          </svg>
+        </div>
+        <span class="cycle-label">State / Hooks</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FRONT END - MOBILE WEB (MAINTENANCE & QR SCANNER) ── -->
+  <div class="fe-container fe-mobile">
+    <div class="fe-title">Front End — Mobile Responsive</div>
+    <div class="fe-card">
+      <div class="fe-brand">
+        <svg width="26" height="30" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2">
+          <rect x="5" y="2" width="14" height="20" rx="3" ry="3"/>
+          <line x1="12" y1="18" x2="12" y2="18.01" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        <div class="fe-brand-text" style="font-size:11px; color:#0284c7;">PWA Mobile</div>
+        <div class="fe-brand-sub">Quét QR tại chỗ</div>
+      </div>
+      <div class="redux-cycle">
+        <span class="cycle-label">Dispatch</span>
+        <div class="cycle-arrows">
+          <svg width="20" height="10" viewBox="0 0 20 10">
+            <line x1="0" y1="5" x2="15" y2="5" stroke="#334155" stroke-width="1.2" marker-end="url(#arr-m)"/>
+          </svg>
+          <div class="cycle-box">ScannerState<br>html5-qrcode</div>
+          <svg width="20" height="10" viewBox="0 0 20 10">
+            <line x1="20" y1="5" x2="5" y2="5" stroke="#334155" stroke-width="1.2" marker-end="url(#arr-left)"/>
+          </svg>
+        </div>
+        <span class="cycle-label">State / Stream</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- VITE BUILD / BUNDLER BOX -->
+  <div class="build-box">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="#646cff"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    <span>Vite Build</span>
+  </div>
+
+  <!-- ── BACK END CONTAINER (NODE.JS / EXPRESS) ── -->
+  <div class="be-container">
+    <div class="be-header">
+      <div class="be-title">Back End</div>
+      <div class="be-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Node.js 20
+      </div>
+    </div>
+
+    <!-- 1. PRESENTATION LAYER -->
+    <div class="be-layer">
+      <div class="layer-heading">PRESENTATION & MIDDLEWARE LAYER</div>
+      <div class="layer-row">
+        <div class="layer-item">
+          REST API Layer
+          <div class="layer-item-sub">Express Routes & Controllers</div>
+        </div>
+        <div class="layer-item">
+          Real-time Layer
+          <div class="layer-item-sub">Socket.IO Hub & Handlers</div>
+        </div>
+        <div class="layer-item">
+          Security & Filter
+          <div class="layer-item-sub">JWT, RBAC, Multer, Rate Limit</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. BUSINESS LOGIC LAYER -->
+    <div class="be-layer">
+      <div class="layer-heading">BUSINESS LOGIC LAYER (6 CORE MODULES)</div>
+      <div class="layer-row" style="margin-bottom: 5px;">
+        <div class="layer-item" style="font-size:9.5px;">
+          Auth & Master
+          <div class="layer-item-sub">Users, Roles, Rooms, Parts</div>
+        </div>
+        <div class="layer-item" style="font-size:9.5px;">
+          Equipment & Asset
+          <div class="layer-item-sub">Import, Transfers, Disposals</div>
+        </div>
+        <div class="layer-item" style="font-size:9.5px;">
+          Repair & Maintenance
+          <div class="layer-item-sub">Tickets, Plans, Inventories</div>
+        </div>
+      </div>
+      <div class="layer-row">
+        <div class="layer-item" style="background:#fffbeb; border-color:#fde68a;">
+          <span style="color:#d97706; font-weight:700;">SHA-256 Hash Chain Engine</span>
+          <div class="layer-item-sub">Tamper-evident Immutable Audit Ledger</div>
+        </div>
+        <div class="layer-item" style="background:#f0fdf4; border-color:#bbf7d0;">
+          <span style="color:#16a34a; font-weight:700;">node-cron Background Service</span>
+          <div class="layer-item-sub">Auto Depreciation & Maintenance Alerts</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. DATA ACCESS LAYER -->
+    <div class="be-layer" style="margin-bottom:0;">
+      <div class="layer-heading">DATA ACCESS LAYER (DAL)</div>
+      <div class="layer-row">
+        <div class="layer-item">
+          Mongoose ODM
+          <div class="layer-item-sub">Models, Pre-save Hooks, Indexing</div>
+        </div>
+        <div class="layer-item">
+          MongoDB Documents (24 Collections)
+          <div class="layer-item-sub">Aggregation Pipelines, Transactions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DATABASE CYLINDERS (RIGHT SIDE) ── -->
+  <!-- 1. MONGODB CYLINDER (24 COLLECTIONS) -->
+  <div class="db-block db-block-1">
+    <div class="db-tag">DATABASE</div>
+    <div class="db-cylinder-card">
+      <svg width="46" height="40" viewBox="0 0 50 46">
+        <ellipse cx="25" cy="10" rx="22" ry="7" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+        <path d="M3,10 v22 c0,4 10,7 22,7 s22,-3 22,-7 v-22" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+        <path d="M3,21 c0,4 10,7 22,7 s22,-3 22,-7" fill="none" stroke="#16a34a" stroke-width="1" stroke-dasharray="3,2"/>
+      </svg>
+      <div class="db-name">
+        <svg width="12" height="14" viewBox="0 0 24 24" fill="#16a34a"><path d="M12 0C11.5 5 8 9 8 13.5c0 4.1 3.4 7.5 7.5 7.5 2.5 0 4.7-1.2 6-3.1-.3 0-.6.1-.9.1-3.6 0-6.5-2.9-6.5-6.5 0-3.3 2.4-6 5.6-6.4C18.2 2.2 14.8 0 12 0z"/></svg>
+        MongoDB Atlas
+      </div>
+      <div class="db-host">24 Collections<br>6 Core Modules</div>
+    </div>
+  </div>
+
+  <!-- 2. AUDIT LOG LEDGER CYLINDER (SHA-256 TAMPER-EVIDENT) -->
+  <div class="db-block db-block-2">
+    <div class="db-tag">AUDIT LEDGER</div>
+    <div class="db-cylinder-card">
+      <svg width="46" height="40" viewBox="0 0 50 46">
+        <ellipse cx="25" cy="10" rx="22" ry="7" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+        <path d="M3,10 v22 c0,4 10,7 22,7 s22,-3 22,-7 v-22" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+        <path d="M3,21 c0,4 10,7 22,7 s22,-3 22,-7" fill="none" stroke="#d97706" stroke-width="1" stroke-dasharray="3,2"/>
+      </svg>
+      <div class="db-name">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="#d97706"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+        Audit Log Store
+      </div>
+      <div class="db-host">Immutable Hash Chain<br>SHA-256 Verified</div>
+    </div>
+  </div>
+
+  <!-- ── QR SCANNER & EQUIPMENT INSPECTION MODULE (BOTTOM INSIDE MAIN CONTAINER) ── -->
+  <div class="hw-container">
+    <div class="hw-header">EQUIPMENT QR VERIFICATION & IN-SITU INSPECTION SUBSYSTEM</div>
+    <div class="hw-row">
+      <div class="hw-box">
+        Camera Module
+        <div style="font-size:8px;color:#64748b;margin-top:2px;">HTML5 Video API</div>
+      </div>
+      <svg width="22" height="14" viewBox="0 0 22 14">
+        <line x1="0" y1="7" x2="16" y2="7" stroke="#334155" stroke-width="1.3" marker-end="url(#arr-m)"/>
+      </svg>
+      <div class="hw-box">
+        QR Decoder
+        <div style="font-size:8px;color:#64748b;margin-top:2px;">html5-qrcode engine</div>
+      </div>
+      <svg width="22" height="14" viewBox="0 0 22 14">
+        <line x1="0" y1="7" x2="16" y2="7" stroke="#334155" stroke-width="1.3" marker-end="url(#arr-m)"/>
+      </svg>
+      <div class="hw-box">
+        Equipment Validator
+        <div style="font-size:8px;color:#64748b;margin-top:2px;">Fast UUID / Code Check</div>
+      </div>
+    </div>
+
+    <!-- Clean internal connector to avoid cutting through text -->
+    <div class="hw-internal-arrow">
+      <svg width="14" height="18" viewBox="0 0 14 18">
+        <line x1="7" y1="0" x2="7" y2="12" stroke="#334155" stroke-width="1.3" marker-end="url(#arr-m)"/>
+      </svg>
+    </div>
+
+    <div class="hw-subbox">
+      Feedback Module
+      <div style="font-size:8px;color:#64748b;margin-top:2px;">Screen Toast / Audio Beep</div>
+    </div>
+  </div>
+
+  <!-- ── EXTERNAL SERVICES (BOTTOM ROW OUTSIDE CONTAINER) ── -->
+  <!-- 1. GMAIL SMTP (EMAIL NOTIFICATIONS & ALERTS) -->
+  <div class="ext-box ext-gmail">
+    <svg width="18" height="14" viewBox="0 0 24 18">
+      <path d="M1.5 0h21C23.3 0 24 .7 24 1.5v15c0 .8-.7 1.5-1.5 1.5h-21C.7 18 0 17.3 0 16.5v-15C0 .7.7 0 1.5 0z" fill="#E0E0E0"/>
+      <path d="M0 1.5l12 9 12-9v15H0v-15z" fill="#F5F5F5"/>
+      <path d="M12 10.5L0 1.5h24L12 10.5z" fill="#D44638"/>
+      <path d="M0 1.5l12 9V18H0V1.5z" fill="#EA4335" opacity="0.1"/>
+      <path d="M0 1.5V16.5c0 .8.7 1.5 1.5 1.5H5V6L0 1.5z" fill="#C5221F"/>
+      <path d="M24 1.5V16.5c0 .8-.7 1.5-1.5 1.5H19V6l5-4.5z" fill="#EA4335"/>
+    </svg>
+    <span>Gmail SMTP</span>
+  </div>
+
+  <!-- 2. REPORT EXPORT ENGINE (EXCELJS & PDFKIT) -->
+  <div class="ext-box ext-export">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="#16a34a"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+    <span>ExcelJS / PDF</span>
+  </div>
+
+  <!-- ── ALL CONNECTOR LINES (SVG LAYER) ── -->
+  <svg class="svg-lines">
+    <defs>
+      <marker id="arr-m" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#334155"/>
+      </marker>
+      <marker id="arr-left" markerWidth="6" markerHeight="6" refX="2" refY="3" orient="auto">
+        <path d="M6,0 L0,3 L6,6 Z" fill="#334155"/>
+      </marker>
+    </defs>
+
+    <!-- 1. TOP DEVOPS CONNECTIONS -->
+    <!-- GitHub to Vercel (CI/CD Left) -->
+    <line x1="395" y1="37" x2="336" y2="37" class="line-solid" marker-end="url(#arr-left)"/>
+    <!-- GitHub to Render (CI/CD Right) -->
+    <line x1="515" y1="37" x2="574" y2="37" class="line-solid" marker-end="url(#arr-m)"/>
+    <!-- GitHub Git Sync Down to Main Frame -->
+    <line x1="455" y1="59" x2="455" y2="92" class="line-solid" marker-end="url(#arr-m)"/>
+
+    <!-- Cloudinary Media Request (Down at x=895) & Response (Up at x=925) -->
+    <line x1="895" y1="59" x2="895" y2="120" class="line-solid" marker-end="url(#arr-m)"/>
+    <line x1="925" y1="120" x2="925" y2="59" class="line-dashed" marker-end="url(#arr-m)"/>
+
+    <!-- 2. ADMIN TO FRONT END - WEB -->
+    <line x1="120" y1="155" x2="195" y2="155" class="line-solid" marker-end="url(#arr-m)"/>
+    <line x1="195" y1="185" x2="120" y2="185" class="line-dashed" marker-end="url(#arr-left)"/>
+
+    <!-- 3. LECTURER & STAFF TO FRONT END - MOBILE -->
+    <line x1="120" y1="315" x2="195" y2="315" class="line-solid" marker-end="url(#arr-m)"/>
+    <line x1="195" y1="345" x2="120" y2="345" class="line-dashed" marker-end="url(#arr-left)"/>
+
+    <!-- 4. VITE DEPLOY TO MOBILE WEB -->
+    <line x1="150" y1="450" x2="205" y2="395" class="line-solid" marker-end="url(#arr-m)"/>
+
+    <!-- 5. FRONT END - WEB TO BACK END -->
+    <line x1="430" y1="145" x2="550" y2="145" class="line-solid" marker-end="url(#arr-m)"/>
+    <line x1="430" y1="175" x2="550" y2="175" class="line-solid" marker-end="url(#arr-m)"/>
+    <line x1="550" y1="210" x2="430" y2="210" class="line-dashed" marker-end="url(#arr-left)"/>
+
+    <!-- 6. FRONT END - MOBILE TO BACK END -->
+    <line x1="430" y1="305" x2="550" y2="305" class="line-solid" marker-end="url(#arr-m)"/>
+    <line x1="550" y1="340" x2="430" y2="340" class="line-dashed" marker-end="url(#arr-left)"/>
+    <line x1="430" y1="370" x2="550" y2="370" class="line-solid" marker-end="url(#arr-m)"/>
+
+    <!-- 7. BACK END TO DATABASES -->
+    <!-- To MongoDB (Query & Return Data) -->
+    <line x1="920" y1="165" x2="1040" y2="165" class="line-solid" marker-end="url(#arr-m)"/>
+    <line x1="1040" y1="195" x2="920" y2="195" class="line-dashed" marker-end="url(#arr-left)"/>
+
+    <!-- To Audit Log Store (Append Block & Verify) -->
+    <line x1="920" y1="340" x2="1040" y2="340" class="line-solid" marker-end="url(#arr-m)"/>
+    <line x1="1040" y1="370" x2="920" y2="370" class="line-dashed" marker-end="url(#arr-left)"/>
+
+    <!-- 8. QR SCANNER SECTION CONNECTORS (STRAIGHT VERTICAL LINES IN 40PX OVERLAP GAP) -->
+    <!-- Validator to Back End (Solid Up) -->
+    <line x1="565" y1="490" x2="565" y2="450" class="line-solid" marker-end="url(#arr-m)"/>
+    <!-- Back End to QR Subsystem (Dashed Down) -->
+    <line x1="585" y1="450" x2="585" y2="490" class="line-dashed" marker-end="url(#arr-m)"/>
+
+    <!-- Maintenance Staff to Camera Module (Straight Vertical line) -->
+    <line x1="270" y1="715" x2="270" y2="655" class="line-solid" marker-end="url(#arr-m)"/>
+
+    <!-- 9. BACK END TO EXTERNAL SERVICES (DOWNWARD LINES) -->
+    <!-- To Gmail SMTP -->
+    <line x1="707" y1="450" x2="707" y2="725" class="line-solid" marker-end="url(#arr-m)"/>
+
+    <!-- To Export Engine (Request Down at x=835 & File Up at x=875) -->
+    <line x1="835" y1="450" x2="835" y2="725" class="line-solid" marker-end="url(#arr-m)"/>
+    <line x1="875" y1="725" x2="875" y2="450" class="line-dashed" marker-end="url(#arr-m)"/>
+  </svg>
+
+  <!-- ── CRISP WHITE-PILL LABELS (NO OVERLAPS) ── -->
+  <!-- Top DevOps Labels -->
+  <div class="lbl" style="left:365px; top:37px;">CI/CD</div>
+  <div class="lbl" style="left:545px; top:37px;">CI/CD</div>
+  <div class="lbl" style="left:420px; top:75px;">Git Sync</div>
+  <div class="lbl" style="left:865px; top:88px;">Request</div>
+  <div class="lbl" style="left:955px; top:88px;">Response</div>
+
+  <!-- Left Actor Labels -->
+  <div class="lbl" style="left:158px; top:147px;">Request</div>
+  <div class="lbl" style="left:158px; top:193px;">Response</div>
+  <div class="lbl" style="left:158px; top:307px;">Request</div>
+  <div class="lbl" style="left:158px; top:353px;">Response</div>
+  <div class="lbl" style="left:175px; top:420px;">Deploy</div>
+
+  <!-- FE to BE Web Labels -->
+  <div class="lbl" style="left:490px; top:137px;">Socket.IO (Real-time)</div>
+  <div class="lbl" style="left:490px; top:167px;">Request</div>
+  <div class="lbl lbl-blue" style="left:490px; top:187px;">{ REST API }</div>
+  <div class="lbl" style="left:490px; top:218px;">Response</div>
+
+  <!-- FE to BE Mobile Labels -->
+  <div class="lbl" style="left:490px; top:297px;">Request</div>
+  <div class="lbl lbl-blue" style="left:490px; top:317px;">{ REST API }</div>
+  <div class="lbl" style="left:490px; top:348px;">Response</div>
+  <div class="lbl" style="left:490px; top:378px;">Socket.IO (Live Sync)</div>
+
+  <!-- BE to DB Labels -->
+  <div class="lbl" style="left:980px; top:157px;">Query / Aggregate</div>
+  <div class="lbl" style="left:980px; top:203px;">Return Documents</div>
+  <div class="lbl" style="left:980px; top:332px;">Append Hash Block</div>
+  <div class="lbl" style="left:980px; top:378px;">Verify Hash Chain</div>
+
+  <!-- QR Scanner to BE Labels (Flanking the straight vertical lines) -->
+  <div class="lbl" style="left:520px; top:470px;">HTTP/Socket.IO</div>
+  <div class="lbl" style="left:635px; top:470px;">Asset Details</div>
+
+  <!-- Maintenance Staff Scan Label -->
+  <div class="lbl" style="left:345px; top:685px;">Scan QR Code / Inspect</div>
+
+  <!-- External Services Labels (Staggered on outer flanks) -->
+  <div class="lbl" style="left:625px; top:600px;">Send Alerts / OTP / Reminders</div>
+  <div class="lbl" style="left:795px; top:600px;">Export Request</div>
+  <div class="lbl" style="left:915px; top:600px;">Report File</div>
+
+</div>
+
+<!-- FIGURE CAPTION -->
+<div class="figure-caption">
+  Figure 1. System Architecture — RUO University Facility Management System
+  <span style="margin: 0 10px; color:#cbd5e1;">|</span>
+  <a href="package_diagrams.html" style="color:#2563eb; text-decoration:none; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+    Xem 1.2 Package Diagrams (Web, Mobile, Back-End) &rarr;
+  </a>
+</div>
+
+</body>
+</html>

@@ -4,73 +4,66 @@ import { Icons } from '../common/SvgIcons';
 const ALL_MODULES = [
   {
     id: 'dashboard',
-    label: 'Bản Đồ Không Gian (CAD Architectural Floor Plan)',
-    cat: 'TRỤ CỘT 1 • KHÔNG GIAN',
+    label: 'Bản Đồ Mặt Bằng CAD Kiến Trúc & Giám Sát Không Gian',
+    cat: 'PHÂN HỆ 01 • KHÔNG GIAN',
     icon: Icons.Building,
-    desc: 'Mặt bằng CAD kiến trúc thời gian thực, Time-Travel Scrubber, IoT Telemetry nhiệt độ và điện năng'
-  },
-  {
-    id: 'rooms',
-    label: 'Tra Cứu 108 Phòng Học & Đặt Chỗ Nhanh',
-    cat: 'TRỤ CỘT 2 • LỊCH BIỂU',
-    icon: Icons.Room,
-    desc: 'Tìm kiếm phòng theo sức chứa, thiết bị, kiểm tra xung đột thời khóa biểu và giữ chỗ tức thời'
-  },
-  {
-    id: 'calendar',
-    label: 'Lịch Biểu Tuần Chuẩn RFC-5545 Toàn Trường',
-    cat: 'TRỤ CỘT 2 • LỊCH BIỂU',
-    icon: Icons.Calendar,
-    desc: 'Đồng bộ 3 lớp dữ liệu: Lịch chính khóa đào tạo, Sự kiện trường và Lịch tự học sinh viên'
-  },
-  {
-    id: 'approvals',
-    label: 'Hàng Đợi Phê Duyệt Đa Cấp & Tự Động Chuyển Cấp SLA',
-    cat: 'TRỤ CỘT 3 • ĐIỀU HÀNH',
-    icon: Icons.CheckCircle,
-    desc: 'Quản lý yêu cầu sử dụng phòng chờ duyệt, cơ chế tự động chuyển cấp lãnh đạo khi quá hạn SLA'
-  },
-  {
-    id: 'tickets_kanban',
-    label: 'Kanban SLA Quản Lý Sự Cố Khẩn Cấp',
-    cat: 'TRỤ CỘT 3 • ĐIỀU HÀNH',
-    icon: Icons.Ticket,
-    desc: 'Đếm ngược SLA theo giờ hành chính 07:30 - 17:00, điều phối kỹ thuật viên xử lý thiết bị hỏng'
-  },
-  {
-    id: 'csp_studio',
-    label: 'Bộ Giải Thuật Toán Xếp TKB Tự Động (CSP Engine)',
-    cat: 'TRỤ CỘT 1 • THUẬT TOÁN',
-    icon: Icons.Cpu,
-    desc: 'Thuật toán Backtracking + MRV + LCV + AC-3, tối ưu hóa xếp lịch học 0 xung đột phòng'
+    desc: 'Mặt bằng CAD kiến trúc thời gian thực, điều phối phòng học và giám sát thiết bị'
   },
   {
     id: 'equipments',
-    label: 'Kho Thiết Bị & Quản Lý Mã QR Định Danh',
-    cat: 'TRỤ CỘT 4 • THIẾT BỊ',
+    label: 'Kho Quản Lý Thiết Bị & Nhãn Mã QR Định Danh',
+    cat: 'PHÂN HỆ 02 • THIẾT BỊ',
     icon: Icons.Equipment,
-    desc: 'Kiểm kê tài sản thiết bị giảng đường, mượn trả thiết bị Lab, quét mã QR định danh'
+    desc: 'Quản lý danh mục tài sản, cấu hình thông số kỹ thuật, in và dán tem nhãn QR'
+  },
+  {
+    id: 'transfers',
+    label: 'Điều Chuyển Trang Thiết Bị Giữa Các Phòng',
+    cat: 'PHÂN HỆ 03 • ĐIỀU CHUYỂN',
+    icon: Icons.RefreshCw,
+    desc: 'Lập phiếu đề xuất luân chuyển tài sản, theo dõi biên bản bàn giao phòng nhận'
+  },
+  {
+    id: 'tickets_kanban',
+    label: 'Sự Cố & Sửa Chữa Thiết Bị (Kanban SLA)',
+    cat: 'PHÂN HỆ 04 • SỬA CHỮA',
+    icon: Icons.Wrench,
+    desc: 'Tiếp nhận báo hỏng, đếm ngược cam kết thời gian khắc phục sự cố SLA khẩn cấp'
+  },
+  {
+    id: 'maintenance',
+    label: 'Kế Hoạch & Nhật Ký Bảo Trì Định Kỳ',
+    cat: 'PHÂN HỆ 05 • BẢO TRÌ',
+    icon: Icons.Calendar,
+    desc: 'Lập lịch bảo dưỡng phòng học, ghi nhận nhật ký kiểm tra định kỳ điều hòa, máy chiếu'
+  },
+  {
+    id: 'inventory',
+    label: 'Kiểm Kê CSVC & Đối Soát Mã QR Thực Địa',
+    cat: 'PHÂN HỆ 06 • KIỂM KÊ',
+    icon: Icons.CheckCircle,
+    desc: 'Tạo đợt kiểm kê tài sản năm, quét mã QR camera di động đối soát thừa thiếu thực tế'
   },
   {
     id: 'disposal_calc',
-    label: 'Máy Tính Thanh Lý Tài Sản Tự Động (Chỉ Số R ≥ 60%)',
-    cat: 'TRỤ CỘT 5 • THANH LÝ',
+    label: 'Quy Trình Thanh Lý Tài Sản & Máy Tính Chỉ Số R ≥ 60%',
+    cat: 'PHÂN HỆ 07 • THANH LÝ',
     icon: Icons.Sliders,
-    desc: 'Tính toán hao mòn kinh tế kỹ thuật tài sản, lập biên bản và hội đồng thanh lý tự động'
+    desc: 'Tính toán hao mòn kinh tế kỹ thuật tài sản hỏng, tự động lập hội đồng thanh lý'
   },
   {
     id: 'rbac',
-    label: 'Ma Trận Phân Quyền 7 Vai Trò (RBAC Engine)',
-    cat: 'QUẢN TRỊ & BẢO MẬT',
+    label: 'Ma Trận Phân Quyền 3 Vai Trò (RBAC Engine)',
+    cat: 'PHÂN HỆ 08 • QUẢN TRỊ',
     icon: Icons.Users,
-    desc: 'Thiết lập thẩm quyền cho Sinh viên, Giảng viên, QL CSVC, Kỹ thuật, Đào tạo, Admin'
+    desc: 'Phân quyền chi tiết cho Giảng viên, Quản lý CSVC & Kỹ thuật, và Quản trị viên'
   },
   {
     id: 'audit_log',
-    label: 'Nhật Ký Kiểm Toán SHA-256 Bất Biến (Audit Trail)',
-    cat: 'QUẢN TRỊ & BẢO MẬT',
+    label: 'Nhật Ký Kiểm Toán Chuỗi Khối SHA-256 Bất Biến',
+    cat: 'PHÂN HỆ 09 • KIỂM TOÁN',
     icon: Icons.Audit,
-    desc: 'Lưu vết mật mã học không thể chỉnh sửa mọi thao tác đặt phòng, phê duyệt và thanh lý'
+    desc: 'Lưu vết mật mã học không thể can thiệp mọi thay đổi trạng thái tài sản và luân chuyển'
   }
 ];
 

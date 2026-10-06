@@ -74,13 +74,27 @@ export const requireRole = (...allowedRoles) => {
       return next();
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    // Canonical role mapping: facility_staff and maintenance are aliases for maintenance_staff
+    const staffAliases = ['maintenance_staff', 'facility_staff', 'maintenance'];
+    const userRole = req.user.role;
+
+    const isMatch = allowedRoles.some(allowed => {
+      if (allowed === userRole) return true;
+      if (staffAliases.includes(allowed) && staffAliases.includes(userRole)) return true;
+      return false;
+    });
+
+    if (!isMatch) {
       return res.status(403).json({
         success: false,
-        message: `Quyền truy cập bị từ chối. Chức năng này yêu cầu một trong các vai trò: [${allowedRoles.join(', ')}].`
+        message: `Quyền truy cập bị từ chối. Chức năng này yêu cầu một trong các vai trò: [${allowedRoles.join(', ')}]. Vai trò hiện tại của bạn là: ${userRole}`
       });
     }
 
     next();
   };
 };
+
+export const authorize = requireRole;
+
+

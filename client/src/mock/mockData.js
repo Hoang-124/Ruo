@@ -4,24 +4,6 @@
  */
 
 export const USERS = {
-  student: {
-    id: 'USR_001',
-    code: 'SV20220412',
-    name: 'Trần Bảo Hoàng',
-    role: 'student',
-    roleTitle: 'Sinh viên',
-    email: 'hoang.tb220412@university.edu.vn',
-    department: 'Viện Công Nghệ Thông Tin & TT',
-    className: 'K67-CNTT-02',
-    phone: '0987 654 321',
-    avatar: 'TH',
-    reputeScore: 92, // Điểm uy tín
-    stats: {
-      upcomingBookings: 2,
-      activeTickets: 1,
-      totalBookedHours: 48,
-    }
-  },
   lecturer: {
     id: 'USR_002',
     code: 'CB198402',
@@ -32,11 +14,27 @@ export const USERS = {
     department: 'Khoa Kỹ Thuật Máy Tính',
     phone: '0912 345 678',
     avatar: 'NN',
-    reputeScore: 98,
     stats: {
-      seriesBookings: 3,
-      borrowedEquipments: 2,
+      activeTickets: 2,
+      assignedRooms: 3,
       teachingHoursWeek: 16
+    }
+  },
+  maintenance_staff: {
+    id: 'USR_003',
+    code: 'NV201901',
+    name: 'Lê Thị Mai',
+    role: 'maintenance_staff',
+    roleTitle: 'Quản lý CSVC & Kỹ thuật',
+    email: 'mai.lt@university.edu.vn',
+    department: 'Phòng Quản Lý Cơ Sở Vật Chất',
+    phone: '0903 112 233',
+    avatar: 'LM',
+    stats: {
+      pendingTransfers: 4,
+      openTickets: 12,
+      slaOverdueCount: 1,
+      totalEquipments: 1240
     }
   },
   facility_staff: {
@@ -49,12 +47,11 @@ export const USERS = {
     department: 'Phòng Cơ Sở Vật Chất',
     phone: '0903 112 233',
     avatar: 'LM',
-    reputeScore: 100,
     stats: {
-      pendingApprovals: 8,
+      pendingTransfers: 4,
       openTickets: 12,
-      slaOverdueCount: 2,
-      todayOccupancy: 78
+      slaOverdueCount: 1,
+      totalEquipments: 1240
     }
   },
   maintenance: {
@@ -67,29 +64,11 @@ export const USERS = {
     department: 'Tổ Kỹ Thuật & Sửa Chữa',
     phone: '0934 889 900',
     avatar: 'PH',
-    reputeScore: 95,
     stats: {
       assignedTickets: 5,
       inProgressTickets: 3,
       completedMonth: 28,
       avgMTTR: '2.4h'
-    }
-  },
-  academic_affairs: {
-    id: 'USR_005',
-    code: 'DT201509',
-    name: 'Hoàng Quốc Dũng',
-    role: 'academic_affairs',
-    roleTitle: 'Chuyên viên Đào tạo',
-    email: 'dung.hq@university.edu.vn',
-    department: 'Phòng Quản Lý Đào Tạo',
-    phone: '0945 667 788',
-    avatar: 'HD',
-    reputeScore: 100,
-    stats: {
-      totalCoursesSemester: 450,
-      allocatedPercentage: 96.2,
-      escalatedRequests: 3
     }
   },
   admin: {
@@ -99,14 +78,13 @@ export const USERS = {
     role: 'admin',
     roleTitle: 'System Admin',
     email: 'admin@university.edu.vn',
-    department: 'Trung Tâm Công Nghệ Thông Tin',
+    department: 'Trung Tâm Quản Trị CSVC & Hạ Tầng',
     phone: '024 3869 1234',
     avatar: 'AD',
-    reputeScore: 100,
     stats: {
-      onlineUsers: 142,
-      apiRequestsMin: 850,
-      activeRoles: 6,
+      onlineUsers: 48,
+      apiRequestsMin: 320,
+      activeRoles: 3,
       auditLogsToday: 320
     }
   }
@@ -523,34 +501,25 @@ export const EQUIPMENT_SEED_DATA = [
   }
 ];
 
-export const CSP_CLASSES_SAMPLE = [
-  { id: 'IT3010', name: 'Kỹ Thuật Lập Trình', lecturer: 'TS. Lê Đức Anh', students: 42, type: 'theory', requiredLab: false, faculty: 'CNTT' },
-  { id: 'IT3160', name: 'Kiến Trúc Máy Tính & Lab', lecturer: 'PGS. TS. Trần Đình Hưng', students: 35, type: 'lab', requiredLab: true, faculty: 'CNTT' },
-  { id: 'IT4040', name: 'Phát Triển Ứng Dụng Web', lecturer: 'TS. Nguyễn Văn Nam', students: 40, type: 'theory', requiredLab: false, faculty: 'CNTT' },
-  { id: 'EE2010', name: 'Lý Thuyết Mạch Điện', lecturer: 'TS. Vũ Hoàng Long', students: 58, type: 'theory', requiredLab: false, faculty: 'Điện' },
-  { id: 'EE3050', name: 'Thí Nghiệm Đo Lường', lecturer: 'ThS. Đỗ Minh Tuấn', students: 24, type: 'lab', requiredLab: true, faculty: 'Điện' },
-  { id: 'IT5000', name: 'Hội Thảo Tốt Nghiệp K67', lecturer: 'GS. TS. Nguyễn Hải Quân', students: 160, type: 'hall', requiredLab: false, faculty: 'CNTT' }
-];
-
 export const AUDIT_LOGS = [
   {
     id: 'LOG_9021',
     timestamp: '17/09/2026 08:02:14',
-    user: 'TS. Nguyễn Văn Nam',
+    user: 'Lê Thị Mai (Quản lý CSVC)',
     ip: '10.20.4.15',
-    action: 'BOOKING_CREATE',
-    entity: 'BookingSeries',
-    target: 'B2-105',
+    action: 'TRANSFER_CREATE',
+    entity: 'Transfer',
+    target: 'TRF-2026-008',
     diff: {
-      action: 'Insert Series 15 weeks',
-      dayOfWeek: 'Thứ Tư',
-      timeSlot: '07:30 - 11:30'
+      action: 'Điều chuyển 10x Laptop Dell Precision sang A1-102',
+      fromRoom: 'KHO_TONG',
+      toRoom: 'A1-102'
     }
   },
   {
     id: 'LOG_9020',
     timestamp: '17/09/2026 07:55:00',
-    user: 'Lê Thị Mai (Facility Staff)',
+    user: 'Lê Thị Mai (Quản lý CSVC)',
     ip: '10.20.1.22',
     action: 'TICKET_ASSIGN',
     entity: 'Ticket',
@@ -570,21 +539,21 @@ export const AUDIT_LOGS = [
     entity: 'Role',
     target: 'Lecturer',
     diff: {
-      addedPermissions: ['booking:series:create', 'equipment:borrow:request'],
+      addedPermissions: ['ticket:create', 'equipment:read'],
       updatedBy: 'AD000001'
     }
   },
   {
     id: 'LOG_9018',
     timestamp: '16/09/2026 14:30:10',
-    user: 'Hoàng Quốc Dũng (Academic)',
+    user: 'Phạm Văn Hùng (Kỹ thuật)',
     ip: '10.20.2.11',
-    action: 'SCHEDULE_FREEZE',
-    entity: 'CurriculumSchedule',
-    target: 'Semester 2026-1',
+    action: 'MAINTENANCE_LOG_RECORD',
+    entity: 'MaintenanceLog',
+    target: 'ML-2026-0034',
     diff: {
-      state: 'LOCKED',
-      totalSlotsLocked: 840
+      item: 'Bảo trì hệ thống điều hòa A1-302',
+      status: 'COMPLETED'
     }
   }
 ];
@@ -592,8 +561,8 @@ export const AUDIT_LOGS = [
 export const NOTIFICATIONS = [
   {
     id: 'NOTIF_01',
-    title: 'Đơn đặt phòng đã được phê duyệt',
-    message: 'Yêu cầu mượn phòng A1-302 ngày 20/09 của bạn đã được duyệt. Vui lòng check-in QR trong 15 phút đầu.',
+    title: 'Phiếu điều chuyển thiết bị đã được duyệt',
+    message: 'Phiếu điều chuyển TRF-2026-008 (10x Laptop Dell sang A1-102) đã được quản trị viên duyệt và sẵn sàng bàn giao.',
     time: '35 phút trước',
     read: false,
     type: 'success'
@@ -609,9 +578,10 @@ export const NOTIFICATIONS = [
   {
     id: 'NOTIF_03',
     title: 'Thông báo bảo dưỡng định kỳ',
-    message: 'Khu vực Lab B2-105 sẽ tạm ngừng phục vụ từ 08:00 đến 17:00 hôm nay để bảo trì hệ thống điều hòa.',
+    message: 'Khu vực Lab B2-105 sẽ tiến hành bảo dưỡng hệ thống điều hòa và máy chiếu trong sáng nay.',
     time: '3 giờ trước',
     read: true,
     type: 'info'
   }
 ];
+

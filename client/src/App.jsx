@@ -4,20 +4,16 @@ import { ToastProvider } from './context/ToastContext';
 import { AppHeader } from './components/layout/AppHeader';
 import { Dashboard } from './pages/dashboard/Dashboard';
 import { Icons } from './components/common/SvgIcons';
-import { ROOMS } from './mock/mockData';
 
-// Code-Splitting: Lazy load secondary subsystems & heavy modals to reduce initial load time
-const RoomListPage = lazy(() => import('./pages/rooms/RoomListPage').then(m => ({ default: m.RoomListPage })));
-const RoomCalendarPage = lazy(() => import('./pages/rooms/RoomCalendarPage').then(m => ({ default: m.RoomCalendarPage })));
-const TicketKanbanPage = lazy(() => import('./pages/incidents/TicketKanbanPage').then(m => ({ default: m.TicketKanbanPage })));
-const CSPStudioPage = lazy(() => import('./pages/allocations/CSPStudioPage').then(m => ({ default: m.CSPStudioPage })));
+// Code-Splitting: Lazy load 6 core module pages
 const EquipmentDisposalPage = lazy(() => import('./pages/equipments/EquipmentDisposalPage').then(m => ({ default: m.EquipmentDisposalPage })));
+const TransferListPage = lazy(() => import('./pages/transfers/TransferListPage').then(m => ({ default: m.TransferListPage })));
+const TicketKanbanPage = lazy(() => import('./pages/incidents/TicketKanbanPage').then(m => ({ default: m.TicketKanbanPage })));
+const MaintenancePage = lazy(() => import('./pages/maintenance/MaintenancePage').then(m => ({ default: m.MaintenancePage })));
+const InventoryPage = lazy(() => import('./pages/inventory/InventoryPage').then(m => ({ default: m.InventoryPage })));
 const RBACMatrixPage = lazy(() => import('./pages/admin/RBACMatrixPage').then(m => ({ default: m.RBACMatrixPage })));
 const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage').then(m => ({ default: m.AuditLogPage })));
-const ApprovalQueuePage = lazy(() => import('./pages/approvals/ApprovalQueuePage').then(m => ({ default: m.ApprovalQueuePage })));
 
-const BookingModal = lazy(() => import('./components/ui/BookingModal').then(m => ({ default: m.BookingModal })));
-const QRCheckInModal = lazy(() => import('./components/ui/QRCheckInModal').then(m => ({ default: m.QRCheckInModal })));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const UserProfileModal = lazy(() => import('./components/ui/UserProfileModal').then(m => ({ default: m.UserProfileModal })));
 
@@ -34,11 +30,6 @@ const LazyFallback = () => (
 const MainAppContent = () => {
   const { isTabAllowed, currentRoleMeta, isLoggedIn } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
-
-  // Modals state
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [selectedBookingRoom, setSelectedBookingRoom] = useState(ROOMS[0]);
-  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   if (!isLoggedIn) {
@@ -48,11 +39,6 @@ const MainAppContent = () => {
       </Suspense>
     );
   }
-
-  const handleOpenBooking = (room) => {
-    setSelectedBookingRoom(room || ROOMS[0]);
-    setIsBookingModalOpen(true);
-  };
 
   // Subpage wrapper with Return-to-CAD button
   const renderSubPageWrapper = (title, category, component) => (
@@ -108,7 +94,7 @@ const MainAppContent = () => {
             Truy Cập Bị Giới Hạn Theo Vai Trò (RBAC Guard)
           </h2>
           <p style={{ fontSize: '13.5px', color: 'var(--ink-secondary)', maxWidth: '480px', margin: '0 auto 24px', lineHeight: 1.6 }}>
-            Vai trò hiện tại của bạn là <strong style={{ color: 'var(--laser-cyan)' }}>{currentRoleMeta?.title || 'Sinh viên'}</strong> không có thẩm quyền truy cập vào phân hệ này theo ma trận phân quyền đại học của Ruo.
+            Vai trò hiện tại của bạn là <strong style={{ color: 'var(--laser-cyan)' }}>{currentRoleMeta?.title || 'Người dùng'}</strong> không có thẩm quyền truy cập vào phân hệ này theo ma trận phân quyền đại học của Ruo.
           </p>
           <button
             onClick={() => setActiveTab('dashboard')}
@@ -126,73 +112,64 @@ const MainAppContent = () => {
         return (
           <Dashboard
             onNavigateTab={(tab) => setActiveTab(tab)}
-            onOpenBookingModal={handleOpenBooking}
-            onOpenQRModal={() => setIsQRModalOpen(true)}
+            onOpenQRModal={() => setActiveTab('inventory')}
           />
         );
 
-      case 'rooms':
+      case 'equipments':
         return renderSubPageWrapper(
-          'Danh Mục 108 Phòng Học & Tra Cứu',
-          'TRỤ CỘT 2 • LỊCH BIỂU',
-          <RoomListPage
-            onOpenBookingModal={handleOpenBooking}
-            onOpenCalendar={() => setActiveTab('calendar')}
-          />
+          'Kho Quản Lý Thiết Bị & Nhãn Mã QR',
+          'MODULE 03 • THIẾT BỊ',
+          <EquipmentDisposalPage key="equipments" initialTab="inventory" />
         );
 
-      case 'calendar':
-      case 'my_bookings':
-      case 'series_booking':
+      case 'transfers':
         return renderSubPageWrapper(
-          'Lịch Biểu Tuần Chuẩn RFC-5545',
-          'TRỤ CỘT 2 • LỊCH BIỂU',
-          <RoomCalendarPage onOpenBookingModal={handleOpenBooking} />
-        );
-
-      case 'approvals':
-        return renderSubPageWrapper(
-          'Hàng Đợi Phê Duyệt Đa Cấp & SLA Escalation',
-          'TRỤ CỘT 3 • ĐIỀU HÀNH',
-          <ApprovalQueuePage />
+          'Điều Chuyển Trang Thiết Bị Giữa Các Phòng',
+          'MODULE 03 • ĐIỀU CHUYỂN',
+          <TransferListPage />
         );
 
       case 'tickets_kanban':
       case 'tickets':
         return renderSubPageWrapper(
-          'Kanban SLA Quản Lý Sự Cố Khẩn Cấp',
-          'TRỤ CỘT 3 • ĐIỀU HÀNH',
+          'Sự Cố & Sửa Chữa Thiết Bị (Kanban SLA)',
+          'MODULE 04 • SỬA CHỮA',
           <TicketKanbanPage />
         );
 
-      case 'csp_studio':
+      case 'maintenance':
         return renderSubPageWrapper(
-          'Bộ Giải Thuật Toán Xếp TKB Tự Động (CSP Engine)',
-          'TRỤ CỘT 1 • THUẬT TOÁN',
-          <CSPStudioPage />
+          'Kế Hoạch & Nhật Ký Bảo Trì Định Kỳ',
+          'MODULE 05 • BẢO TRÌ',
+          <MaintenancePage />
         );
 
-      case 'equipments':
+      case 'inventory':
+        return renderSubPageWrapper(
+          'Kiểm Kê CSVC & Đối Soát Mã QR Thực Địa',
+          'MODULE 05 • KIỂM KÊ',
+          <InventoryPage />
+        );
+
       case 'disposal_calc':
         return renderSubPageWrapper(
-          activeTab === 'disposal_calc'
-            ? 'Quy Trình Thanh Lý Tài Sản & Máy Tính Chỉ Số R ≥ 60%'
-            : 'Kho Quản Lý Thiết Bị & Kiểm Kê Mã QR',
-          activeTab === 'disposal_calc' ? 'TRỤ CỘT 5 • THANH LÝ' : 'TRỤ CỘT 4 • THIẾT BỊ',
-          <EquipmentDisposalPage key={activeTab} initialTab={activeTab === 'disposal_calc' ? 'disposal' : 'inventory'} />
+          'Quy Trình Thanh Lý Tài Sản & Máy Tính Chỉ Số R ≥ 60%',
+          'MODULE 03 • THANH LÝ',
+          <EquipmentDisposalPage key="disposal" initialTab="disposal" />
         );
 
       case 'rbac':
         return renderSubPageWrapper(
-          'Ma Trận Phân Quyền 7 Nhóm (RBAC Matrix)',
-          'QUẢN TRỊ HỆ THỐNG',
+          'Ma Trận Phân Quyền 3 Vai Trò (RBAC Matrix)',
+          'MODULE 01 • QUẢN TRỊ NGƯỜI DÙNG',
           <RBACMatrixPage />
         );
 
       case 'audit_log':
         return renderSubPageWrapper(
-          'Nhật Ký Kiểm Toán SHA-256 Bất Biến',
-          'BẢO MẬT & KIỂM TOÁN',
+          'Nhật Ký Kiểm Toán Chuỗi Khối SHA-256',
+          'MODULE 06 • BẢO MẬT & KIỂM TOÁN',
           <AuditLogPage />
         );
 
@@ -200,8 +177,7 @@ const MainAppContent = () => {
         return (
           <Dashboard
             onNavigateTab={(tab) => setActiveTab(tab)}
-            onOpenBookingModal={handleOpenBooking}
-            onOpenQRModal={() => setIsQRModalOpen(true)}
+            onOpenQRModal={() => setActiveTab('inventory')}
           />
         );
     }
@@ -213,7 +189,7 @@ const MainAppContent = () => {
       <AppHeader
         activeTab={activeTab}
         onSelectTab={(tab) => setActiveTab(tab)}
-        onOpenQRDemo={() => setIsQRModalOpen(true)}
+        onOpenQRDemo={() => setActiveTab('inventory')}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
       />
 
@@ -226,25 +202,8 @@ const MainAppContent = () => {
         </Suspense>
       </main>
 
-      {/* Global Interactive Modals (Lazy Loaded on Demand) */}
+      {/* Profile Modal */}
       <Suspense fallback={null}>
-        {isBookingModalOpen && (
-          <BookingModal
-            isOpen={isBookingModalOpen}
-            onClose={() => setIsBookingModalOpen(false)}
-            selectedRoom={selectedBookingRoom}
-            onBookingSuccess={() => {}}
-          />
-        )}
-
-        {isQRModalOpen && (
-          <QRCheckInModal
-            isOpen={isQRModalOpen}
-            onClose={() => setIsQRModalOpen(false)}
-            bookingRoom={selectedBookingRoom?.code || 'A1-302'}
-          />
-        )}
-
         {isProfileModalOpen && (
           <UserProfileModal
             isOpen={isProfileModalOpen}

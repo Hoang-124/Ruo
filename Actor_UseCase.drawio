@@ -1,0 +1,357 @@
+<mxfile host="Electron">
+  <diagram name="Page-1" id="RUO-UC-Diagram">
+    <mxGraphModel dx="2400" dy="3200" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="2800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ============================================================ -->
+        <!-- AUTHENTICATION MODULE (top center)                            -->
+        <!-- 5 UCs — shared by all 3 actors via inheritance               -->
+        <!-- ============================================================ -->
+        <mxCell id="a-box" parent="1" style="html=1;whiteSpace=wrap;fontSize=18;" value="" vertex="1">
+          <mxGeometry height="370" width="700" x="750" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="a-title" parent="1" style="text;align=center;fontStyle=1;verticalAlign=middle;spacingLeft=3;spacingRight=3;strokeColor=none;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontSize=20;" value="&lt;font&gt;AUTHENTICATION MODULE&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="300" x="950" y="58" as="geometry" />
+        </mxCell>
+
+        <!-- Auth actor: User -->
+        <mxCell id="a-user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=18;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="600" y="200" as="geometry" />
+        </mxCell>
+
+        <!-- Inheriting actors (small) -->
+        <mxCell id="a-lec" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;" value="Lecturer" vertex="1">
+          <mxGeometry height="45" width="22" x="440" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="a-mst" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;" value="Maint. Staff" vertex="1">
+          <mxGeometry height="45" width="22" x="440" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="a-adm" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;" value="Admin" vertex="1">
+          <mxGeometry height="45" width="22" x="440" y="320" as="geometry" />
+        </mxCell>
+
+        <!-- Auth UCs -->
+        <mxCell id="a-uc-1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Log in" vertex="1">
+          <mxGeometry height="38" width="320" x="880" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="a-uc-2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Log out" vertex="1">
+          <mxGeometry height="38" width="320" x="880" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="a-uc-3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Recover password" vertex="1">
+          <mxGeometry height="38" width="320" x="880" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="a-uc-4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Update personal profile" vertex="1">
+          <mxGeometry height="38" width="320" x="880" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="a-uc-5" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Change password" vertex="1">
+          <mxGeometry height="38" width="320" x="880" y="315" as="geometry" />
+        </mxCell>
+
+        <!-- Auth edges: User → UCs -->
+        <mxCell id="a-e-1" edge="1" parent="1" source="a-user" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="a-uc-1" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a-e-2" edge="1" parent="1" source="a-user" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="a-uc-2" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a-e-3" edge="1" parent="1" source="a-user" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="a-uc-3" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a-e-4" edge="1" parent="1" source="a-user" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="a-uc-4" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a-e-5" edge="1" parent="1" source="a-user" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="a-uc-5" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Inheritance arrows: Lecturer/MaintStaff/Admin → User -->
+        <mxCell id="a-inh-1" edge="1" parent="1" source="a-lec" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" target="a-user" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a-inh-2" edge="1" parent="1" source="a-mst" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" target="a-user" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a-inh-3" edge="1" parent="1" source="a-adm" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" target="a-user" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- LECTURER MODULE (left, compact)                               -->
+        <!-- 4 UCs — report, track, evaluate, check                       -->
+        <!-- ============================================================ -->
+        <mxCell id="l-box" parent="1" style="html=1;whiteSpace=wrap;fontSize=18;" value="" vertex="1">
+          <mxGeometry height="310" width="700" x="200" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="l-title" parent="1" style="text;align=center;fontStyle=1;verticalAlign=middle;spacingLeft=3;spacingRight=3;strokeColor=none;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontSize=20;" value="&lt;font&gt;LECTURER MODULE&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="250" x="425" y="528" as="geometry" />
+        </mxCell>
+        <mxCell id="l-actor" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=18;" value="Lecturer" vertex="1">
+          <mxGeometry height="60" width="30" x="55" y="640" as="geometry" />
+        </mxCell>
+
+        <!-- Lecturer UCs -->
+        <mxCell id="l-uc-1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Report equipment malfunction" vertex="1">
+          <mxGeometry height="38" width="340" x="340" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="l-uc-2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Track incident resolution" vertex="1">
+          <mxGeometry height="38" width="340" x="340" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="l-uc-3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Evaluate repair quality" vertex="1">
+          <mxGeometry height="38" width="340" x="340" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="l-uc-4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Check room equipment" vertex="1">
+          <mxGeometry height="38" width="340" x="340" y="750" as="geometry" />
+        </mxCell>
+
+        <!-- Lecturer edges -->
+        <mxCell id="l-e-1" edge="1" parent="1" source="l-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="l-uc-1" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l-e-2" edge="1" parent="1" source="l-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="l-uc-2" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l-e-3" edge="1" parent="1" source="l-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="l-uc-3" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="l-e-4" edge="1" parent="1" source="l-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="l-uc-4" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- MAINTENANCE STAFF MODULE (left, tall)                         -->
+        <!-- 28 UCs — equipment, transfer, repair, maintenance, disposal   -->
+        <!-- ============================================================ -->
+        <mxCell id="m-box" parent="1" style="html=1;whiteSpace=wrap;fontSize=18;" value="" vertex="1">
+          <mxGeometry height="1340" width="850" x="200" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="m-title" parent="1" style="text;align=center;fontStyle=1;verticalAlign=middle;spacingLeft=3;spacingRight=3;strokeColor=none;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontSize=20;" value="&lt;font&gt;MAINTENANCE STAFF MODULE&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="350" x="450" y="938" as="geometry" />
+        </mxCell>
+        <mxCell id="m-actor" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=18;" value="Maint. Staff" vertex="1">
+          <mxGeometry height="60" width="30" x="55" y="1565" as="geometry" />
+        </mxCell>
+
+        <!-- Maint UCs: Equipment -->
+        <mxCell id="m-uc-1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Register new equipment" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Edit equipment record" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1025" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Import equipment batch" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1070" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Generate QR label" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1115" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-5" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Scan equipment QR code" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1160" as="geometry" />
+        </mxCell>
+
+        <!-- Maint UCs: Room -->
+        <mxCell id="m-uc-6" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Inspect room layout" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1205" as="geometry" />
+        </mxCell>
+
+        <!-- Maint UCs: Transfer -->
+        <mxCell id="m-uc-7" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Initiate equipment transfer" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1250" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-8" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Approve transfer request" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1295" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-9" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Complete equipment transfer" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1340" as="geometry" />
+        </mxCell>
+
+        <!-- Maint UCs: Repair -->
+        <mxCell id="m-uc-10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Receive incident report" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1385" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Assign repair task" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1430" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Log repair progress" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1475" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Close repair ticket" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1520" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Escalate overdue repair" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1565" as="geometry" />
+        </mxCell>
+
+        <!-- Maint UCs: Parts & Warranty -->
+        <mxCell id="m-uc-15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Request spare parts" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1610" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Approve parts request" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1655" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-17" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Check warranty status" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1700" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-18" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Record warranty change" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1745" as="geometry" />
+        </mxCell>
+
+        <!-- Maint UCs: Preventive Maintenance -->
+        <mxCell id="m-uc-19" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Schedule preventive maintenance" vertex="1">
+          <mxGeometry height="38" width="370" x="340" y="1790" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-20" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Execute maintenance checklist" vertex="1">
+          <mxGeometry height="38" width="360" x="340" y="1835" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-21" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Log maintenance result" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1880" as="geometry" />
+        </mxCell>
+
+        <!-- Maint UCs: Inventory -->
+        <mxCell id="m-uc-22" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Conduct inventory session" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1925" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-23" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Reconcile inventory result" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="1970" as="geometry" />
+        </mxCell>
+
+        <!-- Maint UCs: Disposal & Procurement -->
+        <mxCell id="m-uc-24" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Propose equipment disposal" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="2015" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-25" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Approve disposal request" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="2060" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-26" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Plan equipment procurement" vertex="1">
+          <mxGeometry height="38" width="350" x="340" y="2105" as="geometry" />
+        </mxCell>
+        <mxCell id="m-uc-27" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Receive replacement equipment" vertex="1">
+          <mxGeometry height="38" width="370" x="340" y="2150" as="geometry" />
+        </mxCell>
+
+        <!-- Maint UCs: Dashboard -->
+        <mxCell id="m-uc-28" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Analyze equipment dashboard" vertex="1">
+          <mxGeometry height="38" width="360" x="340" y="2195" as="geometry" />
+        </mxCell>
+
+        <!-- Maint Staff edges -->
+        <mxCell id="m-e-1" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-1" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-2" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-2" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-3" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-3" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-4" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-4" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-5" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-5" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-6" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-6" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-7" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-7" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-8" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-8" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-9" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-9" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-10" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-10" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-11" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-11" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-12" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-12" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-13" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-13" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-14" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-14" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-15" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-15" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-16" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-16" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-17" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-17" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-18" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-18" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-19" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-19" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-20" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-20" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-21" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-21" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-22" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-22" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-23" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-23" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-24" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-24" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-25" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-25" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-26" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-26" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-27" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-27" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m-e-28" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-28" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ADMIN MODULE (right column)                                   -->
+        <!-- 19 UCs — users, RBAC, catalog, reports, audit, system        -->
+        <!-- ============================================================ -->
+        <mxCell id="d-box" parent="1" style="html=1;whiteSpace=wrap;fontSize=18;" value="" vertex="1">
+          <mxGeometry height="960" width="800" x="1300" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="d-title" parent="1" style="text;align=center;fontStyle=1;verticalAlign=middle;spacingLeft=3;spacingRight=3;strokeColor=none;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontSize=20;" value="&lt;font&gt;ADMIN MODULE&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="200" x="1600" y="528" as="geometry" />
+        </mxCell>
+        <mxCell id="d-actor" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=18;" value="Admin" vertex="1">
+          <mxGeometry height="60" width="30" x="1150" y="965" as="geometry" />
+        </mxCell>
+
+        <!-- Admin UCs: User Management -->
+        <mxCell id="d-uc-1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Register user account" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Assign user role" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="615" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Deactivate user account" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Reset user password" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="705" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-5" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Search user directory" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="750" as="geometry" />
+        </mxCell>
+
+        <!-- Admin UCs: RBAC -->
+        <mxCell id="d-uc-6" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Configure role permissions" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="795" as="geometry" />
+        </mxCell>
+
+        <!-- Admin UCs: Master Data -->
+        <mxCell id="d-uc-7" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Define equipment category" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-8" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Register supplier" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="885" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-9" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Register repair unit" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Stock spare parts" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="975" as="geometry" />
+        </mxCell>
+
+        <!-- Admin UCs: Reports -->
+        <mxCell id="d-uc-11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Generate KPI report" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Export statistical report" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="1065" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Assess equipment health score" vertex="1">
+          <mxGeometry height="38" width="355" x="1440" y="1110" as="geometry" />
+        </mxCell>
+
+        <!-- Admin UCs: Audit & System -->
+        <mxCell id="d-uc-14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Audit system activity" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="1155" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Verify audit chain integrity" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Export audit records" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="1245" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-17" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Monitor system health" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="1290" as="geometry" />
+        </mxCell>
+        <mxCell id="d-uc-18" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Configure notification template" vertex="1">
+          <mxGeometry height="38" width="355" x="1440" y="1335" as="geometry" />
+        </mxCell>
+
+        <!-- Admin UCs: Disposal -->
+        <mxCell id="d-uc-19" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Authorize final disposal" vertex="1">
+          <mxGeometry height="38" width="340" x="1440" y="1380" as="geometry" />
+        </mxCell>
+
+        <!-- Admin edges -->
+        <mxCell id="d-e-1" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-1" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-2" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-2" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-3" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-3" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-4" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-4" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-5" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-5" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-6" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-6" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-7" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-7" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-8" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-8" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-9" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-9" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-10" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-10" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-11" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-11" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-12" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-12" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-13" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-13" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-14" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-14" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-15" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-15" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-16" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-16" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-17" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-17" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-18" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-18" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="d-e-19" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-19" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,49 @@
+// ═══════════════════════════════════════
+// MODULE 6: NOTIFICATIONS & AUDIT
+// Actor: Admin (Configure, Audit)
+//        System (Auto-send)
+// ═══════════════════════════════════════
+
+Table users {
+  _id ObjectId [pk]
+  code String [unique]
+  full_name String
+  role String [note: 'lecturer | maintenance_staff | admin']
+}
+
+Table notifications {
+  _id ObjectId [pk]
+  user_id ObjectId [ref: > users._id]
+  type String [note: 'incident_reported | repair_assigned | repair_resolved | feedback_requested | transfer_approval | warranty_expiring | deadline_overdue | parts_approved | disposal_step']
+  title String
+  message String
+  reference_type String [note: 'repair | transfer | disposal | equipment | parts_request']
+  reference_id ObjectId [note: 'Link đến document gốc']
+  is_read Boolean [note: 'Default false']
+  created_at DateTime
+}
+
+Table notification_templates {
+  _id ObjectId [pk]
+  type String [unique, note: 'incident_reported | repair_assigned | repair_resolved | feedback_requested | transfer_approval | warranty_alert | deadline_warning | disposal_step']
+  subject String [note: 'Tiêu đề email']
+  body_html String [note: 'HTML + placeholders']
+  placeholders Array [note: '[userName, equipmentName, roomCode, ...]']
+  is_active Boolean
+  updated_by ObjectId [ref: > users._id, note: 'Admin']
+  updated_at DateTime
+}
+
+Table audit_logs {
+  _id ObjectId [pk]
+  action String [note: 'create | update | delete | approve | transfer | escalate | feedback']
+  target_table String [note: 'Collection nào']
+  entity_id ObjectId [note: 'Record nào']
+  user_id ObjectId [ref: > users._id]
+  old_value JSON
+  new_value JSON
+  ip_address String
+  hash_sha256 String [note: 'Hash hiện tại']
+  previous_hash String [note: 'Hash trước → tạo chuỗi SHA-256']
+  created_at DateTime
+}

@@ -3,16 +3,15 @@ import { Icons } from '../common/SvgIcons';
 
 export const FloatingPillarDock = ({ activeTab, onSelectTab }) => {
   const tabs = [
-    { id: 'dashboard', label: 'Bản Đồ Không Gian', short: 'Spatial Twin', icon: Icons.Building, color: 'var(--laser-cyan)' },
-    { id: 'rooms', label: 'Phòng Học', short: 'Phòng', icon: Icons.Room, color: 'var(--laser-cyan)' },
-    { id: 'calendar', label: 'Lịch Tuần', short: 'Lịch Biểu', icon: Icons.Calendar, color: 'var(--laser-cyan)' },
-    { id: 'approvals', label: 'Duyệt Yêu Cầu', short: 'Duyệt Đơn', icon: Icons.CheckCircle, color: 'var(--laser-emerald)' },
-    { id: 'tickets_kanban', label: 'Kanban SLA', short: 'SLA Engine', icon: Icons.Wrench, color: 'var(--laser-crimson)' },
-    { id: 'csp_studio', label: 'Phân Bổ CSP', short: 'CSP Solver', icon: Icons.Cpu, color: 'var(--laser-indigo)' },
-    { id: 'equipments', label: 'Kho Thiết Bị', short: 'Thiết Bị', icon: Icons.Equipment, color: 'var(--laser-amber)' },
+    { id: 'dashboard', label: 'Bản Đồ Không Gian', short: 'Mặt Bằng CAD', icon: Icons.Building, color: 'var(--laser-cyan)' },
+    { id: 'equipments', label: 'Kho Thiết Bị & QR', short: 'Thiết Bị', icon: Icons.Equipment, color: 'var(--laser-amber)' },
+    { id: 'transfers', label: 'Điều Chuyển', short: 'Điều Chuyển', icon: Icons.RefreshCw, color: 'var(--laser-indigo)' },
+    { id: 'tickets_kanban', label: 'Kanban SLA Sửa Chữa', short: 'Sửa Chữa', icon: Icons.Wrench, color: 'var(--laser-crimson)' },
+    { id: 'maintenance', label: 'Bảo Trì Định Kỳ', short: 'Bảo Trì', icon: Icons.Calendar, color: 'var(--laser-emerald)' },
+    { id: 'inventory', label: 'Kiểm Kê Kho QR', short: 'Kiểm Kê', icon: Icons.CheckCircle, color: 'var(--laser-cyan)' },
     { id: 'disposal_calc', label: 'Thanh Lý R ≥ 60%', short: 'Thanh Lý', icon: Icons.Sliders, color: 'var(--laser-amber)' },
     { id: 'rbac', label: 'Ma Trận Quyền', short: 'RBAC', icon: Icons.Users, color: 'var(--laser-violet)' },
-    { id: 'audit_log', label: 'Audit Log', short: 'Audit', icon: Icons.Audit, color: 'var(--laser-emerald)' }
+    { id: 'audit_log', label: 'Audit Log SHA-256', short: 'Audit', icon: Icons.Audit, color: 'var(--laser-emerald)' }
   ];
 
   return (

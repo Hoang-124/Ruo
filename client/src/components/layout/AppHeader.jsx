@@ -82,35 +82,34 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
     return () => clearInterval(timer);
   }, []);
 
-  // Canonical Role Metadata for User Badging
+  // Canonical Role Metadata for User Badging (3 Canonical Actors)
   const ROLE_METADATA = {
-    student: { label: 'Sinh viên', color: '#2563EB', bg: 'rgba(37, 99, 235, 0.12)' },
     lecturer: { label: 'Giảng viên', color: '#6366F1', bg: 'rgba(99, 102, 241, 0.12)' },
-    facility_staff: { label: 'Quản lý CSVC', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
-    maintenance: { label: 'Kỹ thuật viên', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' },
-    academic_affairs: { label: 'Phòng Đào tạo', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)' },
-    admin: { label: 'Quản trị viên', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)' }
+    maintenance_staff: { label: 'Quản lý CSVC & Kỹ thuật', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
+    admin: { label: 'Quản trị viên', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)' },
+    // Backward compatibility aliases
+    facility_staff: { label: 'Quản lý CSVC & Kỹ thuật', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
+    maintenance: { label: 'Kỹ thuật viên', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' }
   };
 
-  const activeRole = currentUser?.role || currentRoleKey || 'student';
-  const roleInfo = ROLE_METADATA[activeRole] || ROLE_METADATA.student;
+  const activeRole = currentUser?.role || currentRoleKey || 'maintenance_staff';
+  const roleInfo = ROLE_METADATA[activeRole] || ROLE_METADATA.maintenance_staff;
 
-  // 10 Core Subsystems Navigation Definition
+  // 9 Core Subsystems Navigation Definition (6 Modules Architecture)
   const allNavTabs = [
     { id: 'dashboard', label: 'Bản Đồ CAD', short: 'Mặt Bằng CAD', icon: Icons.Building },
-    { id: 'rooms', label: 'Tra Cứu Phòng', short: '108 Phòng', icon: Icons.Room },
-    { id: 'calendar', label: 'Lịch Biểu Tuần', short: 'Lịch RFC-5545', icon: Icons.Calendar },
-    { id: 'approvals', label: 'Phê Duyệt Đơn', short: 'Duyệt Đơn', icon: Icons.CheckCircle, badge: '8', badgeColor: '#F59E0B' },
-    { id: 'tickets_kanban', label: 'Kanban SLA', short: 'Sự Cố SLA', icon: Icons.Wrench, badge: '2', badgeColor: '#EF4444' },
-    { id: 'csp_studio', label: 'Xếp TKB CSP', short: 'Thuật Toán CSP', icon: Icons.Cpu },
     { id: 'equipments', label: 'Kho Thiết Bị', short: 'Thiết Bị & QR', icon: Icons.Equipment },
+    { id: 'transfers', label: 'Điều Chuyển', short: 'Điều Chuyển', icon: Icons.RefreshCw },
+    { id: 'tickets_kanban', label: 'Sự Cố & Sửa Chữa', short: 'Sửa Chữa', icon: Icons.Wrench, badge: '2', badgeColor: '#EF4444' },
+    { id: 'maintenance', label: 'Bảo Trì Định Kỳ', short: 'Bảo Trì', icon: Icons.Calendar },
+    { id: 'inventory', label: 'Kiểm Kê Kho QR', short: 'Kiểm Kê', icon: Icons.CheckCircle },
     { id: 'disposal_calc', label: 'Thanh Lý CSVC', short: 'Thanh Lý R≥60%', icon: Icons.Sliders },
     { id: 'rbac', label: 'Ma Trận Quyền', short: 'Phân Quyền RBAC', icon: Icons.Users },
     { id: 'audit_log', label: 'Nhật Ký Audit', short: 'Audit SHA-256', icon: Icons.Audit }
   ];
 
   // Filter tabs according to current actor permissions
-  const effectiveAllowedTabs = allowedTabs || ['dashboard', 'rooms', 'calendar'];
+  const effectiveAllowedTabs = allowedTabs || ['dashboard', 'equipments', 'transfers', 'tickets_kanban'];
   const visibleNavTabs = allNavTabs.filter((tab) => effectiveAllowedTabs.includes(tab.id));
 
   return (
@@ -332,8 +331,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
                       <Icons.Layers size={13} color="var(--laser-cyan)" />
                       <span>
-                        {currentRoleKey === 'student' ? 'Lớp sinh hoạt:' : 'Bộ môn / Tổ:'}{' '}
-                        <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.className || 'K67-CNTT-02'}</strong>
+                        Mã định danh: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.code || 'NV2026-CSVC'}</strong>
                       </span>
                     </div>
 
@@ -345,9 +343,9 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
-                      <Icons.Calendar size={13} color="var(--laser-cyan)" />
+                      <Icons.Shield size={13} color="var(--laser-cyan)" />
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        Quyền hạn: <strong style={{ color: 'var(--laser-cyan)' }}>{currentUser.bookingPrivilege || 'Đặt trước tối đa 30 ngày'}</strong>
+                        Vai trò hệ thống: <strong style={{ color: 'var(--laser-cyan)' }}>{currentUser.roleTitle || 'Quản lý CSVC'}</strong>
                       </span>
                     </div>
 

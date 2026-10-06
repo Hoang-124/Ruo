@@ -6,33 +6,9 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
   const { currentRoleKey } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Menu mapping per role strictly matching 95 UCs & 7 Actors
+  // Menu mapping per role strictly matching 3 Domain Actors of Facility Management
   const getNavSections = () => {
     switch (currentRoleKey) {
-      case 'student':
-        return [
-          {
-            title: '// ĐIỀU HÀNH',
-            items: [
-              { id: 'dashboard', label: 'Bàn Điều Hành', icon: Icons.Dashboard }
-            ]
-          },
-          {
-            title: '// ĐẶT PHÒNG HỌC',
-            items: [
-              { id: 'rooms', label: 'Tìm & Giữ Phòng', icon: Icons.Room },
-              { id: 'calendar', label: 'Lịch Biểu Tuần', icon: Icons.Calendar },
-              { id: 'my_bookings', label: 'Lịch Của Tôi', icon: Icons.Clock, badge: '2 phòng' }
-            ]
-          },
-          {
-            title: '// SỰ CỐ & BẢO TRÌ',
-            items: [
-              { id: 'tickets', label: 'Theo Dõi Sự Cố', icon: Icons.Ticket, badge: '1 ticket', badgeType: 'warning' }
-            ]
-          }
-        ];
-
       case 'lecturer':
         return [
           {
@@ -42,23 +18,22 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
             ]
           },
           {
-            title: '// PHÒNG HỌC & GIẢNG ĐƯỜNG',
+            title: '// THIẾT BỊ & PHÒNG HỌC',
             items: [
-              { id: 'rooms', label: 'Tra Cứu Phòng Học', icon: Icons.Room },
-              { id: 'calendar', label: 'Lịch Giảng & Sự Kiện', icon: Icons.Calendar },
-              { id: 'series_booking', label: 'Đặt Định Kỳ (Series)', icon: Icons.Layers, badge: 'RFC-5545' },
-              { id: 'equipments', label: 'Mượn Thiết Bị Lab', icon: Icons.Equipment }
+              { id: 'equipments', label: 'Tra Cứu Thiết Bị Phòng Học', icon: Icons.Equipment }
             ]
           },
           {
-            title: '// SỰ CỐ & BẢO HÀNH',
+            title: '// SỰ CỐ & SỬA CHỮA',
             items: [
-              { id: 'tickets', label: 'Báo Hỏng Khẩn Cấp', icon: Icons.Wrench }
+              { id: 'tickets_kanban', label: 'Báo Hỏng & Theo Dõi SLA', icon: Icons.Wrench }
             ]
           }
         ];
 
+      case 'maintenance_staff':
       case 'facility_staff':
+      case 'maintenance':
         return [
           {
             title: '// COMMAND CENTER',
@@ -67,55 +42,14 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
             ]
           },
           {
-            title: '// DUYỆT & ĐIỀU PHỐI',
+            title: '// QUẢN LÝ VẬN HÀNH CSVC',
             items: [
-              { id: 'approvals', label: 'Hàng Đợi Duyệt Phòng', icon: Icons.CheckCircle, badge: '8 yêu cầu', badgeType: 'warning' },
-              { id: 'tickets_kanban', label: 'Kanban SLA Khẩn Cấp', icon: Icons.Ticket, badge: '2 Quá hạn', badgeType: 'danger' }
-            ]
-          },
-          {
-            title: '// CƠ SỞ DỮ LIỆU',
-            items: [
-              { id: 'rooms', label: 'Danh Mục 108 Phòng', icon: Icons.Building },
-              { id: 'calendar', label: 'Lịch Tổng Thể Toàn Trường', icon: Icons.Calendar },
-              { id: 'equipments', label: 'Kho Thiết Bị & Tài Sản', icon: Icons.Equipment }
-            ]
-          }
-        ];
-
-      case 'maintenance':
-        return [
-          {
-            title: '// COMMAND CENTER',
-            items: [
-              { id: 'dashboard', label: 'Bàn Kỹ Thuật Bảo Trì', icon: Icons.Dashboard }
-            ]
-          },
-          {
-            title: '// PHÂN HỆ KỸ THUẬT',
-            items: [
-              { id: 'tickets_kanban', label: 'SLA Dispatcher (5 việc)', icon: Icons.Wrench, badge: 'SLA Active', badgeType: 'danger' },
-              { id: 'disposal_calc', label: 'Thanh Lý Tài Sản (R ≥ 60%)', icon: Icons.Sliders, badge: 'Trụ cột 3' },
-              { id: 'calendar', label: 'Lịch Bảo Trì Định Kỳ', icon: Icons.Calendar }
-            ]
-          }
-        ];
-
-      case 'academic_affairs':
-        return [
-          {
-            title: '// COMMAND CENTER',
-            items: [
-              { id: 'dashboard', label: 'Chỉ Huy Phòng Đào Tạo', icon: Icons.Dashboard }
-            ]
-          },
-          {
-            title: '// THUẬT TOÁN CSP & TKB',
-            items: [
-              { id: 'csp_studio', label: 'Phân Bổ TKB Tự Động (CSP)', icon: Icons.Cpu, badge: 'Trụ cột 1' },
-              { id: 'approvals', label: 'Duyệt Ngoại Lệ (Escalation)', icon: Icons.Shield, badge: '2 đơn', badgeType: 'warning' },
-              { id: 'calendar', label: 'Khóa Lịch Chính Khóa', icon: Icons.Lock },
-              { id: 'rooms', label: 'Tra Cứu Phòng Giảng Đường', icon: Icons.Building }
+              { id: 'equipments', label: 'Kho Thiết Bị & Nhãn QR', icon: Icons.Equipment },
+              { id: 'transfers', label: 'Điều Chuyển Trang Thiết Bị', icon: Icons.RefreshCw },
+              { id: 'tickets_kanban', label: 'Sửa Chữa & Tiếp Nhận SLA', icon: Icons.Wrench, badge: 'SLA Active', badgeType: 'danger' },
+              { id: 'maintenance', label: 'Kế Hoạch Bảo Trì Định Kỳ', icon: Icons.Calendar },
+              { id: 'inventory', label: 'Kiểm Kê Kho Thực Địa', icon: Icons.CheckCircle },
+              { id: 'disposal_calc', label: 'Đề Xuất Thanh Lý (R ≥ 60%)', icon: Icons.Sliders }
             ]
           }
         ];
@@ -129,18 +63,36 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
             ]
           },
           {
-            title: '// PHÂN HỆ QUẢN TRỊ',
+            title: '// ĐIỀU HÀNH TÀI SẢN CSVC',
             items: [
-              { id: 'rbac', label: 'Ma Trận Quyền (RBAC)', icon: Icons.Users, badge: '6 Roles' },
-              { id: 'audit_log', label: 'Audit Log (Bất biến)', icon: Icons.Audit, badge: 'SHA-256' },
-              { id: 'csp_studio', label: 'Bộ Giải Thuật Toán CSP', icon: Icons.Cpu },
-              { id: 'tickets_kanban', label: 'Giám Sát Ticket SLA Toàn HT', icon: Icons.Ticket }
+              { id: 'equipments', label: 'Kho Thiết Bị & Nhãn QR', icon: Icons.Equipment },
+              { id: 'transfers', label: 'Giám Sát Điều Chuyển', icon: Icons.RefreshCw },
+              { id: 'tickets_kanban', label: 'Giám Sát Sửa Chữa Toàn HT', icon: Icons.Wrench },
+              { id: 'maintenance', label: 'Kế Hoạch Bảo Trì Định Kỳ', icon: Icons.Calendar },
+              { id: 'inventory', label: 'Kiểm Kê & Đối Soát QR', icon: Icons.CheckCircle },
+              { id: 'disposal_calc', label: 'Phê Duyệt Thanh Lý (R ≥ 60%)', icon: Icons.Sliders }
+            ]
+          },
+          {
+            title: '// BẢO MẬT & QUẢN TRỊ',
+            items: [
+              { id: 'rbac', label: 'Ma Trận Quyền (RBAC)', icon: Icons.Users, badge: '3 Actors' },
+              { id: 'audit_log', label: 'Nhật Ký Audit (Bất biến)', icon: Icons.Audit, badge: 'SHA-256' }
             ]
           }
         ];
 
       default:
-        return [];
+        return [
+          {
+            title: '// ĐIỀU HÀNH CSVC',
+            items: [
+              { id: 'dashboard', label: 'Trung Tâm Chỉ Huy CSVC', icon: Icons.Dashboard },
+              { id: 'equipments', label: 'Kho Thiết Bị & Tài Sản', icon: Icons.Equipment },
+              { id: 'tickets_kanban', label: 'Sự Cố & Sửa Chữa (SLA)', icon: Icons.Wrench }
+            ]
+          }
+        ];
     }
   };
 

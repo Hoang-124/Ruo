@@ -18,7 +18,6 @@ export const FloorPlan2D = ({
   onChangeFloor,
   selectedRoom = null,
   onSelectRoom,
-  onOpenBookingModal,
   getRoomSimulatedStatus,
   currentTimeString = '11:15'
 }) => {
@@ -258,31 +257,6 @@ export const FloorPlan2D = ({
               );
             })}
           </div>
-
-          {onOpenBookingModal && (
-            <button
-              type="button"
-              onClick={() => onOpenBookingModal(selectedRoom || (currentFloorData?.rooms && currentFloorData.rooms[0]))}
-              className="ruo-portal-btn-primary"
-              style={{
-                width: 'auto',
-                padding: '8px 18px',
-                fontSize: '12.5px',
-                fontWeight: 700,
-                borderRadius: '9px',
-                whiteSpace: 'nowrap',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '7px',
-                marginLeft: 'auto',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(56, 189, 248, 0.25)'
-              }}
-            >
-              <Icons.Calendar size={14} />
-              <span>+ Đặt Phòng Nhanh</span>
-            </button>
-          )}
         </div>
       </div>
 

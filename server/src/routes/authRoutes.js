@@ -36,7 +36,7 @@ router.post('/reset-password', resetPassword);
 // UC-1.4: Change Password (validate pass cũ + mới >= 8 ký tự, thu hồi session khác)
 router.post('/change-password', protect, changePassword);
 
-// UC-1.5: Profile View (xem thông tin cá nhân & điểm uy tín reputeScore 0-100)
+// UC-1.5: Profile View (xem thông tin cá nhân và vai trò hệ thống)
 router.get('/me', protect, getMe);
 
 // UC-1.6: Update Profile (sửa SĐT, avatar; khóa cứng MSSV, email trường, khoa)

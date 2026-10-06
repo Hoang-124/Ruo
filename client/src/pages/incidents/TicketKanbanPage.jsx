@@ -2,8 +2,14 @@ import React, { useState } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { SLABadge } from '../../components/ui/SLABadge';
 import { TICKETS as initialTickets } from '../../mock/mockData';
+import { useAuth } from '../../context/AuthContext';
 
 export const TicketKanbanPage = () => {
+  const { currentUser, currentRoleKey } = useAuth();
+  const isLecturer = currentRoleKey === 'lecturer';
+  const isAdmin = currentRoleKey === 'admin';
+  const isStaffOrAdmin = !isLecturer;
+
   const [tickets, setTickets] = useState(initialTickets);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -38,8 +44,8 @@ export const TicketKanbanPage = () => {
       priorityLabel: newTicketData.priority.toUpperCase(),
       status: 'open',
       statusLabel: 'Mới tạo',
-      reporterName: 'Trần Bảo Hoàng',
-      reporterRole: 'Sinh viên',
+      reporterName: currentUser?.name || 'TS. Lê Hoàng Nam',
+      reporterRole: currentUser?.roleTitle || (isLecturer ? 'Giảng viên' : 'Kỹ thuật viên CSVC'),
       reportedAt: 'Vừa xong',
       slaRemainingMinutes: newTicketData.priority === 'critical' ? 240 : 480,
       slaTotalHours: newTicketData.priority === 'critical' ? 4 : 8,
@@ -48,6 +54,7 @@ export const TicketKanbanPage = () => {
       images: [],
       timeline: [{ time: 'Vừa xong', event: 'Khởi tạo phiếu báo sự cố' }]
     };
+
     setTickets([newT, ...tickets]);
     setShowNewModal(false);
     setNewTicketData({ roomCode: 'A1-302', equipmentName: '', title: '', description: '', priority: 'high' });
@@ -337,26 +344,37 @@ export const TicketKanbanPage = () => {
                 </div>
               )}
 
-              {/* Action Buttons to Move Ticket */}
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                  CHUYỂN TRẠNG THÁI TIẾN TRÌNH:
+              {/* Two-way acceptance notice for lecturer */}
+              {isLecturer && selectedTicket.status !== 'resolved' && (
+                <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', marginBottom: '20px', fontSize: '12.5px', color: 'var(--ink-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Icons.Clock size={15} color="var(--laser-cyan)" />
+                  <span>Sự cố đang được Kỹ thuật viên CSVC xử lý theo cam kết SLA. Khi hoàn tất khắc phục, bạn sẽ nhận được thông báo nghiệm thu tại đây.</span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'assigned')}>
-                    Đã Gán
-                  </button>
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'in_progress')}>
-                    Đang Xử Lý
-                  </button>
-                  <button className="btn btn-purple btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'resolved')}>
-                    Đã Khắc Phục (Resolved)
-                  </button>
-                  <button className="btn btn-success btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'closed')}>
-                    Đóng Ticket (Closed)
-                  </button>
+              )}
+
+              {/* Action Buttons to Move Ticket - Strictly Staff & Admin */}
+              {isStaffOrAdmin && (
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                    CHUYỂN TRẠNG THÁI TIẾN TRÌNH (KỸ THUẬT & ADMIN):
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'assigned')}>
+                      Đã Gán
+                    </button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'in_progress')}>
+                      Đang Xử Lý
+                    </button>
+                    <button className="btn btn-purple btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'resolved')}>
+                      Đã Khắc Phục (Resolved)
+                    </button>
+                    <button className="btn btn-success btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'closed')}>
+                      Đóng Ticket (Closed)
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
+
 
               {/* Timeline */}
               <div>

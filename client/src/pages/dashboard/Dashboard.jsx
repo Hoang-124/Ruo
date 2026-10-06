@@ -13,8 +13,10 @@ const BUILDING_INFO = {
   zone: 'Khuôn Viên Trung Tâm'
 };
 
-export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) => {
-  const { theme, currentUser } = useAuth();
+export const Dashboard = ({ onNavigateTab, onOpenQRModal }) => {
+  const { theme, currentUser, currentRoleKey } = useAuth();
+  const isLecturer = currentRoleKey === 'lecturer';
+  const isStaffOrAdmin = ['maintenance_staff', 'facility_staff', 'maintenance', 'admin'].includes(currentRoleKey);
 
   // Navigation & Floor State
   const [selectedBuilding, setSelectedBuilding] = useState('Tòa A1');
@@ -109,7 +111,6 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
               rooms={floorRooms}
               selectedRoom={selectedRoom}
               onSelectRoom={(room) => handleRoomClick(room)}
-              onOpenBookingModal={onOpenBookingModal}
               getRoomSimulatedStatus={getRoomSimulatedStatus}
               currentTimeString={currentTimeString}
             />
@@ -209,17 +210,40 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons with Strict Role-Based Access Control */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-                <button
-                  type="button"
-                  onClick={() => onOpenBookingModal(selectedRoom)}
-                  className="ruo-portal-btn-primary"
-                  style={{ width: '100%', padding: '9px 14px', fontSize: '12.5px' }}
-                >
-                  <Icons.Calendar size={14} />
-                  <span>Đặt Phòng Này (30s)</span>
-                </button>
+                {isLecturer ? (
+                  <button
+                    type="button"
+                    onClick={() => onNavigateTab('tickets_kanban')}
+                    className="ruo-portal-btn-primary"
+                    style={{ width: '100%', padding: '9px 14px', fontSize: '12.5px', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}
+                  >
+                    <Icons.Wrench size={14} />
+                    <span>Báo Hỏng Thiết Bị Tại Phòng Này</span>
+                  </button>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateTab('transfers')}
+                      className="ruo-portal-btn-primary"
+                      style={{ padding: '9px 12px', fontSize: '12px' }}
+                    >
+                      <Icons.RefreshCw size={14} />
+                      <span>Điều Chuyển Thiết Bị Tới Đây</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateTab('tickets_kanban')}
+                      className="ruo-action-btn ruo-action-btn-amber"
+                      style={{ width: '38px', height: '38px', padding: 0 }}
+                      title="Báo sự cố thiết bị tại phòng này"
+                    >
+                      <Icons.Wrench size={15} />
+                    </button>
+                  </div>
+                )}
 
                 <button
                   type="button"
@@ -367,91 +391,178 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
           3. CALM OPERATIONAL INSIGHTS (SCHEDULE & MAINTENANCE)
           ==================================================================== */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
-        {/* Left Card: Lịch Học Sắp Diễn Ra */}
-        <div
-          style={{
-            background: 'var(--surface-panel)',
-            border: '1px solid var(--hairline-soft)',
-            borderRadius: '16px',
-            padding: '18px 20px',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--hairline-soft)', paddingBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2563EB' }} />
-              <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--ink-pure)' }}>
-                LỊCH HỌC & GIẢNG DẠY SẮP DIỄN RA
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => onNavigateTab('calendar')}
-              style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: '12px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
-            >
-              Xem tất cả →
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ padding: '10px 14px', background: 'var(--canvas-subtle)', borderRadius: '8px', border: '1px solid var(--hairline-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB', fontFamily: 'var(--font-sans)' }}>
-                    13:00 – 15:00
-                  </span>
-                  <span style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '4px', background: 'rgba(37, 99, 235, 0.10)', color: '#2563EB', fontWeight: 700 }}>
-                    Phòng A1-102
-                  </span>
-                </div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
-                  Học Nhóm Đồ Án Kỹ Thuật Phần Mềm K67
-                </div>
-                <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-                  Chủ trì: SV Trần Bảo Hoàng • Sĩ số: 6 bạn
-                </div>
+        {/* Left Card: Dynamic by Role (Lecturer: Reported Incidents; Staff: Equipment Transfers) */}
+        {isLecturer ? (
+          <div
+            style={{
+              background: 'var(--surface-panel)',
+              border: '1px solid var(--hairline-soft)',
+              borderRadius: '16px',
+              padding: '18px 20px',
+              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--hairline-soft)', paddingBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B' }} />
+                <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--ink-pure)' }}>
+                  SỰ CỐ & TIẾN ĐỘ SỬA CHỮA ĐÃ BÁO CÁO
+                </span>
               </div>
-
               <button
                 type="button"
-                onClick={() => onOpenBookingModal(floorRooms[1])}
-                style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                onClick={() => onNavigateTab('tickets_kanban')}
+                style={{ background: 'none', border: 'none', color: '#F59E0B', fontSize: '12px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
               >
-                Chi Tiết
+                Xem tất cả →
               </button>
             </div>
 
-            <div style={{ padding: '10px 14px', background: 'var(--canvas-subtle)', borderRadius: '8px', border: '1px solid var(--hairline-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#6366F1', fontFamily: 'var(--font-sans)' }}>
-                    13:30 – 16:30
-                  </span>
-                  <span style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.10)', color: '#6366F1', fontWeight: 700 }}>
-                    Phòng A1-104
-                  </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--canvas-subtle)', borderRadius: '8px', border: '1px solid var(--hairline-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#EF4444', fontFamily: 'var(--font-sans)' }}>
+                      TCK-2026-0042
+                    </span>
+                    <span style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.10)', color: '#EF4444', fontWeight: 700 }}>
+                      Phòng A1-102
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
+                    Máy chiếu Sony 4K mờ bóng đèn chiếu
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                    Kỹ thuật: Phạm Văn Hùng • Đang xử lý (SLA còn 45 phút)
+                  </div>
                 </div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
-                  Thực Hành Trí Tuệ Nhân Tạo & Học Máy
-                </div>
-                <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-                  Giảng viên: PGS. TS. Lê Minh • Sĩ số: 45 SV
-                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('tickets_kanban')}
+                  style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Theo Dõi
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => onOpenBookingModal(floorRooms[3])}
-                style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Chi Tiết
-              </button>
+              <div style={{ padding: '10px 14px', background: 'var(--canvas-subtle)', borderRadius: '8px', border: '1px solid var(--hairline-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#10B981', fontFamily: 'var(--font-sans)' }}>
+                      TCK-2026-0039
+                    </span>
+                    <span style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.10)', color: '#10B981', fontWeight: 700 }}>
+                      Phòng A1-104
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
+                    Điều hòa Daikin chảy nước mặt lạnh
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                    Đã khắc phục xong • Chờ Giảng viên nghiệm thu đánh giá
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('tickets_kanban')}
+                  style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Đánh Giá
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div
+            style={{
+              background: 'var(--surface-panel)',
+              border: '1px solid var(--hairline-soft)',
+              borderRadius: '16px',
+              padding: '18px 20px',
+              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--hairline-soft)', paddingBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2563EB' }} />
+                <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--ink-pure)' }}>
+                  ĐIỀU CHUYỂN & BỔ SUNG THIẾT BỊ GẦN ĐÂY
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigateTab('transfers')}
+                style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: '12px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+              >
+                Xem tất cả →
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--canvas-subtle)', borderRadius: '8px', border: '1px solid var(--hairline-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB', fontFamily: 'var(--font-sans)' }}>
+                      TRF-2026-008
+                    </span>
+                    <span style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '4px', background: 'rgba(37, 99, 235, 0.10)', color: '#2563EB', fontWeight: 700 }}>
+                      Đến Phòng A1-102
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
+                    10x Laptop Dell Precision Kỹ Thuật Đồ Họa
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                    Người thực hiện: Tổ CSVC • Trạng thái: Hoàn thành bàn giao
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('transfers')}
+                  style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Chi Tiết
+                </button>
+              </div>
+
+              <div style={{ padding: '10px 14px', background: 'var(--canvas-subtle)', borderRadius: '8px', border: '1px solid var(--hairline-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#6366F1', fontFamily: 'var(--font-sans)' }}>
+                      TRF-2026-012
+                    </span>
+                    <span style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.10)', color: '#6366F1', fontWeight: 700 }}>
+                      Đến Phòng A1-104
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
+                    02x Máy Chiếu Sony 4K Laser & Bảng Tương Tác
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                    Phê duyệt: Ban Quản Trị • Trạng thái: Đang vận chuyển
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('transfers')}
+                  style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Chi Tiết
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Right Card: Giám Sát Vận Hành & Kỹ Thuật */}
         <div
@@ -686,31 +797,48 @@ export const Dashboard = ({ onNavigateTab, onOpenBookingModal, onOpenQRModal }) 
               background: 'var(--canvas-subtle)'
             }}
           >
-            <button
-              type="button"
-              className="ruo-portal-btn-primary"
-              style={{ flex: 1, minHeight: '44px' }}
-              onClick={() => {
-                setIsDrawerOpen(false);
-                onOpenBookingModal(selectedRoom);
-              }}
-            >
-              <Icons.Calendar size={16} />
-              <span>Đặt Phòng Này Ngay (30s)</span>
-            </button>
+            {isLecturer ? (
+              <button
+                type="button"
+                className="ruo-portal-btn-primary"
+                style={{ flex: 1, minHeight: '44px', background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}
+                onClick={() => {
+                  setIsDrawerOpen(false);
+                  onNavigateTab('tickets_kanban');
+                }}
+              >
+                <Icons.Wrench size={16} />
+                <span>Báo Cáo Sự Cố Thiết Bị Phòng Này</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="ruo-portal-btn-primary"
+                  style={{ flex: 1, minHeight: '44px' }}
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    onNavigateTab('transfers');
+                  }}
+                >
+                  <Icons.RefreshCw size={16} />
+                  <span>Điều Chuyển Thiết Bị Tới Phòng</span>
+                </button>
 
-            <button
-              type="button"
-              className="ruo-action-btn ruo-action-btn-amber"
-              style={{ width: '48px', height: '48px', padding: 0, minHeight: 'unset' }}
-              onClick={() => {
-                setIsDrawerOpen(false);
-                onNavigateTab('tickets_kanban');
-              }}
-              title="Báo sự cố thiết bị tại phòng này"
-            >
-              <Icons.Wrench size={18} />
-            </button>
+                <button
+                  type="button"
+                  className="ruo-action-btn ruo-action-btn-amber"
+                  style={{ width: '48px', height: '48px', padding: 0, minHeight: 'unset' }}
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    onNavigateTab('tickets_kanban');
+                  }}
+                  title="Báo sự cố thiết bị tại phòng này"
+                >
+                  <Icons.Wrench size={18} />
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

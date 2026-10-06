@@ -1,12 +1,11 @@
-// Domain Constants and Enumerations for Ruo UFMS
+// Domain Constants and Enumerations for Ruo University Facility Management System
 
 export const USER_ROLES = {
-  STUDENT: 'student',
+  ADMIN: 'admin',
   LECTURER: 'lecturer',
-  FACILITY_STAFF: 'facility_staff',
-  MAINTENANCE: 'maintenance',
-  ACADEMIC_AFFAIRS: 'academic_affairs',
-  ADMIN: 'admin'
+  MAINTENANCE_STAFF: 'maintenance_staff',
+  MAINTENANCE: 'maintenance_staff',
+  FACILITY_STAFF: 'maintenance_staff'
 };
 
 export const USER_STATUSES = {
@@ -20,7 +19,8 @@ export const ROOM_TYPES = {
   LAB: 'lab',
   HALL: 'hall',
   SMART: 'smart',
-  MEETING: 'meeting'
+  MEETING: 'meeting',
+  STORAGE: 'storage'
 };
 
 export const ROOM_STATUSES = {
@@ -41,43 +41,59 @@ export const EQUIPMENT_CONDITIONS = {
 export const EQUIPMENT_STATUSES = {
   AVAILABLE: 'available',
   IN_USE: 'in_use',
-  BORROWED: 'borrowed',
   UNDER_MAINTENANCE: 'under_maintenance',
-  PENDING_DISPOSAL: 'pending_disposal'
+  UNDER_REPAIR: 'under_repair',
+  PENDING_DISPOSAL: 'pending_disposal',
+  DISPOSED: 'disposed'
 };
 
-export const BOOKING_STATUSES = {
+export const TRANSFER_STATUSES = {
   PENDING: 'pending',
   APPROVED: 'approved',
-  REJECTED: 'rejected',
-  CANCELLED: 'cancelled',
-  CHECKED_IN: 'checked_in',
-  NO_SHOW: 'no_show',
-  COMPLETED: 'completed'
+  COMPLETED: 'completed',
+  REJECTED: 'rejected'
 };
 
-export const TICKET_PRIORITIES = {
-  CRITICAL: 'critical', // 4 hours 24/7
-  HIGH: 'high',         // 8 business hours
-  MEDIUM: 'medium',     // 24 business hours
-  LOW: 'low'            // 48 business hours
+export const REPAIR_PRIORITIES = {
+  CRITICAL: 'critical', // 4 hours
+  HIGH: 'high',         // 8 hours
+  MEDIUM: 'medium',     // 24 hours
+  LOW: 'low'            // 48 hours
 };
 
-export const TICKET_STATUSES = {
+export const TICKET_PRIORITIES = REPAIR_PRIORITIES;
+
+export const REPAIR_STATUSES = {
+  PENDING: 'pending',
   OPEN: 'open',
   ASSIGNED: 'assigned',
   IN_PROGRESS: 'in_progress',
   PENDING_PARTS: 'pending_parts',
   RESOLVED: 'resolved',
-  CLOSED: 'closed'
+  CLOSED: 'closed',
+  CANCELLED: 'cancelled'
 };
+
+export const TICKET_STATUSES = REPAIR_STATUSES;
 
 export const SLA_STATES = {
   ON_TRACK: 'on_track',
   AT_RISK: 'at_risk',
-  OVERDUE: 'overdue',
-  MET: 'met',
-  BREACHED: 'breached'
+  OVERDUE: 'overdue'
+};
+
+export const MAINTENANCE_FREQUENCIES = {
+  WEEKLY: 'weekly',
+  MONTHLY: 'monthly',
+  QUARTERLY: 'quarterly',
+  YEARLY: 'yearly'
+};
+
+export const INVENTORY_STATUSES = {
+  DRAFT: 'draft',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled'
 };
 
 export const DISPOSAL_STATUSES = {
@@ -94,14 +110,9 @@ export const BUSINESS_HOURS = {
   START_MINUTE: 30,
   END_HOUR: 17,
   END_MINUTE: 0,
-  WORKING_DAYS: [1, 2, 3, 4, 5] // Monday to Friday (Sunday = 0, Saturday = 6)
+  WORKING_DAYS: [1, 2, 3, 4, 5] // Monday to Friday
 };
 
-// Check-in grace period in minutes
-export const CHECK_IN_GRACE_PERIOD_MINUTES = 15;
+// Economic threshold for disposal review (R = Repair Cost / Remaining Value >= 60%)
+export const DISPOSAL_R_RATIO_THRESHOLD = 60;
 
-// Penalty score deducted on No-Show
-export const NO_SHOW_PENALTY_SCORE = 10;
-
-// Disposal financial threshold ratio
-export const DISPOSAL_R_RATIO_THRESHOLD = 60.0;

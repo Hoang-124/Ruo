@@ -459,7 +459,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                       Tài Khoản Xác Thực Nội Bộ (SSO)
                     </span>
                     <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
-                      Quyền hạn đặt phòng: <strong style={{ color: 'var(--laser-cyan)' }}>{currentUser.bookingPrivilege || 'Đặt trước tối đa 30 ngày'}</strong>
+                      Thẩm quyền hệ thống: <strong style={{ color: 'var(--laser-cyan)' }}>{currentUser.roleTitle || 'Quản lý CSVC'}</strong>
                     </span>
                   </div>
                 </div>

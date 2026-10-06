@@ -33,37 +33,33 @@ const freezeTransitionsTemporarily = () => {
   };
 };
 
-// Domain Actors & Role-Based Access Control (RBAC) Mapping
+// Domain Actors & Role-Based Access Control (RBAC) Mapping (3 Canonical Actors)
 export const ROLE_PERMISSIONS = {
-  student: {
-    title: 'Sinh viên',
-    desc: 'Tra cứu phòng học, xem lịch biểu, đặt phòng tự học/học nhóm, báo cáo sự cố CSVC',
-    allowedTabs: ['dashboard', 'rooms', 'calendar']
-  },
   lecturer: {
     title: 'Giảng viên',
-    desc: 'Đăng ký phòng giảng dạy định kỳ (RFC-5545), mượn thiết bị di động, báo sự cố phòng học',
-    allowedTabs: ['dashboard', 'rooms', 'calendar', 'equipments']
+    desc: 'Báo cáo sự cố thiết bị phòng học, theo dõi tiến độ sửa chữa, đánh giá chất lượng sửa chữa, tra cứu thiết bị phòng học',
+    allowedTabs: ['dashboard', 'equipments', 'tickets_kanban']
   },
+  maintenance_staff: {
+    title: 'Quản lý CSVC & Kỹ thuật',
+    desc: 'Quản lý kho thiết bị & QR, điều chuyển phòng, sửa chữa SLA, bảo trì định kỳ, kiểm kê kho thực tế, đề xuất thanh lý R ≥ 60%',
+    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc']
+  },
+  admin: {
+    title: 'Quản trị viên (Admin)',
+    desc: 'Toàn quyền điều hành CSVC, phân quyền vai trò qua ma trận RBAC, giám sát chuỗi kiểm toán SHA-256, phê duyệt thanh lý cuối cùng',
+    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc', 'rbac', 'audit_log']
+  },
+  // Backward compatibility aliases
   facility_staff: {
-    title: 'Quản lý CSVC',
-    desc: 'Duyệt đơn đặt phòng, phân công SLA kỹ thuật, kiểm kê kho thiết bị QR, lập hội đồng thanh lý (R ≥ 60%)',
-    allowedTabs: ['dashboard', 'rooms', 'calendar', 'approvals', 'tickets_kanban', 'equipments', 'disposal_calc']
+    title: 'Quản lý CSVC & Kỹ thuật',
+    desc: 'Quản lý kho thiết bị & QR, điều chuyển phòng, sửa chữa SLA, bảo trì định kỳ, kiểm kê kho thực tế, đề xuất thanh lý',
+    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc']
   },
   maintenance: {
     title: 'Kỹ thuật viên',
     desc: 'Tiếp nhận ticket sự cố, đếm ngược SLA sửa chữa, đánh giá kỹ thuật và đề xuất thanh lý máy hỏng',
-    allowedTabs: ['dashboard', 'tickets_kanban', 'equipments', 'disposal_calc']
-  },
-  academic_affairs: {
-    title: 'Phòng Đào tạo',
-    desc: 'Xếp TKB tự động bằng giải thuật CSP (Backtracking + MRV + LCV), khóa lịch học toàn trường, duyệt ngoại lệ',
-    allowedTabs: ['dashboard', 'rooms', 'calendar', 'csp_studio', 'approvals']
-  },
-  admin: {
-    title: 'Quản trị viên (Admin)',
-    desc: 'Toàn quyền điều hành, phân quyền 6 vai trò qua ma trận RBAC, tra cứu nhật ký kiểm toán SHA-256',
-    allowedTabs: ['dashboard', 'rooms', 'calendar', 'approvals', 'tickets_kanban', 'csp_studio', 'equipments', 'disposal_calc', 'rbac', 'audit_log']
+    allowedTabs: ['dashboard', 'equipments', 'transfers', 'tickets_kanban', 'maintenance', 'inventory', 'disposal_calc']
   }
 };
 
@@ -75,9 +71,9 @@ export const AuthProvider = ({ children }) => {
     return Boolean(localStorage.getItem('ruo_token') || localStorage.getItem('ruo_is_logged_in') === 'true');
   });
 
-  // Current active role key: student, lecturer, facility_staff, maintenance, academic_affairs, admin
+  // Current active role key: lecturer, maintenance_staff, admin
   const [currentRoleKey, setCurrentRoleKey] = useState(() => {
-    return localStorage.getItem('ruo_role') || localStorage.getItem('ufms_role') || 'student';
+    return localStorage.getItem('ruo_role') || 'maintenance_staff';
   });
 
   // Live profile details from Backend
@@ -219,11 +215,10 @@ export const AuthProvider = ({ children }) => {
         fullName: registrationData.fullName,
         email: registrationData.email,
         employeeCode: registrationData.employeeCode,
-        role: registrationData.role || 'student',
+        role: registrationData.role || 'lecturer',
         department: registrationData.departmentName || 'Khoa Công nghệ Thông tin',
         className: registrationData.className || 'K68-CNTT',
-        phone: registrationData.phone || '',
-        reputeScore: 100
+        phone: registrationData.phone || ''
       };
       setApiUser(mockUser);
       setCurrentRoleKey(mockUser.role);
@@ -258,7 +253,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('ruo_is_logged_in');
       localStorage.removeItem('ruo_role');
       localStorage.removeItem('ufms_role');
-      setCurrentRoleKey('student');
+      setCurrentRoleKey('lecturer');
     }
   }, [token]);
 
@@ -371,7 +366,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Merge backend user profile with mock data defaults to prevent any UI break
-  const defaultMock = USERS[currentRoleKey] || USERS.student;
+  const defaultMock = USERS[currentRoleKey] || USERS.maintenance_staff || USERS.lecturer;
   const currentUser = useMemo(() => {
     if (!apiUser) return defaultMock;
     return {
@@ -384,15 +379,12 @@ export const AuthProvider = ({ children }) => {
       department: typeof apiUser.department === 'string' ? apiUser.department : (apiUser.department?.name || defaultMock.department),
       className: apiUser.className || defaultMock.className || '',
       phone: apiUser.phone || defaultMock.phone || '',
-      avatar: apiUser.avatar || defaultMock.avatar || 'TH',
-      reputeScore: typeof apiUser.reputeScore === 'number' ? apiUser.reputeScore : (defaultMock.reputeScore || 100),
-      reputeTier: apiUser.reputeTier || (apiUser.reputeScore >= 90 ? 'Kim Cương (Ưu Tiên Tối Đa)' : 'Chuẩn'),
-      bookingPrivilege: apiUser.bookingPrivilege || 'Duyệt mượn phòng bình thường'
+      avatar: apiUser.avatar || defaultMock.avatar || 'QL'
     };
   }, [apiUser, defaultMock]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
-  const currentRoleMeta = ROLE_PERMISSIONS[currentRoleKey] || ROLE_PERMISSIONS.student;
+  const currentRoleMeta = ROLE_PERMISSIONS[currentRoleKey] || ROLE_PERMISSIONS.maintenance_staff;
   const allowedTabs = currentRoleMeta.allowedTabs;
 
   const isTabAllowed = useCallback((tabId) => {

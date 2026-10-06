@@ -141,9 +141,18 @@ export const advanceDisposalStep = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Bước thanh lý không hợp lệ.' });
   }
 
+  // Step 4 is BGH Phê duyệt: Strictly requires admin role
+  if (stepNumber === 4 && req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Chỉ Ban Giám Hiệu / Quản trị viên (Admin) mới có thẩm quyền phê duyệt quyết định thanh lý tài sản nhà trường (Bước 4).'
+    });
+  }
+
   step.status = nextStepStatus;
   step.handledBy = req.user._id;
   step.completedAt = new Date();
+
   if (notes) step.notes = notes;
 
   if (stepNumber < 5 && nextStepStatus === 'completed') {

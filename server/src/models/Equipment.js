@@ -1,36 +1,9 @@
 import mongoose from 'mongoose';
-import { 
-  EQUIPMENT_CONDITIONS, 
-  EQUIPMENT_STATUSES, 
-  DISPOSAL_R_RATIO_THRESHOLD 
-} from '../config/constants.js';
+import { DISPOSAL_R_RATIO_THRESHOLD } from '../config/constants.js';
 
-// Equipment Category Schema
-const equipmentCategorySchema = new mongoose.Schema({
-  code: { type: String, required: true, unique: true, uppercase: true, trim: true },
-  name: { type: String, required: true, trim: true },
-  depreciationYears: { type: Number, default: 5 },
-  description: { type: String, default: '' }
-}, { timestamps: true });
-
-export const EquipmentCategory = mongoose.model('EquipmentCategory', equipmentCategorySchema);
-
-// Supplier Schema
-const supplierSchema = new mongoose.Schema({
-  code: { type: String, required: true, unique: true, uppercase: true, trim: true },
-  name: { type: String, required: true, trim: true },
-  taxCode: { type: String, default: '' },
-  contactName: { type: String, default: '' },
-  phone: { type: String, default: '' },
-  email: { type: String, default: '' },
-  address: { type: String, default: '' }
-}, { timestamps: true });
-
-export const Supplier = mongoose.model('Supplier', supplierSchema);
-
-// Equipment Schema (Asset with QR and Life-Cycle Economics)
+// Equipment Schema (Module 3: Equipment Management)
 const equipmentSchema = new mongoose.Schema({
-  assetCode: { 
+  code: { 
     type: String, 
     required: true, 
     unique: true, 
@@ -38,64 +11,83 @@ const equipmentSchema = new mongoose.Schema({
     trim: true,
     index: true 
   },
-  qrCodeData: { 
+  qr_code: { 
     type: String, 
     required: true, 
     unique: true, 
     trim: true,
     index: true 
   },
-  serialNumber: { type: String, default: '' },
+  serial_number: { type: String, default: '' },
   name: { type: String, required: true, trim: true },
-  category: { type: mongoose.Schema.Types.ObjectId, ref: 'EquipmentCategory', required: true, index: true },
-  room: { type: mongoose.Schema.Types.ObjectId, ref: 'Room', default: null, index: true },
-  supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', default: null },
+  brand: { type: String, default: '' },
+  model: { type: String, default: '' },
+  category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true, index: true },
+  room_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Room', default: null, index: true },
+  supplier_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', default: null },
   
-  // Financial & Valuation
-  originalPrice: { type: Number, required: true, min: 0 },
-  remainingValue: { type: Number, required: true, min: 0 },
-  purchaseDate: { type: Date, required: true },
-  warrantyExpiry: { type: Date, default: null },
-  
-  condition: { 
+  price: { type: Number, required: true, min: 0, default: 0 },
+  purchase_date: { type: Date, required: true, default: Date.now },
+  warranty_expiry: { type: Date, default: null },
+  warranty_status: { 
     type: String, 
-    enum: Object.values(EQUIPMENT_CONDITIONS), 
-    default: EQUIPMENT_CONDITIONS.GOOD,
+    enum: ['active', 'expired', 'extended'], 
+    default: 'active',
     index: true 
   },
+  images: [{ type: String }],
+  depreciation_rate: { type: Number, default: 20 }, // 20% / year
+  
   status: { 
     type: String, 
-    enum: Object.values(EQUIPMENT_STATUSES), 
-    default: EQUIPMENT_STATUSES.AVAILABLE,
+    enum: ['active', 'repairing', 'disposed', 'transferring', 'lost'], 
+    default: 'active',
     index: true 
   },
-  repairCount: { type: Number, default: 0 },
-  estimatedRepairCost: { type: Number, default: 0, min: 0 },
   
-  imageUrl: { type: String, default: '' },
-  specifications: { type: mongoose.Schema.Types.Mixed, default: {} },
-  deletedAt: { type: Date, default: null }
-}, { timestamps: true });
+  // Repair economics
+  repair_count: { type: Number, default: 0 },
+  estimated_repair_cost: { type: Number, default: 0, min: 0 },
+  remaining_value: { type: Number, default: 0, min: 0 }
+}, { 
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
+});
+
+// Compound indexes
+equipmentSchema.index({ room_id: 1, status: 1 });
+equipmentSchema.index({ warranty_status: 1, warranty_expiry: 1 });
+equipmentSchema.index({ name: 'text', code: 'text', serial_number: 'text' });
+
+// Backwards compatibility virtuals
+equipmentSchema.virtual('assetCode').get(function() { return this.code; }).set(function(v) { this.code = v; });
+equipmentSchema.virtual('qrCodeData').get(function() { return this.qr_code; }).set(function(v) { this.qr_code = v; });
+equipmentSchema.virtual('category').get(function() { return this.category_id; }).set(function(v) { this.category_id = v; });
+equipmentSchema.virtual('room').get(function() { return this.room_id; }).set(function(v) { this.room_id = v; });
+equipmentSchema.virtual('supplier').get(function() { return this.supplier_id; }).set(function(v) { this.supplier_id = v; });
+equipmentSchema.virtual('originalPrice').get(function() { return this.price; }).set(function(v) { this.price = v; });
+equipmentSchema.virtual('remainingValue').get(function() { 
+  if (this.remaining_value) return this.remaining_value;
+  // Calculate default straight-line depreciation
+  const yearsPassed = (Date.now() - new Date(this.purchase_date).getTime()) / (365.25 * 24 * 3600 * 1000);
+  const depFraction = Math.min(1, Math.max(0, (yearsPassed * (this.depreciation_rate || 20)) / 100));
+  return Math.round(this.price * (1 - depFraction));
+}).set(function(v) { this.remaining_value = v; });
 
 // Virtual for R-Ratio: R = (estimatedRepairCost / remainingValue) * 100
 equipmentSchema.virtual('rRatio').get(function () {
-  if (!this.remainingValue || this.remainingValue <= 0) return 100;
-  return Number(((this.estimatedRepairCost / this.remainingValue) * 100).toFixed(2));
-});
-
-// Automatic status safeguard: Freeze to pending_disposal when R >= 60%
-equipmentSchema.pre('save', function (next) {
-  if (this.remainingValue > 0 && this.estimatedRepairCost > 0) {
-    const ratio = (this.estimatedRepairCost / this.remainingValue) * 100;
-    if (ratio >= DISPOSAL_R_RATIO_THRESHOLD && this.status !== EQUIPMENT_STATUSES.PENDING_DISPOSAL && this.condition !== EQUIPMENT_CONDITIONS.DISPOSED) {
-      this.status = EQUIPMENT_STATUSES.PENDING_DISPOSAL;
-      this.condition = EQUIPMENT_CONDITIONS.DAMAGED;
-    }
-  }
-  next();
+  const rem = this.remainingValue || this.remaining_value;
+  const rep = this.estimated_repair_cost;
+  if (!rem || rem <= 0) return 100;
+  return Number(((rep / rem) * 100).toFixed(2));
 });
 
 equipmentSchema.set('toJSON', { virtuals: true });
 equipmentSchema.set('toObject', { virtuals: true });
 
 export const Equipment = mongoose.model('Equipment', equipmentSchema);
+
+// Backwards compatibility re-exports
+export { Category, EquipmentCategory } from './Category.js';
+export { Supplier } from './Supplier.js';
+
+export default Equipment;

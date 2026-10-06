@@ -1,0 +1,57 @@
+// ═══════════════════════════════════════
+// MODULE 2: MASTER DATA & CATALOG
+// Actor: Admin (Define, Register, Stock)
+// ═══════════════════════════════════════
+
+Table categories {
+  _id ObjectId [pk]
+  code String [unique]
+  name String [note: 'TV, Máy chiếu, Bàn...']
+  description String
+}
+
+Table suppliers {
+  _id ObjectId [pk]
+  code String [unique]
+  name String [note: 'Tên NCC']
+  phone String
+  email String
+  address String
+  contact String [note: 'Người liên hệ']
+}
+
+Table repair_units {
+  _id ObjectId [pk]
+  code String [unique]
+  name String [note: 'Tên đơn vị sửa chữa']
+  specialty String [note: 'Chuyên môn']
+  phone String
+  address String
+}
+
+Table rooms {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+  building String [note: 'Tòa nhà']
+  floor Number [note: 'Tầng']
+  room_type String [note: 'lecture | lab | office | storage']
+  capacity Number
+  area Number [note: 'm²']
+  layout_image String [note: 'URL sơ đồ phòng']
+  department String [note: 'Khoa quản lý']
+  status String [note: 'available | maintenance | inactive']
+  created_at DateTime
+  updated_at DateTime
+}
+
+Table spare_parts {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+  stock Number [note: 'Tồn kho hiện tại']
+  min_stock Number [note: 'Ngưỡng cảnh báo']
+  price Number [note: 'Đơn giá']
+  unit String [note: 'Cái, bộ, hộp']
+  supplier_id ObjectId [ref: > suppliers._id]
+}

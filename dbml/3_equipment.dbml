@@ -1,0 +1,92 @@
+// ═══════════════════════════════════════
+// MODULE 3: EQUIPMENT & TRANSFER & DISPOSAL
+// Actor: Maintenance Staff
+// ═══════════════════════════════════════
+
+Table categories {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+}
+
+Table rooms {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+}
+
+Table suppliers {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+}
+
+Table equipment {
+  _id ObjectId [pk]
+  code String [unique, note: 'Mã tài sản']
+  qr_code String [unique]
+  serial_number String
+  name String
+  brand String
+  model String
+  category_id ObjectId [ref: > categories._id]
+  room_id ObjectId [ref: > rooms._id]
+  supplier_id ObjectId [ref: > suppliers._id]
+  price Number
+  purchase_date DateTime
+  warranty_expiry DateTime
+  warranty_status String [note: 'active | expired | extended']
+  images Array
+  depreciation_rate Number [note: '% / năm']
+  status String [note: 'active | repairing | disposed | transferring | lost']
+  created_at DateTime
+  updated_at DateTime
+}
+
+Table transfers {
+  _id ObjectId [pk]
+  equipment_id ObjectId [ref: > equipment._id]
+  from_room_id ObjectId [ref: > rooms._id]
+  to_room_id ObjectId [ref: > rooms._id]
+  requested_by ObjectId [note: 'FK → users (Maint Staff)']
+  approved_by ObjectId [note: 'FK → users (Maint Staff)']
+  completed_by ObjectId [note: 'FK → users']
+  reason String
+  reject_reason String
+  status String [note: 'pending | approved | rejected | completed']
+  created_at DateTime
+  approved_at DateTime
+  completed_at DateTime
+}
+
+Table disposals {
+  _id ObjectId [pk]
+  equipment_id ObjectId [ref: > equipment._id]
+  proposed_by ObjectId [note: 'FK → users (Maint Staff)']
+  staff_approved_by ObjectId [note: 'FK → users (Maint Staff)']
+  admin_approved_by ObjectId [note: 'FK → users (Admin)']
+  current_step Number [note: '1 → 5']
+  reason String
+  decision_number String [note: 'Số QĐ thanh lý']
+  recovery_value Number
+  procurement_plan String
+  replacement_equipment_id ObjectId [ref: > equipment._id]
+  status String [note: 'proposed | staff_reviewing | admin_reviewing | procuring | completed']
+  proposed_at DateTime
+  staff_approved_at DateTime
+  admin_approved_at DateTime
+  completed_at DateTime
+}
+
+Table import_sessions {
+  _id ObjectId [pk]
+  uploaded_by ObjectId [note: 'FK → users']
+  file_name String
+  total_rows Number
+  success_count Number
+  error_count Number
+  errors Array [note: '[{ row, field, message }]']
+  status String [note: 'validating | validated | importing | completed | failed']
+  created_at DateTime
+  completed_at DateTime
+}

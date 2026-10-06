@@ -2,15 +2,23 @@ import React, { useState } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import EquipmentForm from '../../components/ui/EquipmentForm';
 import { EQUIPMENT_SEED_DATA } from '../../mock/mockData';
+import { useAuth } from '../../context/AuthContext';
 
 export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
-  const [activeSection, setActiveSection] = useState(initialTab);
+  const { currentRoleKey } = useAuth();
+  const isLecturer = currentRoleKey === 'lecturer';
+  const isAdmin = currentRoleKey === 'admin';
+  const isStaffOrAdmin = !isLecturer;
+
+  // If lecturer tries to access disposal tab directly, fall back to inventory
+  const [activeSection, setActiveSection] = useState(isLecturer ? 'inventory' : initialTab);
   const [equipmentsList, setEquipmentsList] = useState(EQUIPMENT_SEED_DATA);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedQRItem, setSelectedQRItem] = useState(null);
+
 
   // Disposal Calculator State
   const [selectedEq, setSelectedEq] = useState(EQUIPMENT_SEED_DATA[1]); // Daikin damaged
@@ -25,6 +33,8 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
     {
       step: 1,
       role: 'Kỹ thuật viên (Responsible - R)',
+      actorBadge: 'Chuyên viên Kỹ thuật (maintenance_staff)',
+      actorColor: 'var(--laser-cyan)',
       action: 'Khảo sát hiện trường; tính chỉ số R ≥ 60%; tạo Biên bản Giám định Kỹ thuật kèm ảnh hư hỏng.',
       status: 'MAINTENANCE → UNREPAIRABLE',
       completed: currentStep > 1,
@@ -33,6 +43,8 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
     {
       step: 2,
       role: 'Cán bộ CSVC (Accountable - A)',
+      actorBadge: 'Quản lý CSVC (maintenance_staff)',
+      actorColor: 'var(--laser-cyan)',
       action: 'Tra cứu hồ sơ gốc tài sản (nguyên giá, khấu hao); tổng hợp danh mục và lập Hồ sơ Đề xuất Thanh lý theo Đợt.',
       status: 'UNREPAIRABLE → DISPOSAL_PENDING',
       completed: currentStep > 2,
@@ -40,29 +52,36 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
     },
     {
       step: 3,
-      role: 'Hội Đồng Thanh Lý / BGH (Approver - A)',
-      action: 'Thẩm định hồ sơ, kiểm tra tính pháp lý; ra quyết định chính thức phê duyệt thanh lý tài sản nhà trường.',
-      status: 'DISPOSAL_PENDING → DISPOSED',
+      role: 'Hội Đồng Thanh Lý & Thẩm Định (Consulted - C)',
+      actorBadge: 'Hội Đồng CSVC (maintenance_staff / admin)',
+      actorColor: 'var(--laser-amber)',
+      action: 'Thẩm định hồ sơ kỹ thuật, kiểm tra tính pháp lý và tính bất khả phục hồi của trang thiết bị.',
+      status: 'DISPOSAL_PENDING → REVIEWED',
       completed: currentStep > 3,
       active: currentStep === 3
     },
     {
       step: 4,
-      role: 'Cán bộ CSVC & P. Đào tạo (Consulted - C)',
-      action: 'Căn cứ vào số lượng thiết bị thanh lý và kế hoạch đào tạo: Lập Dự trù Ngân sách Mua sắm Bổ sung.',
-      status: 'Khởi tạo Procurement Plan',
+      role: 'Ban Giám Hiệu Phê Duyệt (Approver - A)',
+      actorBadge: 'Ban Giám Hiệu / Quản Trị Viên (admin)',
+      actorColor: 'var(--laser-rose)',
+      action: 'Ra quyết định chính thức phê duyệt thanh lý tài sản nhà trường theo thẩm quyền quy định.',
+      status: 'REVIEWED → DISPOSED',
       completed: currentStep > 4,
       active: currentStep === 4
     },
     {
       step: 5,
-      role: 'Thủ Kho & Admin (Informed - I)',
-      action: 'Kiểm định lô hàng mới nhập, dán mã QR/Barcode và phân bổ vào phòng học để đưa vào sử dụng.',
-      status: 'Thiết bị mới: AVAILABLE',
+      role: 'Thủ Kho & Admin Tiếp Nhận (Informed - I)',
+      actorBadge: 'Bộ Phận Mua Sắm & Kho (admin)',
+      actorColor: 'var(--laser-emerald)',
+      action: 'Bán phế liệu, thanh toán hủy sổ sách kế toán và lập dự trù trang bị mới cho phòng học.',
+      status: 'Hủy sổ tài sản & Cấp mới',
       completed: currentStep > 5,
       active: currentStep === 5
     }
   ];
+
 
   // Switch to disposal section with preselected equipment
   const handleProposeDisposal = (eq) => {
@@ -132,16 +151,18 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
             Quản lý kho thiết bị 108 phòng học qua mã QR định danh và Quy trình thanh lý theo chỉ số R ≥ 60%
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={() => setIsCreateOpen(true)}
-            className="laser-btn laser-btn-primary"
-            style={{ padding: '8px 14px', borderRadius: 'var(--radius-full)', fontSize: '12px' }}
-          >
-            <Icons.Plus size={14} />
-            <span>Thêm Thiết Bị</span>
-          </button>
-        </div>
+        {isStaffOrAdmin && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="laser-btn laser-btn-primary"
+              style={{ padding: '8px 14px', borderRadius: 'var(--radius-full)', fontSize: '12px' }}
+            >
+              <Icons.Plus size={14} />
+              <span>Thêm Thiết Bị</span>
+            </button>
+          </div>
+        )}
         {/* Tab Switcher Pills */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--surface-panel)', padding: '4px', borderRadius: 'var(--radius-full)', border: '1px solid var(--hairline-medium)' }}>
           <button
@@ -168,29 +189,31 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
             </span>
           </button>
 
-          <button
-            onClick={() => setActiveSection('disposal')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '12px',
-              fontWeight: activeSection === 'disposal' ? 700 : 500,
-              background: activeSection === 'disposal' ? 'linear-gradient(135deg, var(--laser-amber), var(--laser-rose))' : 'transparent',
-              color: activeSection === 'disposal' ? '#FFFFFF' : 'var(--ink-secondary)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all var(--transition-fast)'
-            }}
-          >
-            <Icons.Sliders size={14} color={activeSection === 'disposal' ? '#FFFFFF' : 'var(--laser-amber)'} />
-            <span>Thanh Lý Tài Sản R ≥ 60% (Trụ Cột 5)</span>
-            <span style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', background: 'rgba(255,255,255,0.2)', padding: '1px 5px', borderRadius: '3px' }}>
-              RACI
-            </span>
-          </button>
+          {isStaffOrAdmin && (
+            <button
+              onClick={() => setActiveSection('disposal')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-full)',
+                fontSize: '12px',
+                fontWeight: activeSection === 'disposal' ? 700 : 500,
+                background: activeSection === 'disposal' ? 'linear-gradient(135deg, var(--laser-amber), var(--laser-rose))' : 'transparent',
+                color: activeSection === 'disposal' ? '#FFFFFF' : 'var(--ink-secondary)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all var(--transition-fast)'
+              }}
+            >
+              <Icons.Sliders size={14} color={activeSection === 'disposal' ? '#FFFFFF' : 'var(--laser-amber)'} />
+              <span>Thanh Lý Tài Sản R ≥ 60% (Trụ Cột 5)</span>
+              <span style={{ fontSize: '10px', fontFamily: 'var(--font-sans)', background: 'rgba(255,255,255,0.2)', padding: '1px 5px', borderRadius: '3px' }}>
+                RACI
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -212,9 +235,9 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
             </div>
 
             <div className="card" style={{ padding: '14px 18px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Sẵn Sàng Xuất Mượn Lab</div>
+              <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Sẵn Sàng Cấp Phát / Dự Phòng</div>
               <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--laser-emerald)', fontFamily: 'var(--font-sans)', margin: '4px 0' }}>11</div>
-              <div style={{ fontSize: '11px', color: 'var(--laser-emerald)' }}>Mượn trả qua thẻ sinh viên/GV</div>
+              <div style={{ fontSize: '11px', color: 'var(--laser-emerald)' }}>Dự phòng thay thế nhanh phòng học</div>
             </div>
 
             <div className="card" style={{ padding: '14px 18px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
@@ -223,6 +246,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
               <div style={{ fontSize: '11px', color: 'var(--laser-rose)' }}>2 thiết bị đủ điều kiện R ≥ 60%</div>
             </div>
           </div>
+
 
           {/* Search and Filters Bar */}
           <div className="card" style={{ padding: '14px 18px', marginBottom: '20px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)' }}>
@@ -357,40 +381,66 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
                         </td>
 
                         <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                          {eq.status === 'damaged' || eq.status === 'disposal_pending' ? (
-                            <button
-                              onClick={() => handleProposeDisposal(eq)}
-                              className="laser-btn laser-btn-rose"
-                              style={{ padding: '4px 10px', fontSize: '11px', borderRadius: 'var(--radius-full)' }}
-                              title="Chuyển sang Bộ tính toán R và Quy trình thanh lý RACI"
-                            >
-                              <Icons.Sliders size={12} />
-                              <span>Giám Định R ≥ 60%</span>
-                            </button>
-                          ) : eq.status === 'available' ? (
-                            <button
-                              onClick={() => alert(`Đã tạo phiếu mượn thiết bị ${eq.name} cho tài khoản hiện tại!`)}
-                              className="laser-btn laser-btn-cyan"
-                              style={{ padding: '4px 10px', fontSize: '11px', borderRadius: 'var(--radius-full)' }}
-                            >
-                              <Icons.CheckCircle size={12} />
-                              <span>Mượn Thiết Bị</span>
-                            </button>
+                          {isLecturer ? (
+                            eq.status === 'damaged' || eq.status === 'disposal_pending' ? (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontSize: '11px',
+                                  color: 'var(--laser-rose)',
+                                  background: 'rgba(244,63,94,0.1)',
+                                  border: '1px solid rgba(244,63,94,0.25)',
+                                  padding: '3px 8px',
+                                  borderRadius: 'var(--radius-full)'
+                                }}
+                              >
+                                <Icons.Wrench size={11} />
+                                <span>Đang xử lý SLA</span>
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setEquipmentsList(prev => prev.map(item => item.id === eq.id ? { ...item, status: 'damaged', estimatedRepairCost: Math.round(item.remainingValue * 0.65) } : item));
+                                  alert(`Đã gửi báo cáo sự cố thiết bị "${eq.name}" tại phòng ${eq.locationRoom} tới Đội Kỹ Thuật CSVC.`);
+                                }}
+                                className="laser-btn laser-btn-ghost"
+                                style={{ padding: '4px 10px', fontSize: '11px', borderRadius: 'var(--radius-full)' }}
+                                title="Báo cáo thiết bị gặp trục trặc tại phòng này"
+                              >
+                                <Icons.Wrench size={12} color="var(--laser-amber)" />
+                                <span>Báo Hỏng Thiết Bị</span>
+                              </button>
+                            )
                           ) : (
-                            <button
-                              onClick={() => {
-                                setEquipmentsList(prev => prev.map(item => item.id === eq.id ? { ...item, status: 'damaged', estimatedRepairCost: Math.round(item.remainingValue * 0.65) } : item));
-                                alert(`Đã ghi nhận báo hỏng cho thiết bị ${eq.name}. Kỹ thuật viên sẽ tiến hành khảo sát!`);
-                              }}
-                              className="laser-btn laser-btn-ghost"
-                              style={{ padding: '4px 10px', fontSize: '11px', borderRadius: 'var(--radius-full)' }}
-                              title="Báo cáo thiết bị gặp trục trặc"
-                            >
-                              <Icons.Wrench size={12} />
-                              <span>Báo Hỏng</span>
-                            </button>
+                            eq.status === 'damaged' || eq.status === 'disposal_pending' ? (
+                              <button
+                                onClick={() => handleProposeDisposal(eq)}
+                                className="laser-btn laser-btn-rose"
+                                style={{ padding: '4px 10px', fontSize: '11px', borderRadius: 'var(--radius-full)' }}
+                                title="Chuyển sang Bộ tính toán R và Quy trình thanh lý RACI"
+                              >
+                                <Icons.Sliders size={12} />
+                                <span>Giám Định R ≥ 60%</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setEquipmentsList(prev => prev.map(item => item.id === eq.id ? { ...item, status: 'damaged', estimatedRepairCost: Math.round(item.remainingValue * 0.65) } : item));
+                                  alert(`Đã ghi nhận báo hỏng cho thiết bị ${eq.name}. Kỹ thuật viên sẽ tiến hành khảo sát!`);
+                                }}
+                                className="laser-btn laser-btn-ghost"
+                                style={{ padding: '4px 10px', fontSize: '11px', borderRadius: 'var(--radius-full)' }}
+                                title="Báo cáo thiết bị gặp trục trặc hoặc cần khảo sát"
+                              >
+                                <Icons.Wrench size={12} />
+                                <span>Báo Hỏng / Khảo Sát</span>
+                              </button>
+                            )
                           )}
                         </td>
+
                       </tr>
                     );
                   })}
@@ -523,7 +573,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
                   className="laser-btn laser-btn-ghost"
                   disabled={currentStep <= 1}
@@ -535,11 +585,18 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
                 </button>
                 <button
                   className="laser-btn laser-btn-primary"
-                  disabled={currentStep >= 5}
-                  onClick={() => setCurrentStep(prev => prev + 1)}
-                  style={{ opacity: currentStep >= 5 ? 0.5 : 1, fontSize: '12px', padding: '6px 14px' }}
+                  disabled={currentStep >= 5 || (currentStep === 3 && !isAdmin)}
+                  onClick={() => {
+                    if (currentStep === 3 && !isAdmin) {
+                      alert('Chỉ Ban Giám Hiệu / Quản Trị Viên (Admin) mới có thẩm quyền phê duyệt quyết định thanh lý tài sản nhà trường (Bước 4)!');
+                      return;
+                    }
+                    setCurrentStep(prev => prev + 1);
+                  }}
+                  title={currentStep === 3 && !isAdmin ? 'Yêu cầu tài khoản Admin/BGH phê duyệt Bước 4' : ''}
+                  style={{ opacity: (currentStep >= 5 || (currentStep === 3 && !isAdmin)) ? 0.5 : 1, fontSize: '12px', padding: '6px 14px' }}
                 >
-                  <span>Bước tiếp theo</span>
+                  <span>{currentStep === 3 ? (isAdmin ? 'BGH Phê Duyệt Bước 4' : 'Chờ BGH Duyệt Bước 4') : 'Bước tiếp theo'}</span>
                   <Icons.ChevronRight size={14} />
                 </button>
               </div>
@@ -589,10 +646,15 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
 
                   {/* Step info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '3px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--ink-pure)' }}>
                         Bước {s.step}: {s.role}
                       </span>
+                      {s.actorBadge && (
+                        <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.06)', color: s.actorColor || 'var(--ink-secondary)', padding: '2px 8px', borderRadius: '4px', border: `1px solid ${s.actorColor || 'var(--hairline-medium)'}44`, fontWeight: 700 }}>
+                          {s.actorBadge}
+                        </span>
+                      )}
                       {s.active && (
                         <span style={{ fontSize: '9.5px', background: 'rgba(6,182,212,0.2)', color: 'var(--laser-cyan)', padding: '2px 8px', borderRadius: '4px', fontWeight: 800, border: '1px solid rgba(6,182,212,0.3)' }}>
                           ĐANG THỰC HIỆN
@@ -608,6 +670,7 @@ export const EquipmentDisposalPage = ({ initialTab = 'inventory' }) => {
                       {s.action}
                     </div>
                   </div>
+
 
                   {/* System State */}
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>

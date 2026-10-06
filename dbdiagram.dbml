@@ -1,0 +1,377 @@
+// ========================================
+// RUO - Facility Management System
+// 3 Actors: Lecturer · Maint Staff · Admin
+// 24 Collections · Optimized Layout
+// ========================================
+// TIP: Bỏ các ref → users để tránh mạng nhện
+// Các trường *_by đều FK → users (ghi trong note)
+// ========================================
+
+// ─── AUTH & USER ─────────────────────────
+
+TableGroup auth_group {
+  users
+  roles
+  refresh_tokens
+  login_history
+}
+
+Table users {
+  _id ObjectId [pk]
+  code String [unique, note: 'Mã NV / GV']
+  email String [unique]
+  password_hash String [note: 'BCrypt']
+  full_name String
+  phone String
+  avatar String
+  department String [note: 'Khoa / Phòng ban']
+  role String [note: 'lecturer | maintenance_staff | admin']
+  status String [note: 'active | locked']
+  force_change_pw Boolean
+  last_login_at DateTime
+  login_count Number
+  created_at DateTime
+  updated_at DateTime
+}
+
+Table roles {
+  _id ObjectId [pk]
+  name String [unique, note: 'lecturer | maintenance_staff | admin']
+  permissions Array [note: 'Mảng quyền']
+}
+
+Table refresh_tokens {
+  _id ObjectId [pk]
+  user_id ObjectId [ref: > users._id]
+  token String
+  device_info String
+  ip_address String
+  expires_at DateTime [note: 'TTL 7 ngày']
+  is_revoked Boolean
+  created_at DateTime
+}
+
+Table login_history {
+  _id ObjectId [pk]
+  user_id ObjectId [ref: > users._id]
+  ip_address String
+  user_agent String
+  status String [note: 'success | failed | locked']
+  failure_reason String
+  created_at DateTime [note: 'TTL 90 ngày']
+}
+
+// ─── MASTER DATA ─────────────────────────
+
+TableGroup master_data {
+  categories
+  suppliers
+  repair_units
+  rooms
+}
+
+Table categories {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+  description String
+}
+
+Table suppliers {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+  phone String
+  email String
+  address String
+  contact String
+}
+
+Table repair_units {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+  specialty String
+  phone String
+  address String
+}
+
+Table rooms {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+  building String
+  floor Number
+  room_type String [note: 'lecture | lab | office | storage']
+  capacity Number
+  area Number [note: 'm²']
+  layout_image String [note: 'Sơ đồ phòng']
+  department String
+  status String [note: 'available | maintenance | inactive']
+  created_at DateTime
+  updated_at DateTime
+}
+
+// ─── EQUIPMENT ───────────────────────────
+
+TableGroup equipment_group {
+  equipment
+  transfers
+  disposals
+}
+
+Table equipment {
+  _id ObjectId [pk]
+  code String [unique, note: 'Mã tài sản']
+  qr_code String [unique]
+  serial_number String
+  name String
+  brand String
+  model String
+  category_id ObjectId [ref: > categories._id]
+  room_id ObjectId [ref: > rooms._id]
+  supplier_id ObjectId [ref: > suppliers._id]
+  price Number
+  purchase_date DateTime
+  warranty_expiry DateTime
+  warranty_status String [note: 'active | expired | extended']
+  images Array
+  depreciation_rate Number
+  status String [note: 'active | repairing | disposed | transferring | lost']
+  created_at DateTime
+  updated_at DateTime
+}
+
+Table transfers {
+  _id ObjectId [pk]
+  equipment_id ObjectId [ref: > equipment._id]
+  from_room_id ObjectId [ref: > rooms._id]
+  to_room_id ObjectId [ref: > rooms._id]
+  requested_by ObjectId [note: 'FK → users']
+  approved_by ObjectId [note: 'FK → users']
+  completed_by ObjectId [note: 'FK → users']
+  reason String
+  reject_reason String
+  status String [note: 'pending | approved | rejected | completed']
+  created_at DateTime
+  approved_at DateTime
+  completed_at DateTime
+}
+
+Table disposals {
+  _id ObjectId [pk]
+  equipment_id ObjectId [ref: > equipment._id]
+  proposed_by ObjectId [note: 'FK → users (Maint Staff)']
+  staff_approved_by ObjectId [note: 'FK → users (Maint Staff)']
+  admin_approved_by ObjectId [note: 'FK → users (Admin)']
+  current_step Number [note: '1 → 5']
+  reason String
+  decision_number String
+  recovery_value Number
+  procurement_plan String
+  replacement_equipment_id ObjectId [note: 'FK → equipment']
+  status String [note: 'proposed | staff_reviewing | admin_reviewing | procuring | completed']
+  proposed_at DateTime
+  staff_approved_at DateTime
+  admin_approved_at DateTime
+  completed_at DateTime
+}
+
+// ─── REPAIR FLOW ─────────────────────────
+
+TableGroup repair_group {
+  repairs
+  repair_logs
+  spare_parts
+  parts_requests
+  repair_parts
+}
+
+Table repairs {
+  _id ObjectId [pk]
+  equipment_id ObjectId [ref: > equipment._id]
+  reported_by ObjectId [note: 'FK → users (Lecturer)']
+  incident_description String [note: 'Mô tả sự cố gốc']
+  incident_images Array
+  reported_at DateTime
+  assigned_to ObjectId [note: 'FK → users (Maint Staff)']
+  repair_unit_id ObjectId [ref: > repair_units._id]
+  damage_level String [note: 'minor | major | critical']
+  description String [note: 'Mô tả kỹ thuật']
+  images Array
+  repair_location String [note: 'on_site | external']
+  carried_by ObjectId [note: 'FK → users']
+  returned_by ObjectId [note: 'FK → users']
+  return_room_id ObjectId [note: 'FK → rooms']
+  post_repair_warranty DateTime
+  total_cost Number
+  deadline DateTime
+  deadline_status String [note: 'on_track | at_risk | overdue']
+  status String [note: 'reported | assigned | in_progress | resolved | closed']
+  feedback_rating Number [note: '1-5 sao (Lecturer)']
+  feedback_comment String
+  feedback_by ObjectId [note: 'FK → users (Lecturer)']
+  feedback_at DateTime
+  created_at DateTime
+  updated_at DateTime
+}
+
+Table repair_logs {
+  _id ObjectId [pk]
+  repair_id ObjectId [ref: > repairs._id]
+  action String [note: 'reported | assigned | in_progress | resolved | closed | escalated']
+  performed_by ObjectId [note: 'FK → users']
+  description String
+  cost Number
+  parts_used Array
+  images Array
+  timestamp DateTime
+}
+
+Table spare_parts {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+  stock Number
+  min_stock Number
+  price Number
+  unit String [note: 'Cái, bộ, hộp']
+  supplier_id ObjectId [ref: > suppliers._id]
+}
+
+Table parts_requests {
+  _id ObjectId [pk]
+  repair_id ObjectId [ref: > repairs._id]
+  requested_by ObjectId [note: 'FK → users']
+  approved_by ObjectId [note: 'FK → users']
+  items Array [note: '[{ part_id, qty, unit_price }]']
+  status String [note: 'pending | approved | rejected']
+  reject_reason String
+  created_at DateTime
+  approved_at DateTime
+}
+
+Table repair_parts {
+  _id ObjectId [pk]
+  repair_id ObjectId [ref: > repairs._id]
+  part_id ObjectId [ref: > spare_parts._id]
+  request_id ObjectId [ref: > parts_requests._id]
+  quantity Number
+  unit_price Number
+}
+
+// ─── MAINTENANCE & INVENTORY ─────────────
+
+TableGroup maintenance_group {
+  maintenance_plans
+  maintenance_logs
+  inventory_sessions
+  inventory_logs
+}
+
+Table maintenance_plans {
+  _id ObjectId [pk]
+  name String
+  target_type String [note: 'room | equipment | category']
+  target_ids Array
+  frequency String [note: 'monthly | quarterly | yearly']
+  checklist Array [note: '[{ item, required }]']
+  next_due DateTime
+  created_by ObjectId [note: 'FK → users']
+  status String [note: 'active | paused']
+  created_at DateTime
+}
+
+Table maintenance_logs {
+  _id ObjectId [pk]
+  plan_id ObjectId [ref: > maintenance_plans._id]
+  equipment_id ObjectId [ref: > equipment._id]
+  checked_by ObjectId [note: 'FK → users']
+  check_date DateTime
+  checklist_results Array [note: '[{ item, passed, note }]']
+  status String [note: 'passed | failed | needs_repair']
+  auto_repair_id ObjectId [note: 'FK → repairs']
+  notes String
+}
+
+Table inventory_sessions {
+  _id ObjectId [pk]
+  name String
+  scope_type String [note: 'building | floor | room']
+  scope_ids Array
+  created_by ObjectId [note: 'FK → users']
+  date DateTime
+  status String [note: 'draft | in_progress | completed | reconciled']
+  completed_at DateTime
+  created_at DateTime
+}
+
+Table inventory_logs {
+  _id ObjectId [pk]
+  session_id ObjectId [ref: > inventory_sessions._id]
+  equipment_id ObjectId [ref: > equipment._id]
+  scanned_room_id ObjectId [note: 'FK → rooms']
+  scanned_by ObjectId [note: 'FK → users']
+  scanned_at DateTime
+  status String [note: 'matched | missing | damaged | wrong_location']
+  note String
+}
+
+// ─── SYSTEM & NOTIFICATIONS ─────────────
+
+TableGroup system_group {
+  notifications
+  notification_templates
+  audit_logs
+  import_sessions
+}
+
+Table notifications {
+  _id ObjectId [pk]
+  user_id ObjectId [ref: > users._id]
+  type String [note: 'incident_reported | repair_assigned | repair_resolved | feedback_requested | transfer_approval | warranty_expiring | deadline_overdue']
+  title String
+  message String
+  reference_type String [note: 'repair | transfer | disposal | equipment']
+  reference_id ObjectId
+  is_read Boolean
+  created_at DateTime
+}
+
+Table audit_logs {
+  _id ObjectId [pk]
+  action String [note: 'create | update | delete | approve | transfer | escalate | feedback']
+  target_table String
+  entity_id ObjectId
+  user_id ObjectId [ref: > users._id]
+  old_value JSON
+  new_value JSON
+  ip_address String
+  hash_sha256 String
+  previous_hash String [note: 'SHA-256 chain']
+  created_at DateTime
+}
+
+Table notification_templates {
+  _id ObjectId [pk]
+  type String [unique]
+  subject String
+  body_html String
+  placeholders Array
+  is_active Boolean
+  updated_by ObjectId [note: 'FK → users (Admin)']
+  updated_at DateTime
+}
+
+Table import_sessions {
+  _id ObjectId [pk]
+  uploaded_by ObjectId [note: 'FK → users']
+  file_name String
+  total_rows Number
+  success_count Number
+  error_count Number
+  errors Array [note: '[{ row, field, message }]']
+  status String [note: 'validating | validated | importing | completed | failed']
+  created_at DateTime
+  completed_at DateTime
+}

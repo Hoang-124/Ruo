@@ -1,104 +1,88 @@
 STT	Phân hệ	Chi tiết chức năng
-1	Khởi tạo hệ thống	Seed Data Initializer — Khởi tạo đầy đủ 6 tài khoản mẫu, 4 tòa nhà, 108 phòng CAD, kho thiết bị QR, cấu hình SLA, học kỳ mẫu
-2	Xác thực & Hồ sơ cá nhân	UC-1.1: Login — Đăng nhập bằng email/MSSV + password; cấp JWT Access Token (15p) + Refresh Token (7 ngày); ghi log IP & time
+1	Khởi tạo hệ thống	Seed Data Initializer — Khởi tạo 3 tài khoản mẫu (Quản lý HC, Nhân viên HC, Admin), 1 tòa nhà 5 tầng (Tòa A1), 108 phòng CAD, kho thiết bị QR, danh mục loại thiết bị, nhà cung cấp, đơn vị sửa chữa mẫu, kho linh kiện mẫu
+2	Xác thực & Hồ sơ cá nhân	UC-1.1: Login — Đăng nhập bằng email/mã nhân viên + password; cấp JWT Access Token (15p) + Refresh Token (7 ngày); ghi log IP & time
 3	Xác thực & Hồ sơ cá nhân	UC-1.2: Logout — Hủy token hiện tại, xóa JWT tại client, đưa token vào blacklist; hỗ trợ logout all devices
 4	Xác thực & Hồ sơ cá nhân	UC-1.3: Forgot Password — Nhập email, gửi OTP 6 số qua email (TTL 15 phút); giới hạn 3 lần/giờ chống spam
 5	Xác thực & Hồ sơ cá nhân	UC-1.4: Change Password — Nhập pass cũ + mới; validate >= 8 ký tự, hoa, thường, số, ký tự đặc biệt; hủy các session khác
-6	Xác thực & Hồ sơ cá nhân	UC-1.5: Profile View — Hiển thị họ tên, MSSV/mã CB, email, khoa, lớp, SĐT, avatar, điểm uy tín mượn phòng (reputeScore)
-7	Xác thực & Hồ sơ cá nhân	UC-1.6: Update Profile — Cho phép sửa SĐT, avatar URL; khóa cứng MSSV, email trường, khoa (Admin mới sửa được)
-8	Quản lý Không gian & CAD	UC-3.1: Create Room — Nhập mã phòng (unique), tên, tòa nhà, tầng, sức chứa > 0, loại phòng, danh sách thiết bị, upload ảnh
-9	Quản lý Không gian & CAD	UC-3.2: Room List View — Danh sách phòng kèm bộ lọc: tòa nhà, tầng, loại phòng, trạng thái, khoảng sức chứa; search tên/mã
-10	Quản lý Không gian & CAD	UC-3.3: Room Detail View — Toàn bộ thông số kỹ thuật, danh sách thiết bị cố định kèm serial, lịch sử mượn, lịch bảo trì, tỷ lệ sử dụng
-11	Quản lý Không gian & CAD	UC-3.4: Update Room Info — Sửa tên, loại, sức chứa; cảnh báo nếu sức chứa mới thấp hơn đơn mượn tương lai đã duyệt
-12	Quản lý Không gian & CAD	UC-3.5: Deactivate Room — Không xóa cứng bản ghi; chuyển status = INACTIVE; yêu cầu hủy/chuyển lịch các đơn mượn tương lai trước
-13	Quản lý Không gian & CAD	UC-3.6: Update Room Status — Chuyển đổi AVAILABLE <-> MAINTENANCE <-> INACTIVE; tự động thông báo cho người có lịch bị ảnh hưởng
-14	Quản lý Không gian & CAD	UC-1.8: Room CAD Card — Hiển thị mã phòng, tên, loại phòng, sức chứa, nhiệt độ IoT, công suất điện (kW), trạng thái thời gian thực
-15	Quản lý Không gian & CAD	UC-1.9: Calendar Grid View — Grid tuần/tháng phân biệt 4 mã màu: Xanh (Chính khóa), Cam (Đã duyệt), Đỏ (Bảo trì), Trắng (Trống)
-16	Quản lý Không gian & CAD	CAD Mặt Bằng Tầng 2.5D — Hiển thị 6 pods phòng học mặt bằng Tầng 3 Tòa A1, hành lang trung tâm, time-travel scrubber (07:00-21:00)
-17	Quản lý Kho & Thiết bị QR	UC-3.7: Create Equipment — Nhập mã tài sản (unique), mã QR bất biến, serial, tên, loại, hãng, nguyên giá, ngày mua, hạn BH, vị trí
-18	Quản lý Kho & Thiết bị QR	UC-3.8: Equipment Directory — Lọc theo chủng loại, trạng thái (AVAILABLE/BORROWED/MAINTENANCE/DISPOSED), vị trí, khoảng giá trị
-19	Quản lý Kho & Thiết bị QR	UC-3.9: Equipment Detail — Thông số kỹ thuật, lịch sử điều chuyển vị trí, lịch sử sửa chữa, người đang mượn, tỷ lệ khấu hao
-20	Quản lý Kho & Thiết bị QR	UC-3.10: Update Asset Info — Cập nhật thông số kỹ thuật; nếu đổi vị trí phòng thì tự động ghi nhật ký điều chuyển (Movement Log)
-21	Quản lý Kho & Thiết bị QR	UC-3.11: Asset Disposal Decision — Chuyển trạng thái DISPOSED; ghi nhận số quyết định thanh lý, lý do, ngày hoàn tất, giá trị thu hồi; cấm thanh lý máy đang BORROWED
-22	Quản lý Kho & Thiết bị QR	UC-3.12: Inventory Audit — Khởi tạo đợt kiểm kê theo phòng/tòa nhà; quét QR đối soát thực tế: Khớp, Thất lạc, Hỏng, Sai vị trí; xuất PDF
-23	Quản lý Kho & Thiết bị QR	UC-3.13: Assign to Room — Chuyển thiết bị từ kho vào phòng học hoặc giữa các phòng; kiểm tra thiết bị ở trạng thái AVAILABLE
-24	Quản lý Kho & Thiết bị QR	UC-2.4: Search Mobile Gear — Tìm máy chiếu cơ động, laptop, mic không dây, thiết bị đo kiểm; lọc theo khung ngày mượn
-25	Quản lý Kho & Thiết bị QR	QR Code Generator & Scan — Quét mã QR ra thông tin tài sản, vị trí, nguyên giá, tra cứu nhanh lịch sử sửa chữa
-26	Đặt Phòng & Lịch biểu	UC-1.7: Smart Room Search — Lọc ngày, giờ, sức chứa, loại phòng, tòa nhà; tự động loại trừ phòng có lớp chính khóa/đã đặt/bảo trì
-27	Đặt Phòng & Lịch biểu	UC-1.10: Single Room Booking — Chọn phòng, ngày, giờ, mục đích, số người; check trùng giờ nguyên tử (409 Conflict); giới hạn 2 phòng/ngày
-28	Đặt Phòng & Lịch biểu	UC-1.11: Edit Booking Request — Chỉ sửa khi PENDING hoặc APPROVED (còn >24h); re-validate trùng lịch; nếu Approved thì chuyển về Pending
-29	Đặt Phòng & Lịch biểu	UC-1.12: Cancel Booking — Hủy đơn; nếu hủy khi đã Approved trong < 2h trước giờ dùng thì ghi nhận vi phạm "Late Cancellation"
-30	Đặt Phòng & Lịch biểu	UC-1.13: Booking History — Danh sách booking cá nhân; filter: pending, approved, rejected, completed, no_show; phân trang
-31	Đặt Phòng & Lịch biểu	UC-1.14: QR Room Check-in — Quét mã QR trước cửa phòng trong 15 phút đầu; nếu quá 15 phút tự động hủy NO_SHOW và trừ 10 điểm uy tín
-32	Đặt Phòng & Lịch biểu	Background No-Show Sweeper — Cron-job chạy mỗi 60s; tìm booking quá hạn 15m; đổi status sang no_show, giải phóng phòng, phạt repute
-33	Đặt Phòng & Lịch biểu	UC-2.1: Booking Series — Chọn phòng, thứ, giờ, tần suất (tuần/2 tuần), từ tuần X đến Y; tự sinh instances, check conflict từng buổi
-34	Đặt Phòng & Lịch biểu	UC-2.2: Edit Booking Series — Hỗ trợ 2 chế độ: (1) Sửa 1 buổi đơn lẻ (tạo booking_exception), (2) Sửa buổi này và các buổi sau
-35	Đặt Phòng & Lịch biểu	UC-2.3: Cancel Series — Hủy toàn bộ series hoặc 1 buổi lẻ; tự động giải phóng toàn bộ các slot phòng trong tương lai
-36	Đặt Phòng & Lịch biểu	UC-2.0: Lecturer Overrides — Đặt tối đa 5 phòng/ngày (SV là 2); đặt trước 4 tuần (SV là 2); miễn phạt Late Cancel; check-in 30 phút
-37	Mượn Trả Thiết Bị	UC-2.5: Request Borrow Gear — Chọn thiết bị, ngày mượn, ngày trả (<=7 ngày), mục đích; check không có nợ quá hạn; status PENDING
-38	Mượn Trả Thiết Bị	UC-2.6: Extend Borrowing — Gia hạn tối đa 1 lần thêm <= 7 ngày; kiểm tra chưa có ai đặt tiếp mới cho phép; chờ duyệt CSVC
-39	Mượn Trả Thiết Bị	UC-2.7: Return Equipment — Bàn giao thiết bị tại phòng CSVC; nhân viên kiểm tra; nếu hỏng tự động tạo ticket bảo trì và ghi biên bản
-40	Mượn Trả Thiết Bị	UC-2.8: Borrowing History — Xem lịch sử mượn/trả thiết bị, ngày nhận, ngày trả thực tế, trạng thái, ghi chú bàn giao
-41	Phê Duyệt & Chuyển Cấp	UC-3.14: Approval Queue — Dashboard hiển thị đơn chờ duyệt; phân loại: đặt phòng / mượn máy; sắp xếp ưu tiên GV > SV, độ khẩn cấp
-42	Phê Duyệt & Chuyển Cấp	UC-3.15: Approve/Reject Room — Thẩm định đơn mượn; Approve: khóa slot, sinh QR, gửi mail; Reject: nhập lý do; Escalate: chuyển BGH
-43	Phê Duyệt & Chuyển Cấp	UC-3.16: Approve Equipment — Kiểm tra thiết bị sẵn sàng trong kho; Approve: chuyển RESERVED; Reject: nêu rõ lý do
-44	Phê Duyệt & Chuyển Cấp	UC-3.17: Batch Approval — Chọn nhiều đơn hợp lệ duyệt đồng loạt; kiểm tra race condition từng đơn; trả về kết quả X/Y thành công
-45	Phê Duyệt & Chuyển Cấp	4-Rule Escalation Evaluator — Tự động kích hoạt chuyển cấp P. Đào Tạo: (1) Trùng chính khóa, (2) >= 3 phòng, (3) Sau 21h/cuối tuần, (4) Máy > 50tr
-46	Phê Duyệt & Chuyển Cấp	UC-5.6: Escalated Queue View — Giao diện riêng tiếp nhận đơn vượt thẩm quyền do CSVC chuyển lên kèm lý do giải trình chi tiết
-47	Phê Duyệt & Chuyển Cấp	UC-5.7: Approve Escalated Case — Phê duyệt đơn đặc biệt (hội thảo đột xuất, sự kiện trường); kích hoạt kế hoạch bù trừ tự động
-48	Phê Duyệt & Chuyển Cấp	UC-5.8: Mid-term Compensation — Kế hoạch bù trừ: Phương án A (Tìm phòng trống đổi tự động) / Phương án B (Tích hợp link Teams/Zoom học online)
-49	Sự Cố & Kanban SLA	UC-1.15: Report Incident — Chọn phòng/máy, loại sự cố, mô tả, tối đa 5 ảnh (<=5MB), độ khẩn cấp (Low/Med/High/Critical); sinh ticket
-50	Sự Cố & Kanban SLA	UC-1.16: Incident Timeline — Dòng thời gian trực quan: Open -> Assigned -> In Progress -> Resolved -> Closed
-51	Sự Cố & Kanban SLA	UC-1.17: Incident Comments — Thêm comment/ảnh bổ sung khi ticket chưa CLOSED; trao đổi 2 chiều giữa người báo và kỹ thuật viên
-52	Sự Cố & Kanban SLA	UC-1.18: Double Confirmation — Sau khi sửa xong: người báo đánh giá 1-5 sao và xác nhận đóng ticket; nếu chưa đạt bấm làm lại; auto-close 48h
-53	Sự Cố & Kanban SLA	UC-3.18: Master Ticket List — Tổng hợp ticket toàn trường; lọc trạng thái, khẩn cấp, vị trí, nhân viên; sắp xếp theo hạn định SLA
-54	Sự Cố & Kanban SLA	UC-3.19: Dispatch Technician — Giao việc cho thợ điện/máy lạnh/máy tính; hiển thị workload số ticket đang nhận để tránh quá tải; reassign
-55	Sự Cố & Kanban SLA	UC-3.20: Business Hours SLA — Tính giờ hành chính 07:30 - 17:00 ngày làm việc (đóng băng đêm/cuối tuần); Critical chạy 24/7 (<=4h); 3 cấp cảnh báo
-56	Sự Cố & Kanban SLA	UC-3.21: Close Ticket Audit — Kiểm tra chi phí vật tư thay thế, xác nhận đóng ticket (CLOSED), đưa phòng/thiết bị về AVAILABLE
-57	Vận Hành Bảo Trì	UC-4.1: Technician Inbox — Giao diện mobile/tablet cho thợ kỹ thuật; lọc trạng thái; đếm ngược SLA; badge đỏ cảnh báo quá hạn
-58	Vận Hành Bảo Trì	UC-4.2: Accept Ticket — Xác nhận tiếp nhận; chuyển status ASSIGNED -> IN_PROGRESS; bắt đầu bấm giờ thực tế; gửi thông báo
-59	Vận Hành Bảo Trì	UC-4.3: Progress & Parts Req — Ghi chú hiện trường, ảnh trước/sau sửa, % hoàn thành; lập phiếu yêu cầu xuất kho linh kiện thay thế
-60	Vận Hành Bảo Trì	UC-4.4: Complete Repair — Báo cáo nghiệm thu kỹ thuật, vật tư đã dùng, chi phí nhân công, ảnh máy chạy tốt, chuyển RESOLVED
-61	Vận Hành Bảo Trì	UC-4.5: Return/Reject Ticket — Trả lại ticket kèm lý do (thiếu đồ nghề đặc thù, sai mô tả, cần thuê ngoài) để quản lý điều phối lại
-62	Vận Hành Bảo Trì	5-Step RACI Disposal Flow — B1 (Tech: R), B2 (CSVC: A), B3 (Hội đồng/BGH: A duyệt), B4 (Dự trù mua sắm: C), B5 (Thủ kho nhập mới: I)
-63	Vận Hành Bảo Trì	UC-4.10: Room Maintenance History — Hiển thị dòng thời gian các đợt sửa chữa điện nước, điều hòa, bảo dưỡng định kỳ của phòng; tổng hợp chi phí vật tư
-64	Vận Hành Bảo Trì	UC-4.11: Asset Maintenance History & MTBF — Thống kê số lần phát sinh sự cố, tổng chi phí sửa lũy kế, tính toán chỉ số R và dự báo tuổi thọ còn lại của máy
-65	Bảo Trì Dự Phòng	UC-4.6: Preventive Calendar — Lịch bảo dưỡng điện lạnh, kiểm định máy chiếu, an toàn điện; cảnh báo trước 3 ngày trước khi đến hạn
-66	Bảo Trì Dự Phòng	UC-4.7: Create Maint. Plan — Chọn nhóm phòng/thiết bị, chu kỳ (tháng/quý/năm), checklist kỹ thuật; đối chiếu không trùng lịch học
-67	Bảo Trì Dự Phòng	UC-4.8: Log Maint. Result — Tick từng mục checklist, đánh giá Tốt / Cần theo dõi / Nguy cơ hỏng; nếu hỏng nặng tự tạo ticket sửa
-68	Thanh Lý Tài Sản (RACI)	UC-4.9: Disposal Proposal — Khảo sát máy hỏng nặng, tính tỷ lệ R = (chi phí sửa / giá trị còn lại) * 100; nếu R >= 60% lập hồ sơ thanh lý
-69	Xếp Lịch CSP & Phòng Thi	UC-5.1: Import Semester TKB — Upload Excel/CSV chứa mã LHP, môn, GV, sĩ số, số tiết, loại phòng; kiểm tra cú pháp, phát hiện trùng lặp
-70	Xếp Lịch CSP & Phòng Thi	UC-5.2: CSP Auto Allocation — Thuật toán Backtracking + MRV/Degree Heuristic + LCV (hàm phạt lãng phí ghế + gom cụm tòa nhà khoa)
-71	Xếp Lịch CSP & Phòng Thi	UC-5.3: Manual Drag & Drop — Giao diện kéo thả lớp vào ô lịch; highlight cảnh báo đỏ tức thì nếu thả vào ô trùng lịch hoặc thiếu ghế
-72	Xếp Lịch CSP & Phòng Thi	UC-5.4: Export Timetable — Xem theo phòng, GV, khoa; xuất file Excel hoặc PDF bản in chính thức có logo trường
-73	Xếp Lịch CSP & Phòng Thi	UC-5.5: Freeze Schedule — Đóng băng lịch toàn trường sau khi xếp xong; khóa cứng slot chính khóa, cấm SV/GV đặt đè; chỉ Đào tạo mở
-74	Xếp Lịch CSP & Phòng Thi	UC-5.9: Exam Room Allocation — Chia đôi sĩ số phòng ngồi giãn cách; >= 2 giám thị/phòng; SV cùng lớp không cùng phòng trắc nghiệm; giãn cách 30p
-75	Báo Cáo & Thống Kê BI	UC-5.10: Department Usage — Báo cáo số giờ giảng dạy, tỷ lệ tận dụng phòng Lab chuyên ngành của từng khoa để phân bổ ngân sách
-76	Báo Cáo & Thống Kê BI	UC-3.22: Room Heatmap Report — Biểu đồ nhiệt theo giờ trong tuần (07:00 - 21:00), biểu đồ cột theo tòa nhà, xếp hạng phòng mượn nhiều nhất
-77	Báo Cáo & Thống Kê BI	UC-3.23: Asset Status Report — Tỷ lệ thiết bị theo trạng thái hoạt động, danh sách thiết bị sắp hết bảo hành, nhóm máy hay hỏng nhất
-78	Báo Cáo & Thống Kê BI	UC-3.24: SLA & MTTR Report — Thống kê số ticket theo tháng, thời gian xử lý trung bình MTTR, tỷ lệ hoàn thành đúng hạn SLA, sao đánh giá
-79	Báo Cáo & Thống Kê BI	UC-3.25: PDF/Excel Exporter — Xuất báo cáo PDF/Excel chuẩn in ấn có tiêu đề trường, logo, timestamp, chữ ký duyệt phục vụ văn thư
-80	Thông Báo & Tích Hợp	UC-1.19: In-app Notification — Trung tâm thông báo: duyệt đơn, sự cố cập nhật, nhắc nhở check-in trước 10 phút, cúp điện khẩn cấp; badge đỏ
-81	Thông Báo & Tích Hợp	UC-1.20: Mark Notifications — Đánh dấu 1 hoặc tất cả thông báo đã đọc, cập nhật số lượng badge chưa đọc trên thanh điều hướng
-82	Thông Báo & Tích Hợp	UC-7.1: SIS Sync Webhook — RESTful Webhook nhận dữ liệu lịch học tập trung từ hệ thống SIS (~100 lớp học phần), tự động thêm/sửa/hủy
-83	Thông Báo & Tích Hợp	UC-7.2: Email Dispatcher — Gửi email HTML tự động qua Nodemailer (Ethereal/Gmail SMTP) có gắn logo trường, hỗ trợ gửi hàng loạt
-84	Thông Báo & Tích Hợp	UC-7.3: SMS Emergency Mock — Dịch vụ mô phỏng gửi tin nhắn SMS Brandname đối với thông báo khẩn cấp (báo cháy, cúp điện toàn trường)
-85	Quản Trị Người Dùng	UC-6.1: Create User — Nhập email/MSSV (unique), họ tên, SĐT, chọn vai trò; sinh mật khẩu ngẫu nhiên; gửi email kích hoạt tài khoản
-86	Quản Trị Người Dùng	UC-6.2: User Directory — Phân trang danh sách user; filter theo Role, Khoa/Viện, Trạng thái (Active/Locked); tìm kiếm theo họ tên/MSSV
-87	Quản Trị Người Dùng	UC-6.3: User Detail View — Xem thông tin tài khoản, lịch sử 10 lần login gần nhất, danh sách booking, đơn mượn thiết bị và ticket đã tạo
-88	Quản Trị Người Dùng	UC-6.4: Update User Info & Role — Sửa thông tin, điều chỉnh vai trò; khi thay đổi role lập tức thu hồi toàn bộ JWT token hiện tại để áp quyền mới
-89	Quản Trị Người Dùng	UC-6.5: Toggle User Status — Khóa/mở tài khoản (Active <-> Locked); khi khóa tự động hủy mọi booking tương lai; không xóa cứng bản ghi
-90	Quản Trị Người Dùng	UC-6.6: Admin Reset Password — Sinh mật khẩu ngẫu nhiên an toàn; gửi thông báo mật khẩu tạm; gắn cờ bắt buộc đổi mật khẩu ở lần đăng nhập tới
-91	Quản Trị Người Dùng	UC-6.7: Batch User Import — Upload file Excel > 1.000 dòng sinh viên/giảng viên; kiểm tra hợp lệ, chống trùng email; hiển thị Preview Grid trước khi import
-92	Phân Quyền Ma Trận RBAC	UC-6.8: Roles Matrix View — Hiển thị ma trận 6 vai trò chuẩn và các vai trò tùy chỉnh; đếm số user đang gán; hiển thị danh sách permissions
-93	Phân Quyền Ma Trận RBAC	UC-6.9: Create Custom Role — Nhập mã vai trò, tên, mô tả; chọn quyền từ cây phân quyền (Permission Tree) phân theo module nghiệp vụ
-94	Phân Quyền Ma Trận RBAC	UC-6.10: Update Role Permissions — Tick/untick quyền; cảnh báo số lượng user bị ảnh hưởng; áp dụng thay đổi ngay cho các phiên đăng nhập tiếp theo
-95	Phân Quyền Ma Trận RBAC	UC-6.11: Assign Roles to Users — Hỗ trợ gán vai trò đơn lẻ hoặc gán hàng loạt theo lớp/khoa; kế thừa quyền hạn theo mô hình RBAC chuẩn
-96	Cấu Hình Hệ Thống	UC-6.12: Booking Policy Config — Cấu hình: số phòng tối đa/ngày theo Role (SV: 2, GV: 5), số tuần đặt trước (SV: 2, GV: 4), giờ mở/đóng cửa (06:00-22:00)
-97	Cấu Hình Hệ Thống	UC-6.13: Escalation Threshold Config — Cấu hình 4 ngưỡng tự động leo thang: cờ trùng chính khóa, ngưỡng số phòng (>=3), giờ mượn đêm (>21h), giá trị máy (>50tr)
-98	Cấu Hình Hệ Thống	UC-6.14: Notification Template Builder — Soạn thảo mẫu thông báo Email/In-app với placeholders động {{userName}}, {{roomCode}}, {{timeSlot}}, {{reason}}
-99	Cấu Hình Hệ Thống	UC-6.15: Master Reference Data (CRUD) — Quản lý danh mục loại phòng (Lý thuyết, Lab máy tính, Hội trường), loại thiết bị, phân loại sự cố, tòa nhà, khoa viện
-100	An Ninh & Kiểm Toán SHA-256	UC-6.16: Immutable Audit Trail — Ghi nhận nhật ký bất biến SHA-256 (prevHash -> sha256Hash) cho mọi thao tác đăng nhập, CRUD, duyệt đơn
-101	An Ninh & Kiểm Toán SHA-256	Cryptographic Verification — Kiểm tra tính toàn vẹn của chuỗi băm SHA-256 từ khối genesis đến khối hiện tại; phát hiện ngay nếu bị sửa
-102	An Ninh & Kiểm Toán SHA-256	UC-6.17: Audit Log Export — Xuất CSV/Excel nhật ký kiểm toán theo khoảng thời gian và đối tượng tác động (tối đa 10.000 dòng/lần)
-103	Giám Sát Hệ Thống	UC-6.18: System Health Monitor — Dashboard giám sát số user online, số request API/phút, RAM/CPU máy chủ, số ticket mở, cảnh báo SLA vi phạm
+6	Xác thực & Hồ sơ cá nhân	UC-1.5: Profile View — Hiển thị họ tên, mã nhân viên, email, phòng ban, SĐT, avatar
+7	Xác thực & Hồ sơ cá nhân	UC-1.6: Update Profile — Cho phép sửa SĐT, avatar URL; khóa cứng mã nhân viên, email trường, phòng ban (Admin mới sửa được)
+8	Quản lý Không gian & CAD	UC-2.1: Create Room — Nhập mã phòng (unique), tên, tòa nhà, tầng, sức chứa > 0, loại phòng, upload ảnh
+9	Quản lý Không gian & CAD	UC-2.2: Room List View — Danh sách phòng kèm bộ lọc: tòa nhà, tầng, loại phòng, trạng thái, khoảng sức chứa; search tên/mã
+10	Quản lý Không gian & CAD	UC-2.3: Room Detail View — Toàn bộ thông số kỹ thuật phòng, danh sách thiết bị hiện có trong phòng kèm serial, lịch sử bảo trì phòng
+11	Quản lý Không gian & CAD	UC-2.4: Update Room Info — Sửa tên, loại, sức chứa; ghi log thay đổi
+12	Quản lý Không gian & CAD	UC-2.5: Deactivate Room — Không xóa cứng bản ghi; chuyển status = INACTIVE; yêu cầu điều chuyển thiết bị ra trước
+13	Quản lý Không gian & CAD	UC-2.6: Update Room Status — Chuyển đổi AVAILABLE <-> MAINTENANCE <-> INACTIVE
+14	Quản lý Không gian & CAD	UC-2.7: Room CAD Card — Hiển thị mã phòng, tên, loại phòng, sức chứa, số thiết bị hiện có, thiết bị hỏng, trạng thái phòng trên sơ đồ mặt bằng
+15	Quản lý Không gian & CAD	CAD Mặt Bằng Tầng 2.5D — Hiển thị pods phòng trên sơ đồ mặt bằng 5 tầng Tòa A1, hành lang trung tâm, chỉ thị số thiết bị và trạng thái theo phòng
+16	Quản lý Thiết bị & Vật tư	UC-3.1: Create Equipment — Nhập mã tài sản (unique), mã QR bất biến, serial, tên, loại, hãng, model, nguyên giá, ngày mua, hạn BH, phòng hiện tại
+17	Quản lý Thiết bị & Vật tư	UC-3.2: Equipment Directory — Lọc theo chủng loại, trạng thái (AVAILABLE/UNDER_MAINTENANCE/PENDING_DISPOSAL/DISPOSED), phòng, khoảng giá trị; search tên/mã
+18	Quản lý Thiết bị & Vật tư	UC-3.3: Equipment Detail — Thông số kỹ thuật, hãng, model, serial, lịch sử điều chuyển vị trí, lịch sử sửa chữa, hạn bảo hành, tỷ lệ khấu hao
+19	Quản lý Thiết bị & Vật tư	UC-3.4: Update Equipment Info — Cập nhật thông số kỹ thuật; nếu đổi vị trí phòng thì tự động ghi nhật ký điều chuyển (Transfer Log)
+20	Quản lý Thiết bị & Vật tư	UC-3.5: Equipment Lifecycle Timeline — Dòng thời gian tổng hợp toàn bộ quá trình: nhập về, phân bổ phòng, điều chuyển, hỏng, sửa chữa, bảo hành, thanh lý
+21	Quản lý Thiết bị & Vật tư	UC-3.6: Batch Equipment Import — Upload Excel/CSV nhập hàng loạt thiết bị (>100 dòng); validate cú pháp, chống trùng mã; hiển thị Preview Grid trước khi import
+22	Quản lý Thiết bị & Vật tư	UC-3.7: Batch Import Validation — Kiểm tra từng dòng: mã tài sản trùng, loại TB không tồn tại, phòng không hợp lệ, giá trị âm; hiển thị lỗi chi tiết theo dòng
+23	Quản lý Thiết bị & Vật tư	UC-3.8: Asset Disposal Decision — Chuyển trạng thái DISPOSED; ghi nhận số quyết định thanh lý, lý do, ngày hoàn tất, giá trị thu hồi
+24	Quản lý Thiết bị & Vật tư	UC-3.9: Inventory Audit Session — Khởi tạo đợt kiểm kê chính thức (trạng thái Draft/InProgress/Completed) theo phòng hoặc tòa nhà; ghi thời gian bắt đầu/kết thúc
+25	Quản lý Thiết bị & Vật tư	UC-3.10: QR Scan Stocktaking — Quét từng thiết bị trong đợt kiểm kê; đối soát thực tế: Khớp, Thất lạc, Hỏng, Sai vị trí; đánh dấu đã quét/chưa quét
+26	Quản lý Thiết bị & Vật tư	UC-3.11: Inventory Report Export — Xuất biên bản kiểm kê chính thức PDF: danh sách đã quét, thiết bị thất lạc, thiết bị sai vị trí, chữ ký xác nhận
+27	Quản lý Thiết bị & Vật tư	QR Code Generator & Scan — Quét mã QR ra thông tin tài sản, vị trí, nguyên giá, hạn bảo hành, tra cứu nhanh lịch sử sửa chữa
+28	Điều chuyển thiết bị	UC-4.1: Create Transfer Request — Tạo phiếu luân chuyển: thiết bị nào, từ phòng nào, đến phòng nào, lý do, người thực hiện
+29	Điều chuyển thiết bị	UC-4.2: Transfer Approval — Quản lý HC duyệt/từ chối phiếu luân chuyển; ghi lý do nếu từ chối
+30	Điều chuyển thiết bị	UC-4.3: Complete Transfer — Hoàn tất điều chuyển, tự động cập nhật phòng hiện tại của thiết bị trong Equipment record
+31	Điều chuyển thiết bị	UC-4.4: Transfer History — Xem lịch sử luân chuyển của từng thiết bị: từ phòng nào, đến phòng nào, ngày giờ, người thực hiện, lý do
+32	Điều chuyển thiết bị	UC-4.5: Pending Transfer Queue — Dashboard danh sách phiếu luân chuyển đang chờ duyệt cho Quản lý HC
+33	Hư hỏng & Sửa chữa	UC-5.1: Report Damage — Ghi nhận báo hỏng: thiết bị nào, thuộc phòng nào, mô tả lỗi, tối đa 5 ảnh hiện trường, mức độ (Low/Med/High/Critical)
+34	Hư hỏng & Sửa chữa	UC-5.2: Repair Ticket List — Danh sách toàn bộ phiếu sửa chữa; lọc trạng thái (Chờ sửa/Đang sửa/Đã xong), phòng, mức độ, thời hạn
+35	Hư hỏng & Sửa chữa	UC-5.3: Assign Repair — Quản lý giao việc sửa chữa cho nhân viên HC; hiển thị workload hiện tại để tránh quá tải
+36	Hư hỏng & Sửa chữa	UC-5.4: Accept & Start Repair — Nhân viên nhận việc, chuyển trạng thái Đang sửa; ghi nơi sửa (nội bộ/gửi ngoài), người mang đi
+37	Hư hỏng & Sửa chữa	UC-5.5: Log Repair Details — Ghi nội dung sửa cụ thể (thay màn hình, sửa dây nguồn...), vật tư đã dùng, chi phí, ảnh trước/sau sửa
+38	Hư hỏng & Sửa chữa	UC-5.6: Complete Repair — Hoàn tất sửa chữa: ghi người mang thiết bị về, phòng trả lại (có thể khác phòng gốc), hạn bảo hành sau sửa
+39	Hư hỏng & Sửa chữa	UC-5.7: Repair Timeline — Dòng thời gian trực quan: Báo hỏng → Giao việc → Đang sửa → Hoàn tất; ghi nhận thời gian từng giai đoạn
+40	Hư hỏng & Sửa chữa	UC-5.8: Repair History per Equipment — Lịch sử tất cả các lần sửa chữa của từng thiết bị: ngày, lỗi gì, sửa ở đâu, chi phí, ai sửa
+41	Hư hỏng & Sửa chữa	UC-5.9: Overdue Repair Alert — Danh sách thiết bị quá hạn sửa chữa (deadline - now > 0); badge cảnh báo cho Quản lý
+42	Hư hỏng & Sửa chữa	UC-5.10: Parts Requisition — Lập phiếu yêu cầu xuất kho linh kiện thay thế khi sửa chữa cần vật tư; liên kết ticket sửa
+43	Hư hỏng & Sửa chữa	UC-5.11: Parts Requisition Approval — Quản lý duyệt phiếu xuất kho linh kiện; trừ tồn kho khi duyệt; ghi log
+44	Hư hỏng & Sửa chữa	UC-5.12: Parts Inventory — Quản lý kho linh kiện thay thế: tên, số lượng tồn, đơn giá, nhà cung cấp; cảnh báo hết hàng
+45	Bảo hành	UC-6.1: Warranty Tracking — Hiển thị hạn bảo hành từng thiết bị, còn hiệu lực hay đã hết, nhà cung cấp bảo hành, liên hệ
+46	Bảo hành	UC-6.2: Warranty Expiring Alert — Danh sách thiết bị sắp hết bảo hành trong 30/60/90 ngày tới
+47	Bảo hành	UC-6.3: Warranty After Repair — Ghi nhận hạn bảo hành mới sau mỗi lần sửa chữa (nếu có)
+48	Thời hạn xử lý	UC-7.1: Repair Deadline Tracking — Người phụ trách, thời hạn dự kiến hoàn thành, thời gian còn lại
+49	Thời hạn xử lý	UC-7.2: Deadline Warning — 3 cấp cảnh báo: ON_TRACK (xanh), AT_RISK (cam, gần hạn), OVERDUE (đỏ, quá hạn)
+50	Bảo trì dự phòng	UC-7.3: Preventive Calendar — Lịch bảo dưỡng định kỳ (điện lạnh, máy chiếu, an toàn điện); cảnh báo trước 3 ngày khi đến hạn
+51	Bảo trì dự phòng	UC-7.4: Create Maint. Plan — Chọn nhóm phòng/thiết bị, chu kỳ (tháng/quý/năm), checklist kỹ thuật; đối chiếu lịch
+52	Bảo trì dự phòng	UC-7.5: Log Maint. Result — Tick từng mục checklist, đánh giá Tốt / Cần theo dõi / Nguy cơ hỏng; nếu hỏng nặng tự tạo ticket sửa
+53	Bảo trì dự phòng	UC-7.6: Room Maintenance History — Dòng thời gian sửa chữa điện nước, điều hòa, bảo dưỡng định kỳ của phòng; tổng chi phí vật tư
+54	Thanh lý RACI 5 bước	UC-7.7: Disposal Proposal (R) — Khảo sát máy hỏng nặng, tính tỷ lệ R = (chi phí sửa / giá trị còn lại) × 100; nếu R >= 60% lập hồ sơ thanh lý
+55	Thanh lý RACI 5 bước	UC-7.8: HC Approve Disposal (A) — Phòng HC xét duyệt hồ sơ thanh lý; duyệt hoặc yêu cầu bổ sung chứng từ
+56	Thanh lý RACI 5 bước	UC-7.9: BGH Final Approval (A) — Ban Giám Hiệu phê duyệt cuối cùng quyết định thanh lý tài sản
+57	Thanh lý RACI 5 bước	UC-7.10: Procurement Plan (C) — Dự trù mua sắm thiết bị thay thế; tham vấn nhu cầu sử dụng
+58	Thanh lý RACI 5 bước	UC-7.11: New Asset Receipt (I) — Thủ kho tiếp nhận, nhập kho thiết bị mới thay thế; gắn QR mới
+59	Dashboard & KPI	UC-8.1: Dashboard KPI Cards — Tổng TB hoạt động / đang sửa / chờ thanh lý; TB mới nhập trong tháng; BH sắp hết; phiếu sửa đang mở
+60	Dashboard & KPI	UC-8.2: Repair Cost Aggregation — Tổng chi phí sửa chữa tích lũy theo tháng/quý/năm; chi phí trung bình mỗi lần sửa
+61	Dashboard & KPI	UC-8.3: Equipment Health Score — Chỉ số sức khỏe thiết bị dựa trên: số lần hỏng, tổng chi phí sửa lũy kế, tuổi thọ còn lại (MTBF)
+62	Báo cáo & Thống kê	UC-8.4: Equipment by Room Report — Danh sách thiết bị theo từng phòng, theo tình trạng
+63	Báo cáo & Thống kê	UC-8.5: Equipment by Status Report — Thống kê thiết bị theo trạng thái: hoạt động, đang sửa, chờ thanh lý, đã thanh lý
+64	Báo cáo & Thống kê	UC-8.6: Repair Frequency Report — Tần suất hỏng theo loại thiết bị hoặc theo phòng
+65	Báo cáo & Thống kê	UC-8.7: Warranty Expiring Report — Danh sách thiết bị sắp hết bảo hành
+66	Báo cáo & Thống kê	UC-8.8: Overdue Repair Report — Danh sách thiết bị quá hạn sửa chữa
+67	Báo cáo & Thống kê	UC-8.9: PDF/Excel Exporter — Xuất báo cáo PDF/Excel chuẩn in ấn có tiêu đề trường, logo, timestamp
+68	Thông báo & Email	UC-9.1: In-app Notification Center — Trung tâm thông báo: duyệt phiếu, sự cố cập nhật, nhắc deadline, cảnh báo BH hết hạn; badge đỏ
+69	Thông báo & Email	UC-9.2: Mark Notifications Read — Đánh dấu 1 hoặc tất cả thông báo đã đọc; cập nhật badge chưa đọc trên thanh điều hướng
+70	Thông báo & Email	UC-9.3: Email Dispatcher — Gửi email HTML tự động qua Nodemailer (Ethereal/Gmail SMTP) khi: duyệt phiếu, cảnh báo BH, quá hạn sửa; gắn logo trường
+71	Thông báo & Email	UC-9.4: Notification Template Builder — Soạn thảo mẫu thông báo Email/In-app với placeholders động {{userName}}, {{equipmentName}}, {{deadline}}
+72	Quản trị Người dùng	UC-10.1: Create User — Nhập email/mã nhân viên (unique), họ tên, SĐT, chọn vai trò (manager/staff/admin); sinh mật khẩu ngẫu nhiên
+73	Quản trị Người dùng	UC-10.2: User Directory — Phân trang danh sách user; filter theo vai trò, trạng thái (Active/Locked); tìm kiếm theo họ tên/mã NV
+74	Quản trị Người dùng	UC-10.3: User Detail View — Xem thông tin tài khoản, lịch sử đăng nhập gần nhất, các phiếu sửa chữa/luân chuyển đã tạo
+75	Quản trị Người dùng	UC-10.4: Update User Info & Role — Sửa thông tin, điều chỉnh vai trò; khi thay đổi role thu hồi JWT token hiện tại
+76	Quản trị Người dùng	UC-10.5: Toggle User Status — Khóa/mở tài khoản (Active <-> Locked); không xóa cứng bản ghi
+77	Quản trị Người dùng	UC-10.6: Admin Reset Password — Sinh mật khẩu ngẫu nhiên an toàn; gửi thông báo; gắn cờ bắt buộc đổi mật khẩu
+78	Quản trị Danh mục	UC-11.1: Equipment Category CRUD — Quản lý danh mục loại thiết bị (TV, Máy chiếu, Bàn, Ghế, Máy lạnh...)
+79	Quản trị Danh mục	UC-11.2: Room Directory CRUD — Quản lý danh sách phòng, tòa nhà
+80	Quản trị Danh mục	UC-11.3: Supplier CRUD — Quản lý nhà cung cấp thiết bị
+81	Quản trị Danh mục	UC-11.4: Repair Unit CRUD — Quản lý đơn vị sửa chữa (tên, địa chỉ, SĐT, chuyên môn)
+82	Phân quyền RBAC	UC-12.1: Roles Matrix View — Hiển thị ma trận 3 vai trò chuẩn; đếm số user đang gán; hiển thị danh sách permissions
+83	Phân quyền RBAC	UC-12.2: Update Role Permissions — Tick/untick quyền; cảnh báo số lượng user bị ảnh hưởng
+84	An Ninh & Kiểm Toán	UC-13.1: Immutable Audit Trail — Ghi nhận nhật ký bất biến SHA-256 (prevHash -> sha256Hash) cho mọi thao tác CRUD, duyệt phiếu, luân chuyển
+85	An Ninh & Kiểm Toán	UC-13.2: Cryptographic Verification — Kiểm tra tính toàn vẹn chuỗi băm SHA-256; phát hiện ngay nếu dữ liệu bị can thiệp
+86	An Ninh & Kiểm Toán	UC-13.3: Audit Log Export — Xuất CSV/Excel nhật ký kiểm toán theo khoảng thời gian (tối đa 10.000 dòng/lần)
+87	Giám sát Hệ thống	UC-14.1: System Health Monitor — Dashboard giám sát số user online, số request API/phút, số phiếu sửa đang mở, cảnh báo quá hạn

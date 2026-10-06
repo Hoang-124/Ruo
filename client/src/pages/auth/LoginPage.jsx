@@ -28,7 +28,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
   const [regFullName, setRegFullName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regEmployeeCode, setRegEmployeeCode] = useState('');
-  const [regRole, setRegRole] = useState('student');
+  const [regRole, setRegRole] = useState('lecturer');
   const [regDepartment, setRegDepartment] = useState('Khoa Công nghệ Thông tin');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
@@ -599,6 +599,77 @@ export const LoginPage = ({ onLoginSuccess }) => {
                   <Icons.ArrowRight size={16} />
                 </button>
               </form>
+
+              {/* Quick Fill Demo Accounts (3 Canonical Actors) */}
+              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--hairline-medium)' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Đăng nhập nhanh tài khoản mẫu:
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdentifier('admin@ruo.edu.vn');
+                      setPassword('Ruo@2026');
+                    }}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      color: '#EF4444',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                    title="Click để điền tài khoản Quản trị viên"
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 800 }}>Admin</div>
+                    <div style={{ fontSize: '10px', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>admin@ruo.edu.vn</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdentifier('staff@ruo.edu.vn');
+                      setPassword('Ruo@2026');
+                    }}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      background: 'rgba(14, 165, 233, 0.08)',
+                      border: '1px solid rgba(14, 165, 233, 0.25)',
+                      color: '#0EA5E9',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                    title="Click để điền tài khoản Kỹ thuật viên"
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 800 }}>Kỹ Thuật</div>
+                    <div style={{ fontSize: '10px', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>staff@ruo.edu.vn</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdentifier('lecturer@ruo.edu.vn');
+                      setPassword('Ruo@2026');
+                    }}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      background: 'rgba(99, 102, 241, 0.08)',
+                      border: '1px solid rgba(99, 102, 241, 0.25)',
+                      color: '#6366F1',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                    title="Click để điền tài khoản Giảng viên"
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 800 }}>Giảng Viên</div>
+                    <div style={{ fontSize: '10px', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>lecturer@ruo.edu.vn</div>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -720,24 +791,6 @@ export const LoginPage = ({ onLoginSuccess }) => {
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button
                         type="button"
-                        onClick={() => setRegRole('student')}
-                        style={{
-                          flex: 1,
-                          padding: '8px 4px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          background: regRole === 'student' ? '#2563EB' : 'var(--canvas-subtle)',
-                          color: regRole === 'student' ? '#FFFFFF' : 'var(--ink-muted)',
-                          fontSize: '11.5px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        Sinh Viên
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => setRegRole('lecturer')}
                         style={{
                           flex: 1,
@@ -753,6 +806,24 @@ export const LoginPage = ({ onLoginSuccess }) => {
                         }}
                       >
                         Giảng Viên
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRegRole('maintenance_staff')}
+                        style={{
+                          flex: 1,
+                          padding: '8px 4px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: regRole === 'maintenance_staff' ? '#2563EB' : 'var(--canvas-subtle)',
+                          color: regRole === 'maintenance_staff' ? '#FFFFFF' : 'var(--ink-muted)',
+                          fontSize: '11.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        CSVC / Kỹ Thuật
                       </button>
                     </div>
                   </div>

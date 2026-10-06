@@ -1,206 +1,198 @@
 import React, { useState } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
+import { useToast } from '../../context/ToastContext';
 
 export const RBACMatrixPage = () => {
+  const { toast } = useToast();
+
   const roles = [
-    { id: 'student', name: 'Sinh viên (Student)', usersCount: 14500 },
-    { id: 'lecturer', name: 'Giảng viên (Lecturer)', usersCount: 820 },
-    { id: 'facility_staff', name: 'QL Cơ sở vật chất', usersCount: 45 },
-    { id: 'maintenance', name: 'Kỹ thuật viên bảo trì', usersCount: 22 },
-    { id: 'academic_affairs', name: 'Phòng Đào tạo', usersCount: 18 },
-    { id: 'admin', name: 'Quản trị viên (Admin)', usersCount: 5 }
+    { id: 'lecturer', name: 'Giảng viên (Lecturer)', usersCount: 850, color: '#6366F1' },
+    { id: 'maintenance_staff', name: 'Chuyên viên CSVC & Kỹ thuật', usersCount: 65, color: '#0EA5E9' },
+    { id: 'admin', name: 'Quản trị viên Hệ thống (Admin)', usersCount: 5, color: '#EF4444' }
   ];
 
   const permissionGroups = [
     {
-      name: 'Quản Lý Đặt Phòng (Booking)',
+      name: 'Module 01: Tài Khoản & Phân Quyền (Auth & RBAC)',
       permissions: [
-        { code: 'booking:search', label: 'Tra cứu phòng & xem calendar' },
-        { code: 'booking:create:single', label: 'Đặt phòng học đơn lẻ' },
-        { code: 'booking:create:series', label: 'Đặt phòng định kỳ cả kỳ (Series RFC 5545)' },
-        { code: 'booking:approve', label: 'Phê duyệt / Từ chối đơn đặt phòng' }
+        { code: 'user:profile:read', label: 'Xem & cập nhật thông tin cá nhân', defaultRoles: ['lecturer', 'maintenance_staff', 'admin'] },
+        { code: 'user:manage', label: 'Tạo tài khoản, khóa tài khoản, reset mật khẩu', defaultRoles: ['admin'] },
+        { code: 'role:configure', label: 'Cấu hình ma trận phân quyền chi tiết', defaultRoles: ['admin'] }
       ]
     },
     {
-      name: 'Quản Lý Thiết Bị & Tài Sản (Equipment)',
+      name: 'Module 02: Dữ Liệu Cơ Sở & Phòng Học (Master Data)',
       permissions: [
-        { code: 'equipment:borrow:request', label: 'Gửi yêu cầu mượn thiết bị di động' },
-        { code: 'equipment:inventory', label: 'Kiểm kê tài sản & đối soát quét mã QR' },
-        { code: 'equipment:disposal:propose', label: 'Lập đề xuất thanh lý tài sản (R ≥ 60%)' },
-        { code: 'equipment:disposal:approve', label: 'Phê duyệt quyết định thanh lý tài sản' }
+        { code: 'room:read', label: 'Tra cứu danh mục phòng & mặt bằng CAD', defaultRoles: ['lecturer', 'maintenance_staff', 'admin'] },
+        { code: 'room:manage', label: 'Thêm mới, sửa đổi thông tin không gian phòng học', defaultRoles: ['maintenance_staff', 'admin'] },
+        { code: 'catalog:manage', label: 'Quản lý danh mục loại thiết bị, nhà cung cấp, đơn vị sửa chữa', defaultRoles: ['admin'] }
       ]
     },
     {
-      name: 'Sự Cố & SLA Bảo Trì (Tickets)',
+      name: 'Module 03: Thiết Bị & Điều Chuyển & Thanh Lý (Equipment Lifecycle)',
       permissions: [
-        { code: 'ticket:create', label: 'Báo cáo sự cố hỏng hóc' },
-        { code: 'ticket:assign', label: 'Điều phối & phân công kỹ thuật viên' },
-        { code: 'ticket:resolve', label: 'Cập nhật tiến độ & nghiệm thu kỹ thuật' },
-        { code: 'ticket:close:confirm', label: 'Nghiệm thu đóng ticket 2 chiều (Double Confirmation)' }
+        { code: 'equipment:read', label: 'Tra cứu danh mục thiết bị & chi tiết QR', defaultRoles: ['lecturer', 'maintenance_staff', 'admin'] },
+        { code: 'equipment:create:import', label: 'Đăng ký tài sản mới, in nhãn QR, nhập lô Excel', defaultRoles: ['maintenance_staff', 'admin'] },
+        { code: 'transfer:propose', label: 'Lập đề xuất điều chuyển thiết bị giữa các phòng', defaultRoles: ['maintenance_staff', 'admin'] },
+        { code: 'transfer:approve', label: 'Phê duyệt quyết định điều chuyển thiết bị (Ban Giám Hiệu)', defaultRoles: ['admin'] },
+        { code: 'transfer:execute', label: 'Thực hiện di chuyển thực địa & bàn giao phòng mới', defaultRoles: ['maintenance_staff', 'admin'] },
+        { code: 'disposal:propose', label: 'Lập hồ sơ thanh lý thiết bị hỏng (R ≥ 60%)', defaultRoles: ['maintenance_staff'] },
+        { code: 'disposal:authorize', label: 'Ký quyết định phê duyệt thanh lý cuối cùng (Ban Giám Hiệu)', defaultRoles: ['admin'] }
+      ]
+    },
+
+    {
+      name: 'Module 04: Báo Cáo Sự Cố & Sửa Chữa SLA (Incident & Repair)',
+      permissions: [
+        { code: 'incident:create', label: 'Báo cáo sự cố thiết bị phòng học kèm ảnh', defaultRoles: ['lecturer', 'maintenance_staff', 'admin'] },
+        { code: 'incident:read_own', label: 'Theo dõi tiến độ xử lý sự cố do bản thân báo', defaultRoles: ['lecturer', 'maintenance_staff', 'admin'] },
+        { code: 'repair:assign', label: 'Phân công kỹ thuật viên & thiết lập hạn SLA', defaultRoles: ['maintenance_staff', 'admin'] },
+        { code: 'repair:log', label: 'Ghi nhật ký tiến độ, chi phí, vật tư linh kiện thay thế', defaultRoles: ['maintenance_staff', 'admin'] },
+        { code: 'parts:request', label: 'Yêu cầu xuất linh kiện dự phòng từ kho', defaultRoles: ['maintenance_staff'] },
+        { code: 'parts:approve', label: 'Duyệt xuất kho linh kiện phụ tùng', defaultRoles: ['maintenance_staff', 'admin'] },
+        { code: 'repair:rate', label: 'Đánh giá chất lượng sửa chữa (1-5 sao) & đóng ticket', defaultRoles: ['lecturer'] }
       ]
     },
     {
-      name: 'Thời Khóa Biểu & Đào Tạo (Academic)',
+      name: 'Module 05: Bảo Trì Định Kỳ & Kiểm Kê QR (Maintenance & Inventory)',
       permissions: [
-        { code: 'curriculum:import', label: 'Import dữ liệu thời khóa biểu SIS' },
-        { code: 'curriculum:csp:solve', label: 'Kích hoạt thuật toán CSP phân bổ phòng tự động' },
-        { code: 'curriculum:freeze', label: 'Khóa / Mở khóa lịch chính khóa toàn trường' },
-        { code: 'escalation:approve', label: 'Phê duyệt đơn ngoại lệ vượt thẩm quyền' }
+        { code: 'maintenance:plan', label: 'Thiết lập kế hoạch bảo trì phòng ngừa định kỳ', defaultRoles: ['maintenance_staff', 'admin'] },
+        { code: 'maintenance:execute', label: 'Thực hiện kiểm tra theo checklist bảo dưỡng', defaultRoles: ['maintenance_staff'] },
+        { code: 'inventory:session:create', label: 'Khởi tạo đợt kiểm kê thực tế theo tầng/phòng', defaultRoles: ['maintenance_staff', 'admin'] },
+        { code: 'inventory:scan:reconcile', label: 'Quét QR thực địa đối soát vị trí & chốt số liệu', defaultRoles: ['maintenance_staff', 'admin'] }
       ]
     },
     {
-      name: 'Quản Trị Hệ Thống (System Admin)',
+      name: 'Module 06: Kiểm Toán Chuỗi Khối & Báo Cáo KPI (Governance & Audit)',
       permissions: [
-        { code: 'rbac:manage', label: 'Quản lý vai trò & Cây ma trận phân quyền' },
-        { code: 'audit:view', label: 'Xem nhật ký kiểm toán bất biến (Immutable Audit)' },
-        { code: 'system:config', label: 'Cấu hình tham số nghiệp vụ hệ thống' }
+        { code: 'report:kpi:export', label: 'Xuất báo cáo thống kê KPI & định mức tài sản', defaultRoles: ['admin'] },
+        { code: 'audit:chain:view', label: 'Tra cứu nhật ký kiểm toán SHA-256 bất biến', defaultRoles: ['admin'] },
+        { code: 'audit:chain:verify', label: 'Kích hoạt xác thực tính toàn vẹn chuỗi khối kiểm toán', defaultRoles: ['admin'] }
       ]
     }
   ];
 
-  // Default permissions mapping
-  const [matrix, setMatrix] = useState({
-    student: ['booking:search', 'booking:create:single', 'ticket:create', 'ticket:close:confirm'],
-    lecturer: ['booking:search', 'booking:create:single', 'booking:create:series', 'equipment:borrow:request', 'ticket:create', 'ticket:close:confirm'],
-    facility_staff: ['booking:search', 'booking:create:single', 'booking:approve', 'equipment:inventory', 'equipment:disposal:propose', 'ticket:create', 'ticket:assign', 'ticket:resolve'],
-    maintenance: ['booking:search', 'ticket:resolve', 'equipment:disposal:propose'],
-    academic_affairs: ['booking:search', 'curriculum:import', 'curriculum:csp:solve', 'curriculum:freeze', 'escalation:approve'],
-    admin: [
-      'booking:search', 'booking:create:single', 'booking:create:series', 'booking:approve',
-      'equipment:borrow:request', 'equipment:inventory', 'equipment:disposal:propose', 'equipment:disposal:approve',
-      'ticket:create', 'ticket:assign', 'ticket:resolve', 'ticket:close:confirm',
-      'curriculum:import', 'curriculum:csp:solve', 'curriculum:freeze', 'escalation:approve',
-      'rbac:manage', 'audit:view', 'system:config'
-    ]
+  // Permissions state
+  const [matrixState, setMatrixState] = useState(() => {
+    const initial = {};
+    permissionGroups.forEach(group => {
+      group.permissions.forEach(p => {
+        roles.forEach(r => {
+          initial[`${r.id}:${p.code}`] = p.defaultRoles.includes(r.id);
+        });
+      });
+    });
+    return initial;
   });
 
-  const [selectedRole, setSelectedRole] = useState('lecturer');
+  const togglePermission = (roleId, code) => {
+    const key = `${roleId}:${code}`;
+    setMatrixState(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
-  const togglePermission = (roleId, permCode) => {
-    setMatrix(prev => {
-      const currentList = prev[roleId] || [];
-      if (currentList.includes(permCode)) {
-        return { ...prev, [roleId]: currentList.filter(p => p !== permCode) };
-      } else {
-        return { ...prev, [roleId]: [...currentList, permCode] };
-      }
-    });
+  const handleSave = () => {
+    toast.success('Đã lưu cấu hình ma trận phân quyền RBAC thành công!');
   };
 
   return (
     <div>
-      {/* Page Header */}
-      <div className="page-header">
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
-          <h1 className="page-title">Quản Lý Vai Trò & Ma Trận Phân Quyền (RBAC)</h1>
-          <div className="page-subtitle">
-            Cấu hình phân quyền động theo từng nhóm chức năng (Dynamic RBAC Middleware). Áp dụng có hiệu lực tức thì.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--laser-cyan)', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>MODULE 01</span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>PHÂN QUYỀN TRUY CẬP • 3 ACTORS • 56 USE CASES</span>
           </div>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
+            Ma Trận Phân Quyền Theo Vai Trò (RBAC Matrix)
+          </h1>
         </div>
 
-        <div className="header-actions">
-          <button className="btn btn-primary" onClick={() => alert('Đã lưu cấu hình phân quyền RBAC thành công!')}>
-            <Icons.CheckCircle size={16} />
-            <span>Lưu Ma Trận Phân Quyền</span>
-          </button>
-        </div>
+        <button
+          onClick={handleSave}
+          className="laser-btn laser-btn-primary"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
+        >
+          <Icons.CheckCircle size={16} />
+          <span>Lưu Cấu Hình Quyền</span>
+        </button>
       </div>
 
-      {/* Role Selection Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px' }}>
-        {roles.map((r) => {
-          const isSel = selectedRole === r.id;
-          return (
-            <button
-              key={r.id}
-              onClick={() => setSelectedRole(r.id)}
-              className="card"
-              style={{
-                padding: '12px 18px',
-                border: isSel ? '2px solid var(--color-primary-600)' : '1px solid var(--border-color)',
-                background: isSel ? 'var(--color-primary-50)' : 'var(--bg-card)',
-                borderRadius: 'var(--radius-md)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                minWidth: '200px'
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: '14px', color: isSel ? 'var(--color-primary-900)' : 'var(--text-primary)' }}>
-                {r.name}
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                {r.usersCount.toLocaleString()} tài khoản • {(matrix[r.id] || []).length} quyền
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Permissions Tree Matrix */}
-      <div className="card">
-        <h3 style={{ fontSize: '16px', fontWeight: 800, marginBottom: '16px' }}>
-          Danh Sách Quyền Hạn Của Vai Trò: <span style={{ color: 'var(--color-primary-600)' }}>{roles.find(r => r.id === selectedRole)?.name}</span>
-        </h3>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {permissionGroups.map((group, idx) => (
-            <div
-              key={idx}
-              style={{
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-md)',
-                overflow: 'hidden'
-              }}
-            >
-              <div
-                style={{
-                  background: 'var(--bg-card-subtle)',
-                  padding: '12px 18px',
-                  fontWeight: 700,
-                  fontSize: '14px',
-                  borderBottom: '1px solid var(--border-color)'
-                }}
-              >
-                {group.name}
-              </div>
-
-              <div style={{ padding: '16px 18px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                {group.permissions.map((perm) => {
-                  const isChecked = (matrix[selectedRole] || []).includes(perm.code);
-                  return (
-                    <label
-                      key={perm.code}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        padding: '6px 10px',
-                        borderRadius: 'var(--radius-sm)',
-                        background: isChecked ? 'var(--color-primary-50)' : 'transparent'
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => togglePermission(selectedRole, perm.code)}
-                        style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary-600)' }}
-                      />
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{perm.label}</div>
-                        <div style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', color: 'var(--text-muted)' }}>
-                          {perm.code}
-                        </div>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
+      {/* Role Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
+        {roles.map(r => (
+          <div key={r.id} style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '18px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: r.color }} />
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink-pure)', margin: 0 }}>{r.name}</h3>
             </div>
-          ))}
-        </div>
+            <div style={{ fontSize: '12.5px', color: 'var(--ink-muted)' }}>
+              Số lượng tài khoản hoạt động: <strong style={{ color: 'var(--ink-pure)' }}>{r.usersCount.toLocaleString('vi-VN')}</strong>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Matrix Table */}
+      <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+          <thead>
+            <tr style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--hairline-medium)' }}>
+              <th style={{ padding: '14px 20px', color: 'var(--ink-pure)', fontWeight: 700, width: '55%' }}>Danh Mục Quyền Hạn (Permission)</th>
+              {roles.map(r => (
+                <th key={r.id} style={{ padding: '14px 16px', textAlign: 'center', color: r.color, fontWeight: 800, width: '15%' }}>
+                  {r.name.split(' (')[0]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {permissionGroups.map((group, gIdx) => (
+              <React.Fragment key={gIdx}>
+                <tr style={{ background: 'var(--surface-panel)', borderTop: '2px solid var(--hairline-medium)', borderBottom: '1px solid var(--hairline-medium)' }}>
+                  <td colSpan={4} style={{ padding: '10px 20px', fontWeight: 800, color: 'var(--laser-cyan)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {group.name}
+                  </td>
+                </tr>
+                {group.permissions.map((p, pIdx) => (
+                  <tr key={p.code} style={{ borderBottom: '1px solid var(--hairline-soft)' }}>
+                    <td style={{ padding: '12px 20px' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{p.label}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)' }}>{p.code}</div>
+                    </td>
+                    {roles.map(r => {
+                      const isAllowed = matrixState[`${r.id}:${p.code}`];
+                      return (
+                        <td key={r.id} style={{ padding: '12px 16px', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => togglePermission(r.id, p.code)}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '6px',
+                              border: isAllowed ? `1px solid ${r.color}` : '1px solid var(--hairline-medium)',
+                              background: isAllowed ? `${r.color}22` : 'transparent',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: isAllowed ? r.color : 'var(--hairline-medium)'
+                            }}
+                          >
+                            {isAllowed ? <Icons.Check size={16} strokeWidth={3} /> : <Icons.X size={14} />}
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 };
+export default RBACMatrixPage;

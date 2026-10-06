@@ -2,33 +2,9 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { USER_ROLES, USER_STATUSES } from '../config/constants.js';
 
-// Department Schema
-const departmentSchema = new mongoose.Schema({
-  code: { type: String, required: true, unique: true, uppercase: true, trim: true },
-  name: { type: String, required: true, trim: true },
-  description: { type: String, default: '' }
-}, { timestamps: true });
-
-export const Department = mongoose.model('Department', departmentSchema);
-
-// Role Schema
-const roleSchema = new mongoose.Schema({
-  name: { 
-    type: String, 
-    required: true, 
-    unique: true, 
-    enum: Object.values(USER_ROLES) 
-  },
-  title: { type: String, required: true },
-  description: { type: String, default: '' },
-  permissions: [{ type: String }] // e.g. ['room:book', 'ticket:assign', 'disposal:approve']
-}, { timestamps: true });
-
-export const Role = mongoose.model('Role', roleSchema);
-
-// User Schema
+// User Schema (Module 1: Authentication & Authorization)
 const userSchema = new mongoose.Schema({
-  employeeCode: { 
+  code: { 
     type: String, 
     required: true, 
     unique: true, 
@@ -44,25 +20,17 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     index: true 
   },
-  passwordHash: { type: String, required: true },
-  fullName: { type: String, required: true, trim: true },
+  password_hash: { type: String, required: true },
+  full_name: { type: String, required: true, trim: true },
   phone: { type: String, default: '' },
   avatar: { type: String, default: '' },
-  department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null },
-  className: { type: String, default: '' },
+  department: { type: String, default: '' },
   role: { 
     type: String, 
     required: true, 
     enum: Object.values(USER_ROLES),
-    default: USER_ROLES.STUDENT,
+    default: USER_ROLES.LECTURER,
     index: true 
-  },
-  reputeScore: { 
-    type: Number, 
-    default: 100, 
-    min: 0, 
-    max: 100,
-    note: 'Điểm uy tín tự động giảm khi No-Show mượn phòng'
   },
   status: { 
     type: String, 
@@ -70,29 +38,32 @@ const userSchema = new mongoose.Schema({
     default: USER_STATUSES.ACTIVE,
     index: true 
   },
-  failedLoginAttempts: { 
-    type: Number, 
-    default: 0 
-  },
-  lockUntil: { 
-    type: Date, 
-    default: null,
-    index: true 
-  },
+  force_change_pw: { type: Boolean, default: false },
+  failedLoginAttempts: { type: Number, default: 0 },
+  lockUntil: { type: Date, default: null, index: true },
+  last_login_at: { type: Date, default: null },
+  last_login_ip: { type: String, default: '' },
   deletedAt: { type: Date, default: null }
-}, { timestamps: true });
+}, { 
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
+});
+
+// Virtual compatibility aliases
+userSchema.virtual('employeeCode').get(function() { return this.code; }).set(function(v) { this.code = v; });
+userSchema.virtual('fullName').get(function() { return this.full_name; }).set(function(v) { this.full_name = v; });
+userSchema.virtual('passwordHash').get(function() { return this.password_hash; }).set(function(v) { this.password_hash = v; });
 
 // Pre-save hook: Hash password if modified
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('passwordHash')) return next();
+  if (!this.isModified('password_hash')) return next();
   const salt = await bcrypt.genSalt(10);
-  this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
+  this.password_hash = await bcrypt.hash(this.password_hash, salt);
   next();
 });
 
 // Compare password method
 userSchema.methods.comparePassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.passwordHash);
+  return await bcrypt.compare(enteredPassword, this.password_hash);
 };
 
 // Check if account is temporarily locked (15-min lockout)
@@ -100,77 +71,60 @@ userSchema.methods.isLocked = function () {
   return Boolean(this.lockUntil && this.lockUntil.getTime() > Date.now());
 };
 
-// Increment failed login attempt and lock for 15 minutes if reaching 5 attempts
+// Handle failed login attempt (15-min lockout on 5 attempts)
 userSchema.methods.handleFailedLogin = async function () {
-  const MAX_ATTEMPTS = 5;
-  const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-
-  // If previous lock has expired, reset counter to 1
-  if (this.lockUntil && this.lockUntil.getTime() <= Date.now()) {
-    this.failedLoginAttempts = 1;
-    this.lockUntil = null;
-  } else {
-    this.failedLoginAttempts = (this.failedLoginAttempts || 0) + 1;
+  this.failedLoginAttempts = (this.failedLoginAttempts || 0) + 1;
+  const isNowLocked = this.failedLoginAttempts >= 5;
+  if (isNowLocked) {
+    this.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes lockout
   }
-
-  let locked = false;
-  if (this.failedLoginAttempts >= MAX_ATTEMPTS) {
-    this.lockUntil = new Date(Date.now() + LOCK_DURATION_MS);
-    locked = true;
-  }
-
   await this.save();
-
   return {
-    isLocked: locked,
-    attemptsLeft: Math.max(0, MAX_ATTEMPTS - this.failedLoginAttempts),
-    failedAttempts: this.failedLoginAttempts,
-    remainingMinutes: locked ? 15 : 0
+    isLocked: isNowLocked,
+    attemptsLeft: Math.max(0, 5 - this.failedLoginAttempts),
+    failedAttempts: this.failedLoginAttempts
   };
 };
 
-// Reset failed login attempts and clear lock upon successful login
-userSchema.methods.resetFailedLogin = async function () {
-  if (this.failedLoginAttempts > 0 || this.lockUntil) {
-    this.failedLoginAttempts = 0;
-    this.lockUntil = null;
-    await this.save();
-  }
+// Reset failed login counter on success
+userSchema.methods.resetFailedLogin = async function (ipAddress = '') {
+  this.failedLoginAttempts = 0;
+  this.lockUntil = null;
+  this.last_login_at = new Date();
+  if (ipAddress) this.last_login_ip = ipAddress;
+  return await this.save();
 };
 
-// Deduct repute score on No-Show
-userSchema.methods.deductReputeScore = async function (points, reason = 'NO_SHOW') {
-  this.reputeScore = Math.max(0, this.reputeScore - points);
-  if (this.reputeScore <= 30) {
-    this.status = USER_STATUSES.LOCKED; // Automatically lock account if repute falls critically low
-  }
-  await this.save();
-  return this.reputeScore;
-};
+userSchema.methods.incrementFailedAttempts = userSchema.methods.handleFailedLogin;
+userSchema.methods.resetFailedAttempts = userSchema.methods.resetFailedLogin;
 
 export const User = mongoose.model('User', userSchema);
 
-// User Session Schema
+// Department compatibility model
+const departmentSchema = new mongoose.Schema({
+  code: { type: String, required: true },
+  name: { type: String, required: true }
+});
+export const Department = mongoose.models.Department || mongoose.model('Department', departmentSchema);
+
+// UserSession compatibility model
 const userSessionSchema = new mongoose.Schema({
-  tokenHash: { type: String, required: true, unique: true, index: true },
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  refreshTokenHash: { type: String, default: null, index: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  tokenHash: { type: String },
+  deviceInfo: { type: String, default: '' },
   ipAddress: { type: String, default: '' },
-  userAgent: { type: String, default: '' },
-  isRevoked: { type: Boolean, default: false, index: true },
-  expiresAt: { type: Date, required: true, index: true }
+  expiresAt: { type: Date },
+  isRevoked: { type: Boolean, default: false }
 }, { timestamps: true });
+export const UserSession = mongoose.models.UserSession || mongoose.model('UserSession', userSessionSchema);
 
-export const UserSession = mongoose.model('UserSession', userSessionSchema);
-
-// Password Reset OTP Schema (OTP validity: 15m, Document retention: 1h for rate limit)
+// PasswordReset compatibility model
 const passwordResetSchema = new mongoose.Schema({
-  email: { type: String, required: true, lowercase: true, trim: true, index: true },
+  email: { type: String, required: true },
   otpHash: { type: String, required: true },
-  attempts: { type: Number, default: 0 },
-  isUsed: { type: Boolean, default: false },
-  expiresAt: { type: Date, required: true, index: true },
-  createdAt: { type: Date, default: Date.now, index: { expires: '1h' } }
+  expiresAt: { type: Date, required: true },
+  isUsed: { type: Boolean, default: false }
 }, { timestamps: true });
+export const PasswordReset = mongoose.models.PasswordReset || mongoose.model('PasswordReset', passwordResetSchema);
 
-export const PasswordReset = mongoose.model('PasswordReset', passwordResetSchema);
+export default User;

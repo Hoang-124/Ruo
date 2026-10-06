@@ -42,9 +42,9 @@ export const login = async (req, res) => {
     const trimmedInput = String(loginInput).trim();
     const query = trimmedInput.includes('@')
       ? { email: trimmedInput.toLowerCase() }
-      : { employeeCode: trimmedInput.toUpperCase() };
+      : { $or: [{ code: trimmedInput.toUpperCase() }, { employeeCode: trimmedInput.toUpperCase() }] };
 
-    const user = await User.findOne(query).populate('department');
+    const user = await User.findOne(query);
 
     if (!user) {
       return res.status(401).json({
@@ -53,11 +53,11 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check locked status (e.g. critically low repute score or manual permanent lock)
+    // Check locked status (e.g. administrative lock or policy violation)
     if (user.status === USER_STATUSES.LOCKED) {
       return res.status(403).json({
         success: false,
-        message: 'Tài khoản của bạn đã bị khóa do vi phạm chính sách hoặc điểm uy tín quá thấp.'
+        message: 'Tài khoản của bạn đã bị khóa do vi phạm chính sách hoặc lệnh quản trị.'
       });
     }
 
@@ -159,15 +159,14 @@ export const login = async (req, res) => {
       expiresIn: 15 * 60, // 900 seconds
       user: {
         id: user._id,
-        employeeCode: user.employeeCode,
-        fullName: user.fullName,
+        employeeCode: user.employeeCode || user.code,
+        fullName: user.fullName || user.full_name,
         email: user.email,
         role: user.role,
-        department: user.department ? user.department.name : null,
-        className: user.className,
-        phone: user.phone,
-        avatar: user.avatar,
-        reputeScore: user.reputeScore,
+        department: typeof user.department === 'string' ? user.department : (user.department?.name || ''),
+        className: user.className || '',
+        phone: user.phone || '',
+        avatar: user.avatar || '',
         status: user.status
       }
     });
@@ -274,7 +273,6 @@ export const register = async (req, res) => {
       department: departmentId,
       phone: phone ? String(phone).trim() : '',
       className: className ? String(className).trim() : '',
-      reputeScore: 100, // Top initial reputation
       status: USER_STATUSES.ACTIVE,
       avatar: fullName.slice(0, 2).toUpperCase()
     });
@@ -336,7 +334,6 @@ export const register = async (req, res) => {
         className: newUser.className,
         phone: newUser.phone,
         avatar: newUser.avatar,
-        reputeScore: newUser.reputeScore,
         status: newUser.status
       }
     });
@@ -817,7 +814,7 @@ export const changePassword = async (req, res) => {
 
 /**
  * UC-1.5: Profile View
- * Returns detailed identity, academic affiliations, contact info, and Repute Score (0-100)
+ * Returns detailed identity, affiliations, and contact info
  */
 export const getMe = async (req, res) => {
   try {
@@ -830,25 +827,6 @@ export const getMe = async (req, res) => {
         success: false,
         message: 'Không tìm thấy hồ sơ người dùng.'
       });
-    }
-
-    // Format repute score tier information
-    let reputeTier = 'Chuẩn';
-    let reputeColor = '#3B82F6';
-    let bookingPrivilege = 'Duyệt mượn phòng bình thường, đặt trước tối đa 14 ngày';
-
-    if (user.reputeScore >= 90) {
-      reputeTier = 'Kim Cương (Ưu Tiên Tối Đa)';
-      reputeColor = '#10B981';
-      bookingPrivilege = 'Ưu tiên duyệt tự động tức thì, đặt trước tối đa 30 ngày';
-    } else if (user.reputeScore < 50 && user.reputeScore > 30) {
-      reputeTier = 'Cảnh Báo No-Show';
-      reputeColor = '#F59E0B';
-      bookingPrivilege = 'Bị giới hạn số lượt mượn phòng, cần phê duyệt thủ công 2 cấp';
-    } else if (user.reputeScore <= 30) {
-      reputeTier = 'Đình Chỉ Mượn Phòng';
-      reputeColor = '#EF4444';
-      bookingPrivilege = 'Tài khoản bị khóa quyền mượn phòng học/thiết bị do vi phạm quy chế';
     }
 
     res.json({
@@ -867,10 +845,6 @@ export const getMe = async (req, res) => {
           code: user.department.code
         } : null,
         className: user.className || '',
-        reputeScore: user.reputeScore,
-        reputeTier,
-        reputeColor,
-        bookingPrivilege,
         status: user.status,
         createdAt: user.createdAt
       }
@@ -888,7 +862,7 @@ export const getMe = async (req, res) => {
 /**
  * UC-1.6: Update Profile
  * Allows user to update phone and avatar URL only
- * Hard-locks employeeCode, email, department, role, and reputeScore
+ * Hard-locks employeeCode, email, department, and role
  */
 export const updateProfile = async (req, res) => {
   try {
@@ -944,7 +918,6 @@ export const updateProfile = async (req, res) => {
         role: user.role,
         department: user.department ? user.department.name : null,
         className: user.className,
-        reputeScore: user.reputeScore,
         status: user.status
       }
     });

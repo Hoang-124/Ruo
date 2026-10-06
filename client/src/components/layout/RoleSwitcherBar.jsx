@@ -6,11 +6,8 @@ export const RoleSwitcherBar = () => {
   const { currentRoleKey, switchRole } = useAuth();
 
   const rolePills = [
-    { key: 'student', label: 'Sinh viên', short: 'SV', icon: Icons.User, color: 'var(--laser-cyan)' },
     { key: 'lecturer', label: 'Giảng viên', short: 'GV', icon: Icons.AcademicCap, color: 'var(--laser-indigo)' },
-    { key: 'facility_staff', label: 'QL Cơ Sở Vật Chất', short: 'QL-CSVC', icon: Icons.Building, color: 'var(--laser-violet)' },
-    { key: 'maintenance', label: 'Kỹ thuật Bảo trì', short: 'KỸ THUẬT', icon: Icons.Wrench, color: 'var(--laser-amber)' },
-    { key: 'academic_affairs', label: 'Phòng Đào tạo', short: 'ĐÀO TẠO', icon: Icons.Calendar, color: 'var(--laser-emerald)' },
+    { key: 'maintenance_staff', label: 'QL CSVC & Kỹ thuật', short: 'CSVC', icon: Icons.Wrench, color: 'var(--laser-amber)' },
     { key: 'admin', label: 'Quản trị hệ thống', short: 'ADMIN', icon: Icons.Shield, color: 'var(--laser-crimson)' }
   ];
 
@@ -29,7 +26,7 @@ export const RoleSwitcherBar = () => {
         </span>
         <span className="telemetry-divider">•</span>
         <span className="telemetry-stat">
-          CSP ENGINE: <strong style={{ color: 'var(--laser-indigo)' }}>SẴN SÀNG</strong>
+          KIỂM TOÁN SHA-256: <strong style={{ color: 'var(--laser-emerald)' }}>HỢP LỆ</strong>
         </span>
       </div>
 

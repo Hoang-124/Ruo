@@ -48,44 +48,39 @@ export const DynamicIslandDock = ({ onOpenQRDemo, activeTab, onSelectTab }) => {
   }, []);
 
   const roles = [
-    { key: 'student', label: 'Sinh viên', short: 'Sinh viên', color: 'var(--laser-cyan)', icon: Icons.User },
     { key: 'lecturer', label: 'Giảng viên', short: 'Giảng viên', color: 'var(--laser-indigo)', icon: Icons.AcademicCap },
-    { key: 'facility_staff', label: 'QL CSVC', short: 'QL CSVC', color: 'var(--laser-violet)', icon: Icons.Building },
-    { key: 'maintenance', label: 'Kỹ thuật', short: 'Kỹ thuật', color: 'var(--laser-amber)', icon: Icons.Wrench },
-    { key: 'academic_affairs', label: 'Đào tạo', short: 'Đào tạo', color: 'var(--laser-emerald)', icon: Icons.Calendar },
+    { key: 'maintenance_staff', label: 'QL CSVC', short: 'QL CSVC', color: 'var(--laser-amber)', icon: Icons.Wrench },
     { key: 'admin', label: 'Quản trị', short: 'Quản trị', color: 'var(--laser-crimson)', icon: Icons.Shield }
   ];
 
   // Core navigation tabs displayed prominently in the nav strip
   const navTabs = [
     { id: 'dashboard', label: 'Bản Đồ Không Gian', short: 'Spatial CAD', icon: Icons.Building, color: 'var(--laser-cyan)' },
-    { id: 'rooms', label: 'Tra Cứu Phòng', short: '108 Phòng', icon: Icons.Room, color: 'var(--laser-cyan)' },
-    { id: 'calendar', label: 'Lịch Biểu Tuần', short: 'Lịch RFC-5545', icon: Icons.Calendar, color: 'var(--laser-indigo)' },
-    { id: 'approvals', label: 'Hàng Đợi Duyệt', short: 'Duyệt Đơn', icon: Icons.CheckCircle, color: 'var(--laser-emerald)', badge: '8', badgeColor: 'var(--laser-amber)' },
-    { id: 'tickets_kanban', label: 'Kanban SLA', short: 'SLA Engine', icon: Icons.Wrench, color: 'var(--laser-crimson)', badge: '2!', badgeColor: 'var(--laser-crimson)' },
-    { id: 'csp_studio', label: 'Xếp TKB CSP', short: 'Thuật Toán CSP', icon: Icons.Cpu, color: 'var(--laser-indigo)', badge: 'Trụ cột 1' },
     { id: 'equipments', label: 'Kho Thiết Bị', short: 'Thiết Bị & QR', icon: Icons.Equipment, color: 'var(--laser-amber)' },
-    { id: 'disposal_calc', label: 'Thanh Lý Tài Sản', short: 'Thanh Lý R≥60%', icon: Icons.Sliders, color: 'var(--laser-amber)', badge: 'Trụ cột 5' },
+    { id: 'transfers', label: 'Điều Chuyển', short: 'Điều Chuyển', icon: Icons.RefreshCw, color: 'var(--laser-indigo)' },
+    { id: 'tickets_kanban', label: 'Kanban SLA', short: 'SLA Engine', icon: Icons.Wrench, color: 'var(--laser-crimson)', badge: '2!', badgeColor: 'var(--laser-crimson)' },
+    { id: 'maintenance', label: 'Bảo Trì Định Kỳ', short: 'Bảo Trì', icon: Icons.Calendar, color: 'var(--laser-emerald)' },
+    { id: 'inventory', label: 'Kiểm Kê Kho QR', short: 'Kiểm Kê', icon: Icons.CheckCircle, color: 'var(--laser-cyan)' },
+    { id: 'disposal_calc', label: 'Thanh Lý Tài Sản', short: 'Thanh Lý R≥60%', icon: Icons.Sliders, color: 'var(--laser-amber)' },
     { id: 'rbac', label: 'Ma Trận Quyền', short: 'RBAC Matrix', icon: Icons.Users, color: 'var(--laser-violet)' },
     { id: 'audit_log', label: 'Audit Log', short: 'SHA-256 Audit', icon: Icons.Audit, color: 'var(--laser-emerald)', badge: 'Bất biến' }
   ];
 
   // Dynamically filter tabs according to active Actor's RBAC permissions
-  const effectiveAllowedTabs = allowedTabs || ['dashboard', 'rooms', 'calendar'];
+  const effectiveAllowedTabs = allowedTabs || ['dashboard', 'equipments', 'transfers'];
   const visibleNavTabs = navTabs.filter((t) => effectiveAllowedTabs.includes(t.id));
 
-  // Full 95 Use Cases categorized for the ⌘K command launcher
+  // 9 Core Subsystems for Facility Management
   const allModules = [
-    { id: 'dashboard', label: 'Bản Đồ Không Gian (Spatial Digital Twin CAD Canvas)', cat: 'TRỤ CỘT 1 • KHÔNG GIAN', icon: Icons.Building, desc: 'Mặt bằng CAD tương tác thời gian thực, Time-Travel Scrubber, IoT Telemetry' },
-    { id: 'rooms', label: 'Tra Cứu 108 Phòng Học & Đặt Chỗ 30s', cat: 'TRỤ CỘT 2 • LỊCH BIỂU', icon: Icons.Room, desc: 'Smart search theo sức chứa, thiết bị, chống xung đột lịch học' },
-    { id: 'calendar', label: 'Lịch Biểu Tuần Chuẩn RFC-5545 Toàn Trường', cat: 'TRỤ CỘT 2 • LỊCH BIỂU', icon: Icons.Calendar, desc: 'Đồng bộ 3 lớp: Chính khóa, Sự kiện trường, Lịch tự học sinh viên' },
-    { id: 'approvals', label: 'Hàng Đợi Phê Duyệt Đa Cấp & SLA Escalation', cat: 'TRỤ CỘT 3 • ĐIỀU HÀNH', icon: Icons.CheckCircle, desc: '8 yêu cầu pending, cơ chế tự động chuyển cấp lãnh đạo khi quá hạn SLA' },
-    { id: 'tickets_kanban', label: 'Kanban SLA Quản Lý Sự Cố Khẩn Cấp', cat: 'TRỤ CỘT 3 • ĐIỀU HÀNH', icon: Icons.Ticket, desc: 'Đếm ngược SLA theo giờ hành chính 07:30 - 17:00, điều phối kỹ thuật viên' },
-    { id: 'csp_studio', label: 'Bộ Giải Thuật Toán Xếp TKB Tự Động (CSP Engine)', cat: 'TRỤ CỘT 1 • KHÔNG GIAN', icon: Icons.Cpu, desc: 'Backtracking + MRV + LCV + AC-3, xếp 450 lớp học vào 108 phòng với 0 xung đột' },
-    { id: 'equipments', label: 'Kho Thiết Bị & Quản Lý Mã QR Định Danh', cat: 'TRỤ CỘT 4 • THIẾT BỊ', icon: Icons.Equipment, desc: 'Quản lý tài sản phòng học, mượn trả thiết bị Lab, quét mã QR kiểm kê' },
-    { id: 'disposal_calc', label: 'Máy Tính Thanh Lý Tài Sản Tự Động (R ≥ 60%)', cat: 'TRỤ CỘT 5 • THANH LÝ', icon: Icons.Sliders, desc: 'Tính chỉ số hao mòn kinh tế kỹ thuật, tự động lập hội đồng thanh lý' },
-    { id: 'rbac', label: 'Ma Trận Phân Quyền 7 Vai Trò (RBAC Engine)', cat: 'QUẢN TRỊ & BẢO MẬT', icon: Icons.Users, desc: 'Phân quyền chi tiết cho SV, Giảng viên, QL CSVC, Kỹ thuật, Đào tạo, Admin' },
-    { id: 'audit_log', label: 'Nhật Ký Kiểm Toán SHA-256 Bất Biến (Audit Trail)', cat: 'QUẢN TRỊ & BẢO MẬT', icon: Icons.Audit, desc: 'Ghi vết mọi thao tác đặt phòng, phê duyệt, điều phối kỹ thuật với hash cryptographic' }
+    { id: 'dashboard', label: 'Bản Đồ Không Gian (CAD Architectural Floor Plan)', cat: 'PHÂN HỆ 01 • KHÔNG GIAN', icon: Icons.Building, desc: 'Mặt bằng CAD kiến trúc thời gian thực, điều phối phòng học và thiết bị' },
+    { id: 'equipments', label: 'Kho Thiết Bị & Quản Lý Mã QR Định Danh', cat: 'PHÂN HỆ 02 • THIẾT BỊ', icon: Icons.Equipment, desc: 'Quản lý tài sản phòng học, thông số kỹ thuật, in tem nhãn QR' },
+    { id: 'transfers', label: 'Điều Chuyển Trang Thiết Bị Giữa Các Phòng', cat: 'PHÂN HỆ 03 • ĐIỀU CHUYỂN', icon: Icons.RefreshCw, desc: 'Luân chuyển thiết bị, biên bản bàn giao và đối soát vị trí' },
+    { id: 'tickets_kanban', label: 'Kanban SLA Quản Lý Sự Cố Khẩn Cấp', cat: 'PHÂN HỆ 04 • SỬA CHỮA', icon: Icons.Wrench, desc: 'Đếm ngược SLA theo giờ hành chính, điều phối kỹ thuật viên' },
+    { id: 'maintenance', label: 'Kế Hoạch & Nhật Ký Bảo Trì Định Kỳ', cat: 'PHÂN HỆ 05 • BẢO TRÌ', icon: Icons.Calendar, desc: 'Lập lịch bảo dưỡng phòng học, ghi nhận nhật ký kiểm tra định kỳ' },
+    { id: 'inventory', label: 'Kiểm Kê CSVC & Đối Soát Mã QR Thực Địa', cat: 'PHÂN HỆ 06 • KIỂM KÊ', icon: Icons.CheckCircle, desc: 'Quét camera di động đối soát tài sản thực tế và dữ liệu sổ sách' },
+    { id: 'disposal_calc', label: 'Máy Tính Thanh Lý Tài Sản Tự Động (R ≥ 60%)', cat: 'PHÂN HỆ 07 • THANH LÝ', icon: Icons.Sliders, desc: 'Tính chỉ số hao mòn kinh tế kỹ thuật, tự động lập hội đồng thanh lý' },
+    { id: 'rbac', label: 'Ma Trận Phân Quyền 3 Vai Trò (RBAC Engine)', cat: 'PHÂN HỆ 08 • QUẢN TRỊ', icon: Icons.Users, desc: 'Phân quyền chi tiết cho Giảng viên, Quản lý CSVC, Kỹ thuật, Admin' },
+    { id: 'audit_log', label: 'Nhật Ký Kiểm Toán SHA-256 Bất Biến (Audit Trail)', cat: 'PHÂN HỆ 09 • KIỂM TOÁN', icon: Icons.Audit, desc: 'Ghi vết mật mã học không thể can thiệp mọi thay đổi trạng thái tài sản' }
   ];
 
   const filteredModules = allModules.filter(m =>

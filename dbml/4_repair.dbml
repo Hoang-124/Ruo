@@ -1,0 +1,90 @@
+// ═══════════════════════════════════════
+// MODULE 4: REPAIR FLOW
+// Actors: Lecturer (Report, Evaluate)
+//         Maint Staff (Assign, Log, Close)
+// ═══════════════════════════════════════
+
+Table equipment {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+}
+
+Table repair_units {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+}
+
+Table spare_parts {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+  stock Number
+}
+
+Table repairs {
+  _id ObjectId [pk]
+  equipment_id ObjectId [ref: > equipment._id]
+  // ── Lecturer báo sự cố ──
+  reported_by ObjectId [note: 'FK → users (Lecturer)']
+  incident_description String [note: 'Mô tả sự cố gốc']
+  incident_images Array [note: 'Ảnh Lecturer chụp']
+  reported_at DateTime
+  // ── Maint Staff xử lý ──
+  assigned_to ObjectId [note: 'FK → users (Maint Staff)']
+  repair_unit_id ObjectId [ref: > repair_units._id]
+  damage_level String [note: 'minor | major | critical']
+  description String [note: 'Mô tả kỹ thuật']
+  images Array
+  repair_location String [note: 'on_site | external']
+  carried_by ObjectId [note: 'FK → users']
+  returned_by ObjectId [note: 'FK → users']
+  return_room_id ObjectId [note: 'FK → rooms']
+  post_repair_warranty DateTime
+  total_cost Number
+  deadline DateTime
+  deadline_status String [note: 'on_track | at_risk | overdue']
+  status String [note: 'reported | assigned | in_progress | resolved | closed']
+  // ── Lecturer đánh giá ──
+  feedback_rating Number [note: '1-5 sao']
+  feedback_comment String
+  feedback_by ObjectId [note: 'FK → users (Lecturer)']
+  feedback_at DateTime
+  // ── Timestamps ──
+  created_at DateTime
+  updated_at DateTime
+}
+
+Table repair_logs {
+  _id ObjectId [pk]
+  repair_id ObjectId [ref: > repairs._id]
+  action String [note: 'reported | assigned | in_progress | resolved | closed | escalated']
+  performed_by ObjectId [note: 'FK → users']
+  description String
+  cost Number
+  parts_used Array [note: '[{ part_id, quantity }]']
+  images Array
+  timestamp DateTime
+}
+
+Table parts_requests {
+  _id ObjectId [pk]
+  repair_id ObjectId [ref: > repairs._id]
+  requested_by ObjectId [note: 'FK → users (Maint Staff)']
+  approved_by ObjectId [note: 'FK → users']
+  items Array [note: '[{ part_id, qty, unit_price }]']
+  status String [note: 'pending | approved | rejected']
+  reject_reason String
+  created_at DateTime
+  approved_at DateTime
+}
+
+Table repair_parts {
+  _id ObjectId [pk]
+  repair_id ObjectId [ref: > repairs._id]
+  part_id ObjectId [ref: > spare_parts._id]
+  request_id ObjectId [ref: > parts_requests._id]
+  quantity Number
+  unit_price Number [note: 'Giá tại thời điểm xuất']
+}
