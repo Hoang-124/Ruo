@@ -1,13 +1,21 @@
 // ═══════════════════════════════════════
 // MODULE 4: REPAIR FLOW
-// Actors: Lecturer (Report, Evaluate)
-//         Maint Staff (Assign, Log, Close)
+// Actors: Lecturer (Report malfunction, Track status, Evaluate quality)
+//         Facility Manager (Assign task, Approve parts, Close ticket)
+//         Technician (Accept task, Update progress, Request parts, Report outcome)
 // ═══════════════════════════════════════
 
 Table equipment {
   _id ObjectId [pk]
   code String [unique]
   name String
+  status String
+}
+
+Table rooms {
+  _id ObjectId [pk]
+  code String [unique]
+  room_type String
 }
 
 Table repair_units {
@@ -25,31 +33,30 @@ Table spare_parts {
 
 Table repairs {
   _id ObjectId [pk]
-  equipment_id ObjectId [ref: > equipment._id]
-  // ── Lecturer báo sự cố ──
-  reported_by ObjectId [note: 'FK → users (Lecturer)']
+  equipment_id ObjectId [ref: > equipment._id, note: 'Đồ hỏng']
+  // ── Báo sự cố ──
+  source String [note: 'lecturer_report | inventory_check']
+  reported_by ObjectId [note: 'FK → users (Lecturer hoặc Technician khi kiểm kê)']
   incident_description String [note: 'Mô tả sự cố gốc']
-  incident_images Array [note: 'Ảnh Lecturer chụp']
+  incident_images Array [note: 'Ảnh chụp sự cố']
   reported_at DateTime
-  // ── Maint Staff xử lý ──
-  assigned_to ObjectId [note: 'FK → users (Maint Staff)']
-  repair_unit_id ObjectId [ref: > repair_units._id]
+  // ── Facility Manager giao việc ──
+  assigned_by ObjectId [note: 'FK → users (Facility Manager)']
+  assigned_to ObjectId [note: 'FK → users (Technician)']
+  replacement_equipment_id ObjectId [ref: > equipment._id, note: 'Đồ trong kho lấy ra thay, nullable']
+  deadline DateTime
+  // ── Technician xử lý ──
+  repair_unit_id ObjectId [ref: > repair_units._id, note: 'nullable, khi gửi sửa ngoài']
   damage_level String [note: 'minor | major | critical']
   description String [note: 'Mô tả kỹ thuật']
-  images Array
-  repair_location String [note: 'on_site | external']
-  carried_by ObjectId [note: 'FK → users']
-  returned_by ObjectId [note: 'FK → users']
-  return_room_id ObjectId [note: 'FK → rooms']
-  post_repair_warranty DateTime
   total_cost Number
-  deadline DateTime
-  deadline_status String [note: 'on_track | at_risk | overdue']
-  status String [note: 'reported | assigned | in_progress | resolved | closed']
+  outcome String [note: 'repaired | unrepairable']
+  // ── Facility Manager quyết định nơi đến ──
+  destination_room_id ObjectId [ref: > rooms._id, note: 'Sửa xong về đâu (phòng hoặc kho)']
+  status String [note: 'reported | assigned | in_progress | resolved | unrepairable | closed']
   // ── Lecturer đánh giá ──
   feedback_rating Number [note: '1-5 sao']
   feedback_comment String
-  feedback_by ObjectId [note: 'FK → users (Lecturer)']
   feedback_at DateTime
   // ── Timestamps ──
   created_at DateTime
@@ -59,11 +66,10 @@ Table repairs {
 Table repair_logs {
   _id ObjectId [pk]
   repair_id ObjectId [ref: > repairs._id]
-  action String [note: 'reported | assigned | in_progress | resolved | closed | escalated']
+  action String [note: 'reported | assigned | in_progress | resolved | unrepairable | closed']
   performed_by ObjectId [note: 'FK → users']
   description String
   cost Number
-  parts_used Array [note: '[{ part_id, quantity }]']
   images Array
   timestamp DateTime
 }
@@ -71,20 +77,13 @@ Table repair_logs {
 Table parts_requests {
   _id ObjectId [pk]
   repair_id ObjectId [ref: > repairs._id]
-  requested_by ObjectId [note: 'FK → users (Maint Staff)']
-  approved_by ObjectId [note: 'FK → users']
-  items Array [note: '[{ part_id, qty, unit_price }]']
+  requested_by ObjectId [note: 'FK → users (Technician)']
+  approved_by ObjectId [note: 'FK → users (Facility Manager)']
+  items Array [note: '[{ part_id → spare_parts, qty, unit_price }]. Đã duyệt = đã xuất kho']
   status String [note: 'pending | approved | rejected']
   reject_reason String
   created_at DateTime
   approved_at DateTime
 }
 
-Table repair_parts {
-  _id ObjectId [pk]
-  repair_id ObjectId [ref: > repairs._id]
-  part_id ObjectId [ref: > spare_parts._id]
-  request_id ObjectId [ref: > parts_requests._id]
-  quantity Number
-  unit_price Number [note: 'Giá tại thời điểm xuất']
-}
+// repair_parts đã bỏ: trùng dữ liệu với parts_requests.items

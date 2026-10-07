@@ -1,6 +1,8 @@
 // ═══════════════════════════════════════
 // MODULE 1: AUTH & USER MANAGEMENT
-// Actors: All (Lecturer, Maint Staff, Admin)
+// Actors: Guest (Register, Log in, Recover password)
+//         User = Lecturer | Facility Manager | Technician | Admin
+//         Admin (Create account, Assign role, Lock, Reset password, Configure permissions)
 // ═══════════════════════════════════════
 
 Table users {
@@ -12,25 +14,26 @@ Table users {
   phone String
   avatar String
   department String [note: 'Khoa / Phòng ban']
-  role String [note: 'lecturer | maintenance_staff | admin']
+  role String [note: 'lecturer | facility_manager | technician | admin']
   status String [note: 'active | locked']
   force_change_pw Boolean
+  failed_login_attempts Number [note: '5 lần sai → khoá 15 phút']
+  lock_until DateTime
   last_login_at DateTime
-  login_count Number
   created_at DateTime
   updated_at DateTime
 }
 
 Table roles {
   _id ObjectId [pk]
-  name String [unique, note: 'lecturer | maintenance_staff | admin']
+  name String [unique, note: 'lecturer | facility_manager | technician | admin']
   permissions Array [note: 'Mảng quyền chi tiết']
 }
 
 Table refresh_tokens {
   _id ObjectId [pk]
   user_id ObjectId [ref: > users._id]
-  token String [note: 'Hash']
+  token_hash String [note: 'Hash']
   device_info String
   ip_address String
   expires_at DateTime [note: 'TTL 7 ngày']
@@ -38,12 +41,15 @@ Table refresh_tokens {
   created_at DateTime
 }
 
-Table login_history {
+Table password_resets {
   _id ObjectId [pk]
-  user_id ObjectId [ref: > users._id]
-  ip_address String
-  user_agent String
-  status String [note: 'success | failed | locked']
-  failure_reason String [note: 'wrong_password | account_locked | rate_limited']
-  created_at DateTime [note: 'TTL 90 ngày']
+  email String
+  otp_hash String [note: 'BCrypt OTP 6 số']
+  purpose String [note: 'register | reset_password']
+  attempts Number [note: 'Tối đa 3 lần nhập sai']
+  expires_at DateTime [note: 'TTL 15 phút']
+  is_used Boolean
+  created_at DateTime
 }
+
+// login_history đã gộp vào audit_logs (Module 6)

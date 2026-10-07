@@ -1,6 +1,10 @@
 // ═══════════════════════════════════════
-// MODULE 3: EQUIPMENT & TRANSFER & DISPOSAL
-// Actor: Maintenance Staff
+// MODULE 3: EQUIPMENT, MOVEMENT & DISPOSAL
+// Actors: Facility Manager (Register, Import, Print QR, Warranty,
+//                           Order transfer, Select spare, Assign post-repair location,
+//                           Propose disposal)
+//         Technician (Replace with spare, Confirm movement)
+//         Admin (Approve disposal)
 // ═══════════════════════════════════════
 
 Table categories {
@@ -13,12 +17,19 @@ Table rooms {
   _id ObjectId [pk]
   code String [unique]
   name String
+  room_type String [note: 'lecture | lab | office | warehouse']
 }
 
 Table suppliers {
   _id ObjectId [pk]
   code String [unique]
   name String
+}
+
+Table repairs {
+  _id ObjectId [pk]
+  equipment_id ObjectId
+  status String
 }
 
 Table equipment {
@@ -30,7 +41,7 @@ Table equipment {
   brand String
   model String
   category_id ObjectId [ref: > categories._id]
-  room_id ObjectId [ref: > rooms._id]
+  room_id ObjectId [ref: > rooms._id, note: 'Vị trí hiện tại (phòng hoặc kho). null = đang ở đơn vị sửa ngoài']
   supplier_id ObjectId [ref: > suppliers._id]
   price Number
   purchase_date DateTime
@@ -38,49 +49,45 @@ Table equipment {
   warranty_status String [note: 'active | expired | extended']
   images Array
   depreciation_rate Number [note: '% / năm']
-  status String [note: 'active | repairing | disposed | transferring | lost']
+  status String [note: 'in_use | in_stock | broken | repairing | pending_disposal | disposed | lost']
   created_at DateTime
   updated_at DateTime
 }
 
-Table transfers {
+Table equipment_movements {
   _id ObjectId [pk]
   equipment_id ObjectId [ref: > equipment._id]
-  from_room_id ObjectId [ref: > rooms._id]
-  to_room_id ObjectId [ref: > rooms._id]
-  requested_by ObjectId [note: 'FK → users (Maint Staff)']
-  approved_by ObjectId [note: 'FK → users (Maint Staff)']
-  completed_by ObjectId [note: 'FK → users']
+  type String [note: 'transfer | replacement | repair_out | repair_return | to_stock']
+  from_room_id ObjectId [ref: > rooms._id, note: 'nullable']
+  to_room_id ObjectId [ref: > rooms._id, note: 'nullable (repair_out ra đơn vị ngoài)']
+  repair_id ObjectId [ref: > repairs._id, note: 'nullable, gắn khi di chuyển do sửa chữa']
+  ordered_by ObjectId [note: 'FK → users (Facility Manager)']
+  performed_by ObjectId [note: 'FK → users (Technician)']
   reason String
-  reject_reason String
-  status String [note: 'pending | approved | rejected | completed']
+  status String [note: 'pending | completed | cancelled']
   created_at DateTime
-  approved_at DateTime
   completed_at DateTime
 }
 
 Table disposals {
   _id ObjectId [pk]
   equipment_id ObjectId [ref: > equipment._id]
-  proposed_by ObjectId [note: 'FK → users (Maint Staff)']
-  staff_approved_by ObjectId [note: 'FK → users (Maint Staff)']
-  admin_approved_by ObjectId [note: 'FK → users (Admin)']
-  current_step Number [note: '1 → 5']
+  repair_id ObjectId [ref: > repairs._id, note: 'Phiếu sửa kết luận unrepairable']
+  proposed_by ObjectId [note: 'FK → users (Facility Manager)']
+  approved_by ObjectId [note: 'FK → users (Admin)']
   reason String
+  reject_reason String
   decision_number String [note: 'Số QĐ thanh lý']
   recovery_value Number
-  procurement_plan String
-  replacement_equipment_id ObjectId [ref: > equipment._id]
-  status String [note: 'proposed | staff_reviewing | admin_reviewing | procuring | completed']
+  status String [note: 'proposed | approved | rejected | completed']
   proposed_at DateTime
-  staff_approved_at DateTime
-  admin_approved_at DateTime
+  approved_at DateTime
   completed_at DateTime
 }
 
 Table import_sessions {
   _id ObjectId [pk]
-  uploaded_by ObjectId [note: 'FK → users']
+  uploaded_by ObjectId [note: 'FK → users (Facility Manager)']
   file_name String
   total_rows Number
   success_count Number

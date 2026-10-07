@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════
 // MODULE 2: MASTER DATA & CATALOG
-// Actor: Admin (Define, Register, Stock)
+// Actor: Admin (Define category, Register supplier / repair unit / room)
+//        Facility Manager (Update spare parts stock)
 // ═══════════════════════════════════════
 
 Table categories {
@@ -35,11 +36,12 @@ Table rooms {
   name String
   building String [note: 'Tòa nhà']
   floor Number [note: 'Tầng']
-  room_type String [note: 'lecture | lab | office | storage']
+  room_type String [note: 'lecture | lab | office | warehouse (kho dự phòng)']
   capacity Number
   area Number [note: 'm²']
   layout_image String [note: 'URL sơ đồ phòng']
   department String [note: 'Khoa quản lý']
+  required_equipment Array [note: 'Định mức: [{ category_id → categories, quantity }]']
   status String [note: 'available | maintenance | inactive']
   created_at DateTime
   updated_at DateTime

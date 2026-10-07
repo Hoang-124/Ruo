@@ -1,942 +1,479 @@
 # GIẢI THÍCH CHI TIẾT 6 MODULE DATABASE — DỰ ÁN RUO
 
-> 24 collections · 56 Use Cases · 3 Actors: Lecturer, Maintenance Staff, Admin
+> **20 collections · 48 Use Cases · 5 Actors:** Guest, Lecturer, Facility Manager, Technician, Admin
+> (cộng actor trừu tượng **User** = mọi người đã đăng nhập)
+>
+> Sơ đồ: [dbdiagram.dbml](file:///d:/Ruo/dbdiagram.dbml) (bản gộp) · [dbml/](file:///d:/Ruo/dbml) (6 module) · [Actor_UseCase.drawio](file:///d:/Ruo/Actor_UseCase.drawio) (5 trang)
 
 ---
 
-## MODULE 1: AUTH & USER MANAGEMENT
+## 0. THAY ĐỔI SO VỚI BẢN CŨ (theo góp ý mentor)
+
+| # | Góp ý | Thay đổi |
+|---|---|---|
+| 1 | Maintenance Staff quá rộng | Tách thành **Facility Manager** (giao việc, duyệt, quyết định) và **Technician** (đi làm thực địa) |
+| 2 | Gộp audit log và login | Bỏ `login_history`. Đăng nhập / đăng xuất / đặt lại mật khẩu ghi vào `audit_logs` |
+| 3 | Maintenance plan không liên quan equipment | Bỏ `maintenance_plans`, `maintenance_logs`. Kiểm kê kiêm luôn việc kiểm tra định kỳ |
+| 4 | Use case rườm rà | 48 UC, mỗi UC là 1 động từ cụ thể. Vẽ 1 trang tổng quan (8 gói) + 4 trang chi tiết |
+| 5 | `notification_templates` thừa | Bỏ. Nội dung thông báo là hằng số trong code |
+| 6 | Sửa xong đồ ở đâu, kho dự phòng | Kho = `rooms.room_type = 'warehouse'`, định mức `rooms.required_equipment`. `transfers` đổi thành `equipment_movements` ghi mọi lần di chuyển |
+
+**Phát sinh thêm khi phân tích:**
+- Thêm `password_resets`: code đã dùng để lưu OTP nhưng thiết kế cũ thiếu.
+- Bỏ `repair_parts`: trùng dữ liệu với `parts_requests.items`.
+
+**Tổng:** 24 − 5 (bỏ) + 1 (thêm) = **20 collections**.
+
+| Module | Collections |
+|---|---|
+| 1. Auth & User | `users`, `roles`, `refresh_tokens`, `password_resets` |
+| 2. Master Data | `categories`, `suppliers`, `repair_units`, `rooms`, `spare_parts` |
+| 3. Equipment, Movement & Disposal | `equipment`, `equipment_movements`, `disposals`, `import_sessions` |
+| 4. Repair | `repairs`, `repair_logs`, `parts_requests` |
+| 5. Inventory | `inventory_sessions`, `inventory_logs` |
+| 6. Notification & Audit | `notifications`, `audit_logs` |
+
+---
+
+## 1. PHÂN CÔNG ACTOR
+
+| Actor | Vai trò | UC chính |
+|---|---|---|
+| **Guest** | Chưa đăng nhập | Register account, Log in, Recover password |
+| **User** | Mọi người đã đăng nhập | Log out, Update profile, Change password |
+| **Lecturer** | Giảng viên, người dùng phòng | Report malfunction, Track repair status, Evaluate repair quality, View room equipment |
+| **Facility Manager** | Quản lý CSVC: **giao việc và duyệt** | Assign repair task, Approve parts request, Select spare equipment, Assign post-repair location, Order equipment transfer, Register equipment, Create inventory session, Propose disposal… (17 UC) |
+| **Technician** | Kỹ thuật viên: **đi làm** | Accept repair task, Update repair progress, Request spare parts, Report repair outcome, Replace with spare equipment, Confirm equipment movement, Scan equipment QR |
+| **Admin** | Quản trị hệ thống | Tài khoản, phân quyền, danh mục, duyệt thanh lý cuối, báo cáo, kiểm toán (15 UC) |
+
+**Nguyên tắc:** người làm không tự duyệt việc của mình.
+- Technician xin linh kiện → Facility Manager duyệt.
+- Facility Manager đề xuất thanh lý → Admin duyệt.
+- Facility Manager ra lệnh điều chuyển → Technician thực hiện và xác nhận.
+
+---
+
+## 2. VÒNG ĐỜI THIẾT BỊ & KHO DỰ PHÒNG
+
+```
+                  ┌──── Technician mang đồ dự phòng ra thay ◄──── in_stock (KHO)
+                  ▼                                                   ▲
+in_use ──báo hỏng──► broken ──FM giao việc──► repairing               │
+                                                 │                    │
+                     ┌── repaired ───────────────┤                    │
+                     │   Có phòng nào thiếu loại này không?           │
+                     │     ├─ có    → in_use (về phòng đang thiếu)    │
+                     │     └─ không → ────────────────────────────────┘
+                     │
+                     └── unrepairable ──► pending_disposal ──Admin duyệt──► disposed
+                                                │
+                                                └──Admin từ chối──► repairing
+```
+
+**Quy tắc "phòng đủ":** phòng **đủ** khi với mọi `category_id` trong `rooms.required_equipment`, số thiết bị `status = in_use` có `room_id` là phòng đó ≥ `quantity`.
+
+**Thứ tự gợi ý nơi đến khi sửa xong** (UC *Assign post-repair location*; hệ thống gợi ý, Facility Manager xác nhận):
+1. Phòng gốc, nếu phòng gốc đang thiếu loại này.
+2. Phòng khác đang thiếu, ưu tiên phòng thiếu nhiều nhất.
+3. Kho (`room_type = 'warehouse'`) cùng tòa nhà.
+
+### 2.1 Kịch bản mẫu: máy chiếu A1-302 hỏng, sửa xong vào kho
+
+| Bước | Ai làm (UC) | Dữ liệu thay đổi |
+|---|---|---|
+| 1 | Lecturer — *Report malfunction* | Tạo `repairs` (`source = lecturer_report`, `status = reported`). `equipment[MC-01].status = broken` |
+| 2 | Facility Manager — *Assign repair task* + *Select spare equipment* | `repairs.assigned_by/assigned_to/deadline`, `replacement_equipment_id = MC-09` (đang `in_stock` ở kho A1-K01). `status = assigned`. Tạo 2 `equipment_movements` `pending`: `replacement` (MC-09: A1-K01 → A1-302) và `repair_out` (MC-01: A1-302 → A1-K01) |
+| 3 | Technician — *Replace with spare equipment* | 2 movement → `completed`. MC-09: `room_id = A1-302`, `in_use`. MC-01: `room_id = A1-K01`, `repairing`. `repairs.status = in_progress` |
+| 4 | Technician — *Update repair progress*, *Request spare parts* | Thêm `repair_logs`. Tạo `parts_requests` `pending` |
+| 5 | Facility Manager — *Approve parts request* | `parts_requests.status = approved`, trừ `spare_parts.stock` |
+| 6 | Technician — *Report repair outcome* | `repairs.outcome = repaired`, `status = resolved` |
+| 7 | Facility Manager — *Assign post-repair location* | A1-302 đã đủ máy chiếu (có MC-09), không phòng nào thiếu → `destination_room_id = A1-K01`. Tạo movement `to_stock` |
+| 8 | Technician — *Confirm equipment movement* | Movement `completed`. `equipment[MC-01].status = in_stock` |
+| 9 | Lecturer — *Evaluate repair quality* → FM — *Close repair ticket* | `feedback_rating`, `repairs.status = closed` |
+
+### 2.2 Kịch bản: không sửa được
+
+| Bước | Ai làm (UC) | Dữ liệu thay đổi |
+|---|---|---|
+| 1 | Technician — *Report repair outcome* | `repairs.outcome = unrepairable`, `status = unrepairable`. `equipment.status = pending_disposal` |
+| 2 | Facility Manager — *Propose disposal* | Tạo `disposals` (`repair_id`, `status = proposed`) |
+| 3a | Admin — *Approve disposal request* (đồng ý) | `disposals.status = approved → completed`, `decision_number`. `equipment.status = disposed` |
+| 3b | Admin — *Approve disposal request* (từ chối) | `disposals.status = rejected`, `reject_reason`. `equipment.status = repairing` để thử sửa lại hoặc gửi đơn vị khác |
+
+### 2.3 Trường hợp biên
+
+| Tình huống | Xử lý |
+|---|---|
+| Kho hết đồ cùng loại | Bỏ qua *Select spare equipment*, `replacement_equipment_id = null`. Phòng hiện "đang thiếu" trên dashboard |
+| Gửi đơn vị ngoài sửa | Movement `repair_out` có `to_room_id = null`. `equipment.room_id = null`, `repairs.repair_unit_id` có giá trị |
+| Đơn vị ngoài trả đồ | Movement `repair_return` về kho hoặc phòng theo `destination_room_id` |
+| Kiểm kê thấy đồ hỏng | `inventory_logs.status = damaged` → tự tạo `repairs` với `source = inventory_check`, gắn `inventory_logs.repair_id` |
+| Kiểm kê không thấy đồ | `inventory_logs.status = missing`. Sau khi FM đối soát → `equipment.status = lost` |
+
+---
+
+## MODULE 1: AUTH & USER
 
 **File:** [1_auth.dbml](file:///d:/Ruo/dbml/1_auth.dbml)
-**Actor:** Tất cả
-**UC liên quan:** Log in, Log out, Recover password, Update personal profile, Change password
+**Actor:** Guest, User, Admin
+**UC:** Register account, Log in, Recover password, Log out, Update profile, Change password, Create user account, Assign user role, Lock user account, Reset user password, Configure role permissions
 
-### 1.1 Bảng `users` — Tất cả người dùng hệ thống
-
-Mỗi row = 1 tài khoản (giảng viên, nhân viên bảo trì, hoặc admin).
+### 1.1 `users` — Tài khoản
 
 | Field | Type | Bắt buộc | Giải thích |
 |:---|:---|:---:|:---|
 | `_id` | ObjectId | ✅ | MongoDB tự tạo |
-| `code` | String | ✅ | Mã định danh nội bộ. VD: `GV001`, `BT003`, `AD001`. Unique, không đổi được. |
-| `email` | String | ✅ | Email đăng nhập. Unique. VD: `nguyenvana@university.edu.vn` |
-| `password_hash` | String | ✅ | Mật khẩu đã mã hóa BCrypt (12 rounds). KHÔNG BAO GIỜ lưu plain text. |
-| `full_name` | String | ✅ | Họ tên đầy đủ. VD: `Nguyễn Văn A` |
-| `phone` | String | | SĐT. VD: `0901234567` |
-| `avatar` | String | | URL ảnh đại diện trên cloud storage |
-| `department` | String | ✅ | Khoa/Phòng ban. VD: `Khoa CNTT`, `Phòng Hành chính` |
-| `role` | String | ✅ | Chỉ 1 trong 3 giá trị: `lecturer`, `maintenance_staff`, `admin` |
-| `status` | String | ✅ | `active` = hoạt động, `locked` = bị khóa (sai pass 5 lần hoặc admin khóa) |
-| `force_change_pw` | Boolean | ✅ | `true` = bắt đổi mật khẩu lần đăng nhập tiếp (khi admin reset hoặc forgot password) |
-| `last_login_at` | Date | | Thời điểm đăng nhập gần nhất, cập nhật mỗi lần login thành công |
-| `login_count` | Number | ✅ | Tổng số lần đăng nhập thành công. Default: 0 |
-| `created_at` | Date | ✅ | Thời điểm tạo tài khoản |
-| `updated_at` | Date | ✅ | Cập nhật khi sửa profile |
-
-**Dữ liệu mẫu:**
-```json
-{
-  "_id": "ObjectId('507f1f77bcf86cd799439011')",
-  "code": "GV001",
-  "email": "tranthib@hcmute.edu.vn",
-  "password_hash": "$2b$12$LJ3G...",
-  "full_name": "Trần Thị B",
-  "phone": "0912345678",
-  "avatar": "/uploads/avatars/gv001.jpg",
-  "department": "Khoa CNTT",
-  "role": "lecturer",
-  "status": "active",
-  "force_change_pw": false,
-  "last_login_at": "2026-09-30T08:15:00Z",
-  "login_count": 47,
-  "created_at": "2026-01-15T00:00:00Z",
-  "updated_at": "2026-09-28T10:30:00Z"
-}
-```
+| `code` | String | ✅ | Mã nội bộ: `GV001` (Lecturer), `QL001` (Facility Manager), `KT001` (Technician), `AD001` (Admin). Unique, không đổi được |
+| `email` | String | ✅ | Email đăng nhập. Unique |
+| `password_hash` | String | ✅ | BCrypt 12 rounds. Không bao giờ lưu plain text |
+| `full_name` | String | ✅ | Họ tên |
+| `phone` | String | | SĐT |
+| `avatar` | String | | URL ảnh đại diện |
+| `department` | String | ✅ | Khoa / Phòng ban. Để dạng String, không tách bảng |
+| `role` | String | ✅ | `lecturer` · `facility_manager` · `technician` · `admin` |
+| `status` | String | ✅ | `active` · `locked` (Admin khoá) |
+| `force_change_pw` | Boolean | ✅ | `true` khi Admin reset mật khẩu → bắt đổi ở lần đăng nhập sau |
+| `failed_login_attempts` | Number | ✅ | Số lần sai liên tiếp. Default 0 |
+| `lock_until` | Date | | Sai 5 lần → khoá tạm 15 phút. Đăng nhập đúng thì reset về `null` |
+| `last_login_at` | Date | | Lần đăng nhập thành công gần nhất |
+| `created_at`, `updated_at` | Date | ✅ | |
 
 **Business Rules:**
-- `code` không đổi được sau khi tạo
-- `email` là trường duy nhất dùng để đăng nhập (không login bằng code)
-- Khi `status = locked`, user không thể đăng nhập, chỉ Admin mới unlock được
-- Khi Admin reset password → `force_change_pw = true` → user phải đổi pass ngay sau khi login
+- *Register account* (Guest) chỉ tạo được `role = lecturer`, bắt buộc xác thực email qua OTP. Báo trùng ngay khi nhập email / mã.
+- Tài khoản `facility_manager`, `technician`, `admin` chỉ Admin tạo (*Create user account*).
+- `lock_until` là khoá **tạm** do sai mật khẩu. `status = locked` là khoá **hẳn** do Admin, chỉ Admin mở được.
+- Bỏ `login_count`: số lần đăng nhập đếm được từ `audit_logs` (`action = login_success`).
 
----
-
-### 1.2 Bảng `roles` — Phân quyền chi tiết
-
-Định nghĩa 3 vai trò cố định. Mỗi role có mảng `permissions` mà middleware kiểm tra trước mỗi API call.
+### 1.2 `roles` — Ma trận quyền
 
 | Field | Type | Giải thích |
 |:---|:---|:---|
 | `_id` | ObjectId | PK |
-| `name` | String | `lecturer` hoặc `maintenance_staff` hoặc `admin`. Unique. |
-| `permissions` | [String] | Mảng quyền theo format `resource:action`. VD: `equipment:create` |
-
-**Dữ liệu mẫu (3 records mặc định):**
+| `name` | String | Unique: 4 role ở trên |
+| `permissions` | [String] | Dạng `resource:action` |
 
 ```json
-// Role: Lecturer
-{
-  "name": "lecturer",
-  "permissions": [
-    "incident:create",        // Báo sự cố
-    "incident:read_own",      // Xem sự cố mình đã báo
-    "repair:rate",            // Đánh giá chất lượng sửa
-    "room:read",              // Xem thông tin phòng
-    "equipment:read",         // Xem thiết bị trong phòng
-    "notification:read_own",  // Xem thông báo
-    "profile:update"          // Sửa profile
-  ]
-}
+// lecturer
+["incident:create", "incident:read_own", "repair:rate", "room:read", "equipment:read"]
 
-// Role: Maintenance Staff
-{
-  "name": "maintenance_staff",
-  "permissions": [
-    "equipment:create", "equipment:read", "equipment:update", "equipment:import",
-    "equipment:qr",
-    "room:read", "room:layout",
-    "transfer:create", "transfer:approve", "transfer:complete", "transfer:read",
-    "repair:read", "repair:assign", "repair:log", "repair:close", "repair:escalate",
-    "parts:request", "parts:approve",
-    "warranty:read", "warranty:update",
-    "maintenance:create", "maintenance:execute", "maintenance:log",
-    "inventory:create", "inventory:scan", "inventory:reconcile",
-    "disposal:propose", "disposal:approve_staff",
-    "dashboard:read",
-    "notification:read_own",
-    "profile:update"
-  ]
-}
+// facility_manager
+["equipment:create", "equipment:update", "equipment:import", "equipment:qr",
+ "warranty:read", "warranty:update",
+ "repair:read", "repair:assign", "repair:close",
+ "parts:approve", "spare_part:update",
+ "movement:order", "placement:decide",
+ "inventory:create", "inventory:reconcile",
+ "disposal:propose", "dashboard:read"]
 
-// Role: Admin
-{
-  "name": "admin",
-  "permissions": [
-    "user:create", "user:read", "user:update", "user:deactivate", "user:reset_password",
-    "role:read", "role:update",
-    "category:create", "category:read", "category:update",
-    "supplier:create", "supplier:read", "supplier:update",
-    "repair_unit:create", "repair_unit:read", "repair_unit:update",
-    "spare_part:create", "spare_part:read", "spare_part:update",
-    "equipment:create", "equipment:read", "equipment:import",
-    "report:kpi", "report:export", "report:health",
-    "audit:read", "audit:verify", "audit:export",
-    "system:health", "system:config",
-    "notification_template:read", "notification_template:update",
-    "disposal:authorize",
-    "notification:read_own",
-    "profile:update"
-  ]
-}
+// technician
+["repair:read_assigned", "repair:accept", "repair:log", "repair:report_outcome",
+ "parts:request", "movement:confirm", "inventory:scan", "equipment:read"]
+
+// admin
+["user:create", "user:update", "user:lock", "user:reset_password", "role:update",
+ "category:*", "supplier:*", "repair_unit:*", "room:*",
+ "disposal:approve", "dashboard:read", "report:export",
+ "audit:read", "audit:verify", "audit:export"]
 ```
 
-**Cách middleware kiểm tra:**
-```
-User gọi API POST /api/repairs → cần permission "repair:assign"
-  → Server đọc user.role = "maintenance_staff"
-  → Tra roles collection → permissions có "repair:assign" ✅ → Cho phép
-  → Nếu user.role = "lecturer" → permissions KHÔNG có "repair:assign" ❌ → 403 Forbidden
-```
+**Kiểm tra quyền:** Technician gọi `PATCH /repairs/:id/assign` → cần `repair:assign` → role `technician` không có → `403`. Đây chính là ràng buộc "người làm không tự giao việc".
 
----
-
-### 1.3 Bảng `refresh_tokens` — Quản lý phiên đăng nhập
-
-Mỗi lần login tạo 1 cặp: **access_token** (JWT, 15 phút, KHÔNG lưu DB) + **refresh_token** (lưu DB, 7 ngày).
+### 1.3 `refresh_tokens`
 
 | Field | Type | Giải thích |
 |:---|:---|:---|
-| `_id` | ObjectId | PK |
-| `user_id` | ObjectId | FK → users. User nào sở hữu token này. |
-| `token` | String | Hash của refresh token (SHA-256). KHÔNG lưu token gốc. |
-| `device_info` | String | User-Agent. VD: `Mozilla/5.0 (Windows NT 10.0) Chrome/120` |
-| `ip_address` | String | IP lúc login. VD: `192.168.1.100` |
-| `expires_at` | Date | Hết hạn sau 7 ngày. MongoDB TTL index tự xóa khi hết hạn. |
-| `is_revoked` | Boolean | `true` = đã bị vô hiệu (user logout hoặc admin force logout). |
-| `created_at` | Date | Thời điểm tạo |
+| `user_id` | ObjectId | FK → `users` |
+| `token_hash` | String | Hash của refresh token, không lưu token gốc |
+| `device_info`, `ip_address` | String | Thiết bị đăng nhập |
+| `expires_at` | Date | TTL 7 ngày |
+| `is_revoked` | Boolean | `true` khi Log out, đổi mật khẩu hoặc Admin khoá tài khoản |
 
-**Business Rules:**
-- Mỗi user có thể có **nhiều** refresh_tokens (đăng nhập trên nhiều thiết bị)
-- **Logout 1 thiết bị:** `is_revoked = true` cho token đó
-- **Logout tất cả:** `is_revoked = true` cho TẤT CẢ token của user_id đó
-- Access token hết hạn → client gửi refresh_token → server kiểm tra DB → nếu valid → cấp access_token mới
-
-**Dữ liệu mẫu:**
-```json
-{
-  "user_id": "ObjectId('507f1f77bcf86cd799439011')",
-  "token": "a1b2c3d4e5f6...",
-  "device_info": "Chrome/120 on Windows",
-  "ip_address": "192.168.1.50",
-  "expires_at": "2026-10-07T08:15:00Z",
-  "is_revoked": false,
-  "created_at": "2026-09-30T08:15:00Z"
-}
-```
-
----
-
-### 1.4 Bảng `login_history` — Lịch sử đăng nhập
-
-Ghi lại MỌI lần đăng nhập (kể cả thất bại) để audit bảo mật.
+### 1.4 `password_resets` — OTP *(mới)*
 
 | Field | Type | Giải thích |
 |:---|:---|:---|
-| `_id` | ObjectId | PK |
-| `user_id` | ObjectId | FK → users |
-| `ip_address` | String | IP đăng nhập |
-| `user_agent` | String | Trình duyệt / thiết bị |
-| `status` | String | `success` = thành công, `failed` = sai pass, `locked` = tài khoản bị khóa |
-| `failure_reason` | String | Chỉ khi `status ≠ success`. VD: `wrong_password`, `account_locked`, `rate_limited` |
-| `created_at` | Date | TTL 90 ngày — MongoDB tự xóa sau 3 tháng |
+| `email` | String | Email nhận OTP |
+| `otp_hash` | String | OTP 6 số đã hash |
+| `purpose` | String | `register` (xác thực email khi đăng ký) · `reset_password` |
+| `attempts` | Number | Số lần nhập sai. Sai **3 lần** → OTP vô hiệu |
+| `expires_at` | Date | TTL 15 phút, MongoDB tự xoá |
+| `is_used` | Boolean | Dùng xong thì `true`. Gửi OTP mới thì OTP cũ chưa dùng cũng chuyển `true` |
 
-**Business Rules:**
-- Dùng để phát hiện **brute force**: nếu 5 records liên tiếp có `status = failed` → lock user
-- Admin có thể xem lịch sử đăng nhập của bất kỳ user nào
-- Tự động xóa sau 90 ngày (TTL index) để không phình database
+**Rule:** chỉ đối chiếu với OTP **mới nhất** chưa dùng (sort `_id` giảm dần). Giới hạn gửi OTP theo IP.
+
+> `login_history` đã bỏ → xem `audit_logs` (Module 6).
 
 ---
 
-## MODULE 2: MASTER DATA & CATALOG
+## MODULE 2: MASTER DATA
 
 **File:** [2_master_data.dbml](file:///d:/Ruo/dbml/2_master_data.dbml)
-**Actor:** Admin (tạo/sửa), Maint Staff & Lecturer (đọc)
-**UC liên quan:** Define equipment category, Register supplier, Register repair unit, Stock spare parts, Check room equipment
+**Actor:** Admin (Define equipment category, Register supplier, Register repair unit, Register room), Facility Manager (Update spare parts stock)
 
-### 2.1 Bảng `categories` — Phân loại thiết bị
-
-Mỗi thiết bị thuộc 1 loại. Dùng để lọc, thống kê, lập kế hoạch bảo trì theo nhóm.
-
+### 2.1 `categories` — Loại thiết bị
 | Field | Type | Giải thích |
 |:---|:---|:---|
-| `_id` | ObjectId | PK |
-| `code` | String | Mã loại. Unique. VD: `CAT-TV`, `CAT-AC`, `CAT-PC` |
-| `name` | String | Tên hiển thị. VD: `Tivi`, `Điều hòa`, `Máy tính` |
-| `description` | String | Mô tả thêm. VD: `Thiết bị hiển thị hình ảnh trong phòng học` |
+| `code` | String | Unique. VD `PROJ`, `TV`, `AC` |
+| `name` | String | Máy chiếu, TV, Điều hoà… |
+| `description` | String | |
 
-**Dữ liệu mẫu:**
-```json
-[
-  { "code": "CAT-TV",  "name": "Tivi",       "description": "Màn hình hiển thị" },
-  { "code": "CAT-PJ",  "name": "Máy chiếu",  "description": "Projector phòng học" },
-  { "code": "CAT-AC",  "name": "Điều hòa",   "description": "Máy lạnh / quạt" },
-  { "code": "CAT-PC",  "name": "Máy tính",   "description": "Desktop / laptop" },
-  { "code": "CAT-DK",  "name": "Bàn ghế",    "description": "Nội thất phòng học" },
-  { "code": "CAT-TB",  "name": "Thiết bị Lab","description": "Dụng cụ phòng thí nghiệm" }
-]
-```
+### 2.2 `suppliers` — Nhà cung cấp
+`code` (unique), `name`, `phone`, `email`, `address`, `contact` (người liên hệ).
 
----
+### 2.3 `repair_units` — Đơn vị sửa chữa ngoài
+`code` (unique), `name`, `specialty` (chuyên môn), `phone`, `address`.
 
-### 2.2 Bảng `suppliers` — Nhà cung cấp
+### 2.4 `rooms` — Phòng & Kho
 
-Nơi mua thiết bị. Liên kết với `equipment` để biết TB mua từ đâu, và `spare_parts` để đặt linh kiện.
+| Field | Type | Bắt buộc | Giải thích |
+|:---|:---|:---:|:---|
+| `code` | String | ✅ | Unique. VD `A1-302`, kho `A1-K01` |
+| `name` | String | ✅ | |
+| `building`, `floor` | String, Number | ✅ | Tòa, tầng |
+| `room_type` | String | ✅ | `lecture` · `lab` · `office` · **`warehouse`** |
+| `capacity`, `area` | Number | | Sức chứa, m² |
+| `layout_image` | String | | Sơ đồ phòng |
+| `department` | String | | Khoa quản lý |
+| `required_equipment` | Array | | **Định mức thiết bị:** `[{ category_id, quantity }]`. Kho thì để rỗng |
+| `status` | String | ✅ | `available` · `maintenance` · `inactive` |
 
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `_id` | ObjectId | PK |
-| `code` | String | Mã NCC. VD: `SUP-001` |
-| `name` | String | Tên công ty. VD: `Công ty TNHH Thiết bị Giáo dục ABC` |
-| `phone` | String | SĐT liên hệ |
-| `email` | String | Email |
-| `address` | String | Địa chỉ |
-| `contact` | String | Tên người liên hệ chính. VD: `Anh Minh - Phòng KD` |
-
----
-
-### 2.3 Bảng `repair_units` — Đơn vị sửa chữa bên ngoài
-
-Khi thiết bị hỏng nặng, cần gửi ra ngoài sửa. Bảng này lưu danh sách các xưởng/trung tâm sửa chữa.
-
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `_id` | ObjectId | PK |
-| `code` | String | VD: `RU-001` |
-| `name` | String | VD: `Trung tâm BH Samsung`, `Xưởng điện lạnh Hùng Phát` |
-| `specialty` | String | Chuyên môn. VD: `Điện lạnh`, `Điện tử`, `Máy tính` |
-| `phone` | String | |
-| `address` | String | |
-
----
-
-### 2.4 Bảng `rooms` — Phòng học / Lab / Kho
-
-Mỗi row = 1 phòng vật lý trong trường.
-
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `_id` | ObjectId | PK |
-| `code` | String | Mã phòng. VD: `A101`, `B305`, `LAB-201` |
-| `name` | String | Tên phòng. VD: `Phòng học A101`, `Lab Mạng máy tính` |
-| `building` | String | Tòa nhà. VD: `A`, `B`, `C` |
-| `floor` | Number | Tầng. VD: `1`, `3`, `5` |
-| `room_type` | String | `lecture` = phòng học, `lab` = phòng TN, `office` = văn phòng, `storage` = kho |
-| `capacity` | Number | Sức chứa (người). VD: `40`, `30` |
-| `area` | Number | Diện tích m². VD: `56.5` |
-| `layout_image` | String | URL ảnh sơ đồ bố trí phòng (CAD). Maint Staff upload. |
-| `department` | String | Khoa/bộ phận quản lý. VD: `Khoa CNTT` |
-| `status` | String | `available` = đang dùng, `maintenance` = đang sửa, `inactive` = ngừng sử dụng |
-| `created_at` | Date | |
-| `updated_at` | Date | |
-
-**Dữ liệu mẫu:**
 ```json
 {
-  "code": "A101",
-  "name": "Phòng học A101",
-  "building": "A",
-  "floor": 1,
-  "room_type": "lecture",
-  "capacity": 40,
-  "area": 56.5,
-  "layout_image": "/uploads/rooms/A101_layout.png",
-  "department": "Khoa CNTT",
-  "status": "available"
+  "code": "A1-302", "room_type": "lecture", "building": "A1", "floor": 3,
+  "required_equipment": [
+    { "category_id": "ObjectId('…PROJ')", "quantity": 1 },
+    { "category_id": "ObjectId('…AC')",   "quantity": 2 }
+  ]
 }
+{ "code": "A1-K01", "room_type": "warehouse", "building": "A1", "floor": 1, "required_equipment": [] }
 ```
 
----
+**Vì sao nhúng (embed) định mức, không tách bảng:** định mức luôn được đọc cùng phòng, mỗi phòng chỉ có vài dòng, và không có truy vấn nào cần đọc định mức tách khỏi phòng.
 
-### 2.5 Bảng `spare_parts` — Linh kiện / vật tư thay thế
-
-Kho linh kiện dùng khi sửa chữa thiết bị.
-
+### 2.5 `spare_parts` — Linh kiện
 | Field | Type | Giải thích |
 |:---|:---|:---|
-| `_id` | ObjectId | PK |
-| `code` | String | Mã linh kiện. VD: `SP-BULB-01`, `SP-CABLE-HDMI` |
-| `name` | String | Tên. VD: `Bóng đèn máy chiếu Epson`, `Cáp HDMI 2m` |
-| `stock` | Number | Tồn kho hiện tại. Giảm khi xuất cho sửa chữa. |
-| `min_stock` | Number | Ngưỡng cảnh báo. Khi `stock ≤ min_stock` → hệ thống cảnh báo hết hàng. |
-| `price` | Number | Đơn giá (VNĐ). VD: `350000` |
-| `unit` | String | Đơn vị tính. VD: `Cái`, `Bộ`, `Hộp`, `Mét` |
-| `supplier_id` | ObjectId | FK → suppliers. Mua từ NCC nào. |
+| `code`, `name` | String | |
+| `stock` | Number | Tồn kho. Tự trừ khi `parts_requests` được duyệt |
+| `min_stock` | Number | Tồn kho < ngưỡng → cảnh báo Facility Manager |
+| `price`, `unit` | Number, String | |
+| `supplier_id` | ObjectId | FK → `suppliers` |
 
-**Business Rules:**
-- Khi `parts_request` được approve → `stock` tự động giảm theo số lượng xuất
-- Khi `stock ≤ min_stock` → tạo notification cho Maint Staff
-- Admin là người thêm/sửa danh mục linh kiện (UC: D-10 Stock spare parts)
+> **Linh kiện ≠ đồ dự phòng.** Linh kiện (bóng đèn máy chiếu, cáp HDMI) nằm trong `spare_parts`. Đồ dự phòng là **thiết bị nguyên chiếc** trong `equipment` với `status = in_stock`.
 
 ---
 
-## MODULE 3: EQUIPMENT, TRANSFER & DISPOSAL
+## MODULE 3: EQUIPMENT, MOVEMENT & DISPOSAL
 
 **File:** [3_equipment.dbml](file:///d:/Ruo/dbml/3_equipment.dbml)
-**Actor:** Maintenance Staff (chính), Admin (oversight)
-**UC liên quan:** Register/Edit/Import equipment, Generate/Scan QR, Initiate/Approve/Complete transfer, Propose/Approve disposal, Plan procurement, Receive replacement
+**Actor:** Facility Manager, Technician, Admin
 
-### 3.1 Bảng `equipment` — Thiết bị (BẢNG TRUNG TÂM)
+### 3.1 `equipment` — Thiết bị
 
-**Bảng quan trọng nhất của hệ thống.** Mỗi row = 1 thiết bị vật lý có mã QR riêng.
+| Field | Type | Bắt buộc | Giải thích |
+|:---|:---|:---:|:---|
+| `code` | String | ✅ | Mã tài sản. Unique |
+| `qr_code` | String | ✅ | Unique, in tem bằng *Print QR label* |
+| `serial_number`, `name`, `brand`, `model` | String | | |
+| `category_id` | ObjectId | ✅ | FK → `categories` |
+| `room_id` | ObjectId | | **Vị trí hiện tại** (phòng hoặc kho). `null` = đang ở đơn vị sửa ngoài |
+| `supplier_id` | ObjectId | | FK → `suppliers` |
+| `price`, `purchase_date`, `depreciation_rate` | | | Giá, ngày mua, % khấu hao/năm |
+| `warranty_expiry`, `warranty_status` | Date, String | | `active` · `expired` · `extended` |
+| `images` | Array | | |
+| `status` | String | ✅ | Xem bảng dưới |
+
+| `status` | Ý nghĩa | `room_id` trỏ tới |
+|---|---|---|
+| `in_use` | Đang dùng trong phòng | Phòng học / lab / văn phòng |
+| `in_stock` | Đồ dự phòng trong kho | Kho |
+| `broken` | Đã báo hỏng, chưa giao việc | Phòng đang đặt |
+| `repairing` | Đang sửa | Kho hoặc `null` (sửa ngoài) |
+| `pending_disposal` | Không sửa được, chờ Admin duyệt thanh lý | Kho |
+| `disposed` | Đã thanh lý | Giữ vị trí cuối cùng |
+| `lost` | Kiểm kê không thấy | Giữ vị trí cuối cùng |
+
+**Rule:** chỉ thay đổi `room_id` thông qua `equipment_movements` có `status = completed`, không sửa tay. Nhờ vậy lịch sử vị trí luôn đầy đủ.
+
+### 3.2 `equipment_movements` — Mọi lần di chuyển *(thay cho `transfers`)*
 
 | Field | Type | Giải thích |
 |:---|:---|:---|
-| `_id` | ObjectId | PK |
-| `code` | String | Mã tài sản nội bộ. Unique. VD: `TB-2026-001`, `TB-2026-002`. Format: `TB-{năm}-{số thứ tự}` |
-| `qr_code` | String | Nội dung mã QR. Unique. Thường = `code` hoặc URL: `https://ruo.edu.vn/e/TB-2026-001` |
-| `serial_number` | String | S/N của nhà sản xuất. VD: `SN-EPSON-X51-2024-00123` |
-| `name` | String | Tên thiết bị. VD: `Máy chiếu Epson X51+`, `Điều hòa Daikin 18000BTU` |
-| `brand` | String | Hãng. VD: `Epson`, `Daikin`, `Dell` |
-| `model` | String | Model. VD: `EB-X51+`, `FTXS50GVMV` |
-| `category_id` | ObjectId | FK → categories. Thuộc loại nào (Máy chiếu, Điều hòa...) |
-| `room_id` | ObjectId | FK → rooms. Đang ở phòng nào. Thay đổi khi transfer. |
-| `supplier_id` | ObjectId | FK → suppliers. Mua từ NCC nào. |
-| `price` | Number | Giá mua (VNĐ). VD: `15000000` (15 triệu) |
-| `purchase_date` | Date | Ngày mua |
-| `warranty_expiry` | Date | Hạn bảo hành. VD: `2028-06-15` |
-| `warranty_status` | String | `active` = còn BH, `expired` = hết BH, `extended` = BH mở rộng (sau sửa chữa) |
-| `images` | [String] | URLs ảnh thiết bị. Tối đa 5 ảnh. |
-| `depreciation_rate` | Number | % khấu hao/năm. VD: `20` = 20%/năm → sau 5 năm = 0 |
-| `status` | String | Trạng thái hiện tại (xem bên dưới) |
-| `created_at` | Date | |
-| `updated_at` | Date | |
+| `equipment_id` | ObjectId | FK → `equipment` |
+| `type` | String | `transfer` (phòng → phòng) · `replacement` (kho → phòng thay đồ hỏng) · `repair_out` (đưa đi sửa) · `repair_return` (sửa ngoài trả về) · `to_stock` (sửa xong cất kho) |
+| `from_room_id` | ObjectId | Nullable (VD `repair_return` từ đơn vị ngoài) |
+| `to_room_id` | ObjectId | Nullable (VD `repair_out` ra đơn vị ngoài) |
+| `repair_id` | ObjectId | Gắn với phiếu sửa nếu di chuyển do sửa chữa |
+| `ordered_by` | ObjectId | Facility Manager ra lệnh |
+| `performed_by` | ObjectId | Technician thực hiện |
+| `reason` | String | |
+| `status` | String | `pending` → `completed` / `cancelled` |
+| `created_at`, `completed_at` | Date | |
 
-**Các trạng thái (status) và chuyển đổi:**
-```
-active ──→ repairing ──→ active          (sửa xong, trả về)
-active ──→ transferring ──→ active       (chuyển phòng xong)
-active ──→ disposed                       (thanh lý hoàn tất)
-active ──→ lost                           (mất khi kiểm kê)
-repairing ──→ disposed                    (hỏng không sửa được)
-```
-
-**Dữ liệu mẫu:**
 ```json
-{
-  "code": "TB-2026-001",
-  "qr_code": "TB-2026-001",
-  "serial_number": "SN-EPSON-X51-001",
-  "name": "Máy chiếu Epson EB-X51+",
-  "brand": "Epson",
-  "model": "EB-X51+",
-  "category_id": "ObjectId → CAT-PJ",
-  "room_id": "ObjectId → A101",
-  "supplier_id": "ObjectId → SUP-001",
-  "price": 15000000,
-  "purchase_date": "2024-06-15",
-  "warranty_expiry": "2026-06-15",
-  "warranty_status": "active",
-  "images": ["/uploads/equipment/tb-2026-001-1.jpg"],
-  "depreciation_rate": 20,
-  "status": "active"
-}
+{ "equipment_id": "MC-09", "type": "replacement", "from_room_id": "A1-K01", "to_room_id": "A1-302",
+  "repair_id": "R-2026-0145", "ordered_by": "QL001", "performed_by": "KT003", "status": "completed" }
 ```
 
----
+**Truy vấn "thiết bị X đã đi những đâu":** `find({ equipment_id: X }).sort({ completed_at: 1 })`.
 
-### 3.2 Bảng `transfers` — Phiếu điều chuyển thiết bị
+**Vì sao không còn bước duyệt:** Facility Manager là người có thẩm quyền nên lệnh của FM có hiệu lực luôn. Technician chỉ xác nhận đã chuyển. Bản cũ để cùng một người vừa tạo vừa duyệt nên bước duyệt không có ý nghĩa.
 
-Khi cần chuyển thiết bị từ phòng A sang phòng B.
+### 3.3 `disposals` — Thanh lý (2 cấp)
 
 | Field | Type | Giải thích |
 |:---|:---|:---|
-| `_id` | ObjectId | PK |
-| `equipment_id` | ObjectId | FK → equipment. TB nào cần chuyển. |
-| `from_room_id` | ObjectId | FK → rooms. Phòng hiện tại. |
-| `to_room_id` | ObjectId | FK → rooms. Phòng đích. |
-| `requested_by` | ObjectId | FK → users. Maint Staff tạo phiếu. |
-| `approved_by` | ObjectId | FK → users. Maint Staff senior duyệt. Null khi chưa duyệt. |
-| `completed_by` | ObjectId | FK → users. Người xác nhận đã chuyển xong. |
-| `reason` | String | Lý do. VD: `Phòng A101 đóng cửa sửa chữa, chuyển tạm sang A102` |
-| `reject_reason` | String | Lý do từ chối (nếu rejected). VD: `Phòng đích đã đủ thiết bị` |
-| `status` | String | `pending` → `approved` → `completed` hoặc `pending` → `rejected` |
-| `created_at` | Date | Ngày tạo phiếu |
-| `approved_at` | Date | Ngày duyệt |
-| `completed_at` | Date | Ngày hoàn tất chuyển |
+| `equipment_id` | ObjectId | FK → `equipment` |
+| `repair_id` | ObjectId | Phiếu sửa đã kết luận `unrepairable` |
+| `proposed_by` | ObjectId | Facility Manager |
+| `approved_by` | ObjectId | Admin |
+| `reason`, `reject_reason` | String | |
+| `decision_number` | String | Số quyết định thanh lý |
+| `recovery_value` | Number | Giá trị thu hồi |
+| `status` | String | `proposed` → `approved` → `completed`, hoặc `rejected` |
 
-**Flow chi tiết:**
-```
-① Maint Staff tạo phiếu:
-   status = 'pending'
-   equipment.status = 'transferring'
+Bỏ khỏi bản cũ: `staff_approved_by`, `current_step`, `procurement_plan`, `replacement_equipment_id`. Việc mua sắm nằm ngoài hệ thống; đồ mới mua về thì FM dùng *Register equipment*.
 
-② Maint Staff senior duyệt:
-   approved_by = senior._id
-   status = 'approved'
-   approved_at = now()
-
-   HOẶC từ chối:
-   reject_reason = "Phòng đích không phù hợp"
-   status = 'rejected'
-   equipment.status = 'active' (hoàn lại)
-
-③ Maint Staff hoàn tất:
-   completed_by = staff._id
-   status = 'completed'
-   completed_at = now()
-   equipment.room_id = to_room_id    ← CẬP NHẬT PHÒNG
-   equipment.status = 'active'
-```
+### 3.4 `import_sessions` — Nhập Excel
+`uploaded_by` (FM), `file_name`, `total_rows`, `success_count`, `error_count`, `errors [{ row, field, message }]`, `status` (`validating` · `validated` · `importing` · `completed` · `failed`).
 
 ---
 
-### 3.3 Bảng `disposals` — Quy trình thanh lý
-
-Khi thiết bị hết giá trị sử dụng hoặc hỏng không sửa được → thanh lý qua quy trình 5 bước.
-
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `_id` | ObjectId | PK |
-| `equipment_id` | ObjectId | FK → equipment. TB cần thanh lý. |
-| `proposed_by` | ObjectId | FK → users. Maint Staff đề xuất. |
-| `staff_approved_by` | ObjectId | FK → users. Maint Staff senior duyệt nội bộ. |
-| `admin_approved_by` | ObjectId | FK → users. Admin phê duyệt cấp BGH. |
-| `current_step` | Number | Bước hiện tại (1→5). |
-| `reason` | String | Lý do thanh lý. VD: `Máy chiếu hỏng mainboard, chi phí sửa > 70% giá mới` |
-| `decision_number` | String | Số quyết định thanh lý. VD: `QĐ-TL-2026-015` |
-| `recovery_value` | Number | Giá trị thu hồi (bán phế liệu). VD: `500000` |
-| `procurement_plan` | String | Kế hoạch mua TB thay thế. VD: `Mua máy chiếu Epson X51+ mới, dự kiến Q4/2026` |
-| `replacement_equipment_id` | ObjectId | FK → equipment. TB mới thay thế (sau khi mua). |
-| `status` | String | Trạng thái quy trình (xem flow) |
-| `proposed_at` | Date | |
-| `staff_approved_at` | Date | |
-| `admin_approved_at` | Date | |
-| `completed_at` | Date | |
-
-**Flow 5 bước:**
-```
-Bước 1: PROPOSE      → Maint Staff đề xuất    → status: 'proposed'
-Bước 2: STAFF REVIEW  → Staff senior duyệt     → status: 'staff_reviewing' → 'admin_reviewing'
-Bước 3: ADMIN REVIEW  → Admin phê duyệt BGH    → status: 'admin_reviewing' → 'procuring'
-Bước 4: PROCURE       → Lập kế hoạch mua mới   → status: 'procuring'
-Bước 5: COMPLETE      → Nhận TB mới, hoàn tất   → status: 'completed'
-                                                   equipment.status = 'disposed'
-```
-
----
-
-### 3.4 Bảng `import_sessions` — Lịch sử import hàng loạt
-
-Khi Maint Staff/Admin upload file Excel để nhập nhiều thiết bị cùng lúc.
-
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `_id` | ObjectId | PK |
-| `uploaded_by` | ObjectId | FK → users. Ai upload. |
-| `file_name` | String | Tên file gốc. VD: `thiet_bi_toa_A_2026.xlsx` |
-| `total_rows` | Number | Tổng số dòng trong file |
-| `success_count` | Number | Số dòng import thành công |
-| `error_count` | Number | Số dòng lỗi |
-| `errors` | [Object] | Chi tiết lỗi. VD: `[{row: 5, field: "code", message: "Mã TB-001 đã tồn tại"}]` |
-| `status` | String | `validating` → `validated` → `importing` → `completed` hoặc `failed` |
-| `created_at` | Date | |
-| `completed_at` | Date | |
-
-**Flow:**
-```
-Upload file → validating (kiểm tra format, trùng code)
-  → validated (hiện preview cho user xác nhận)
-  → importing (ghi vào equipment collection)
-  → completed (thành công) hoặc failed (lỗi nghiêm trọng)
-```
-
----
-
-## MODULE 4: REPAIR FLOW
+## MODULE 4: REPAIR
 
 **File:** [4_repair.dbml](file:///d:/Ruo/dbml/4_repair.dbml)
-**Actor:** Lecturer (báo sự cố + đánh giá), Maint Staff (xử lý)
-**UC liên quan:** Report malfunction, Track resolution, Evaluate quality, Receive incident, Assign task, Log progress, Close ticket, Escalate overdue, Request/Approve parts
+**Actor:** Lecturer, Facility Manager, Technician
 
-> ⚠️ **Đây là module phức tạp nhất** — kết nối cả 2 actor chính (Lecturer ↔ Maint Staff)
+### 4.1 `repairs` — Phiếu sửa chữa
 
-### 4.1 Bảng `repairs` — Phiếu sửa chữa (BẢNG PHỨC TẠP NHẤT)
+| Nhóm | Field | Giải thích |
+|:---|:---|:---|
+| Báo hỏng | `equipment_id` | Đồ hỏng |
+| | `source` | `lecturer_report` · `inventory_check` |
+| | `reported_by` | Lecturer, hoặc Technician nếu phát hiện khi kiểm kê |
+| | `incident_description`, `incident_images`, `reported_at` | |
+| Giao việc (FM) | `assigned_by`, `assigned_to` | Facility Manager → Technician |
+| | `replacement_equipment_id` | Đồ trong kho lấy ra thay. Nullable |
+| | `deadline` | Quá hạn thì hệ thống tự gửi thông báo `deadline_overdue` |
+| Xử lý (Technician) | `repair_unit_id` | Nếu gửi sửa ngoài |
+| | `damage_level` | `minor` · `major` · `critical` |
+| | `description`, `total_cost` | |
+| | `outcome` | `repaired` · `unrepairable` |
+| Nơi đến (FM) | `destination_room_id` | Phòng hoặc kho khi sửa xong |
+| Đánh giá (Lecturer) | `feedback_rating`, `feedback_comment`, `feedback_at` | 1–5 sao |
+| | `status` | `reported` → `assigned` → `in_progress` → `resolved` / `unrepairable` → `closed` |
 
-Mỗi row = 1 sự cố → 1 quy trình sửa chữa hoàn chỉnh. Bảng chia thành **3 vùng logic**:
+Bỏ khỏi bản cũ: `carried_by`, `returned_by`, `return_room_id`, `repair_location`, vì việc di chuyển đã ghi ở `equipment_movements`.
 
-#### Vùng 1: INCIDENT (Lecturer báo sự cố)
+### 4.2 `repair_logs` — Nhật ký sửa
+`repair_id`, `action`, `performed_by`, `description`, `cost`, `images`, `timestamp`. Bỏ `parts_used` vì trùng với `parts_requests`.
+
+### 4.3 `parts_requests` — Yêu cầu linh kiện
 
 | Field | Type | Giải thích |
 |:---|:---|:---|
-| `reported_by` | ObjectId | FK → users. **Lecturer** nào báo. |
-| `incident_description` | String | Mô tả sự cố bằng ngôn ngữ thường. VD: `"Máy chiếu phòng A101 bật lên nhưng không lên hình, có tiếng kêu lạ"` |
-| `incident_images` | [String] | Ảnh Lecturer chụp tại hiện trường. Tối đa 5. |
-| `reported_at` | Date | Thời điểm Lecturer bấm gửi báo cáo. |
+| `repair_id` | ObjectId | FK → `repairs` |
+| `requested_by` | ObjectId | Technician |
+| `approved_by` | ObjectId | Facility Manager |
+| `items` | Array | `[{ part_id, qty, unit_price }]`. `unit_price` chốt tại lúc duyệt |
+| `status` | String | `pending` · `approved` · `rejected` |
+| `reject_reason` | String | |
 
-#### Vùng 2: REPAIR (Maint Staff xử lý kỹ thuật)
-
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `equipment_id` | ObjectId | FK → equipment. TB bị hỏng (Staff xác nhận/liên kết). |
-| `assigned_to` | ObjectId | FK → users. **Maint Staff** được giao sửa. |
-| `repair_unit_id` | ObjectId | FK → repair_units. Gửi ra ngoài sửa ở đâu (nếu có). |
-| `damage_level` | String | Staff đánh giá mức độ: `minor` (nhẹ, sửa tại chỗ), `major` (nặng), `critical` (cần thay TB) |
-| `description` | String | Mô tả kỹ thuật. VD: `"Bóng đèn projector cháy, cần thay bóng Epson ELPLP96"` |
-| `images` | [String] | Ảnh kỹ thuật (Staff chụp trong quá trình sửa) |
-| `repair_location` | String | `on_site` = sửa tại chỗ, `external` = gửi ra xưởng |
-| `carried_by` | ObjectId | Người mang TB đi xưởng (nếu external) |
-| `returned_by` | ObjectId | Người mang TB về (nếu external) |
-| `return_room_id` | ObjectId | FK → rooms. Trả về phòng nào. |
-| `post_repair_warranty` | Date | BH mới sau sửa (xưởng cấp). VD: thêm 3 tháng. |
-| `total_cost` | Number | Tổng chi phí sửa (VNĐ). Tính từ repair_logs + parts. |
-| `deadline` | Date | Hạn hoàn thành. |
-| `deadline_status` | String | `on_track` (đúng hạn), `at_risk` (sắp trễ, <2 ngày), `overdue` (quá hạn) |
-
-#### Vùng 3: FEEDBACK (Lecturer đánh giá)
-
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `feedback_rating` | Number | 1-5 sao. 1=Rất tệ, 5=Xuất sắc. |
-| `feedback_comment` | String | Nhận xét. VD: `"Sửa nhanh trong 2 ngày, máy chạy tốt"` |
-| `feedback_by` | ObjectId | FK → users. Lecturer đánh giá (thường = reported_by). |
-| `feedback_at` | Date | Thời điểm đánh giá. |
-
-#### Trạng thái (status flow):
-
-```
-reported ──→ assigned ──→ in_progress ──→ resolved ──→ closed
-  (L báo)    (Staff giao)  (Staff sửa)   (Staff xong)  (L đánh giá)
-```
-
-**Dữ liệu mẫu hoàn chỉnh:**
-```json
-{
-  "equipment_id": "ObjectId → TB-2026-001 (Máy chiếu A101)",
-  
-  "reported_by": "ObjectId → GV001 (Trần Thị B)",
-  "incident_description": "Máy chiếu phòng A101 bật lên nhưng không lên hình, có tiếng kêu lạ",
-  "incident_images": ["/uploads/incidents/inc-001-1.jpg"],
-  "reported_at": "2026-09-28T08:30:00Z",
-  
-  "assigned_to": "ObjectId → BT002 (Nguyễn Văn Tùng)",
-  "repair_unit_id": null,
-  "damage_level": "major",
-  "description": "Bóng đèn projector cháy, thay bóng Epson ELPLP96",
-  "images": ["/uploads/repairs/rep-001-tech-1.jpg"],
-  "repair_location": "on_site",
-  "total_cost": 850000,
-  "deadline": "2026-10-02T17:00:00Z",
-  "deadline_status": "on_track",
-  "status": "closed",
-  
-  "feedback_rating": 4,
-  "feedback_comment": "Sửa xong trong 2 ngày, máy chạy tốt",
-  "feedback_by": "ObjectId → GV001",
-  "feedback_at": "2026-09-30T14:00:00Z"
-}
-```
+**Rule:** khi `approved` thì trừ `spare_parts.stock` theo `items`. Linh kiện đã dùng cho 1 phiếu = mọi `items` của các request `approved` thuộc phiếu đó. Vì vậy không cần bảng `repair_parts`.
 
 ---
 
-### 4.2 Bảng `repair_logs` — Timeline sửa chữa
+## MODULE 5: INVENTORY
 
-Mỗi lần có thay đổi trong quá trình sửa → ghi 1 log. Tạo thành **timeline** hoàn chỉnh.
+**File:** [5_inventory.dbml](file:///d:/Ruo/dbml/5_inventory.dbml)
+**Actor:** Facility Manager (Create inventory session, Reconcile inventory result), Technician (Scan equipment QR)
 
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `repair_id` | ObjectId | FK → repairs. Thuộc phiếu sửa nào. |
-| `action` | String | `reported` · `assigned` · `in_progress` · `resolved` · `closed` · `escalated` |
-| `performed_by` | ObjectId | FK → users. Ai thực hiện action này. |
-| `description` | String | Chi tiết. VD: `"Đã kiểm tra, xác định bóng đèn cháy"` |
-| `cost` | Number | Chi phí phát sinh lần này. VD: `350000` (tiền bóng đèn) |
-| `parts_used` | [Object] | Linh kiện đã dùng. VD: `[{part_id: "SP-BULB-01", quantity: 1}]` |
-| `images` | [String] | Ảnh tiến độ |
-| `timestamp` | Date | Thời điểm |
+### 5.1 `inventory_sessions` — Đợt kiểm kê
+`name`, `scope_type` (`building` · `floor` · `room`), `scope_ids`, `created_by` (FM), `date`, `status` (`draft` → `in_progress` → `completed` → `reconciled`), `completed_at`.
 
-**Timeline mẫu cho 1 phiếu sửa:**
-```
-09:00 → reported   (GV001): "Máy chiếu không lên hình"
-09:30 → assigned   (BT001): "Giao cho Tùng xử lý"
-10:15 → in_progress(BT002): "Đã kiểm tra, bóng đèn cháy. Xuất bóng từ kho."
-                              cost: 350000, parts_used: [{SP-BULB-01, qty:1}]
-14:00 → in_progress(BT002): "Đã thay bóng, kiểm tra hoạt động OK"
-                              images: [ảnh máy chiếu hoạt động]
-15:00 → resolved   (BT002): "Hoàn tất sửa chữa"
-                              cost: 500000 (công thợ)
-─── Ngày hôm sau ───
-08:00 → closed     (GV001): feedback_rating: 4, "Sửa nhanh, máy tốt"
-```
-
----
-
-### 4.3 Bảng `parts_requests` — Phiếu yêu cầu linh kiện
-
-Khi sửa chữa cần linh kiện → Staff tạo phiếu yêu cầu → cần được duyệt trước khi xuất kho.
+### 5.2 `inventory_logs` — Kết quả quét
 
 | Field | Type | Giải thích |
 |:---|:---|:---|
-| `repair_id` | ObjectId | FK → repairs. Xuất cho phiếu sửa nào. |
-| `requested_by` | ObjectId | FK → users. Staff yêu cầu. |
-| `approved_by` | ObjectId | FK → users. Staff senior duyệt. |
-| `items` | [Object] | Danh sách linh kiện: `[{part_id, quantity, unit_price}]` |
-| `status` | String | `pending` → `approved` / `rejected` |
-| `reject_reason` | String | Lý do từ chối (nếu có) |
+| `session_id` | ObjectId | FK → `inventory_sessions` |
+| `equipment_id` | ObjectId | FK → `equipment` |
+| `scanned_room_id` | ObjectId | Phòng thực tế nơi quét thấy |
+| `scanned_by` | ObjectId | Technician |
+| `status` | String | `matched` · `missing` · `damaged` · `wrong_location` |
+| `repair_id` | ObjectId | Phiếu sửa tự tạo khi `damaged` |
+| `note` | String | |
 
-**Flow:**
-```
-Staff tạo request: items = [{bóng đèn, qty: 1, giá: 350000}]
-  → status: 'pending'
-  → Senior duyệt: status = 'approved'
-  → spare_parts.stock -= quantity   ← TỰ ĐỘNG TRỪ KHO
-  → Tạo record trong repair_parts
-```
+**Đối soát (FM):**
+- `wrong_location` → tạo movement `transfer` để sửa lại vị trí.
+- `missing` → `equipment.status = lost`.
+- `damaged` → phiếu sửa đã tự tạo, đi theo luồng sửa chữa.
 
----
-
-### 4.4 Bảng `repair_parts` — Linh kiện đã xuất
-
-Bản ghi thực tế linh kiện đã được xuất cho 1 phiếu sửa (sau khi request được approve).
-
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `repair_id` | ObjectId | FK → repairs |
-| `part_id` | ObjectId | FK → spare_parts. Linh kiện nào. |
-| `request_id` | ObjectId | FK → parts_requests. Từ phiếu yêu cầu nào. |
-| `quantity` | Number | Số lượng xuất |
-| `unit_price` | Number | Giá tại thời điểm xuất (snapshot, không thay đổi dù spare_parts.price đổi sau) |
+> `maintenance_plans`, `maintenance_logs` đã bỏ. Kiểm kê định kỳ đóng vai trò kiểm tra tình trạng thiết bị.
 
 ---
 
-## MODULE 5: MAINTENANCE & INVENTORY
-
-**File:** [5_maintenance.dbml](file:///d:/Ruo/dbml/5_maintenance.dbml)
-**Actor:** Maintenance Staff
-**UC liên quan:** Schedule/Execute/Log maintenance, Conduct/Reconcile inventory
-
-### 5.1 Bảng `maintenance_plans` — Kế hoạch bảo trì định kỳ
-
-Maint Staff lập lịch kiểm tra thiết bị/phòng theo chu kỳ để **phòng ngừa** sự cố.
-
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `name` | String | Tên kế hoạch. VD: `"Bảo trì điều hòa tầng 3"`, `"Kiểm tra máy chiếu hàng quý"` |
-| `target_type` | String | Bảo trì theo gì: `room` (tất cả TB trong phòng), `equipment` (TB cụ thể), `category` (tất cả TB cùng loại) |
-| `target_ids` | [ObjectId] | Phòng/TB/loại nào. VD: target_type=room, target_ids=[A101, A102, A103] |
-| `frequency` | String | `monthly` (hàng tháng), `quarterly` (hàng quý), `yearly` (hàng năm) |
-| `checklist` | [Object] | Danh mục kiểm tra. VD: `[{item: "Kiểm tra gas", required: true}, {item: "Vệ sinh lọc", required: true}]` |
-| `next_due` | Date | Lần bảo trì tiếp theo. Hệ thống tự tính dựa trên frequency. |
-| `created_by` | ObjectId | FK → users. Staff tạo kế hoạch. |
-| `status` | String | `active` = đang chạy, `paused` = tạm dừng |
-
-**Dữ liệu mẫu:**
-```json
-{
-  "name": "Bảo trì điều hòa tầng 3 tòa A",
-  "target_type": "room",
-  "target_ids": ["ObjectId→A301", "ObjectId→A302", "ObjectId→A303"],
-  "frequency": "quarterly",
-  "checklist": [
-    { "item": "Kiểm tra gas lạnh", "required": true },
-    { "item": "Vệ sinh lọc gió", "required": true },
-    { "item": "Kiểm tra remote", "required": false },
-    { "item": "Đo nhiệt độ làm lạnh", "required": true }
-  ],
-  "next_due": "2026-12-01",
-  "status": "active"
-}
-```
-
----
-
-### 5.2 Bảng `maintenance_logs` — Kết quả thực hiện bảo trì
-
-Mỗi lần Staff thực hiện kiểm tra theo plan → ghi 1 log kết quả.
-
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `plan_id` | ObjectId | FK → maintenance_plans. Thuộc kế hoạch nào. |
-| `equipment_id` | ObjectId | FK → equipment. Kiểm tra TB nào. |
-| `checked_by` | ObjectId | FK → users. Staff thực hiện. |
-| `check_date` | Date | Ngày kiểm tra thực tế. |
-| `checklist_results` | [Object] | Kết quả từng mục. VD: `[{item: "Kiểm tra gas", passed: true, note: "OK"}, {item: "Vệ sinh lọc", passed: false, note: "Lọc bẩn nặng, cần thay"}]` |
-| `status` | String | `passed` = tất cả OK, `failed` = có mục fail, `needs_repair` = cần tạo phiếu sửa |
-| `auto_repair_id` | ObjectId | FK → repairs. Nếu `needs_repair` → tự động tạo phiếu sửa, lưu ID ở đây. |
-| `notes` | String | Ghi chú thêm. |
-
-**Flow tự động tạo phiếu sửa:**
-```
-Staff kiểm tra điều hòa A301:
-  checklist_results:
-    ✅ Kiểm tra gas: passed
-    ❌ Vệ sinh lọc: failed → note: "Lọc bẩn nặng, cần thay"
-    ✅ Kiểm tra remote: passed
-    ❌ Đo nhiệt độ: failed → note: "Làm lạnh yếu, chỉ được 26°C"
-
-  → status: 'needs_repair'
-  → HỆ THỐNG TỰ ĐỘNG TẠO phiếu repairs:
-     equipment_id = điều hòa A301
-     description = "Phát hiện qua bảo trì định kỳ: lọc bẩn + làm lạnh yếu"
-     status = 'reported'
-  → auto_repair_id = ID phiếu sửa vừa tạo
-```
-
----
-
-### 5.3 Bảng `inventory_sessions` — Đợt kiểm kê
-
-Mỗi đợt kiểm kê = 1 session. Có phạm vi (scope) cụ thể.
-
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `name` | String | Tên đợt. VD: `"Kiểm kê tầng 3 tòa A — Q4/2026"` |
-| `scope_type` | String | Phạm vi: `building` (cả tòa), `floor` (1 tầng), `room` (phòng cụ thể) |
-| `scope_ids` | [ObjectId] | ID phòng/tòa. Hệ thống tìm tất cả equipment trong scope. |
-| `created_by` | ObjectId | FK → users. Staff tạo đợt kiểm kê. |
-| `date` | Date | Ngày kiểm kê. |
-| `status` | String | `draft` → `in_progress` → `completed` → `reconciled` |
-| `completed_at` | Date | Ngày hoàn tất scan |
-
-**Status flow:**
-```
-draft ──→ in_progress ──→ completed ──→ reconciled
-(tạo)    (bắt đầu scan)  (scan hết)   (đối chiếu sai lệch, xử lý xong)
-```
-
----
-
-### 5.4 Bảng `inventory_logs` — Kết quả scan từng thiết bị
-
-Mỗi lần Staff scan QR 1 thiết bị trong đợt kiểm kê → ghi 1 log.
-
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `session_id` | ObjectId | FK → inventory_sessions. Thuộc đợt nào. |
-| `equipment_id` | ObjectId | FK → equipment. TB nào. |
-| `scanned_room_id` | ObjectId | FK → rooms. Scan ở phòng nào (vị trí thực tế). |
-| `scanned_by` | ObjectId | FK → users. Staff scan. |
-| `scanned_at` | Date | Thời điểm scan. |
-| `status` | String | Kết quả đối chiếu |
-| `note` | String | Ghi chú |
-
-**Các kết quả kiểm kê:**
-| Status | Ý nghĩa | Xử lý |
-|:---|:---|:---|
-| `matched` | TB đúng phòng, hoạt động tốt ✅ | Không cần làm gì |
-| `wrong_location` | TB ở sai phòng ⚠️ | Tạo transfer hoặc cập nhật room_id |
-| `damaged` | TB hỏng phát hiện khi kiểm kê 🔧 | Tạo phiếu repair |
-| `missing` | TB trên hệ thống nhưng không tìm thấy ❌ | equipment.status = 'lost' |
-
----
-
-## MODULE 6: NOTIFICATIONS & AUDIT
+## MODULE 6: NOTIFICATION & AUDIT
 
 **File:** [6_system.dbml](file:///d:/Ruo/dbml/6_system.dbml)
-**Actor:** Admin (Configure, Audit), System (tự động)
-**UC liên quan:** Audit system activity, Verify chain integrity, Export audit, Configure notification template, Monitor system health
+**Actor:** Admin (View audit log, Verify audit chain, Export audit log), System
 
-### 6.1 Bảng `notifications` — Thông báo in-app
-
-Mỗi row = 1 thông báo cho 1 user. Hiện badge đỏ khi chưa đọc.
+### 6.1 `notifications`
 
 | Field | Type | Giải thích |
 |:---|:---|:---|
-| `user_id` | ObjectId | FK → users. Gửi cho ai. |
-| `type` | String | Loại thông báo (xem bảng dưới). |
-| `title` | String | Tiêu đề ngắn. VD: `"Sự cố mới: Máy chiếu A101"` |
-| `message` | String | Nội dung. VD: `"GV Trần Thị B báo máy chiếu phòng A101 không lên hình"` |
-| `reference_type` | String | Liên kết đến loại nào: `repair`, `transfer`, `disposal`, `equipment`, `parts_request` |
-| `reference_id` | ObjectId | ID document gốc → click thông báo sẽ nhảy đến trang chi tiết |
-| `is_read` | Boolean | `false` = chưa đọc (badge đỏ), `true` = đã đọc |
+| `user_id` | ObjectId | Người nhận |
+| `type` | String | Xem bảng dưới |
+| `title`, `message` | String | Sinh từ hằng số trong code |
+| `reference_type`, `reference_id` | String, ObjectId | Link tới document gốc |
+| `is_read` | Boolean | |
 
-**Ma trận thông báo — Ai nhận gì:**
+| `type` | Gửi cho | Khi nào |
+|---|---|---|
+| `incident_reported` | Facility Manager | Lecturer báo hỏng hoặc kiểm kê phát hiện hỏng |
+| `repair_assigned` | Technician | FM giao việc |
+| `replacement_needed` | Technician | FM chọn đồ dự phòng cần mang ra phòng |
+| `parts_request` | Facility Manager | Technician xin linh kiện |
+| `repair_resolved` | Lecturer, FM | Sửa xong |
+| `repair_unrepairable` | Facility Manager | Không sửa được |
+| `movement_ordered` | Technician | FM ra lệnh di chuyển |
+| `disposal_request` | Admin | FM đề xuất thanh lý |
+| `warranty_expiring` | Facility Manager | Còn 30 ngày hết bảo hành |
+| `deadline_overdue` | FM, Technician | Phiếu quá hạn |
 
-| Type | Trigger | Gửi cho | Reference |
-|:---|:---|:---|:---|
-| `incident_reported` | Lecturer báo sự cố | Tất cả Maint Staff | repair |
-| `repair_assigned` | Staff giao việc sửa | Staff được giao | repair |
-| `repair_resolved` | Sửa xong | Lecturer (người báo) | repair |
-| `feedback_requested` | Nhắc đánh giá (sau 24h) | Lecturer | repair |
-| `transfer_approval` | Phiếu chuyển cần duyệt | Staff senior | transfer |
-| `warranty_expiring` | BH còn ≤ 30 ngày | Maint Staff | equipment |
-| `deadline_overdue` | Sửa chữa quá hạn | Staff + Admin | repair |
-| `parts_approved` | Phiếu linh kiện được duyệt | Staff (người yêu cầu) | parts_request |
-| `disposal_step` | Thanh lý chuyển bước | Người duyệt bước tiếp | disposal |
+> `notification_templates` đã bỏ: chỉ có 10 loại thông báo cố định, để dạng hằng số trong code là đủ.
 
----
-
-### 6.2 Bảng `notification_templates` — Template email
-
-Admin tùy chỉnh nội dung email cho từng loại thông báo. Dùng placeholder để chèn dữ liệu động.
+### 6.2 `audit_logs` — Nhật ký kiểm toán *(đã gộp `login_history`)*
 
 | Field | Type | Giải thích |
 |:---|:---|:---|
-| `type` | String | Unique. Mỗi loại notification có 1 template. |
-| `subject` | String | Tiêu đề email. VD: `"[RUO] Sự cố mới: {{equipmentName}} tại {{roomCode}}"` |
-| `body_html` | String | HTML email body. Dùng placeholder `{{...}}` |
-| `placeholders` | [String] | Danh sách placeholder khả dụng |
-| `is_active` | Boolean | `true` = gửi email loại này, `false` = tắt (chỉ thông báo in-app) |
-| `updated_by` | ObjectId | FK → users. Admin sửa lần cuối. |
+| `action` | String | `create` · `update` · `delete` · `approve` · **`login_success`** · **`login_failed`** · **`logout`** · **`password_reset`** |
+| `target_table`, `entity_id` | String, ObjectId | Collection và record bị tác động. Với login thì là `users` |
+| `user_id` | ObjectId | Nullable: đăng nhập bằng email không tồn tại |
+| `actor_email` | String | Email đã nhập khi đăng nhập |
+| `old_value`, `new_value` | JSON | |
+| `ip_address`, `user_agent` | String | |
+| `hash_sha256` | String | `SHA256(previous_hash + canonical_json(bản ghi))` |
+| `previous_hash` | String | Hash của bản ghi trước, tạo thành chuỗi |
+| `created_at` | Date | |
 
-**Ví dụ template:**
-```html
-Subject: [RUO] Sự cố mới: {{equipmentName}} tại {{roomCode}}
-
-Body:
-<h2>Sự cố thiết bị mới</h2>
-<p>Giảng viên <strong>{{reporterName}}</strong> vừa báo sự cố:</p>
-<ul>
-  <li>Thiết bị: {{equipmentName}} ({{equipmentCode}})</li>
-  <li>Phòng: {{roomCode}}</li>
-  <li>Mô tả: {{incidentDescription}}</li>
-  <li>Thời gian: {{reportedAt}}</li>
-</ul>
-<p><a href="{{repairUrl}}">Xem chi tiết & xử lý</a></p>
-
-Placeholders: [reporterName, equipmentName, equipmentCode,
-               roomCode, incidentDescription, reportedAt, repairUrl]
-```
+**Rules:**
+- **Không đặt TTL**: xoá bất kỳ bản ghi nào sẽ làm gãy chuỗi hash.
+- *Verify audit chain*: tính lại hash từng bản ghi theo thứ tự. Lệch ở đâu thì đó là chỗ dữ liệu bị sửa.
+- Thống kê đăng nhập (số lần, lần sai, IP lạ) lấy bằng `find({ action: /^login_/ })`.
 
 ---
 
-### 6.3 Bảng `audit_logs` — Nhật ký kiểm toán (SHA-256 Chain)
+## PHỤ LỤC: TRUY VẾT UC → COLLECTION
 
-Ghi lại **MỌI thay đổi** trong hệ thống. Không ai có thể xóa/sửa — đảm bảo tính minh bạch.
+| Gói UC | Ghi (C/U) | Đọc (R) |
+|---|---|---|
+| Authentication | `users`, `password_resets`, `refresh_tokens`, `audit_logs` | `roles` |
+| Repair | `repairs`, `repair_logs`, `parts_requests`, `spare_parts`, `notifications` | `equipment`, `users` |
+| Warehouse & Movement | `equipment_movements`, `equipment`, `spare_parts` | `rooms` |
+| Equipment Registry | `equipment`, `import_sessions` | `categories`, `suppliers`, `rooms` |
+| Inventory | `inventory_sessions`, `inventory_logs`, `repairs` | `equipment` |
+| Disposal | `disposals`, `equipment` | `repairs` |
+| Administration | `users`, `roles`, `categories`, `suppliers`, `repair_units`, `rooms` | — |
+| Reporting & Audit | — | Tất cả |
 
-| Field | Type | Giải thích |
-|:---|:---|:---|
-| `action` | String | Loại hành động: `create`, `update`, `delete`, `approve`, `transfer`, `escalate`, `feedback` |
-| `target_table` | String | Collection bị ảnh hưởng. VD: `equipment`, `repairs`, `transfers` |
-| `entity_id` | ObjectId | ID record bị ảnh hưởng |
-| `user_id` | ObjectId | FK → users. Ai thực hiện |
-| `old_value` | Mixed | Giá trị cũ (JSON snapshot) — null nếu `create` |
-| `new_value` | Mixed | Giá trị mới (JSON snapshot) — null nếu `delete` |
-| `ip_address` | String | IP người thực hiện |
-| `hash_sha256` | String | Hash của bản ghi hiện tại |
-| `previous_hash` | String | Hash của bản ghi trước đó → **tạo chuỗi liên kết** |
-
-**Cách tạo chuỗi SHA-256:**
-```
-Record #1 (đầu tiên):
-  data = "create|equipment|TB-001|admin|2026-01-15"
-  hash = SHA256(data) = "a1b2c3..."
-  previous_hash = "GENESIS"
-
-Record #2:
-  data = "update|equipment|TB-001|staff|2026-03-20" + "a1b2c3..."
-  hash = SHA256(data) = "d4e5f6..."
-  previous_hash = "a1b2c3..."    ← trỏ về Record #1
-
-Record #3:
-  data = "transfer|equipment|TB-001|staff|2026-06-01" + "d4e5f6..."
-  hash = SHA256(data) = "g7h8i9..."
-  previous_hash = "d4e5f6..."    ← trỏ về Record #2
-```
-
-**Verify integrity (UC: D-15):**
-```
-Admin bấm "Verify" → Server duyệt từ Record #1:
-  Tính lại hash Record #1 → so với hash đã lưu → khớp ✅
-  Tính lại hash Record #2 (dùng hash Record #1) → so → khớp ✅
-  Tính lại hash Record #3 (dùng hash Record #2) → so → khớp ✅
-  → "Chuỗi audit hoàn toàn nguyên vẹn" ✅
-
-Nếu ai đó sửa Record #2 trong DB:
-  Tính lại hash Record #2 → KHÔNG KHỚP ❌
-  → "Phát hiện giả mạo tại record #2" 🚨
-```
-
-**Dữ liệu mẫu:**
-```json
-{
-  "action": "approve",
-  "target_table": "transfers",
-  "entity_id": "ObjectId → transfer #15",
-  "user_id": "ObjectId → BT001 (Staff senior)",
-  "old_value": { "status": "pending" },
-  "new_value": { "status": "approved", "approved_by": "BT001" },
-  "ip_address": "192.168.1.50",
-  "hash_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "previous_hash": "d7a8f...b3c1",
-  "created_at": "2026-09-30T10:15:00Z"
-}
-```
-
----
-
-## TỔNG KẾT LIÊN KẾT GIỮA CÁC MODULE
-
-```
-┌─────────────┐
-│  Module 1   │ users._id được tham chiếu bởi TẤT CẢ module
-│  AUTH       │ (ghi trong note, không vẽ đường để tránh rối)
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│  Module 2   │ categories, rooms, suppliers, repair_units, spare_parts
-│  MASTER     │ = dữ liệu nền tảng, ít thay đổi
-└──────┬──────┘
-       │ được tham chiếu bởi ↓
-       ▼
-┌─────────────┐         ┌─────────────┐
-│  Module 3   │────────→│  Module 4   │
-│  EQUIPMENT  │  TB._id │  REPAIR     │
-│  TRANSFER   │         │  (Lecturer  │
-│  DISPOSAL   │←────────│   ↔ Staff)  │
-└──────┬──────┘  status └──────┬──────┘
-       │                       │ auto_repair_id
-       │                       ▼
-       │              ┌─────────────┐
-       │              │  Module 5   │
-       └─────────────→│  MAINT &    │
-         equipment_id │  INVENTORY  │
-                      └──────┬──────┘
-                             │ mọi thay đổi
-                             ▼
-                      ┌─────────────┐
-                      │  Module 6   │
-                      │  SYSTEM     │
-                      │  (Audit +   │
-                      │  Notif)     │
-                      └─────────────┘
-```
+Mọi collection đều có ít nhất 1 gói UC ghi dữ liệu → không có bảng thừa.

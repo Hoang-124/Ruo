@@ -1,0 +1,50 @@
+// ═══════════════════════════════════════
+// MODULE 5: INVENTORY
+// Actors: Facility Manager (Create inventory session, Reconcile result)
+//         Technician (Scan equipment QR)
+// Kiểm kê kiêm luôn kiểm tra định kỳ: thấy đồ damaged → tự tạo repairs
+// ═══════════════════════════════════════
+
+Table equipment {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+}
+
+Table rooms {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+}
+
+Table repairs {
+  _id ObjectId [pk]
+  equipment_id ObjectId
+  source String [note: 'lecturer_report | inventory_check']
+}
+
+Table inventory_sessions {
+  _id ObjectId [pk]
+  name String [note: 'Tên đợt kiểm kê']
+  scope_type String [note: 'building | floor | room']
+  scope_ids Array [note: 'Phạm vi']
+  created_by ObjectId [note: 'FK → users (Facility Manager)']
+  date DateTime
+  status String [note: 'draft | in_progress | completed | reconciled']
+  completed_at DateTime
+  created_at DateTime
+}
+
+Table inventory_logs {
+  _id ObjectId [pk]
+  session_id ObjectId [ref: > inventory_sessions._id]
+  equipment_id ObjectId [ref: > equipment._id]
+  scanned_room_id ObjectId [ref: > rooms._id]
+  scanned_by ObjectId [note: 'FK → users (Technician)']
+  scanned_at DateTime
+  status String [note: 'matched | missing | damaged | wrong_location']
+  repair_id ObjectId [ref: > repairs._id, note: 'Phiếu sửa tự tạo khi damaged']
+  note String
+}
+
+// maintenance_plans, maintenance_logs đã bỏ theo góp ý mentor

@@ -1,357 +1,188 @@
-<mxfile host="Electron">
-  <diagram name="Page-1" id="RUO-UC-Diagram">
-    <mxGraphModel dx="2400" dy="3200" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="2800" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-
-        <!-- ============================================================ -->
-        <!-- AUTHENTICATION MODULE (top center)                            -->
-        <!-- 5 UCs — shared by all 3 actors via inheritance               -->
-        <!-- ============================================================ -->
-        <mxCell id="a-box" parent="1" style="html=1;whiteSpace=wrap;fontSize=18;" value="" vertex="1">
-          <mxGeometry height="370" width="700" x="750" y="50" as="geometry" />
-        </mxCell>
-        <mxCell id="a-title" parent="1" style="text;align=center;fontStyle=1;verticalAlign=middle;spacingLeft=3;spacingRight=3;strokeColor=none;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontSize=20;" value="&lt;font&gt;AUTHENTICATION MODULE&lt;/font&gt;" vertex="1">
-          <mxGeometry height="30" width="300" x="950" y="58" as="geometry" />
-        </mxCell>
-
-        <!-- Auth actor: User -->
-        <mxCell id="a-user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=18;" value="User" vertex="1">
-          <mxGeometry height="60" width="30" x="600" y="200" as="geometry" />
-        </mxCell>
-
-        <!-- Inheriting actors (small) -->
-        <mxCell id="a-lec" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;" value="Lecturer" vertex="1">
-          <mxGeometry height="45" width="22" x="440" y="110" as="geometry" />
-        </mxCell>
-        <mxCell id="a-mst" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;" value="Maint. Staff" vertex="1">
-          <mxGeometry height="45" width="22" x="440" y="215" as="geometry" />
-        </mxCell>
-        <mxCell id="a-adm" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;" value="Admin" vertex="1">
-          <mxGeometry height="45" width="22" x="440" y="320" as="geometry" />
-        </mxCell>
-
-        <!-- Auth UCs -->
-        <mxCell id="a-uc-1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Log in" vertex="1">
-          <mxGeometry height="38" width="320" x="880" y="95" as="geometry" />
-        </mxCell>
-        <mxCell id="a-uc-2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Log out" vertex="1">
-          <mxGeometry height="38" width="320" x="880" y="150" as="geometry" />
-        </mxCell>
-        <mxCell id="a-uc-3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Recover password" vertex="1">
-          <mxGeometry height="38" width="320" x="880" y="205" as="geometry" />
-        </mxCell>
-        <mxCell id="a-uc-4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Update personal profile" vertex="1">
-          <mxGeometry height="38" width="320" x="880" y="260" as="geometry" />
-        </mxCell>
-        <mxCell id="a-uc-5" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Change password" vertex="1">
-          <mxGeometry height="38" width="320" x="880" y="315" as="geometry" />
-        </mxCell>
-
-        <!-- Auth edges: User → UCs -->
-        <mxCell id="a-e-1" edge="1" parent="1" source="a-user" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="a-uc-1" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="a-e-2" edge="1" parent="1" source="a-user" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="a-uc-2" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="a-e-3" edge="1" parent="1" source="a-user" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="a-uc-3" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="a-e-4" edge="1" parent="1" source="a-user" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="a-uc-4" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="a-e-5" edge="1" parent="1" source="a-user" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="a-uc-5" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-
-        <!-- Inheritance arrows: Lecturer/MaintStaff/Admin → User -->
-        <mxCell id="a-inh-1" edge="1" parent="1" source="a-lec" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" target="a-user" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="a-inh-2" edge="1" parent="1" source="a-mst" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" target="a-user" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="a-inh-3" edge="1" parent="1" source="a-adm" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" target="a-user" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <!-- ============================================================ -->
-        <!-- LECTURER MODULE (left, compact)                               -->
-        <!-- 4 UCs — report, track, evaluate, check                       -->
-        <!-- ============================================================ -->
-        <mxCell id="l-box" parent="1" style="html=1;whiteSpace=wrap;fontSize=18;" value="" vertex="1">
-          <mxGeometry height="310" width="700" x="200" y="520" as="geometry" />
-        </mxCell>
-        <mxCell id="l-title" parent="1" style="text;align=center;fontStyle=1;verticalAlign=middle;spacingLeft=3;spacingRight=3;strokeColor=none;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontSize=20;" value="&lt;font&gt;LECTURER MODULE&lt;/font&gt;" vertex="1">
-          <mxGeometry height="30" width="250" x="425" y="528" as="geometry" />
-        </mxCell>
-        <mxCell id="l-actor" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=18;" value="Lecturer" vertex="1">
-          <mxGeometry height="60" width="30" x="55" y="640" as="geometry" />
-        </mxCell>
-
-        <!-- Lecturer UCs -->
-        <mxCell id="l-uc-1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Report equipment malfunction" vertex="1">
-          <mxGeometry height="38" width="340" x="340" y="570" as="geometry" />
-        </mxCell>
-        <mxCell id="l-uc-2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Track incident resolution" vertex="1">
-          <mxGeometry height="38" width="340" x="340" y="630" as="geometry" />
-        </mxCell>
-        <mxCell id="l-uc-3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Evaluate repair quality" vertex="1">
-          <mxGeometry height="38" width="340" x="340" y="690" as="geometry" />
-        </mxCell>
-        <mxCell id="l-uc-4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Check room equipment" vertex="1">
-          <mxGeometry height="38" width="340" x="340" y="750" as="geometry" />
-        </mxCell>
-
-        <!-- Lecturer edges -->
-        <mxCell id="l-e-1" edge="1" parent="1" source="l-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="l-uc-1" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="l-e-2" edge="1" parent="1" source="l-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="l-uc-2" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="l-e-3" edge="1" parent="1" source="l-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="l-uc-3" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="l-e-4" edge="1" parent="1" source="l-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="l-uc-4" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-
-        <!-- ============================================================ -->
-        <!-- MAINTENANCE STAFF MODULE (left, tall)                         -->
-        <!-- 28 UCs — equipment, transfer, repair, maintenance, disposal   -->
-        <!-- ============================================================ -->
-        <mxCell id="m-box" parent="1" style="html=1;whiteSpace=wrap;fontSize=18;" value="" vertex="1">
-          <mxGeometry height="1340" width="850" x="200" y="930" as="geometry" />
-        </mxCell>
-        <mxCell id="m-title" parent="1" style="text;align=center;fontStyle=1;verticalAlign=middle;spacingLeft=3;spacingRight=3;strokeColor=none;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontSize=20;" value="&lt;font&gt;MAINTENANCE STAFF MODULE&lt;/font&gt;" vertex="1">
-          <mxGeometry height="30" width="350" x="450" y="938" as="geometry" />
-        </mxCell>
-        <mxCell id="m-actor" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=18;" value="Maint. Staff" vertex="1">
-          <mxGeometry height="60" width="30" x="55" y="1565" as="geometry" />
-        </mxCell>
-
-        <!-- Maint UCs: Equipment -->
-        <mxCell id="m-uc-1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Register new equipment" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="980" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Edit equipment record" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1025" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Import equipment batch" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1070" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Generate QR label" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1115" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-5" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Scan equipment QR code" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1160" as="geometry" />
-        </mxCell>
-
-        <!-- Maint UCs: Room -->
-        <mxCell id="m-uc-6" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Inspect room layout" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1205" as="geometry" />
-        </mxCell>
-
-        <!-- Maint UCs: Transfer -->
-        <mxCell id="m-uc-7" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Initiate equipment transfer" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1250" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-8" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Approve transfer request" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1295" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-9" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Complete equipment transfer" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1340" as="geometry" />
-        </mxCell>
-
-        <!-- Maint UCs: Repair -->
-        <mxCell id="m-uc-10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Receive incident report" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1385" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Assign repair task" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1430" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Log repair progress" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1475" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Close repair ticket" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1520" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Escalate overdue repair" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1565" as="geometry" />
-        </mxCell>
-
-        <!-- Maint UCs: Parts & Warranty -->
-        <mxCell id="m-uc-15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Request spare parts" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1610" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Approve parts request" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1655" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-17" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Check warranty status" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1700" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-18" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Record warranty change" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1745" as="geometry" />
-        </mxCell>
-
-        <!-- Maint UCs: Preventive Maintenance -->
-        <mxCell id="m-uc-19" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Schedule preventive maintenance" vertex="1">
-          <mxGeometry height="38" width="370" x="340" y="1790" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-20" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Execute maintenance checklist" vertex="1">
-          <mxGeometry height="38" width="360" x="340" y="1835" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-21" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Log maintenance result" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1880" as="geometry" />
-        </mxCell>
-
-        <!-- Maint UCs: Inventory -->
-        <mxCell id="m-uc-22" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Conduct inventory session" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1925" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-23" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Reconcile inventory result" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="1970" as="geometry" />
-        </mxCell>
-
-        <!-- Maint UCs: Disposal & Procurement -->
-        <mxCell id="m-uc-24" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Propose equipment disposal" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="2015" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-25" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Approve disposal request" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="2060" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-26" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Plan equipment procurement" vertex="1">
-          <mxGeometry height="38" width="350" x="340" y="2105" as="geometry" />
-        </mxCell>
-        <mxCell id="m-uc-27" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Receive replacement equipment" vertex="1">
-          <mxGeometry height="38" width="370" x="340" y="2150" as="geometry" />
-        </mxCell>
-
-        <!-- Maint UCs: Dashboard -->
-        <mxCell id="m-uc-28" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Analyze equipment dashboard" vertex="1">
-          <mxGeometry height="38" width="360" x="340" y="2195" as="geometry" />
-        </mxCell>
-
-        <!-- Maint Staff edges -->
-        <mxCell id="m-e-1" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-1" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-2" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-2" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-3" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-3" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-4" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-4" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-5" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-5" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-6" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-6" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-7" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-7" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-8" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-8" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-9" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-9" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-10" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-10" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-11" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-11" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-12" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-12" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-13" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-13" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-14" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-14" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-15" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-15" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-16" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-16" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-17" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-17" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-18" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-18" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-19" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-19" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-20" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-20" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-21" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-21" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-22" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-22" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-23" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-23" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-24" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-24" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-25" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-25" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-26" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-26" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-27" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-27" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m-e-28" edge="1" parent="1" source="m-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="m-uc-28" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-
-        <!-- ============================================================ -->
-        <!-- ADMIN MODULE (right column)                                   -->
-        <!-- 19 UCs — users, RBAC, catalog, reports, audit, system        -->
-        <!-- ============================================================ -->
-        <mxCell id="d-box" parent="1" style="html=1;whiteSpace=wrap;fontSize=18;" value="" vertex="1">
-          <mxGeometry height="960" width="800" x="1300" y="520" as="geometry" />
-        </mxCell>
-        <mxCell id="d-title" parent="1" style="text;align=center;fontStyle=1;verticalAlign=middle;spacingLeft=3;spacingRight=3;strokeColor=none;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;fontSize=20;" value="&lt;font&gt;ADMIN MODULE&lt;/font&gt;" vertex="1">
-          <mxGeometry height="30" width="200" x="1600" y="528" as="geometry" />
-        </mxCell>
-        <mxCell id="d-actor" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=18;" value="Admin" vertex="1">
-          <mxGeometry height="60" width="30" x="1150" y="965" as="geometry" />
-        </mxCell>
-
-        <!-- Admin UCs: User Management -->
-        <mxCell id="d-uc-1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Register user account" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="570" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Assign user role" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="615" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Deactivate user account" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="660" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Reset user password" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="705" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-5" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Search user directory" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="750" as="geometry" />
-        </mxCell>
-
-        <!-- Admin UCs: RBAC -->
-        <mxCell id="d-uc-6" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Configure role permissions" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="795" as="geometry" />
-        </mxCell>
-
-        <!-- Admin UCs: Master Data -->
-        <mxCell id="d-uc-7" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Define equipment category" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="840" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-8" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Register supplier" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="885" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-9" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Register repair unit" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="930" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Stock spare parts" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="975" as="geometry" />
-        </mxCell>
-
-        <!-- Admin UCs: Reports -->
-        <mxCell id="d-uc-11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Generate KPI report" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="1020" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Export statistical report" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="1065" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Assess equipment health score" vertex="1">
-          <mxGeometry height="38" width="355" x="1440" y="1110" as="geometry" />
-        </mxCell>
-
-        <!-- Admin UCs: Audit & System -->
-        <mxCell id="d-uc-14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Audit system activity" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="1155" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Verify audit chain integrity" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="1200" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Export audit records" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="1245" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-17" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Monitor system health" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="1290" as="geometry" />
-        </mxCell>
-        <mxCell id="d-uc-18" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Configure notification template" vertex="1">
-          <mxGeometry height="38" width="355" x="1440" y="1335" as="geometry" />
-        </mxCell>
-
-        <!-- Admin UCs: Disposal -->
-        <mxCell id="d-uc-19" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=17;" value="Authorize final disposal" vertex="1">
-          <mxGeometry height="38" width="340" x="1440" y="1380" as="geometry" />
-        </mxCell>
-
-        <!-- Admin edges -->
-        <mxCell id="d-e-1" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-1" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-2" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-2" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-3" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-3" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-4" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-4" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-5" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-5" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-6" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-6" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-7" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-7" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-8" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-8" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-9" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-9" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-10" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-10" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-11" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-11" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-12" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-12" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-13" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-13" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-14" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-14" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-15" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-15" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-16" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-16" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-17" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-17" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-18" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-18" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="d-e-19" edge="1" parent="1" source="d-actor" style="endArrow=none;html=1;rounded=0;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="d-uc-19" value=""><mxGeometry relative="1" as="geometry" /></mxCell>
-
-      </root>
-    </mxGraphModel>
-  </diagram>
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" agent="Ruo generator" version="24.7.0">
+<diagram id="p1" name="1. Tổng quan"><mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0"><root>
+<mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+<mxCell id="p1_sys" value="Hệ thống Ruo — Quản lý Cơ sở vật chất (48 Use Case)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;verticalAlign=top;align=center;fontSize=13;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="290" y="40" width="600" height="510" as="geometry"/></mxCell>
+<mxCell id="p1_P1" value="&lt;b&gt;1. Authentication&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;6 use case&lt;/font&gt;" style="shape=folder;tabWidth=70;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="330" y="90" width="230" height="70" as="geometry"/></mxCell>
+<mxCell id="p1_P2" value="&lt;b&gt;2. Repair&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;10 use case&lt;/font&gt;" style="shape=folder;tabWidth=70;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="330" y="200" width="230" height="70" as="geometry"/></mxCell>
+<mxCell id="p1_P4" value="&lt;b&gt;4. Equipment Registry&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;7 use case&lt;/font&gt;" style="shape=folder;tabWidth=70;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="330" y="310" width="230" height="70" as="geometry"/></mxCell>
+<mxCell id="p1_P3" value="&lt;b&gt;3. Warehouse &amp; Movement&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;6 use case&lt;/font&gt;" style="shape=folder;tabWidth=70;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="330" y="420" width="230" height="70" as="geometry"/></mxCell>
+<mxCell id="p1_P5" value="&lt;b&gt;5. Inventory&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;3 use case&lt;/font&gt;" style="shape=folder;tabWidth=70;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="620" y="90" width="230" height="70" as="geometry"/></mxCell>
+<mxCell id="p1_P6" value="&lt;b&gt;6. Disposal&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;2 use case&lt;/font&gt;" style="shape=folder;tabWidth=70;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="620" y="200" width="230" height="70" as="geometry"/></mxCell>
+<mxCell id="p1_P8" value="&lt;b&gt;8. Reporting &amp; Audit&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;5 use case&lt;/font&gt;" style="shape=folder;tabWidth=70;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="620" y="310" width="230" height="70" as="geometry"/></mxCell>
+<mxCell id="p1_P7" value="&lt;b&gt;7. Administration&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;9 use case&lt;/font&gt;" style="shape=folder;tabWidth=70;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="1"><mxGeometry x="620" y="420" width="230" height="70" as="geometry"/></mxCell>
+<mxCell id="p1_G" value="Guest" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="60" y="70" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p1_U" value="User" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="180" y="70" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p1_L" value="Lecturer" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="60" y="230" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p1_FM" value="Facility Manager" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="120" y="400" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p1_T" value="Technician" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1000" y="160" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p1_A" value="Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1000" y="400" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p1_e1" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_G" target="p1_P1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e2" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_U" target="p1_P1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e3" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_L" target="p1_P2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e4" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_L" target="p1_P4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e5" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_FM" target="p1_P2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e6" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_FM" target="p1_P3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e7" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_FM" target="p1_P4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e8" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_FM" target="p1_P5"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e9" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_FM" target="p1_P6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e10" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_FM" target="p1_P8"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e11" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_T" target="p1_P2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e12" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_T" target="p1_P3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e13" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_T" target="p1_P5"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e14" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_A" target="p1_P6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e15" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_A" target="p1_P7"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_e16" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p1_A" target="p1_P8"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p1_note" value="User = actor trừu tượng, gồm Lecturer, Facility Manager, Technician, Admin (xem trang 2). Chi tiết từng gói xem trang 2–5." style="text;html=1;align=left;verticalAlign=top;fontSize=10;fontColor=#666666;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="290" y="560" width="600" height="30" as="geometry"/></mxCell>
+</root></mxGraphModel></diagram>
+<diagram id="p2" name="2. Authentication"><mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0"><root>
+<mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+<mxCell id="p2_sys" value="Authentication (6 UC)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;verticalAlign=top;align=center;fontSize=13;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="170" y="40" width="640" height="340" as="geometry"/></mxCell>
+<mxCell id="p2_a1" value="Register account" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="90" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p2_a2" value="Log in" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="142" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p2_a3" value="Recover password" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="194" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p2_a_G" value="Guest" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="80" y="132" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p2_e1" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p2_a_G" target="p2_a1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_e2" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p2_a_G" target="p2_a2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_e3" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p2_a_G" target="p2_a3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_a4" value="Log out" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="90" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p2_a5" value="Update profile" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="142" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p2_a6" value="Change password" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="194" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p2_a_U" value="User" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="870" y="132" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p2_e4" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p2_a_U" target="p2_a4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_e5" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p2_a_U" target="p2_a5"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_e6" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p2_a_U" target="p2_a6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_otp" value="Verify email OTP" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1"><mxGeometry x="400" y="300" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p2_e7" value="«include»" style="endArrow=open;endSize=10;dashed=1;html=1;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_a1" target="p2_otp"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_e8" value="«include»" style="endArrow=open;endSize=10;dashed=1;html=1;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p2_a3" target="p2_otp"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_g0" value="Lecturer" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1030" y="20" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p2_e9" value="" style="endArrow=block;endFill=0;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="p2_g0" target="p2_a_U"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_g1" value="Facility Manager" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1030" y="120" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p2_e10" value="" style="endArrow=block;endFill=0;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="p2_g1" target="p2_a_U"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_g2" value="Technician" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1030" y="220" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p2_e11" value="" style="endArrow=block;endFill=0;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="p2_g2" target="p2_a_U"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_g3" value="Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1030" y="320" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p2_e12" value="" style="endArrow=block;endFill=0;endSize=12;html=1;rounded=0;" edge="1" parent="1" source="p2_g3" target="p2_a_U"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p2_note" value="Register account chỉ tạo được tài khoản Lecturer, bắt buộc xác thực email bằng OTP. Tài khoản Facility Manager / Technician / Admin do Admin tạo." style="text;html=1;align=left;verticalAlign=top;fontSize=10;fontColor=#666666;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="170" y="390" width="640" height="40" as="geometry"/></mxCell>
+</root></mxGraphModel></diagram>
+<diagram id="p3" name="3. Repair + Warehouse"><mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0"><root>
+<mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+<mxCell id="p3_sys" value="Repair + Warehouse &amp; Movement (16 UC)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;verticalAlign=top;align=center;fontSize=13;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="170" y="40" width="640" height="624" as="geometry"/></mxCell>
+<mxCell id="p3_r1" value="Report malfunction" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="90" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_r2" value="Track repair status" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="142" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_r3" value="Evaluate repair quality" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="194" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_a_L" value="Lecturer" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="80" y="132" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p3_e1" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_L" target="p3_r1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e2" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_L" target="p3_r2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e3" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_L" target="p3_r3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_r4" value="Assign repair task" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="268" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_w1" value="Select spare equipment" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="320" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_r5" value="Approve parts request" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="372" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_w2" value="Assign post-repair location" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="424" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_r6" value="Close repair ticket" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="476" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_w3" value="Order equipment transfer" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="528" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_w4" value="Update spare parts stock" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="580" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_a_FM" value="Facility Manager" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="80" y="414" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p3_e4" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_FM" target="p3_r4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e5" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_FM" target="p3_w1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e6" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_FM" target="p3_r5"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e7" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_FM" target="p3_w2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e8" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_FM" target="p3_r6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e9" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_FM" target="p3_w3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e10" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_FM" target="p3_w4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_r7" value="Accept repair task" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="90" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_r8" value="Update repair progress" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="142" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_r9" value="Request spare parts" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="194" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_r10" value="Report repair outcome" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="246" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_w5" value="Replace with spare equipment" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="298" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_w6" value="Confirm equipment movement" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="350" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p3_a_T" value="Technician" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="870" y="210" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p3_e11" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_T" target="p3_r7"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e12" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_T" target="p3_r8"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e13" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_T" target="p3_r9"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e14" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_T" target="p3_r10"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e15" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_T" target="p3_w5"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e16" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p3_a_T" target="p3_w6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e17" value="«extend»" style="endArrow=open;endSize=10;dashed=1;html=1;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p3_w1" target="p3_r4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e18" value="«extend»" style="endArrow=open;endSize=10;dashed=1;html=1;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p3_w2" target="p3_r10"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_e19" value="«include»" style="endArrow=open;endSize=10;dashed=1;html=1;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p3_w5" target="p3_w6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p3_note" value="Select spare equipment: chỉ khi kho còn đồ cùng loại. Assign post-repair location: chỉ khi kết quả là repaired (ưu tiên phòng gốc → phòng đang thiếu → kho). Kết quả unrepairable → Propose disposal (trang 4)." style="text;html=1;align=left;verticalAlign=top;fontSize=10;fontColor=#666666;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="170" y="674" width="640" height="40" as="geometry"/></mxCell>
+</root></mxGraphModel></diagram>
+<diagram id="p4" name="4. Equipment + Inventory + Disposal"><mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0"><root>
+<mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+<mxCell id="p4_sys" value="Equipment Registry + Inventory + Disposal (12 UC)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;verticalAlign=top;align=center;fontSize=13;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="170" y="40" width="640" height="672" as="geometry"/></mxCell>
+<mxCell id="p4_e7" value="View room equipment" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="90" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_a_L" value="Lecturer" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="80" y="104" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p4_e1" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_L" target="p4_e7"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_e1" value="Register equipment" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="212" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_e4" value="Print QR label" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="264" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_e2" value="Update equipment info" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="316" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_e3" value="Import equipment list" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="368" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_e5" value="Check warranty status" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="420" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_e6" value="Update warranty info" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="472" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_i1" value="Create inventory session" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="524" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_i2" value="Reconcile inventory result" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="576" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_d1" value="Propose disposal" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="628" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_a_FM" value="Facility Manager" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="80" y="410" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p4_e2" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_FM" target="p4_e1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_e3" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_FM" target="p4_e4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_e4" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_FM" target="p4_e2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_e5" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_FM" target="p4_e3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_e6" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_FM" target="p4_e5"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_e7" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_FM" target="p4_e6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_e8" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_FM" target="p4_i1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_e9" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_FM" target="p4_i2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_e10" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_FM" target="p4_d1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_i3" value="Scan equipment QR" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="90" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_a_T" value="Technician" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="870" y="104" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p4_e11" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_T" target="p4_i3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_d2" value="Approve disposal request" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="212" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p4_a_A" value="Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="870" y="226" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p4_e12" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p4_a_A" target="p4_d2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_e13" value="«extend»" style="endArrow=open;endSize=10;dashed=1;html=1;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p4_e4" target="p4_e1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_e14" value="«extend»" style="endArrow=open;endSize=10;dashed=1;html=1;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p4_e6" target="p4_e5"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p4_note" value="Kiểm kê thấy thiết bị damaged → hệ thống tự tạo phiếu sửa (source = inventory_check). Admin từ chối thanh lý → thiết bị quay về trạng thái repairing." style="text;html=1;align=left;verticalAlign=top;fontSize=10;fontColor=#666666;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="170" y="722" width="640" height="40" as="geometry"/></mxCell>
+</root></mxGraphModel></diagram>
+<diagram id="p5" name="5. Administration + Reporting"><mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0"><root>
+<mxCell id="0"/>
+<mxCell id="1" parent="0"/>
+<mxCell id="p5_sys" value="Administration + Reporting &amp; Audit (14 UC)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;verticalAlign=top;align=center;fontSize=13;fontStyle=1;spacingTop=6;" vertex="1" parent="1"><mxGeometry x="170" y="40" width="640" height="758" as="geometry"/></mxCell>
+<mxCell id="p5_m1" value="Create user account" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="90" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_m2" value="Assign user role" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="142" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_m3" value="Lock user account" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="194" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_m4" value="Reset user password" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="246" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_m5" value="Configure role permissions" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="298" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_m6" value="Define equipment category" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="350" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_m7" value="Register supplier" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="402" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_m8" value="Register repair unit" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="454" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_m9" value="Register room" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="506" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_p2" value="Export statistical report" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="558" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_p3" value="View audit log" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="610" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_p4" value="Verify audit chain" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="662" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_p5" value="Export audit log" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="200" y="714" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_a_A" value="Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="80" y="392" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p5_e1" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_m1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e2" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_m2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e3" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_m3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e4" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_m4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e5" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_m5"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e6" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_m6"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e7" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_m7"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e8" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_m8"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e9" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_m9"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e10" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_p2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e11" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_p3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e12" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_p4"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e13" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_p5"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_p1" value="View operation dashboard" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="600" y="90" width="180" height="40" as="geometry"/></mxCell>
+<mxCell id="p5_a_FM" value="Facility Manager" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=11;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="870" y="104" width="30" height="60" as="geometry"/></mxCell>
+<mxCell id="p5_e14" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_FM" target="p5_p1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e15" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="p5_a_A" target="p5_p1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_e16" value="«extend»" style="endArrow=open;endSize=10;dashed=1;html=1;rounded=0;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="p5_p5" target="p5_p3"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="p5_note" value="Register room gồm cả kho (room_type = warehouse) và định mức thiết bị của phòng (required_equipment)." style="text;html=1;align=left;verticalAlign=top;fontSize=10;fontColor=#666666;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="170" y="808" width="640" height="40" as="geometry"/></mxCell>
+</root></mxGraphModel></diagram>
 </mxfile>
