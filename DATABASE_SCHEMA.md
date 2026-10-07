@@ -1,7 +1,7 @@
 # DATABASE SCHEMA — RUO
 
-> MongoDB · Mongoose ODM · **20 collections** · **48 Use Cases**
-> Actors: **Guest** · **Lecturer** · **Facility Manager** · **Technician** · **Admin** (+ **User** = mọi người đã đăng nhập)
+> MongoDB · Mongoose ODM · **20 collections** · **68 Use Cases**
+> Actors: **Guest** · **Lecturer** · **Facility Manager** · **Technician** · **Admin**
 >
 > ⚙️ File này được **sinh tự động** từ [dbdiagram.dbml](file:///d:/Ruo/dbdiagram.dbml). Muốn sửa schema thì sửa DBML rồi chạy `node scripts/docs/gen_schema_md.mjs`.
 > Giải thích nghiệp vụ, vòng đời thiết bị và kịch bản mẫu: [DB_MODULES_EXPLAINED.md](file:///d:/Ruo/DB_MODULES_EXPLAINED.md).

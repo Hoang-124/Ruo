@@ -1,9 +1,8 @@
 # GIẢI THÍCH CHI TIẾT 6 MODULE DATABASE — DỰ ÁN RUO
 
-> **20 collections · 48 Use Cases · 5 Actors:** Guest, Lecturer, Facility Manager, Technician, Admin
-> (cộng actor trừu tượng **User** = mọi người đã đăng nhập)
+> **20 collections · 68 Use Cases · 5 Actors:** Guest, Lecturer, Facility Manager, Technician, Admin
 >
-> Sơ đồ: [dbdiagram.dbml](file:///d:/Ruo/dbdiagram.dbml) (bản gộp) · [dbml/](file:///d:/Ruo/dbml) (6 module) · [Actor_UseCase.drawio](file:///d:/Ruo/Actor_UseCase.drawio) (6 trang, mỗi actor 1 trang)
+> Sơ đồ: [dbdiagram.dbml](file:///d:/Ruo/dbdiagram.dbml) (bản gộp) · [dbml/](file:///d:/Ruo/dbml) (6 module) · [Actor_UseCase.drawio](file:///d:/Ruo/Actor_UseCase.drawio) (5 trang, mỗi actor 1 trang)
 
 ---
 
@@ -14,7 +13,7 @@
 | 1 | Maintenance Staff quá rộng | Tách thành **Facility Manager** (giao việc, duyệt, quyết định) và **Technician** (đi làm thực địa) |
 | 2 | Gộp audit log và login | Bỏ `login_history`. Đăng nhập / đăng xuất / đặt lại mật khẩu ghi vào `audit_logs` |
 | 3 | Maintenance plan không liên quan equipment | Bỏ `maintenance_plans`, `maintenance_logs`. Kiểm kê kiêm luôn việc kiểm tra định kỳ |
-| 4 | Use case rườm rà | 48 UC, mỗi UC là 1 động từ cụ thể. Mỗi actor 1 trang riêng, vẽ đơn giản |
+| 4 | Use case rườm rà | 68 UC, mỗi UC là 1 động từ cụ thể (không dùng Manage). Mỗi actor 1 trang riêng, vẽ đơn giản |
 | 5 | `notification_templates` thừa | Bỏ. Nội dung thông báo là hằng số trong code |
 | 6 | Sửa xong đồ ở đâu, kho dự phòng | Kho = `rooms.room_type = 'warehouse'`, định mức `rooms.required_equipment`. `transfers` đổi thành `equipment_movements` ghi mọi lần di chuyển |
 
@@ -39,12 +38,13 @@
 
 | Actor | Vai trò | UC chính |
 |---|---|---|
-| **Guest** | Chưa đăng nhập | Register account, Log in, Recover password |
-| **User** | Mọi người đã đăng nhập | Log out, Update profile, Change password |
-| **Lecturer** | Giảng viên, người dùng phòng | Report malfunction, Track repair status, Evaluate repair quality, View room equipment |
-| **Facility Manager** | Quản lý CSVC: **giao việc và duyệt** | Assign repair task, Approve parts request, Select spare equipment, Assign post-repair location, Order equipment transfer, Register equipment, Create inventory session, Propose disposal… (17 UC) |
-| **Technician** | Kỹ thuật viên: **đi làm** | Accept repair task, Update repair progress, Request spare parts, Report repair outcome, Replace with spare equipment, Confirm equipment movement, Scan equipment QR |
-| **Admin** | Quản trị hệ thống | Tài khoản, phân quyền, danh mục, duyệt thanh lý cuối, báo cáo, kiểm toán (15 UC) |
+| **Guest** | Chưa có tài khoản | Register account, Verify email OTP, Recover password (3 UC) |
+| **Lecturer** | Giảng viên, người dùng phòng | View room equipment, View equipment details, Scan equipment QR, Report malfunction, Track repair status, View repair history, Evaluate repair quality (12 UC) |
+| **Facility Manager** | Quản lý CSVC: **giao việc và duyệt** | View repair tickets, Assign repair task, Select spare equipment, Approve parts request, View warehouse stock, View room shortage, Assign post-repair location, Order equipment transfer, Register equipment, Create inventory session, Propose disposal… (29 UC) |
+| **Technician** | Kỹ thuật viên: **đi làm** | View assigned tasks, Accept repair task, Update repair progress, View spare parts stock, Request spare parts, Report repair outcome, View movement orders, Replace with spare equipment, Confirm equipment movement, Scan equipment QR (17 UC) |
+| **Admin** | Quản trị hệ thống | View user list, Create user account, Assign user role, Lock user account, Configure role permissions, danh mục, View disposal requests, Approve disposal request, báo cáo, kiểm toán (28 UC) |
+
+**UC tài khoản chung:** mọi actor đã đăng nhập (Lecturer, Facility Manager, Technician, Admin) đều có *Log in, Log out, Update profile, Change password, View notifications*. Các UC này được vẽ lặp lại ở từng trang để mỗi trang tự đủ, không dùng actor trừu tượng.
 
 **Nguyên tắc:** người làm không tự duyệt việc của mình.
 - Technician xin linh kiện → Facility Manager duyệt.
@@ -115,8 +115,8 @@ in_use ──báo hỏng──► broken ──FM giao việc──► repairing
 ## MODULE 1: AUTH & USER
 
 **File:** [1_auth.dbml](file:///d:/Ruo/dbml/1_auth.dbml)
-**Actor:** Guest, User, Admin
-**UC:** Register account, Log in, Recover password, Log out, Update profile, Change password, Create user account, Assign user role, Lock user account, Reset user password, Configure role permissions
+**Actor:** Guest, Admin (và mọi actor đã đăng nhập với UC tài khoản chung)
+**UC:** Register account, Verify email OTP, Recover password, Log in, Log out, Update profile, Change password, View user list, View user details, Create user account, Assign user role, Lock user account, Reset user password, View role permissions, Configure role permissions
 
 ### 1.1 `users` — Tài khoản
 

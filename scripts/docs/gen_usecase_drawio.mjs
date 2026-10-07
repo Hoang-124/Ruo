@@ -6,34 +6,44 @@ import { writeFileSync } from 'node:fs';
 
 const out = process.argv[2] || 'Actor_UseCase.drawio';
 
+// UC chung của mọi tài khoản đã có: vẽ lặp lại ở từng trang để mỗi trang tự đủ
+const ACCOUNT = ['Log in', 'Log out', 'Update profile', 'Change password', 'View notifications'];
+
 const ACTORS = [
   { name: 'Guest', module: 'GUEST MODULE', ucs: [
-    'Register account', 'Log in', 'Recover password'
-  ] },
-  { name: 'User', module: 'USER MODULE', ucs: [
-    'Log out', 'Update profile', 'Change password'
+    'Register account', 'Verify email OTP', 'Recover password'
   ] },
   { name: 'Lecturer', module: 'LECTURER MODULE', ucs: [
-    'Report malfunction', 'Track repair status', 'Evaluate repair quality', 'View room equipment'
+    ...ACCOUNT,
+    'View room equipment', 'View equipment details', 'Scan equipment QR',
+    'Report malfunction', 'Track repair status', 'View repair history', 'Evaluate repair quality'
   ] },
   { name: 'Technician', module: 'TECHNICIAN MODULE', ucs: [
-    'Accept repair task', 'Update repair progress', 'Request spare parts', 'Report repair outcome',
-    'Replace with spare equipment', 'Confirm equipment movement', 'Scan equipment QR'
+    ...ACCOUNT,
+    'View assigned tasks', 'View repair task details', 'Accept repair task', 'Update repair progress',
+    'View spare parts stock', 'Request spare parts', 'Report repair outcome',
+    'View movement orders', 'Replace with spare equipment', 'Confirm equipment movement',
+    'Scan equipment QR', 'View equipment details'
   ] },
   { name: 'Facility Manager', module: 'FACILITY MANAGER MODULE', ucs: [
-    'Assign repair task', 'Select spare equipment', 'Approve parts request', 'Close repair ticket',
-    'Assign post-repair location', 'Order equipment transfer', 'Update spare parts stock',
-    'Register equipment', 'Print QR label', 'Update equipment info', 'Import equipment list',
-    'Check warranty status', 'Update warranty info',
-    'Create inventory session', 'Reconcile inventory result',
+    ...ACCOUNT,
+    'View repair tickets', 'Assign repair task', 'Select spare equipment', 'Approve parts request', 'Close repair ticket',
+    'View warehouse stock', 'View room shortage', 'Assign post-repair location', 'Order equipment transfer',
+    'View movement history', 'Update spare parts stock',
+    'View equipment list', 'View equipment details', 'Register equipment', 'Update equipment info',
+    'Import equipment list', 'Print QR label', 'Check warranty status', 'Update warranty info',
+    'Create inventory session', 'View inventory result', 'Reconcile inventory result',
     'Propose disposal', 'View operation dashboard'
   ] },
   { name: 'Admin', module: 'ADMIN MODULE', ucs: [
-    'Create user account', 'Assign user role', 'Lock user account', 'Reset user password',
-    'Configure role permissions', 'Define equipment category', 'Register supplier',
-    'Register repair unit', 'Register room', 'Approve disposal request',
-    'View operation dashboard', 'Export statistical report', 'View audit log',
-    'Verify audit chain', 'Export audit log'
+    ...ACCOUNT,
+    'View user list', 'View user details', 'Create user account', 'Assign user role',
+    'Lock user account', 'Reset user password', 'View role permissions', 'Configure role permissions',
+    'View room list', 'Register room', 'Define equipment category', 'Register supplier', 'Register repair unit',
+    'View equipment list', 'View equipment details',
+    'View disposal requests', 'Approve disposal request',
+    'View operation dashboard', 'View statistical report', 'Export statistical report',
+    'View audit log', 'Verify audit chain', 'Export audit log'
   ] }
 ];
 
@@ -48,7 +58,7 @@ const esc = (s) => String(s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const BX = 160, BW = 440, BY = 40;        // khung hệ thống
-const UC_X = BX + 170, UC_W = 210, UC_H = 30, STEP = 40;
+const UC_X = BX + 170, UC_W = 210, UC_H = 26, STEP = 34;
 const PAGE_W = 827, PAGE_H = 1169;        // A4 dọc
 
 function actorPage(a, i) {
