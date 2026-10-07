@@ -186,6 +186,17 @@ export const AuditLogPage = () => {
             Kiểm Tra Toàn Vẹn Chuỗi SHA-256
           </Button>
 
+          <a
+            href={auditApi.exportCsv()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="laser-btn laser-btn-secondary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', textDecoration: 'none' }}
+          >
+            <Icons.Download size={16} />
+            <span>Xuất CSV Kiểm Toán</span>
+          </a>
+
           <Button
             variant="secondary"
             icon={Icons.RefreshCw || Icons.Clock}
@@ -276,11 +287,15 @@ export const AuditLogPage = () => {
               style={{ height: '34px', fontSize: '12px', padding: '0 10px' }}
             >
               <option value="ALL">Tất cả bảng</option>
+              <option value="users">users</option>
+              <option value="roles">roles</option>
               <option value="equipments">equipments</option>
-              <option value="transfers">transfers</option>
+              <option value="equipment_movements">equipment_movements</option>
               <option value="repairs">repairs</option>
+              <option value="parts_requests">parts_requests</option>
               <option value="disposals">disposals</option>
               <option value="inventory_sessions">inventory_sessions</option>
+              <option value="master_data">master_data</option>
               <option value="system">system</option>
             </select>
           </div>

@@ -39,7 +39,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
   const [regFullName, setRegFullName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regEmployeeCode, setRegEmployeeCode] = useState('');
-  const [regRole, setRegRole] = useState('staff');
+  const [regRole, setRegRole] = useState('lecturer');
   const [regDepartment, setRegDepartment] = useState('Khoa Công nghệ Thông tin');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
@@ -64,37 +64,47 @@ export const LoginPage = ({ onLoginSuccess }) => {
   const [successMsg, setSuccessMsg] = useState(null);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
-  // Canonical demo accounts calibrated for both light and dark modes
+  // Canonical demo accounts calibrated for both light and dark modes (4 Canonical Roles)
   const DEMO_ACCOUNTS = [
     {
       role: 'admin',
       roleLabel: 'Admin BGH',
       email: 'admin@ruo.edu.vn',
-      code: 'AD000001',
-      desc: 'Toàn quyền cấu hình & duyệt thanh lý BGH',
+      code: 'AD001',
+      desc: 'Toàn quyền cấu hình, duyệt thanh lý BGH & kiểm toán SHA-256',
       badgeColor: isLight ? '#DC2626' : '#EF4444',
       badgeBg: isLight ? '#FEF2F2' : 'rgba(239, 68, 68, 0.12)',
       badgeBorder: isLight ? '#FECACA' : 'rgba(239, 68, 68, 0.3)'
     },
     {
-      role: 'manager',
-      roleLabel: 'Quản Lý HC',
+      role: 'facility_manager',
+      roleLabel: 'Quản Lý CSVC',
       email: 'manager@ruo.edu.vn',
-      code: 'QL000001',
-      desc: 'Duyệt điều chuyển, phân công kỹ thuật',
+      code: 'QL001',
+      desc: 'Điều phối Kanban SLA, xuất kho KHO-01, đề xuất thanh lý R>=60%',
+      badgeColor: isLight ? '#D97706' : '#F59E0B',
+      badgeBg: isLight ? '#FFFBEB' : 'rgba(245, 158, 11, 0.12)',
+      badgeBorder: isLight ? '#FDE68A' : 'rgba(245, 158, 11, 0.3)'
+    },
+    {
+      role: 'technician',
+      roleLabel: 'Kỹ Thuật Viên',
+      email: 'technician@ruo.edu.vn',
+      code: 'KT001',
+      desc: 'Tiếp nhận ca sửa, xin linh kiện, xác nhận di chuyển & quét QR',
+      badgeColor: isLight ? '#0284C7' : '#0EA5E9',
+      badgeBg: isLight ? '#F0F9FF' : 'rgba(14, 165, 233, 0.12)',
+      badgeBorder: isLight ? '#BAE6FD' : 'rgba(14, 165, 233, 0.3)'
+    },
+    {
+      role: 'lecturer',
+      roleLabel: 'Giảng Viên',
+      email: 'lecturer@ruo.edu.vn',
+      code: 'GV001',
+      desc: 'Tra cứu thiết bị phòng, báo hỏng sự cố & đánh giá nghiệm thu 1-5 sao',
       badgeColor: isLight ? '#059669' : '#10B981',
       badgeBg: isLight ? '#ECFDF5' : 'rgba(16, 185, 129, 0.12)',
       badgeBorder: isLight ? '#A7F3D0' : 'rgba(16, 185, 129, 0.3)'
-    },
-    {
-      role: 'staff',
-      roleLabel: 'Chuyên Viên',
-      email: 'staff@ruo.edu.vn',
-      code: 'NV000001',
-      desc: 'Báo hỏng, bảo trì & kiểm kê thực địa QR',
-      badgeColor: isLight ? '#2563EB' : '#3E7BFA',
-      badgeBg: isLight ? '#EFF6FF' : 'rgba(62, 123, 250, 0.12)',
-      badgeBorder: isLight ? '#BFDBFE' : 'rgba(62, 123, 250, 0.3)'
     }
   ];
 
@@ -178,7 +188,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
       case 'employeeCode': {
         const val = String(value || '').trim();
         if (!val) return 'Mã cán bộ / MSSV là bắt buộc.';
-        if (val.length < 3) return 'Mã số tối thiểu 3 ký tự (e.g. CB198402, NV000001).';
+        if (val.length < 3) return 'Mã số tối thiểu 3 ký tự (e.g. GV001, KT001, QL001).';
         return '';
       }
       case 'password': {
@@ -683,26 +693,26 @@ export const LoginPage = ({ onLoginSuccess }) => {
                     MK: Ruo@2026
                   </span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
                   {DEMO_ACCOUNTS.map((acc) => (
                     <button
                       key={acc.role}
                       type="button"
                       onClick={() => handleQuickFill(acc.email)}
                       style={{
-                        padding: '8px',
+                        padding: '8px 4px',
                         borderRadius: '8px',
                         background: acc.badgeBg,
                         border: `1px solid ${acc.badgeBorder}`,
                         color: acc.badgeColor,
                         cursor: 'pointer',
-                        textAlign: 'left',
+                        textAlign: 'center',
                         transition: 'all 0.15s ease'
                       }}
                       title={acc.desc}
                     >
-                      <div style={{ fontSize: '11.5px', fontWeight: 800 }}>{acc.roleLabel}</div>
-                      <div style={{ fontSize: '10.5px', opacity: 0.9, fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{acc.roleLabel}</div>
+                      <div style={{ fontSize: '10px', opacity: 0.9, fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {acc.code}
                       </div>
                     </button>
@@ -724,7 +734,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
                       type="text"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder="e.g. admin@ruo.edu.vn hoặc AD000001"
+                      placeholder="e.g. admin@ruo.edu.vn hoặc AD001"
                       disabled={loading || lockoutData?.isLocked}
                       required
                       style={{
@@ -1121,39 +1131,57 @@ export const LoginPage = ({ onLoginSuccess }) => {
                     <div style={{ display: 'flex', gap: '6px' }}>
                       <button
                         type="button"
-                        onClick={() => setRegRole('staff')}
+                        onClick={() => setRegRole('lecturer')}
                         style={{
                           flex: 1,
                           padding: '9px 4px',
                           borderRadius: '8px',
-                          border: `1px solid ${regRole === 'staff' ? 'var(--blueprint-500)' : isLight ? '#D4D4D8' : 'var(--border-default)'}`,
-                          background: regRole === 'staff' ? (isLight ? '#EFF6FF' : 'rgba(62,123,250,0.15)') : (isLight ? '#FFFFFF' : 'var(--surface-2)'),
-                          color: regRole === 'staff' ? 'var(--blueprint-500)' : 'var(--ink-secondary)',
-                          fontSize: '11.5px',
+                          border: `1px solid ${regRole === 'lecturer' ? 'var(--blueprint-500)' : isLight ? '#D4D4D8' : 'var(--border-default)'}`,
+                          background: regRole === 'lecturer' ? (isLight ? '#EFF6FF' : 'rgba(62,123,250,0.15)') : (isLight ? '#FFFFFF' : 'var(--surface-2)'),
+                          color: regRole === 'lecturer' ? 'var(--blueprint-500)' : 'var(--ink-secondary)',
+                          fontSize: '11px',
                           fontWeight: 700,
                           cursor: 'pointer',
                           transition: 'all 0.15s ease'
                         }}
                       >
-                        Chuyên Viên / GV
+                        Giảng Viên
                       </button>
                       <button
                         type="button"
-                        onClick={() => setRegRole('manager')}
+                        onClick={() => setRegRole('technician')}
                         style={{
                           flex: 1,
                           padding: '9px 4px',
                           borderRadius: '8px',
-                          border: `1px solid ${regRole === 'manager' ? 'var(--blueprint-500)' : isLight ? '#D4D4D8' : 'var(--border-default)'}`,
-                          background: regRole === 'manager' ? (isLight ? '#EFF6FF' : 'rgba(62,123,250,0.15)') : (isLight ? '#FFFFFF' : 'var(--surface-2)'),
-                          color: regRole === 'manager' ? 'var(--blueprint-500)' : 'var(--ink-secondary)',
-                          fontSize: '11.5px',
+                          border: `1px solid ${regRole === 'technician' ? 'var(--blueprint-500)' : isLight ? '#D4D4D8' : 'var(--border-default)'}`,
+                          background: regRole === 'technician' ? (isLight ? '#EFF6FF' : 'rgba(62,123,250,0.15)') : (isLight ? '#FFFFFF' : 'var(--surface-2)'),
+                          color: regRole === 'technician' ? 'var(--blueprint-500)' : 'var(--ink-secondary)',
+                          fontSize: '11px',
                           fontWeight: 700,
                           cursor: 'pointer',
                           transition: 'all 0.15s ease'
                         }}
                       >
-                        Quản Lý HC
+                        Kỹ Thuật Viên
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRegRole('facility_manager')}
+                        style={{
+                          flex: 1,
+                          padding: '9px 4px',
+                          borderRadius: '8px',
+                          border: `1px solid ${regRole === 'facility_manager' ? 'var(--blueprint-500)' : isLight ? '#D4D4D8' : 'var(--border-default)'}`,
+                          background: regRole === 'facility_manager' ? (isLight ? '#EFF6FF' : 'rgba(62,123,250,0.15)') : (isLight ? '#FFFFFF' : 'var(--surface-2)'),
+                          color: regRole === 'facility_manager' ? 'var(--blueprint-500)' : 'var(--ink-secondary)',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        Quản Lý CSVC
                       </button>
                     </div>
                   </div>

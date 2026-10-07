@@ -26,5 +26,6 @@ router.put('/:id', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.
 
 // Update warranty info (Facility Manager, Admin)
 router.patch('/:id/warranty', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), updateWarrantyInfo);
+router.put('/:id/warranty', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), updateWarrantyInfo);
 
 export default router;

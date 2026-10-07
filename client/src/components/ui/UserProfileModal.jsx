@@ -92,22 +92,20 @@ const SvgIcons = {
 };
 
 export const UserProfileModal = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
-
   const { currentUser, updateProfile, changePassword, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState('view'); // 'view', 'edit', 'password'
 
   // Edit profile state (UC-1.6)
-  const [phone, setPhone] = useState(currentUser.phone || '');
-  const [avatar, setAvatar] = useState(currentUser.avatar || 'TH');
+  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [avatar, setAvatar] = useState(currentUser?.avatar || 'TH');
   const [editStatus, setEditStatus] = useState({ loading: false, success: null, error: null });
 
   // Sync state with currentUser when loaded or updated
   useEffect(() => {
-    if (currentUser.phone !== undefined) setPhone(currentUser.phone || '');
-    if (currentUser.avatar !== undefined) setAvatar(currentUser.avatar || 'TH');
-  }, [currentUser.phone, currentUser.avatar]);
+    if (currentUser?.phone !== undefined) setPhone(currentUser?.phone || '');
+    if (currentUser?.avatar !== undefined) setAvatar(currentUser?.avatar || 'TH');
+  }, [currentUser?.phone, currentUser?.avatar]);
 
   // Change password state (UC-1.4)
   const [oldPassword, setOldPassword] = useState('');

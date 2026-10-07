@@ -77,7 +77,7 @@ export const useRouter = () => {
       return { tab: 'disposal_calc', params: {} };
     }
     if (base === 'map') {
-      return { tab: 'map', params: {} };
+      return { tab: 'dashboard', params: {} };
     }
     if (base === 'admin') {
       const sub = segs[1];

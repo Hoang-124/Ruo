@@ -1,105 +1,157 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
+import { inventoryApi, masterDataApi } from '../../lib/api';
 
 export const InventoryPage = () => {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [sessions, setSessions] = useState([]);
+  const [activeSession, setActiveSession] = useState(null);
+  const [sessionLogs, setSessionLogs] = useState([]);
+  const [rooms, setRooms] = useState([]);
 
-  const [sessions, setSessions] = useState([
-    {
-      _id: 'INV2026-Q3',
-      name: 'Kiểm Kê Tài Sản Toàn Diện Nhà A1 Học Kỳ 1 2026-2027',
-      scope_type: 'Tòa nhà A1 (5 tầng)',
-      date: '2026-09-30',
-      total_items: 24,
-      scanned_count: 18,
-      status: 'in_progress'
-    },
-    {
-      _id: 'INV2026-Q2',
-      name: 'Kiểm Kê Định Kỳ Thiết Bị Nghe Nhìn Quý 2/2026',
-      scope_type: 'Phòng thực hành & Giảng đường',
-      date: '2026-06-30',
-      total_items: 45,
-      scanned_count: 45,
-      status: 'reconciled'
+  // Scan state
+  const [scannedRoomId, setScannedRoomId] = useState('');
+  const [qrInput, setQrInput] = useState('');
+  const [isDamaged, setIsDamaged] = useState(false);
+  const [damageNote, setDamageNote] = useState('');
+  const [scanning, setScanning] = useState(false);
+
+  // New Session Modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newSessionName, setNewSessionName] = useState('');
+  const [submittingSession, setSubmittingSession] = useState(false);
+
+  const fetchRooms = async () => {
+    try {
+      const res = await masterDataApi.getRooms({ limit: 100 });
+      const roomList = (res?.rooms || []).filter(r => r.type !== 'warehouse');
+      setRooms(roomList);
+      if (roomList.length > 0 && !scannedRoomId) {
+        setScannedRoomId(roomList[0]._id);
+      }
+    } catch (err) {
+      console.warn('Load rooms warning:', err.message);
     }
-  ]);
-
-  const [activeSession, setActiveSession] = useState(sessions[0]);
-
-  const [scanLogs, setScanLogs] = useState([
-    {
-      _id: 'ILOG001',
-      equipment_code: 'EQ-PRJ-101',
-      equipment_name: 'Máy Chiếu Laser Sony VPL-FHZ75',
-      registered_room: 'A1-101',
-      scanned_room: 'A1-101',
-      status: 'matched',
-      scanned_at: '2026-09-30 09:15',
-      note: 'Tem QR nguyên vẹn'
-    },
-    {
-      _id: 'ILOG002',
-      equipment_code: 'EQ-TV-201',
-      equipment_name: 'Smart TV Samsung 75" QLED 4K',
-      registered_room: 'A1-101',
-      scanned_room: 'A1-201',
-      status: 'wrong_location',
-      scanned_at: '2026-09-30 09:40',
-      note: 'Phát hiện tại phòng A1-201 (Cần cập nhật đơn điều chuyển)'
-    }
-  ]);
-
-  const [scannedRoom, setScannedRoom] = useState('A1-101');
-  const [scanInput, setScanInput] = useState('');
-
-  // Sample database of equipment for simulation
-  const equipmentDatabase = {
-    'RUO-EQ-PRJ-101': { code: 'EQ-PRJ-101', name: 'Máy Chiếu Laser Sony VPL-FHZ75', room: 'A1-101' },
-    'RUO-EQ-TV-201': { code: 'EQ-TV-201', name: 'Smart TV Samsung 75" QLED 4K', room: 'A1-101' },
-    'RUO-EQ-PRJ-OLD': { code: 'EQ-PRJ-OLD', name: 'Máy Chiếu Cũ Optoma X341', room: 'A1-501' }
   };
 
-  const handleScan = (qrCodeToScan) => {
-    const code = qrCodeToScan || scanInput.trim().toUpperCase();
-    if (!code) {
-      toast.error('Vui lòng quét hoặc nhập mã QR thiết bị');
+  const fetchSessions = async () => {
+    try {
+      setLoading(true);
+      const res = await inventoryApi.getSessions();
+      const list = res?.data || res?.sessions || [];
+      setSessions(list);
+      if (list.length > 0) {
+        loadSessionDetails(list[0]._id);
+      } else {
+        setActiveSession(null);
+        setSessionLogs([]);
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tải các đợt kiểm kê: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSessionDetails = async (sessionId) => {
+    try {
+      const res = await inventoryApi.getSessionById(sessionId);
+      if (res && res.success && res.data) {
+        setActiveSession(res.data);
+        setSessionLogs(res.data.logs || []);
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tải chi tiết đợt kiểm kê: ' + err.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchRooms();
+    fetchSessions();
+  }, []);
+
+  const handleCreateSessionSubmit = async (e) => {
+    e.preventDefault();
+    if (!newSessionName.trim()) {
+      toast.error('Vui lòng nhập tên đợt kiểm kê.');
       return;
     }
 
-    const found = equipmentDatabase[code] || {
-      code: code,
-      name: 'Thiết Bị Quét Mới',
-      room: 'A1-101'
-    };
+    try {
+      setSubmittingSession(true);
+      const res = await inventoryApi.createSession({
+        name: newSessionName.trim(),
+        scope_type: 'building'
+      });
 
-    const isMatch = found.room === scannedRoom;
-    const newLog = {
-      _id: 'ILOG' + Date.now().toString().slice(-4),
-      equipment_code: found.code,
-      equipment_name: found.name,
-      registered_room: found.room,
-      scanned_room: scannedRoom,
-      status: isMatch ? 'matched' : 'wrong_location',
-      scanned_at: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      note: isMatch ? 'Khớp vị trí' : `Lệch vị trí: Phòng gốc ${found.room}`
-    };
-
-    setScanLogs([newLog, ...scanLogs]);
-    setScanInput('');
-
-    if (isMatch) {
-      toast.success(`[MATCHED] Thiết bị ${found.code} khớp vị trí phòng ${scannedRoom}!`);
-    } else {
-      toast.warning(`[LỆCH VỊ TRÍ] Thiết bị ${found.code} thuộc ${found.room} nhưng đang ở ${scannedRoom}!`);
+      if (res && res.success) {
+        toast.success('Đã khởi tạo đợt kiểm kê mới thành công!');
+        setShowCreateModal(false);
+        setNewSessionName('');
+        await fetchSessions();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tạo đợt kiểm kê: ' + err.message);
+    } finally {
+      setSubmittingSession(false);
     }
   };
 
-  const handleReconcile = () => {
-    setActiveSession(prev => ({ ...prev, status: 'reconciled' }));
-    setSessions(prev => prev.map(s => s._id === activeSession._id ? { ...s, status: 'reconciled' } : s));
-    toast.success('Đã đối soát toàn bộ và CHỐT SỐ LIỆU KIỂM KÊ (Ghi sổ kiểm toán SHA-256)!');
+  const handleScanSubmit = async (e) => {
+    e.preventDefault();
+    if (!qrInput.trim()) {
+      toast.error('Vui lòng quét hoặc nhập mã QR thiết bị.');
+      return;
+    }
+    if (!activeSession) {
+      toast.error('Vui lòng chọn hoặc tạo đợt kiểm kê đang hoạt động.');
+      return;
+    }
+
+    try {
+      setScanning(true);
+      const res = await inventoryApi.scanInRoom(activeSession._id, {
+        qr_code: qrInput.trim(),
+        scanned_room_id: scannedRoomId,
+        is_damaged: isDamaged,
+        damage_note: damageNote.trim()
+      });
+
+      if (res && res.success) {
+        const log = res.log || {};
+        if (log.status === 'matched') {
+          toast.success(`[KHỚP VỊ TRÍ] Thiết bị khớp đúng phòng kiểm kê!`);
+        } else if (log.status === 'wrong_location') {
+          toast.warning(`[LỆCH VỊ TRÍ] Thiết bị thuộc phòng khác nhưng được tìm thấy tại phòng này!`);
+        } else if (log.status === 'damaged') {
+          toast.error(`[PHÁT HIỆN HỎNG] Đã tự động tạo phiếu sửa chữa khẩn cấp!`);
+        }
+        setQrInput('');
+        setIsDamaged(false);
+        setDamageNote('');
+        await loadSessionDetails(activeSession._id);
+      }
+    } catch (err) {
+      toast.error('Lỗi khi kiểm kê thiết bị: ' + err.message);
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleReconcile = async () => {
+    if (!activeSession) return;
+    try {
+      const res = await inventoryApi.reconcile(activeSession._id);
+      if (res && res.success) {
+        toast.success('Đã chốt đối soát số liệu kiểm kê thành công!');
+        await loadSessionDetails(activeSession._id);
+        await fetchSessions();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi chốt kiểm kê: ' + err.message);
+    }
   };
 
   return (
@@ -109,174 +161,297 @@ export const InventoryPage = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '11px', color: 'var(--laser-cyan)', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>MODULE 05</span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>KIỂM KÊ TÀI SẢN THỰC TẾ • QUÉT QR TẠI PHÒNG</span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>KIỂM KÊ THỰC ĐỊA, QUÉT MÃ QR & ĐỐI SOÁT TÀI SẢN</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
             Kiểm Kê CSVC & Đối Soát Mã QR Thực Địa
           </h1>
+          <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
+            Quét mã QR tại từng phòng học, phát hiện thiết bị lệch vị trí, ghi nhận hư hỏng tự động tạo phiếu sửa chữa và chốt số liệu.
+          </p>
         </div>
 
-        {activeSession.status !== 'reconciled' && (
+        <div style={{ display: 'flex', gap: '10px' }}>
           <button
-            onClick={handleReconcile}
+            onClick={() => setShowCreateModal(true)}
             className="laser-btn laser-btn-primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
           >
-            <Icons.CheckCircle size={16} />
-            <span>Đối Soát & Chốt Số Liệu</span>
+            <Icons.Plus size={16} />
+            <span>Tạo Đợt Kiểm Kê Mới</span>
           </button>
+        </div>
+      </div>
+
+      {/* Main Grid: Sessions Sidebar + Active Session Workspace */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(0, 2.5fr)', gap: '20px', alignItems: 'start' }}>
+        {/* Left: Sessions List */}
+        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hairline-medium)', background: 'var(--surface-panel)' }}>
+            <h3 style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--ink-pure)', margin: 0 }}>
+              Các Đợt Kiểm Kê CSVC ({sessions.length})
+            </h3>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {sessions.map(s => {
+              const isSelected = activeSession && activeSession._id === s._id;
+              const isReconciled = s.status === 'reconciled' || s.status === 'completed';
+
+              return (
+                <div
+                  key={s._id}
+                  onClick={() => loadSessionDetails(s._id)}
+                  style={{
+                    padding: '14px 18px',
+                    borderBottom: '1px solid var(--hairline-soft)',
+                    cursor: 'pointer',
+                    background: isSelected ? 'rgba(6,182,212,0.08)' : 'transparent',
+                    borderLeft: isSelected ? '3px solid var(--laser-cyan)' : '3px solid transparent'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                    <strong style={{ fontSize: '13px', color: 'var(--ink-pure)' }}>{s.name}</strong>
+                    <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: isReconciled ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: isReconciled ? '#10B981' : '#F59E0B' }}>
+                      {isReconciled ? 'Đã Chốt' : 'Đang Kiểm'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                    Ngày: {new Date(s.date || s.created_at).toLocaleDateString('vi-VN')} • Người lập: {s.created_by?.full_name || 'Quản lý'}
+                  </div>
+                </div>
+              );
+            })}
+
+            {sessions.length === 0 && (
+              <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--ink-muted)', fontSize: '12.5px' }}>
+                Chưa có đợt kiểm kê nào. Nhấn "Tạo Đợt Kiểm Kê Mới" để bắt đầu.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Active Session Workspace */}
+        {activeSession ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Session Info Banner */}
+            <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--ink-pure)', margin: 0 }}>
+                    {activeSession.name}
+                  </h2>
+                  <div style={{ fontSize: '12.5px', color: 'var(--ink-muted)', marginTop: '4px' }}>
+                    Trạng thái: <strong>{activeSession.status}</strong> • Đã quét: <strong>{sessionLogs.length}</strong> lượt tài sản
+                  </div>
+                </div>
+
+                {activeSession.status !== 'reconciled' && activeSession.status !== 'completed' && (
+                  <button
+                    onClick={handleReconcile}
+                    className="laser-btn laser-btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontWeight: 700 }}
+                  >
+                    <Icons.CheckCircle size={16} />
+                    <span>Chốt Số Liệu Đối Soát</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Field Scanner Toolbar */}
+            {activeSession.status !== 'reconciled' && activeSession.status !== 'completed' && (
+              <div style={{ background: 'var(--surface-card)', border: '1px solid var(--laser-cyan)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--ink-pure)', margin: '0 0 14px' }}>
+                  Quét Mã QR Tại Phòng Thực Địa
+                </h3>
+
+                <form onSubmit={handleScanSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) minmax(240px, 1.5fr)', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                        Phòng Học Đang Đứng Kiểm Kê:
+                      </label>
+                      <select
+                        value={scannedRoomId}
+                        onChange={(e) => setScannedRoomId(e.target.value)}
+                        className="ruo-portal-input"
+                        style={{ width: '100%', height: '38px', fontSize: '13px' }}
+                      >
+                        {rooms.map(r => (
+                          <option key={r._id} value={r._id}>{r.code} - {r.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                        Mã QR / Mã Thiết Bị Cần Quét:
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Quét tem QR hoặc nhập mã thiết bị..."
+                          value={qrInput}
+                          onChange={(e) => setQrInput(e.target.value)}
+                          className="ruo-portal-input"
+                          style={{ flex: 1, height: '38px', fontFamily: 'var(--font-mono)' }}
+                        />
+                        <button
+                          type="submit"
+                          disabled={scanning}
+                          className="laser-btn laser-btn-primary"
+                          style={{ padding: '0 18px', height: '38px', fontWeight: 700 }}
+                        >
+                          {scanning ? 'Đang Ghi...' : 'Quét'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--surface-panel)', padding: '10px 14px', borderRadius: 'var(--radius-md)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12.5px', color: '#EF4444', fontWeight: 700 }}>
+                      <input
+                        type="checkbox"
+                        checked={isDamaged}
+                        onChange={(e) => setIsDamaged(e.target.checked)}
+                      />
+                      <span>Phát hiện hỏng hóc thực địa (Tự động mở phiếu sửa chữa)</span>
+                    </label>
+
+                    {isDamaged && (
+                      <input
+                        type="text"
+                        placeholder="Mô tả hư hỏng..."
+                        value={damageNote}
+                        onChange={(e) => setDamageNote(e.target.value)}
+                        className="ruo-portal-input"
+                        style={{ flex: 1, height: '32px', fontSize: '12px' }}
+                      />
+                    )}
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Scan Logs Table */}
+            <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hairline-medium)' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--ink-pure)', margin: 0 }}>
+                  Nhật Ký Quét Kiểm Kê Thực Tế ({sessionLogs.length})
+                </h3>
+              </div>
+
+              {sessionLogs.length === 0 ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--ink-muted)', fontSize: '13px' }}>
+                  Chưa có lượt quét nào trong đợt kiểm kê này.
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--hairline-medium)' }}>
+                      <th style={{ padding: '10px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Mã QR / Thiết Bị</th>
+                      <th style={{ padding: '10px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Phòng Quét Thực Tế</th>
+                      <th style={{ padding: '10px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Kết Quả Đối Soát</th>
+                      <th style={{ padding: '10px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Thời Điểm Quét</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessionLogs.map(l => {
+                      const eq = l.equipment_id || {};
+                      const isMatched = l.status === 'matched';
+                      const isWrong = l.status === 'wrong_location';
+                      const isDamagedLog = l.status === 'damaged';
+
+                      return (
+                        <tr key={l._id} style={{ borderBottom: '1px solid var(--hairline-soft)' }}>
+                          <td style={{ padding: '10px 16px' }}>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--laser-cyan)' }}>{eq.code || l.qr_code}</div>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink-pure)' }}>{eq.name}</div>
+                          </td>
+                          <td style={{ padding: '10px 16px', color: 'var(--ink-pure)' }}>
+                            {l.scanned_room_id?.code || 'Phòng'}
+                          </td>
+                          <td style={{ padding: '10px 16px' }}>
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                padding: '3px 8px',
+                                borderRadius: '4px',
+                                background: isMatched ? 'rgba(16,185,129,0.15)' : isWrong ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
+                                color: isMatched ? '#10B981' : isWrong ? '#F59E0B' : '#EF4444'
+                              }}
+                            >
+                              {isMatched ? 'Khớp Đúng Vị Trí' : isWrong ? 'Sai Lệch Phòng' : 'Hư Hỏng Tại Chỗ'}
+                            </span>
+                            {l.repair_id && (
+                              <div style={{ fontSize: '11px', color: '#EF4444', marginTop: '2px' }}>
+                                Tự tạo phiếu: {l.repair_id.ticket_code}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '10px 16px', fontSize: '12px', color: 'var(--ink-muted)' }}>
+                            {new Date(l.scanned_at).toLocaleTimeString('vi-VN')} ({new Date(l.scanned_at).toLocaleDateString('vi-VN')})
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '60px 20px', textAlign: 'center', color: 'var(--ink-muted)' }}>
+            Chọn một đợt kiểm kê ở danh sách bên trái hoặc tạo đợt kiểm kê mới.
+          </div>
         )}
       </div>
 
-      {/* Top Banner: Active Session */}
-      <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '20px', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>ĐỢT KIỂM KÊ ĐANG CHỌN</div>
-            <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--ink-pure)', margin: '4px 0' }}>{activeSession.name}</h3>
-            <div style={{ fontSize: '12.5px', color: 'var(--ink-secondary)' }}>Phạm vi: {activeSession.scope_type} • Ngày: {activeSession.date}</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <span style={{
-              display: 'inline-block',
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '12px',
-              fontWeight: 700,
-              background: activeSession.status === 'reconciled' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
-              color: activeSession.status === 'reconciled' ? '#10B981' : '#F59E0B',
-              border: `1px solid ${activeSession.status === 'reconciled' ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`
-            }}>
-              {activeSession.status === 'reconciled' ? 'ĐÃ ĐỐI SOÁT & KHÓA SỔ' : 'ĐANG TIẾN HÀNH KIỂM KÊ'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Interactive QR In-Situ Scanner Box */}
-      <div style={{ background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '24px', marginBottom: '32px' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ink-pure)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Icons.Search size={18} color="var(--laser-cyan)" />
-          <span>Mô Phỏng Quét Mã QR Thiết Bị Tại Phòng Thực Địa</span>
-        </h3>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-secondary)', marginBottom: '6px' }}>
-              Vị Trí Kỹ Thuật Viên Đang Đứng (Phòng Kiểm Kê)
-            </label>
-            <select
-              value={scannedRoom}
-              onChange={e => setScannedRoom(e.target.value)}
-              style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-pure)', fontSize: '13px' }}
-            >
-              <option value="A1-101">Phòng A1-101 (Giảng Đường Tầng 1)</option>
-              <option value="A1-201">Phòng A1-201 (Hội Thảo Tầng 2)</option>
-              <option value="A1-301">Phòng A1-301 (Lab Mạng Tầng 3)</option>
-              <option value="A1-501">Phòng A1-501 (Kho Tầng 5)</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--ink-secondary)', marginBottom: '6px' }}>
-              Nhập Hoặc Quét Mã QR Thiết Bị
-            </label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
-                placeholder="VD: RUO-EQ-PRJ-101"
-                value={scanInput}
-                onChange={e => setScanInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleScan()}
-                style={{ flex: 1, padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-pure)', fontSize: '13px' }}
-              />
-              <button
-                type="button"
-                onClick={() => handleScan()}
-                className="laser-btn laser-btn-primary"
-                style={{ padding: '0 18px', borderRadius: 'var(--radius-sm)', fontWeight: 700 }}
-              >
-                Quét
-              </button>
+      {/* Modal: Create Session */}
+      {showCreateModal && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowCreateModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '460px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <div>
+                <h2 className="ruo-drawer-title">Khởi Tạo Đợt Kiểm Kê Thực Tế</h2>
+                <p className="ruo-drawer-subtitle">Thiết lập đợt kiểm tra đối soát tài sản định kỳ</p>
+              </div>
+              <button onClick={() => setShowCreateModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
             </div>
+
+            <form onSubmit={handleCreateSessionSubmit}>
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>
+                    Tên Đợt Kiểm Kê *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="VD: Kiểm kê định kỳ thiết bị Nhà A1 Học kỳ 1 2026-2027"
+                    value={newSessionName}
+                    onChange={(e) => setNewSessionName(e.target.value)}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', height: '38px' }}
+                  />
+                </div>
+              </div>
+
+              <div className="ruo-drawer-footer">
+                <button type="button" onClick={() => setShowCreateModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                <button type="submit" disabled={submittingSession} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  {submittingSession ? 'Đang Khởi Tạo...' : 'Tạo Đợt Kiểm Kê'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-
-        {/* Quick Test QR Badges */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Mã quét mẫu:</span>
-          <button
-            onClick={() => handleScan('RUO-EQ-PRJ-101')}
-            className="laser-btn laser-btn-ghost"
-            style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '4px' }}
-          >
-            RUO-EQ-PRJ-101 (Máy chiếu A1-101)
-          </button>
-          <button
-            onClick={() => handleScan('RUO-EQ-TV-201')}
-            className="laser-btn laser-btn-ghost"
-            style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '4px' }}
-          >
-            RUO-EQ-TV-201 (TV gốc A1-101)
-          </button>
-          <button
-            onClick={() => handleScan('RUO-EQ-PRJ-OLD')}
-            className="laser-btn laser-btn-ghost"
-            style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '4px' }}
-          >
-            RUO-EQ-PRJ-OLD (Kho A1-501)
-          </button>
-        </div>
-      </div>
-
-      {/* Scanned Items Logs */}
-      <div>
-        <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ink-pure)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Icons.Audit size={18} color="var(--laser-cyan)" />
-          <span>Danh Sách Thiết Bị Đã Quét Trong Đợt Kiểm Kê</span>
-        </h3>
-
-        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--hairline-medium)', color: 'var(--ink-secondary)' }}>
-                <th style={{ padding: '12px 16px' }}>Mã Log</th>
-                <th style={{ padding: '12px 16px' }}>Thiết Bị</th>
-                <th style={{ padding: '12px 16px' }}>Phòng Đăng Ký Gốc</th>
-                <th style={{ padding: '12px 16px' }}>Phòng Quét Thực Tế</th>
-                <th style={{ padding: '12px 16px' }}>Trạng Thái Khớp</th>
-                <th style={{ padding: '12px 16px' }}>Thời Gian</th>
-                <th style={{ padding: '12px 16px' }}>Ghi Chú Đối Soát</th>
-              </tr>
-            </thead>
-            <tbody>
-              {scanLogs.map(l => (
-                <tr key={l._id} style={{ borderBottom: '1px solid var(--hairline-soft)' }}>
-                  <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--laser-cyan)' }}>{l._id}</td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{l.equipment_name}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)' }}>{l.equipment_code}</div>
-                  </td>
-                  <td style={{ padding: '14px 16px', color: 'var(--ink-secondary)' }}>{l.registered_room}</td>
-                  <td style={{ padding: '14px 16px', fontWeight: 600, color: l.status === 'matched' ? 'var(--ink-pure)' : '#EF4444' }}>
-                    {l.scanned_room}
-                  </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    {l.status === 'matched' ? (
-                      <span style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(16,185,129,0.12)', color: '#10B981', fontWeight: 700, fontSize: '11.5px' }}>KHỚP VỊ TRÍ</span>
-                    ) : (
-                      <span style={{ padding: '3px 8px', borderRadius: '4px', background: 'rgba(239,68,68,0.12)', color: '#EF4444', fontWeight: 700, fontSize: '11.5px' }}>LỆCH PHÒNG</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '14px 16px', color: 'var(--ink-muted)' }}>{l.scanned_at}</td>
-                  <td style={{ padding: '14px 16px', color: 'var(--ink-secondary)' }}>{l.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
+
 export default InventoryPage;

@@ -59,6 +59,7 @@ app.use('/api/spare-parts', sparePartRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/master', masterDataRoutes);
+app.use('/api/master-data', masterDataRoutes);
 
 // Error Handling
 app.use(notFound);

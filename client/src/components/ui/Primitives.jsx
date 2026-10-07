@@ -74,7 +74,13 @@ export const StatusBadge = ({ status, label: customLabel }) => {
     // SLA statuses
     on_track: { label: 'Đúng hạn SLA', variant: 'active', dot: '#2FB37A' },
     at_risk: { label: 'Nguy cơ quá hạn', variant: 'repairing', dot: '#E5A33B' },
-    overdue: { label: 'Quá hạn SLA', variant: 'danger', dot: '#E5484D' }
+    overdue: { label: 'Quá hạn SLA', variant: 'danger', dot: '#E5484D' },
+    // Repair & Ticket statuses
+    reported: { label: 'Chờ tiếp nhận', variant: 'repairing', dot: '#EF4444' },
+    assigned: { label: 'Đã giao KTV', variant: 'transferring', dot: '#0EA5E9' },
+    in_progress: { label: 'Đang sửa chữa', variant: 'repairing', dot: '#F59E0B' },
+    repaired: { label: 'Đã sửa xong (Chờ nghiệm thu)', variant: 'active', dot: '#10B981' },
+    closed: { label: 'Đã hoàn tất', variant: 'active', dot: '#2FB37A' }
   };
 
   const meta = map[status] || { label: status || 'Chưa rõ', variant: 'neutral', dot: '#A1A1AA' };

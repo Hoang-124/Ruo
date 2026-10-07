@@ -9,14 +9,14 @@ import { RuoLogo } from '../common/RuoLogo';
 export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileModal }) => {
   const {
     currentRoleKey,
-    switchRole,
+    currentRoleMeta,
     currentUser,
     theme,
     toggleTheme,
     notifications,
     unreadCount,
     markAllNotificationsRead,
-    allowedTabs,
+    navItems,
     logout
   } = useAuth();
 
@@ -31,96 +31,29 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
   const notifPopoverRef = useRef(null);
   const profilePopoverRef = useRef(null);
 
-  const handleConfirmLogout = async (allDevices) => {
+  const roleInfo = currentRoleMeta || { label: 'Người dùng', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' };
+  const visibleNavTabs = navItems || [];
+
+  const handleConfirmLogout = async (allDevices = false) => {
     setIsLogoutModalOpen(false);
     toast.success(
       allDevices
-        ? 'Đã thu hồi tất cả phiên và đăng xuất khỏi mọi thiết bị an toàn!'
-        : 'Đăng xuất thành công! Phiên làm việc đã kết thúc an toàn.',
-      'Đăng Xuất Thành Công'
+        ? 'Đã thu hồi tất cả phiên và đăng xuất mọi thiết bị an toàn!'
+        : 'Đăng xuất thành công! Phiên làm việc đã kết thúc an toàn.'
     );
     try {
       await logout(allDevices);
     } catch (err) {
-      toast.error('Có lỗi xảy ra trong quá trình đăng xuất.');
+      toast.error('Có lỗi xảy ra trong quá trình đăng xuất: ' + (err?.message || 'Lỗi hệ thống'));
     }
   };
-
-  // Close popovers on click outside or Escape
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (notifPopoverRef.current && !notifPopoverRef.current.contains(e.target)) {
-        setShowNotifPopover(false);
-      }
-      if (profilePopoverRef.current && !profilePopoverRef.current.contains(e.target)) {
-        setShowProfilePopover(false);
-      }
-    };
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        setShowNotifPopover(false);
-        setShowProfilePopover(false);
-      }
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
-      );
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Canonical Role Metadata for User Badging (3 Canonical Actors)
-  const ROLE_METADATA = {
-    admin: { label: 'Ban Giám Hiệu (Admin)', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)' },
-    manager: { label: 'Quản Lý Phòng HC-QT', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)' },
-    staff: { label: 'Kỹ Thuật Viên CSVC', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
-    // Backward compatibility aliases
-    maintenance_staff: { label: 'Kỹ Thuật Viên CSVC', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
-    facility_staff: { label: 'Quản Lý Phòng HC-QT', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)' },
-    maintenance: { label: 'Kỹ Thuật Viên CSVC', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' },
-    lecturer: { label: 'Kỹ Thuật Viên CSVC', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' }
-  };
-
-  const activeRole = currentUser?.role || currentRoleKey || 'staff';
-  const roleInfo = ROLE_METADATA[activeRole] || ROLE_METADATA.staff;
-
-  // 10 Core Subsystems Navigation Definition (UEMS Architecture)
-  const allNavTabs = [
-    { id: 'dashboard', label: 'Tổng Quan Vận Hành', short: 'Tổng Quan', icon: Icons.Dashboard },
-    { id: 'map', label: 'Bản Đồ CAD A1', short: 'Bản Đồ CAD', icon: Icons.Building },
-    { id: 'equipments', label: 'Kho Thiết Bị', short: 'Thiết Bị & QR', icon: Icons.Equipment },
-    { id: 'transfers', label: 'Điều Chuyển', short: 'Điều Chuyển', icon: Icons.RefreshCw },
-    { id: 'tickets_kanban', label: 'Sự Cố & Sửa Chữa', short: 'Sửa Chữa', icon: Icons.Wrench },
-    { id: 'maintenance', label: 'Bảo Trì Định Kỳ', short: 'Bảo Trì', icon: Icons.Calendar },
-    { id: 'inventory', label: 'Kiểm Kê Kho QR', short: 'Kiểm Kê', icon: Icons.CheckCircle },
-    { id: 'disposal_calc', label: 'Thanh Lý CSVC', short: 'Thanh Lý R≥60%', icon: Icons.Sliders },
-    { id: 'rbac', label: 'Ma Trận Quyền', short: 'Phân Quyền RBAC', icon: Icons.Users },
-    { id: 'audit_log', label: 'Nhật Ký Audit', short: 'Audit SHA-256', icon: Icons.Audit }
-  ];
-
-  // Filter tabs according to current actor permissions
-  const effectiveAllowedTabs = allowedTabs || ['dashboard', 'equipments', 'transfers', 'tickets_kanban'];
-  const visibleNavTabs = allNavTabs.filter((tab) => effectiveAllowedTabs.includes(tab.id));
 
   return (
     <>
       <header className="ruo-header-root">
         {/* TIER 1: Grounded Top Navigation Bar */}
         <div className="ruo-topbar">
-          {/* Left: Brand Identity & Breadcrumb */}
+          {/* Left: Brand Identity */}
           <div className="ruo-topbar-left">
             <button
               onClick={() => onSelectTab('dashboard')}
@@ -129,12 +62,6 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
             >
               <RuoLogo size={32} subtitle="Quản Lý CSVC" />
             </button>
-
-            <div className="ruo-breadcrumb-divider ruo-hide-md" />
-
-            <div className="ruo-breadcrumbs ruo-hide-md">
-              <span className="ruo-crumb-active">Tòa A1 • Giảng Đường</span>
-            </div>
           </div>
 
           {/* Center: Command Palette Trigger */}
@@ -142,7 +69,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
             <button
               className="ruo-search-trigger"
               onClick={() => setShowCommandPalette(true)}
-              title="Tìm kiếm thông minh (Phòng A1-302, Ticket SLA, Thiết bị, 95 Use Cases)..."
+              title="Tìm kiếm thông minh (Phòng 302, Ticket SLA, Thiết bị)..."
             >
               <Icons.Search size={14} color="var(--ink-muted)" />
               <span className="ruo-search-placeholder">
@@ -152,20 +79,8 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
             </button>
           </div>
 
-          {/* Right: Telemetry, Quick Tools, Theme, Notifications, User Menu */}
+          {/* Right: Quick Tools, Clock, Theme, Notifications, User Menu */}
           <div className="ruo-topbar-right">
-            {/* Campus Real-time Telemetry Pill */}
-            <div className="ruo-telemetry-badge" title="Tình trạng phòng học và chỉ số SLA thời gian thực">
-              <span className="ruo-status-dot ruo-dot-emerald" />
-              <span className="ruo-telemetry-item">
-                <strong style={{ color: 'var(--laser-cyan)' }}>84/108</strong> Trống
-              </span>
-              <span className="ruo-telemetry-sep">•</span>
-              <span className="ruo-telemetry-item">
-                SLA <strong style={{ color: '#10B981' }}>98.4%</strong>
-              </span>
-            </div>
-
             {/* Server Clock */}
             <div className="ruo-clock-pill ruo-hide-lg" title="Thời gian hệ thống máy chủ">
               <Icons.Clock size={12} color="var(--ink-muted)" />

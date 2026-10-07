@@ -147,6 +147,10 @@ export const api = {
     method: 'PUT',
     body: JSON.stringify(body)
   }),
+  patch: (endpoint, body) => apiRequest(endpoint, {
+    method: 'PATCH',
+    body: JSON.stringify(body)
+  }),
   delete: (endpoint) => apiRequest(endpoint, { method: 'DELETE' })
 };
 
@@ -157,12 +161,22 @@ export const api = {
 export const authApi = {
   login: (identifier, password) => api.post('/auth/login', { identifier, password }),
   register: (userData) => api.post('/auth/register', userData),
+  verifyRegisterOtp: (email, otp) => api.post('/auth/verify-register-otp', { email, otp }),
   checkDuplicate: (params) => api.get('/auth/check-duplicate', params),
   profile: () => api.get('/auth/me'),
-  logout: (refreshToken) => api.post('/auth/logout', { refreshToken }),
+  updateProfile: (data) => api.put('/auth/me', data),
+  changePassword: (data) => api.post('/auth/change-password', data),
+  logout: (refreshToken, allDevices = false) => api.post('/auth/logout', { refreshToken, allDevices }),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   verifyResetOtp: (email, otp) => api.post('/auth/verify-reset-otp', { email, otp }),
-  resetPassword: (email, otp, newPassword) => api.post('/auth/reset-password', { email, otp, newPassword })
+  resetPassword: (email, otp, newPassword) => api.post('/auth/reset-password', { email, otp, newPassword }),
+  // Admin User Management
+  listUsers: (params) => api.get('/auth/users', params),
+  getUserById: (id) => api.get(`/auth/users/${id}`),
+  createUser: (data) => api.post('/auth/users', data),
+  updateUserRole: (id, role) => api.patch(`/auth/users/${id}/role`, { role }),
+  toggleUserLock: (id) => api.patch(`/auth/users/${id}/lock`),
+  adminResetPassword: (id, password) => api.post(`/auth/users/${id}/reset-password`, { password })
 };
 
 export const equipmentApi = {
@@ -172,48 +186,65 @@ export const equipmentApi = {
   getByQr: (qrCode) => api.get(`/equipments/qr/${qrCode}`),
   create: (data) => api.post('/equipments', data),
   update: (id, data) => api.put(`/equipments/${id}`, data),
+  updateWarranty: (id, data) => api.put(`/equipments/${id}/warranty`, data),
   delete: (id) => api.delete(`/equipments/${id}`)
 };
 
 export const facilityApi = {
   getBuildings: () => api.get('/facilities/buildings'),
   getCadCanvas: (buildingCode, floorNumber) => api.get('/facilities/cad-canvas', { buildingCode, floorNumber }),
-  getRoomByCode: (code) => api.get(`/facilities/rooms/${code}`)
+  getRoomByCode: (code) => api.get(`/facilities/rooms/${code}`),
+  getAllRooms: (params) => api.get('/facilities/rooms', params),
+  getRoomShortage: (id) => api.get(`/facilities/rooms/${id}/shortage`),
+  getWarehouseStock: () => api.get('/facilities/warehouse/stock')
 };
 
-export const transferApi = {
-  list: (params) => api.get('/transfers', params),
-  propose: (data) => api.post('/transfers', data),
-  approve: (id) => api.put(`/transfers/${id}/approve`, {}),
-  reject: (id, reason) => api.put(`/transfers/${id}/reject`, { reason }),
-  complete: (id) => api.put(`/transfers/${id}/complete`, {})
+export const movementApi = {
+  list: (params) => api.get('/movements', params),
+  order: (data) => api.post('/movements', data),
+  confirm: (id, notes) => api.put(`/movements/${id}/confirm`, { notes }),
+  cancel: (id, reason) => api.put(`/movements/${id}/cancel`, { reason }),
+  getPendingCount: () => api.get('/movements/pending-count')
 };
 
 export const repairApi = {
-  list: (params) => api.get('/repairs', params),
-  getById: (id) => api.get(`/repairs/${id}`),
+  list: async (params) => {
+    const res = await api.get('/repairs', params);
+    if (res && res.data && !res.repairs) res.repairs = res.data;
+    return res;
+  },
+  getById: async (id) => {
+    const res = await api.get(`/repairs/${id}`);
+    if (res && res.data && !res.repair) res.repair = res.data;
+    return res;
+  },
   create: (data) => api.post('/repairs', data),
-  updateStatus: (id, status, notes) => api.put(`/repairs/${id}/status`, { status, notes }),
+  assign: (id, data) => api.put(`/repairs/${id}/assign`, data),
+  accept: (id) => api.put(`/repairs/${id}/accept`),
   addLog: (id, data) => api.post(`/repairs/${id}/logs`, data),
-  requestParts: (id, data) => api.post(`/repairs/${id}/parts-requests`, data),
-  approveParts: (repairId, requestId) => api.put(`/repairs/${repairId}/parts-requests/${requestId}/approve`, {})
+  reportOutcome: (id, data) => api.put(`/repairs/${id}/outcome`, data),
+  closeTicket: (id, data) => api.put(`/repairs/${id}/close`, data),
+  evaluate: (id, data) => api.post(`/repairs/${id}/evaluate`, data),
+  rateFeedback: (id, data) => api.post(`/repairs/${id}/evaluate`, {
+    feedback_rating: data.rating || data.feedback_rating,
+    feedback_comment: data.comment || data.feedback_comment || ''
+  })
+};
+
+export const sparePartApi = {
+  list: (params) => api.get('/spare-parts', params),
+  getRequests: (params) => api.get('/parts-requests', params),
+  createRequest: (data) => api.post('/parts-requests', data),
+  approveRequest: (id) => api.put(`/parts-requests/${id}/approve`),
+  rejectRequest: (id, reason) => api.put(`/parts-requests/${id}/reject`, { reason }),
+  updateStock: (id, stock) => api.put(`/spare-parts/${id}/stock`, { stock })
 };
 
 export const disposalApi = {
   list: () => api.get('/disposals'),
   propose: (data) => api.post('/disposals', data),
-  hcApprove: (id) => api.put(`/disposals/${id}/hc-approve`, {}),
-  bghApprove: (id, decision_number) => api.put(`/disposals/${id}/bgh-approve`, { decision_number }),
-  procure: (id, procurement_plan) => api.put(`/disposals/${id}/procurement`, { procurement_plan }),
-  receipt: (id, replacement_equipment_id) => api.put(`/disposals/${id}/receipt`, { replacement_equipment_id }),
+  approve: (id, decision_number, recovery_value) => api.put(`/disposals/${id}/approve`, { decision_number, recovery_value }),
   reject: (id, reject_reason) => api.put(`/disposals/${id}/reject`, { reject_reason })
-};
-
-export const maintenanceApi = {
-  getPlans: () => api.get('/maintenance/plans'),
-  createPlan: (data) => api.post('/maintenance/plans', data),
-  getLogs: () => api.get('/maintenance/logs'),
-  executeChecklist: (data) => api.post('/maintenance/logs', data)
 };
 
 export const inventoryApi = {
@@ -224,9 +255,45 @@ export const inventoryApi = {
   reconcile: (sessionId) => api.put(`/inventory/sessions/${sessionId}/reconcile`, {})
 };
 
+export const masterDataApi = {
+  getCategories: () => api.get('/master/categories'),
+  createCategory: (data) => api.post('/master/categories', data),
+  getSuppliers: () => api.get('/master/suppliers'),
+  createSupplier: (data) => api.post('/master/suppliers', data),
+  getRepairUnits: () => api.get('/master/repair-units'),
+  createRepairUnit: (data) => api.post('/master/repair-units', data),
+  getRooms: (params) => api.get('/master/rooms', params),
+  createRoom: (data) => api.post('/master/rooms', data),
+  getRoomShortage: (id) => api.get(`/master/rooms/${id}/shortage`),
+  getWarehouseStock: () => api.get('/master/warehouse/stock')
+};
+
+export const roleApi = {
+  list: () => api.get('/roles'),
+  update: (name, permissions) => api.put(`/roles/${name}`, { permissions })
+};
+
+export const reportApi = {
+  getDashboard: () => api.get('/reports/dashboard'),
+  getEquipmentHealth: () => api.get('/reports/equipment-health'),
+  getRepairCosts: () => api.get('/reports/repair-costs'),
+  exportCsv: (type) => `${API_BASE}/reports/export?type=${type}`
+};
+
 export const auditApi = {
   getLogs: (params) => api.get('/audit/logs', params),
-  verifyChain: () => api.get('/audit/verify-chain')
+  verifyChain: () => api.get('/audit/verify-chain'),
+  exportCsv: () => `${API_BASE}/audit/export`
 };
+
+export const notificationApi = {
+  list: () => api.get('/notifications'),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllRead: () => api.put('/notifications/mark-all-read')
+};
+
+// Backward compatibility alias for transferApi
+export const transferApi = movementApi;
 
 export default api;

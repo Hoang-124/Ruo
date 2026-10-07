@@ -1,73 +1,161 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../common/SvgIcons';
+import { useAuth } from '../../context/AuthContext';
 
 const ALL_MODULES = [
+  // Dashboard & Classroom Floor Plan
   {
     id: 'dashboard',
-    label: 'Bản Đồ Mặt Bằng CAD Kiến Trúc & Giám Sát Không Gian',
-    cat: 'PHÂN HỆ 01 • KHÔNG GIAN',
-    icon: Icons.Building,
-    desc: 'Mặt bằng CAD kiến trúc thời gian thực, điều phối phòng học và giám sát thiết bị'
+    label: 'Sơ Đồ Phòng Học',
+    cat: 'KHÔNG GIAN • MẶT BẰNG',
+    icon: Icons.Dashboard,
+    desc: 'Sơ đồ kiến trúc tầng 1-5, tình trạng phòng học và danh mục thiết bị thời gian thực',
+    roles: ['admin', 'facility_manager', 'technician', 'lecturer']
+  },
+  // Lecturer
+  {
+    id: 'report_issue',
+    label: 'Báo Hỏng Thiết Bị (Tạo Phiếu Sự Cố)',
+    cat: 'GIẢNG VIÊN • BÁO HỎNG',
+    icon: Icons.AlertTriangle,
+    desc: 'Báo cáo sự cố thiết bị hư hại, chọn mức độ khẩn cấp (SLA) và gửi hình ảnh hiện trường',
+    roles: ['lecturer']
+  },
+  {
+    id: 'my_tickets',
+    label: 'Phiếu Sửa Chữa Của Tôi & Đánh Giá 1-5 Sao',
+    cat: 'GIẢNG VIÊN • THEO DÕI',
+    icon: Icons.ClipboardCheck,
+    desc: 'Theo dõi vòng đời khắc phục sự cố và đánh giá chất lượng nghiệm thu sửa chữa',
+    roles: ['lecturer']
+  },
+  // Technician
+  {
+    id: 'assigned_tasks',
+    label: 'Nhiệm Vụ Sửa Chữa (Tasks & Log)',
+    cat: 'KỸ THUẬT • NHIỆM VỤ',
+    icon: Icons.Wrench,
+    desc: 'Tiếp nhận ca sửa chữa, cập nhật nhật ký khắc phục và báo cáo kết quả hoàn tất/không sửa được',
+    roles: ['technician']
+  },
+  {
+    id: 'spare_parts',
+    label: 'Kho Linh Kiện & Yêu Cầu Vật Tư Thay Thế',
+    cat: 'KỸ THUẬT • LINH KIỆN',
+    icon: Icons.Package,
+    desc: 'Xem tồn kho linh kiện, cảnh báo tồn kho thấp và tạo phiếu xin cấp linh kiện sửa chữa',
+    roles: ['technician']
+  },
+  {
+    id: 'movement_tasks',
+    label: 'Lệnh Di Chuyển & Thay Thế Thiết Bị Dự Phòng',
+    cat: 'KỸ THUẬT • ĐIỀU ĐỘNG',
+    icon: Icons.ArrowRight,
+    desc: 'Nhận lệnh di chuyển thay thế thiết bị từ KHO-01 hoặc điều động giữa các phòng',
+    roles: ['technician']
+  },
+  {
+    id: 'qr_scanner',
+    label: 'Quét Mã QR Thiết Bị Thực Địa',
+    cat: 'KỸ THUẬT • QR SCANNER',
+    icon: Icons.QrCode,
+    desc: 'Quét hoặc nhập mã QR để tra cứu thông số kỹ thuật, tình trạng và lịch sử bảo hành',
+    roles: ['technician']
+  },
+  // Facility Manager
+  {
+    id: 'tickets_kanban',
+    label: 'Phiếu Sửa Chữa & Điều Phối Kỹ Thuật (Kanban SLA)',
+    cat: 'QUẢN LÝ CSVC • SỬA CHỮA',
+    icon: Icons.Wrench,
+    desc: 'Giao việc cho kỹ thuật viên, cấp đồ dự phòng từ KHO-01 và giám sát hạn SLA',
+    roles: ['facility_manager']
+  },
+  {
+    id: 'warehouse',
+    label: 'Kho Dự Phòng & Định Mức Phòng Học',
+    cat: 'QUẢN LÝ CSVC • KHO DỰ PHÒNG',
+    icon: Icons.Layers,
+    desc: 'Giám sát tồn kho thiết bị dự phòng KHO-01 và cảnh báo thiếu hụt thiết bị phòng học',
+    roles: ['facility_manager']
+  },
+  {
+    id: 'movements',
+    label: 'Lệnh Điều Chuyển Thiết Bị Giữa Các Phòng',
+    cat: 'QUẢN LÝ CSVC • ĐIỀU CHUYỂN',
+    icon: Icons.RefreshCw,
+    desc: 'Lập lệnh luân chuyển tài sản, chọn phòng nguồn/đích và theo dõi trạng thái di chuyển',
+    roles: ['facility_manager']
   },
   {
     id: 'equipments',
-    label: 'Kho Quản Lý Thiết Bị & Nhãn Mã QR Định Danh',
-    cat: 'PHÂN HỆ 02 • THIẾT BỊ',
+    label: 'Kho Quản Lý Thiết Bị Trường & In Tem QR',
+    cat: 'TÀI SẢN • THIẾT BỊ',
     icon: Icons.Equipment,
-    desc: 'Quản lý danh mục tài sản, cấu hình thông số kỹ thuật, in và dán tem nhãn QR'
-  },
-  {
-    id: 'transfers',
-    label: 'Điều Chuyển Trang Thiết Bị Giữa Các Phòng',
-    cat: 'PHÂN HỆ 03 • ĐIỀU CHUYỂN',
-    icon: Icons.RefreshCw,
-    desc: 'Lập phiếu đề xuất luân chuyển tài sản, theo dõi biên bản bàn giao phòng nhận'
-  },
-  {
-    id: 'tickets_kanban',
-    label: 'Sự Cố & Sửa Chữa Thiết Bị (Kanban SLA)',
-    cat: 'PHÂN HỆ 04 • SỬA CHỮA',
-    icon: Icons.Wrench,
-    desc: 'Tiếp nhận báo hỏng, đếm ngược cam kết thời gian khắc phục sự cố SLA khẩn cấp'
-  },
-  {
-    id: 'maintenance',
-    label: 'Kế Hoạch & Nhật Ký Bảo Trì Định Kỳ',
-    cat: 'PHÂN HỆ 05 • BẢO TRÌ',
-    icon: Icons.Calendar,
-    desc: 'Lập lịch bảo dưỡng phòng học, ghi nhận nhật ký kiểm tra định kỳ điều hòa, máy chiếu'
+    desc: 'Quản lý toàn bộ thiết bị trường, đăng ký mới, cập nhật bảo hành và in tem nhãn QR',
+    roles: ['facility_manager', 'admin']
   },
   {
     id: 'inventory',
     label: 'Kiểm Kê CSVC & Đối Soát Mã QR Thực Địa',
-    cat: 'PHÂN HỆ 06 • KIỂM KÊ',
+    cat: 'TÀI SẢN • KIỂM KÊ',
     icon: Icons.CheckCircle,
-    desc: 'Tạo đợt kiểm kê tài sản năm, quét mã QR camera di động đối soát thừa thiếu thực tế'
+    desc: 'Tạo đợt kiểm kê, quét đối soát camera di động và tự động tạo phiếu hỏng phát hiện',
+    roles: ['facility_manager']
   },
   {
-    id: 'disposal_calc',
-    label: 'Quy Trình Thanh Lý Tài Sản & Máy Tính Chỉ Số R ≥ 60%',
-    cat: 'PHÂN HỆ 07 • THANH LÝ',
+    id: 'disposal_propose',
+    label: 'Đề Xuất Thanh Lý Thiết Bị (Hao mòn R ≥ 60%)',
+    cat: 'TÀI SẢN • THANH LÝ',
     icon: Icons.Sliders,
-    desc: 'Tính toán hao mòn kinh tế kỹ thuật tài sản hỏng, tự động lập hội đồng thanh lý'
+    desc: 'Lọc thiết bị hư hỏng quá hạn khấu hao và lập hồ sơ đề xuất thanh lý kèm giá thu hồi',
+    roles: ['facility_manager']
+  },
+  // Admin
+  {
+    id: 'users',
+    label: 'Quản Trị Người Dùng & Phân Vai Trò',
+    cat: 'QUẢN TRỊ • TÀI KHOẢN',
+    icon: Icons.Users,
+    desc: 'Tạo tài khoản, gán 4 vai trò chuẩn, khóa/mở tài khoản và đặt lại mật khẩu',
+    roles: ['admin']
   },
   {
     id: 'rbac',
-    label: 'Ma Trận Phân Quyền 3 Vai Trò (RBAC Engine)',
-    cat: 'PHÂN HỆ 08 • QUẢN TRỊ',
-    icon: Icons.Users,
-    desc: 'Phân quyền chi tiết cho Giảng viên, Quản lý CSVC & Kỹ thuật, và Quản trị viên'
+    label: 'Ma Trận Phân Quyền Vai Trò (RBAC Dynamic)',
+    cat: 'QUẢN TRỊ • PHÂN QUYỀN',
+    icon: Icons.Shield,
+    desc: 'Phân quyền chi tiết cho 4 vai trò chính quy theo từng phân hệ chức năng',
+    roles: ['admin']
+  },
+  {
+    id: 'master_data',
+    label: 'Danh Mục Dữ Liệu Nền (Master Data)',
+    cat: 'QUẢN TRỊ • DANH MỤC',
+    icon: Icons.Settings,
+    desc: 'Quản lý Loại thiết bị, Nhà cung cấp, Đơn vị sửa chữa và Danh mục phòng học',
+    roles: ['admin']
+  },
+  {
+    id: 'disposal_approval',
+    label: 'Phê Duyệt Thanh Lý (BGH - Quyết Định QĐ-TL)',
+    cat: 'QUẢN TRỊ • PHÊ DUYỆT',
+    icon: Icons.CheckCircle,
+    desc: 'Ban Giám Hiệu xem xét hồ sơ, phê duyệt với số quyết định thanh lý hoặc từ chối',
+    roles: ['admin']
   },
   {
     id: 'audit_log',
-    label: 'Nhật Ký Kiểm Toán Chuỗi Khối SHA-256 Bất Biến',
-    cat: 'PHÂN HỆ 09 • KIỂM TOÁN',
+    label: 'Sổ Cái Nhật Ký Kiểm Toán SHA-256 Bất Biến',
+    cat: 'QUẢN TRỊ • KIỂM TOÁN',
     icon: Icons.Audit,
-    desc: 'Lưu vết mật mã học không thể can thiệp mọi thay đổi trạng thái tài sản và luân chuyển'
+    desc: 'Truy vết mã hóa không thể can thiệp mọi hành động và xuất khẩu báo cáo CSV',
+    roles: ['admin']
   }
 ];
 
 export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
+  const { currentUser, isTabAllowed } = useAuth();
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -87,7 +175,10 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
 
   if (!isOpen) return null;
 
-  const filtered = ALL_MODULES.filter(
+  const userRole = String(currentUser?.role || '').toLowerCase();
+  const allowedModules = ALL_MODULES.filter(m => !m.roles || m.roles.includes(userRole));
+
+  const filtered = allowedModules.filter(
     (m) =>
       m.label.toLowerCase().includes(query.toLowerCase()) ||
       m.cat.toLowerCase().includes(query.toLowerCase()) ||

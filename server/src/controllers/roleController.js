@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Role } from '../models/Role.js';
 import { AuditLog } from '../models/AuditLog.js';
 
@@ -24,7 +25,13 @@ export const updateRolePermissions = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Danh sách quyền phải là một mảng chuỗi.' });
     }
 
-    const role = await Role.findById(req.params.id);
+    let role = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      role = await Role.findById(req.params.id);
+    }
+    if (!role) {
+      role = await Role.findOne({ name: req.params.id });
+    }
     if (!role) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy vai trò.' });
     }

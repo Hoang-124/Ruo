@@ -9,12 +9,12 @@
 1. [Giới Thiệu Đề Án & Tầm Nhìn](#1-giới-thiệu-đề-án--tầm-nhìn)
 2. [Sơ Đồ Kiến Trúc Hệ Thống](#2-sơ-đồ-kiến-trúc-hệ-thống)
 3. [4 Trụ Cột Kỹ Thuật Nâng Cao](#3-4-trụ-cột-kỹ-thuật-nâng-cao)
-4. [Ma Trận 3 Tác Nhân & Tài Khoản Trình Diễn](#4-ma-trận-3-tác-nhân--tài-khoản-trình-diễn)
+4. [Ma Trận 4 Tác Nhân Chính Quy & Tài Khoản Trình Diễn](#4-ma-trận-4-tác-nhân-chính-quy--tài-khoản-trình-diễn)
 5. [Cấu Trúc Thư Mục Dự Án](#5-cấu-trúc-thư-mục-dự-án)
 6. [Đặc Tả Cơ Sở Dữ Liệu MongoDB](#6-đặc-tả-cơ-sở-dữ-liệu-mongodb)
 7. [Danh Mục API Endpoints](#7-danh-mục-api-endpoints)
 8. [Hướng Dẫn Cài Đặt & Chạy Cục Bộ](#8-hướng-dẫn-cài-đặt--chạy-cục-bộ)
-9. [Bảng Phân Rã 64 Nghiệp Vụ](#9-bảng-phân-rã-64-nghiệp-vụ)
+9. [Bảng Phân Rã 68 Use Cases Theo Tác Nhân](#9-bảng-phân-rã-68-use-cases-theo-tác-nhân-actor_usecasedrawio)
 10. [Quy Chuẩn Thiết Kế Giao Diện & Mã Nguồn](#10-quy-chuẩn-thiết-kế-giao-diện--mã-nguồn)
 
 ---
@@ -104,20 +104,23 @@ Hệ thống quản lý thiết bị và vật tư tại các trường đại h
 
 ---
 
-## 4. MA TRẬN 3 TÁC NHÂN & TÀI KHOẢN TRÌNH DIỄN
+## 4. MA TRẬN 4 TÁC NHÂN CHÍNH QUY & TÀI KHOẢN TRÌNH DIỄN
 
-Hệ thống phục vụ riêng cho **Phòng Hành chính** với 3 vai trò. Dưới đây là tài khoản có sẵn sau khi chạy `npm run seed`:
+Hệ thống được thiết kế theo chuẩn phân tách nhiệm vụ độc lập (**Separation of Duties** — người làm không tự duyệt việc của mình), gồm 4 vai trò chính quy và 1 vai trò khách:
 
-| Họ và Tên | Vai trò (Role) | Email Đăng Nhập | Mã Nhân Viên | Mật Khẩu | Đặc Quyền Chính |
+| Họ và Tên | Vai trò (Role) | Email Đăng Nhập | Mã Định Danh | Mật Khẩu | Đặc Quyền Nghiệp Vụ Chính |
 | :--- | :--- | :--- | :---: | :---: | :--- |
-| **Ban Giám Hiệu / Quản Trị Hệ Thống** | **Quản trị viên** *(Admin)* | `admin@ruo.edu.vn` | `AD000001` | `Ruo@2026` | Toàn quyền quản trị, phê duyệt thanh lý BGH (bước 3), kiểm toán SHA-256 |
-| **Trưởng Phòng HC-QT Lê Hoàng Hải** | **Quản lý Phòng HC** *(Manager)* | `manager@ruo.edu.vn` | `QL000001` | `Ruo@2026` | Duyệt phiếu điều chuyển (bước 2), duyệt thanh lý HC (bước 2), lập dự trù mua sắm (bước 4), điều phối nhân viên kỹ thuật |
-| **Kỹ Thuật Viên Trần Minh Tuấn** | **Nhân viên Phòng HC** *(Staff)* | `staff@ruo.edu.vn` | `NV000001` | `Ruo@2026` | Kiểm kê QR, đề xuất điều chuyển, báo cáo hỏng hóc, sửa chữa/thay linh kiện, đề xuất thanh lý khi R>=60%, tiếp nhận thiết bị mới (bước 5) |
+| **Ban Giám Hiệu / Quản Trị Hệ Thống** | `admin` | `admin@ruo.edu.vn` | `AD001` | `Ruo@2026` | Quản trị người dùng, phân quyền ma trận RBAC động, quản lý danh mục nền (Master Data), phê duyệt thanh lý cuối cùng (Ban hành QĐ-TL), tra cứu sổ cái kiểm toán SHA-256 |
+| **Cán Bộ Quản Lý Cơ Sở Vật Chất** | `facility_manager` | `facility_manager@ruo.edu.vn` | `QL001` | `Ruo@2026` | Điều phối sửa chữa (Kanban SLA), giao việc kỹ thuật viên, cấp thiết bị dự phòng từ KHO-01, duyệt linh kiện, ra lệnh điều chuyển, kiểm kê và lập hồ sơ đề xuất thanh lý (R ≥ 60%) |
+| **Kỹ Thuật Viên Vận Hành** | `technician` | `technician@ruo.edu.vn` | `KT001` | `Ruo@2026` | Tiếp nhận nhiệm vụ, cập nhật nhật ký sửa chữa, đề xuất lĩnh linh kiện, xác nhận di chuyển thiết bị thực địa, quét QR tra cứu thông số kỹ thuật |
+| **Giảng Viên / Cán Bộ Sử Dụng** | `lecturer` | `lecturer@ruo.edu.vn` | `GV001` | `Ruo@2026` | Tra cứu thiết bị phòng học, tạo phiếu báo hỏng sự cố thực địa, theo dõi tiến độ khắc phục SLA và đánh giá chất lượng sửa chữa (1-5 sao) |
+| **Khách Vãng Lai** | `guest` | *(Không cần đăng nhập)* | — | — | Đăng nhập tài khoản trường, yêu cầu gửi mã OTP khôi phục mật khẩu |
 
-> **Ghi chú đăng nhập:**
-> - Đăng nhập bằng **Email** hoặc **Mã nhân viên**.
-> - Mật khẩu mặc định: **`Ruo@2026`**.
-> - **Khóa tạm 15 phút** nếu nhập sai quá 5 lần.
+> **Quy chuẩn bảo mật đăng nhập:**
+> - Hỗ trợ đăng nhập linh hoạt bằng **Email trường** hoặc **Mã định danh (MSSV/Mã CB)**.
+> - Mật khẩu khởi tạo đồng bộ: **`Ruo@2026`**.
+> - **Khóa tạm 15 phút** tự động nếu nhập sai mật khẩu 5 lần liên tiếp.
+> - **OTP 6 chữ số** gửi qua email thật (SMTP) với cơ chế chống brute-force và rate-limit 3 lần/giờ.
 
 ---
 
@@ -125,131 +128,150 @@ Hệ thống phục vụ riêng cho **Phòng Hành chính** với 3 vai trò. D�
 
 ```
 d:/Ruo/
-├── client/                                 # Giao diện React 19 + Vite
+├── client/                                 # Giao diện React 19 + Vite (Vanilla CSS Tokens)
 │   ├── src/
 │   │   ├── components/                     # Components dùng chung
-│   │   │   ├── common/                    # FloorPlan2D, Building2DIso, SvgIcons, Logo
-│   │   │   ├── layout/                    # AppHeader, Sidebar, DynamicIslandDock
-│   │   │   └── ui/                        # EquipmentForm, SLABadge, StatCard, Modals
+│   │   │   ├── common/                    # FloorPlan2D, SvgIcons, Logo
+│   │   │   ├── layout/                    # AppHeader
+│   │   │   └── ui/                        # UserProfileModal, CommandPaletteModal, LogoutConfirmModal
+│   │   ├── config/                        # navigation.js (Single source of truth cho 4 vai trò & 20 tabs)
 │   │   ├── context/                       # AuthContext, ToastContext
-│   │   ├── mock/                          # campusBuildingData (108 phòng, 5 tầng)
+│   │   ├── lib/                           # api.js, router.js
 │   │   ├── pages/
+│   │   │   ├── admin/                     # UserManagementPage, RBACMatrixPage, MasterDataPage, DisposalApprovalPage, AuditLogPage
 │   │   │   ├── auth/                      # LoginPage
-│   │   │   ├── dashboard/                 # Dashboard KPI + Sơ đồ CAD
-│   │   │   ├── equipments/                # Kho thiết bị, QR Scan, Lifecycle, Batch Import
-│   │   │   ├── transfers/                 # Phiếu luân chuyển, Duyệt, Lịch sử
-│   │   │   ├── repairs/                   # Phiếu sửa chữa, Timeline, Bảo hành
-│   │   │   ├── parts/                     # Kho linh kiện, Phiếu xuất kho
-│   │   │   ├── maintenance/               # Bảo trì dự phòng, Lịch bảo dưỡng
-│   │   │   ├── disposals/                 # Thanh lý RACI 5 bước
-│   │   │   ├── reports/                   # Báo cáo thống kê, Xuất PDF/Excel
-│   │   │   ├── incidents/                 # Kanban board sửa chữa
-│   │   │   ├── notifications/             # Trung tâm thông báo
-│   │   │   └── admin/                     # User Directory, RBAC, Audit, Catalog, Templates
-│   │   ├── App.jsx                        # Shell ứng dụng & Điều hướng
-│   │   └── main.jsx                       # Điểm khởi động
-│   └── vite.config.js                     # Proxy ngược sang Backend (port 5000)
+│   │   │   ├── dashboard/                 # Dashboard tổng quan điều hành & Sơ đồ phòng học 2D
+│   │   │   ├── equipments/                # EquipmentsPage (Quản lý thiết bị & QR), DisposalProposePage (Đề xuất thanh lý)
+│   │   │   ├── facility/                  # WarehouseStockPage (Kho KHO-01), MovementsPage (Lệnh điều chuyển)
+│   │   │   ├── incidents/                 # TicketKanbanPage (Phiếu sửa chữa 6 trạng thái SLA)
+│   │   │   ├── inventory/                 # InventoryPage (Kiểm kê CSVC & Quét QR đối soát)
+│   │   │   ├── lecturer/                  # ReportIssuePage, LecturerTicketsPage
+│   │   │   └── technician/                # TechnicianTasksPage, SparePartsPage, MovementTasksPage, QRScannerPage
+│   │   ├── App.jsx                        # Shell ứng dụng & Bộ điều hướng RBAC Guard
+│   │   └── main.jsx                       # Entry point
+│   └── vite.config.js                     # Cấu hình build & Proxy
 │
 ├── server/                                 # API Node.js + Express + MongoDB
 │   ├── src/
-│   │   ├── config/                        # constants.js, db.js
-│   │   ├── controllers/                   # auth, facility, equipment, transfer, repair, parts, maint, disposal, audit, notification
-│   │   ├── middlewares/                   # JWT Auth, RBAC, Error Handler
-│   │   ├── models/                        # User, Room, Equipment, Transfer, Repair, SparePart, MaintPlan, Disposal, AuditLog, Notification...
-│   │   ├── routes/                        # RESTful routing
-│   │   ├── seeds/                         # seedDatabase.js
-│   │   ├── services/                      # slaReactor, deadlineChecker, emailService, notificationService
+│   │   ├── config/                        # constants.js (4 roles, statuses), db.js
+│   │   ├── controllers/                   # auth, equipment, movement, repair, sparePart, disposal, inventory, masterData, audit, notification, role, facility
+│   │   ├── middlewares/                   # authMiddleware (JWT, RBAC Guard nghiêm ngặt không universal override)
+│   │   ├── models/                        # 20 Mongoose Models chuẩn hóa theo dbdiagram.dbml
+│   │   ├── routes/                        # RESTful API routing
+│   │   ├── seeds/                         # seedDatabase.js (Khởi tạo 4 tài khoản và dữ liệu KHO-01)
+│   │   ├── services/                      # emailService, auditService, slaReactor
+│   │   ├── tests/                         # backendVerification.js, test_uc37_qr.js, test_login_scenarios.js...
 │   │   └── server.js                      # Entry point
-│   └── .env.example                       # Mẫu biến môi trường
+│   └── .env.example                       # Biến môi trường
 │
-├── PROJECT_TASKS_MATRIX.md                 # Ma trận 64 nghiệp vụ
-├── PROJECT_TASKS_SHEET.tsv                 # TSV import Google Sheets / Excel
-├── PROJECT_TASKS_WBS.md                    # Đặc tả WBS 4 Phase
-├── PROJECT_TASKS_3COLS.tsv                 # Danh sách 3 cột gọn
-└── README.md                               # Tài liệu này
+├── Actor_UseCase.drawio                   # Sơ đồ 68 Use Cases chi tiết cho 5 Actor
+├── DATABASE_SCHEMA.md                     # Đặc tả chi tiết 20 Collections MongoDB
+├── dbdiagram.dbml                         # Mô hình dữ liệu DBML chuẩn hóa 20 bảng
+└── README.md                               # Tài liệu hướng dẫn này
 ```
 
 ---
 
-## 6. ĐẶC TẢ CƠ SỞ DỮ LIỆU MONGODB
+## 6. ĐẶC TẢ CƠ SỞ DỮ LIỆU MONGODB (20 COLLECTIONS)
 
-| STT | Collection | Chức năng | Chỉ mục trọng yếu |
-| :---: | :--- | :--- | :--- |
-| **1** | `users` | Tài khoản nhân viên HC & admin | `{ email: 1 }`, `{ code: 1 }`, `{ role: 1 }` |
-| **2** | `roles` | Ma trận vai trò & permissions | `{ name: 1 }` (unique) |
-| **3** | `rooms` | Phòng học, tọa độ CAD 2.5D | `{ code: 1 }`, `{ building: 1, floor: 1 }` |
-| **4** | `equipments` | Thiết bị, mã QR, khấu hao, bảo hành | `{ code: 1 }`, `{ qr_code: 1 }`, `{ room_id: 1, status: 1 }` |
-| **5** | `equipment_categories` | Loại thiết bị (TV, Máy chiếu, Bàn...) | `{ code: 1 }` (unique) |
-| **6** | `suppliers` | Nhà cung cấp thiết bị | `{ code: 1 }` (unique) |
-| **7** | `repair_units` | Đơn vị sửa chữa bên ngoài | `{ code: 1 }` (unique) |
-| **8** | `spare_parts` | Kho linh kiện thay thế (tên, SL, giá, NCC) | `{ code: 1 }`, `{ stock: 1 }` |
-| **9** | `parts_requests` | Phiếu yêu cầu xuất kho linh kiện | `{ repair_id: 1 }`, `{ status: 1 }` |
-| **10** | `transfers` | Phiếu điều chuyển thiết bị giữa các phòng | `{ equipment_id: 1 }`, `{ status: 1 }`, `{ from_room_id: 1, to_room_id: 1 }` |
-| **11** | `repairs` | Phiếu sửa chữa, timeline, vật tư | `{ equipment_id: 1 }`, `{ status: 1 }`, `{ deadline: 1 }` |
-| **12** | `maintenance_plans` | Kế hoạch bảo trì dự phòng (chu kỳ, checklist) | `{ next_due: 1 }`, `{ target_type: 1 }` |
-| **13** | `disposals` | Hồ sơ thanh lý RACI 5 bước | `{ equipment_id: 1 }`, `{ current_step: 1 }` |
-| **14** | `inventory_sessions` | Đợt kiểm kê chính thức (Draft/InProgress/Reconciled) | `{ status: 1 }`, `{ created_at: -1 }` |
-| **15** | `notifications` | Thông báo in-app (duyệt, sự cố, BH, deadline) | `{ user_id: 1, is_read: 1 }`, `{ created_at: -1 }` |
-| **16** | `audit_logs` | Chuỗi băm kiểm toán SHA-256 (Tamper-evident) | `{ seq: 1 }`, `{ hash_sha256: 1 }`, `{ action: 1 }` |
+Hệ thống được chuẩn hóa chính xác **20 Collections** chia thành 6 Phân hệ nghiệp vụ theo `dbdiagram.dbml` và `DATABASE_SCHEMA.md`:
+
+| Phân hệ | Collection | Chức năng nghiệp vụ |
+| :--- | :--- | :--- |
+| **01. Xác Thực & Người Dùng** | `users` | Tài khoản người dùng, mã định danh, vai trò, mật khẩu hash bcrypt |
+| | `roles` | Ma trận quyền hạn RBAC động theo 4 vai trò chính quy |
+| | `user_sessions` | Phiên đăng nhập RFC-7519 jti, thu hồi phiên an toàn |
+| | `password_resets` | Mã OTP khôi phục mật khẩu, hash an toàn, chống brute-force |
+| **02. Cơ Sở Vật Chất & Danh Mục** | `rooms` | Danh mục phòng học, hội trường, phòng lab và Kho KHO-01 |
+| | `equipment_categories`| Danh mục chủng loại thiết bị và định mức khấu hao |
+| | `suppliers` | Danh mục nhà cung cấp trang thiết bị |
+| | `repair_units` | Đơn vị cung cấp dịch vụ sửa chữa chuyên trách |
+| **03. Thiết Bị & Điều Động** | `equipments` | Hồ sơ thiết bị, mã QR duy nhất, khấu hao (R-ratio), bảo hành |
+| | `equipment_movements` | Lệnh luân chuyển thiết bị giữa các phòng học và kho dự phòng |
+| | `disposals` | Hồ sơ thanh lý tài sản (Đề xuất FM → Phê duyệt BGH QĐ-TL) |
+| **04. Sự Cố & Sửa Chữa** | `repair_tickets` | Phiếu sự cố, mức độ hỏng, giao việc KTV, hạn SLA, đánh giá 1-5 sao |
+| | `repair_logs` | Nhật ký từng bước xử lý kỹ thuật của kỹ thuật viên |
+| | `spare_parts` | Danh mục linh kiện thay thế, tồn kho tối thiểu |
+| | `parts_requests` | Phiếu xin cấp phát linh kiện từ kỹ thuật viên chờ FM duyệt |
+| **05. Kiểm Kê CSVC** | `inventory_sessions` | Đợt kiểm kê tài sản chính thức của trường |
+| | `inventory_details` | Chi tiết đối soát mã QR thực địa theo từng thiết bị |
+| **06. Hệ Thống & Kiểm Toán** | `notifications` | Thông báo sự kiện trong hệ thống (in-app alerts) |
+| | `audit_logs` | Sổ cái kiểm toán SHA-256 bất biến (Tamper-evident Blockchain-like) |
+| | `system_configs` | Cấu hình tham số hệ thống toàn trường |
 
 ---
 
-## 7. DANH MỤC API ENDPOINTS
+## 7. DANH MỤC API ENDPOINTS CHÍNH
 
-### Phân Hệ 1: Xác Thực & Quản Trị (`/api/auth`, `/api/admin`)
-- `POST /api/auth/login` — Đăng nhập, cấp JWT
-- `POST /api/auth/logout` — Đăng xuất, blacklist token
-- `POST /api/auth/forgot-password` — Gửi OTP qua email
-- `POST /api/auth/change-password` — Đổi mật khẩu
-- `GET /api/auth/me` — Thông tin profile
-- `PUT /api/auth/me` — Cập nhật profile
-- `GET /api/admin/users` — Danh sách người dùng
-- `POST /api/admin/users` — Tạo tài khoản mới
-- `PUT /api/admin/users/:id/toggle-status` — Khóa/mở tài khoản
-- `GET /api/admin/roles` — Ma trận RBAC
-- `PUT /api/admin/roles/:id/permissions` — Cập nhật quyền
+### Phân Hệ 1: Xác Thực & Quản Trị Hệ Thống (`/api/auth`, `/api/roles`, `/api/audit`)
+- `POST /api/auth/login` — Đăng nhập bằng Email hoặc Mã định danh
+- `POST /api/auth/logout` — Đăng xuất và thu hồi phiên người dùng
+- `POST /api/auth/forgot-password/request` — Yêu cầu gửi OTP khôi phục mật khẩu
+- `POST /api/auth/forgot-password/verify` — Xác thực mã OTP 6 số
+- `POST /api/auth/forgot-password/reset` — Đặt lại mật khẩu mới
+- `GET /api/auth/me` — Xem hồ sơ người dùng
+- `PUT /api/auth/me` — Cập nhật thông tin hồ sơ (SĐT, Avatar)
+- `POST /api/auth/change-password` — Đổi mật khẩu cá nhân
+- `GET /api/auth/users` — Quản lý danh sách người dùng (Admin)
+- `POST /api/auth/users` — Tạo tài khoản người dùng mới (Admin)
+- `PUT /api/auth/users/:id/role` — Cập nhật vai trò tài khoản (Admin)
+- `PUT /api/auth/users/:id/toggle-lock` — Khóa hoặc mở khóa tài khoản (Admin)
+- `POST /api/auth/users/:id/reset-password` — Đặt lại mật khẩu mặc định (Admin)
+- `GET /api/roles` — Lấy danh sách ma trận phân quyền vai trò (Admin)
+- `PUT /api/roles/:roleName/permissions` — Cập nhật ma trận phân quyền (Admin)
+- `GET /api/audit/logs` — Tra cứu nhật ký kiểm toán SHA-256 (Admin)
+- `GET /api/audit/verify-chain` — Đối soát chuỗi băm mật mã học (Admin)
+- `GET /api/audit/export/csv` — Xuất khẩu sổ cái kiểm toán ra file CSV (Admin)
 
-### Phân Hệ 2: Phòng & CAD (`/api/facilities`)
-- `GET /api/facilities/rooms` — Danh sách phòng
-- `GET /api/facilities/rooms/:code` — Chi tiết phòng + thiết bị
-- `POST /api/facilities/rooms` — Thêm phòng
-- `PUT /api/facilities/rooms/:id` — Sửa phòng
-- `PUT /api/facilities/rooms/:id/status` — Đổi trạng thái phòng
-- `GET /api/facilities/cad-canvas` — Dữ liệu mặt bằng CAD
+### Phân Hệ 2: Danh Mục & Mặt Bằng CAD (`/api/master-data`, `/api/facilities`)
+- `GET /api/master-data/categories` — Danh mục loại thiết bị
+- `POST /api/master-data/categories` — Thêm loại thiết bị mới
+- `GET /api/master-data/suppliers` — Danh mục nhà cung cấp
+- `POST /api/master-data/suppliers` — Thêm nhà cung cấp mới
+- `GET /api/master-data/repair-units` — Danh mục đơn vị sửa chữa
+- `POST /api/master-data/repair-units` — Thêm đơn vị sửa chữa mới
+- `GET /api/master-data/rooms` — Danh mục phòng học & Kho KHO-01
+- `POST /api/master-data/rooms` — Thêm phòng học mới
+- `GET /api/facilities/cad-canvas` — Mặt bằng CAD số hóa 2D Tòa A1
 
-### Phân Hệ 3: Thiết Bị & QR (`/api/equipments`)
-- `GET /api/equipments` — Danh mục thiết bị
-- `POST /api/equipments` — Nhập thiết bị mới
-- `GET /api/equipments/:id` — Chi tiết thiết bị
-- `PUT /api/equipments/:id` — Cập nhật thiết bị
-- `GET /api/equipments/:id/lifecycle` — Timeline vòng đời
-- `GET /api/equipments/qr/:qrCode` — Tra cứu QR
-- `POST /api/equipments/inventory` — Kiểm kê QR
-- `PUT /api/equipments/:id/dispose` — Thanh lý
-- `GET /api/equipments/warranty-expiring` — TB sắp hết BH
-- `POST /api/equipments/import` — Import hàng loạt từ Excel/CSV
-- `POST /api/equipments/import/validate` — Validate import data
-- `POST /api/inventory-sessions` — Tạo đợt kiểm kê
-- `PUT /api/inventory-sessions/:id/scan` — Quét QR kiểm kê
-- `GET /api/inventory-sessions/:id/export` — Xuất biên bản kiểm kê PDF
+### Phân Hệ 3: Thiết Bị & Điều Động (`/api/equipments`, `/api/movements`, `/api/disposals`)
+- `GET /api/equipments` — Danh sách thiết bị (hỗ trợ phân trang, lọc phòng, lọc trạng thái)
+- `POST /api/equipments` — Đăng ký thiết bị mới kèm sinh mã QR
+- `GET /api/equipments/:id` — Chi tiết thiết bị & lịch sử bảo hành
+- `PUT /api/equipments/:id` — Cập nhật thông tin thiết bị
+- `PUT /api/equipments/:id/warranty` — Cập nhật thời hạn bảo hành
+- `GET /api/equipments/qr/:qrCode` — Tra cứu nhanh thông số thực địa qua mã QR
+- `POST /api/equipments/batch-import` — Import hàng loạt thiết bị từ dữ liệu JSON
+- `GET /api/movements` — Danh sách lệnh điều chuyển thiết bị
+- `POST /api/movements` — Tạo lệnh điều chuyển thiết bị giữa các phòng (Facility Manager)
+- `PUT /api/movements/:id/confirm` — Kỹ thuật viên xác nhận hoàn tất di chuyển thiết bị
+- `GET /api/disposals` — Danh sách hồ sơ thanh lý thiết bị
+- `POST /api/disposals` — Lập hồ sơ đề xuất thanh lý thiết bị hao mòn R ≥ 60% (Facility Manager)
+- `PUT /api/disposals/:id/approve` — Ban Giám Hiệu phê duyệt thanh lý và ban hành QĐ-TL (Admin)
+- `PUT /api/disposals/:id/reject` — Ban Giám Hiệu từ chối thanh lý kèm lý do (Admin)
 
-### Phân Hệ 4: Luân Chuyển (`/api/transfers`)
-- `POST /api/transfers` — Tạo phiếu luân chuyển
-- `GET /api/transfers` — Danh sách phiếu
-- `GET /api/transfers/pending` — Phiếu chờ duyệt
-- `GET /api/transfers/equipment/:id` — Lịch sử luân chuyển TB
-- `PUT /api/transfers/:id/approve` — Duyệt phiếu
-- `PUT /api/transfers/:id/complete` — Hoàn tất luân chuyển
+### Phân Hệ 4: Báo Hỏng, Sửa Chữa & Linh Kiện (`/api/repairs`, `/api/spare-parts`)
+- `POST /api/repairs` — Giảng viên tạo phiếu báo hỏng thiết bị thực địa
+- `GET /api/repairs` — Danh sách phiếu sửa chữa (hỗ trợ lọc theo trạng thái, người phụ trách)
+- `GET /api/repairs/:id` — Xem chi tiết phiếu sửa chữa
+- `PUT /api/repairs/:id/assign` — Facility Manager giao việc cho KTV và cấp đồ dự phòng
+- `PUT /api/repairs/:id/accept` — Kỹ thuật viên tiếp nhận việc sửa chữa
+- `POST /api/repairs/:id/logs` — Kỹ thuật viên cập nhật nhật ký khắc phục
+- `PUT /api/repairs/:id/outcome` — KTV báo cáo kết quả hoàn thành hoặc không thể sửa
+- `PUT /api/repairs/:id/close` — Facility Manager nghiệm thu và đóng phiếu sửa chữa
+- `POST /api/repairs/:id/feedback` — Giảng viên đánh giá chất lượng sửa chữa (1-5 sao)
+- `GET /api/spare-parts` — Danh mục kho linh kiện vật tư
+- `PUT /api/spare-parts/:id/stock` — Cập nhật số lượng tồn kho linh kiện
+- `GET /api/spare-parts/requests` — Danh sách yêu cầu cấp phát linh kiện
+- `POST /api/spare-parts/requests` — KTV tạo yêu cầu cấp linh kiện cho ca sửa chữa
+- `PUT /api/spare-parts/requests/:id/approve` — Facility Manager duyệt xuất kho linh kiện
 
-### Phân Hệ 5: Sửa Chữa & Bảo Hành (`/api/repairs`)
-- `POST /api/repairs` — Báo hỏng
-- `GET /api/repairs` — Danh sách phiếu sửa
-- `GET /api/repairs/overdue` — TB quá hạn sửa
-- `GET /api/repairs/equipment/:id` — Lịch sử sửa TB
-- `PUT /api/repairs/:id/assign` — Giao việc
-- `PUT /api/repairs/:id/accept` — Nhận việc
-- `PUT /api/repairs/:id/progress` — Cập nhật tiến độ
-- `PUT /api/repairs/:id/resolve` — Hoàn tất sửa
+### Phân Hệ 5: Kiểm Kê Cơ Sở Vật Chất (`/api/inventory-sessions`)
+- `GET /api/inventory-sessions` — Danh sách các đợt kiểm kê
+- `POST /api/inventory-sessions` — Khởi tạo đợt kiểm kê CSVC mới
+- `GET /api/inventory-sessions/:id` — Chi tiết tiến độ kiểm kê
+- `POST /api/inventory-sessions/:id/scan` — Quét mã QR thực địa đối soát thiết bị
+- `PUT /api/inventory-sessions/:id/reconcile` — Hoàn tất và đối soát đợt kiểm kê
 
 ### Phân Hệ 5b: Linh Kiện (`/api/parts`, `/api/parts-requests`)
 - `GET /api/parts` — Kho linh kiện
@@ -264,29 +286,18 @@ d:/Ruo/
 - `PUT /api/maintenance/plans/:id/log` — Log kết quả checklist
 - `GET /api/facilities/rooms/:code/maint-history` — Lịch sử bảo trì phòng
 
-### Phân Hệ 5d: Thanh Lý RACI (`/api/disposals`)
-- `POST /api/disposals` — Đề xuất thanh lý (R)
-- `PUT /api/disposals/:id/hc-approve` — HC duyệt (A)
-- `PUT /api/disposals/:id/bgh-approve` — BGH phê duyệt (A)
-- `POST /api/disposals/:id/procurement` — Dự trù mua sắm (C)
-- `PUT /api/disposals/:id/receipt` — Nhập kho mới (I)
-
-### Phân Hệ 6: Báo Cáo & Kiểm Toán (`/api/reports`, `/api/audit`)
-- `GET /api/reports/by-room` — TB theo phòng
-- `GET /api/reports/by-status` — TB theo trạng thái
-- `GET /api/reports/repair-frequency` — Tần suất hỏng
-- `GET /api/reports/warranty-expiring` — Sắp hết BH
-- `GET /api/reports/overdue-repairs` — Quá hạn sửa
-- `GET /api/reports/export` — Xuất PDF/Excel
-- `GET /api/dashboard/kpi` — KPI Cards tổng quan
-- `GET /api/dashboard/repair-cost` — Chi phí sửa tích lũy
-- `GET /api/dashboard/health-score` — Equipment Health Score
-- `GET /api/notifications` — Trung tâm thông báo
-- `PUT /api/notifications/read` — Đánh dấu đã đọc
-- `PUT /api/admin/config/templates/:type` — Template builder
-- `GET /api/audit/logs` — Nhật ký kiểm toán
-- `GET /api/audit/verify-chain` — Đối soát SHA-256
-- `GET /api/audit/export` — Xuất audit log
+### Phân Hệ 6: Báo Cáo & Sổ Cái Kiểm Toán (`/api/reports`, `/api/audit`, `/api/notifications`)
+- `GET /api/reports/by-room` — Thống kê thiết bị phân bổ theo phòng
+- `GET /api/reports/by-status` — Thống kê tình trạng hoạt động thiết bị
+- `GET /api/reports/repair-frequency` — Thống kê tần suất hỏng hóc theo chủng loại
+- `GET /api/reports/export/csv` — Xuất khẩu báo cáo dạng file CSV chuẩn
+- `GET /api/dashboard/kpi` — Thẻ chỉ số KPI thời gian thực
+- `GET /api/dashboard/health-score` — Điểm sức khỏe vận hành thiết bị toàn trường
+- `GET /api/notifications` — Danh sách thông báo nội bộ
+- `PUT /api/notifications/:id/read` — Đánh dấu thông báo đã đọc
+- `GET /api/audit/logs` — Nhật ký kiểm toán SHA-256
+- `GET /api/audit/verify-chain` — Đối soát chuỗi băm bất biến
+- `GET /api/audit/export/csv` — Xuất sổ cái kiểm toán dạng CSV
 
 ---
 
@@ -305,11 +316,11 @@ d:/Ruo/
 cd d:/Ruo/server
 npm install
 cp .env.example .env
-npm run seed        # Nạp dữ liệu mẫu
-npm run dev         # Port 5000
+npm run seed        # Nạp 4 tài khoản chuẩn và dữ liệu kho KHO-01
+npm run dev         # Khởi động máy chủ backend tại Port 5000
 ```
 
-> Healthcheck: `http://localhost:5000/api/health`
+> Kiểm tra trạng thái máy chủ: `http://localhost:5000/api/health`
 
 ---
 
@@ -318,30 +329,28 @@ npm run dev         # Port 5000
 ```bash
 cd d:/Ruo/client
 npm install
-npm run dev         # Port 5173
+npm run build       # Biên dịch và kiểm tra tính toàn vẹn 20 phân hệ
+npm run dev         # Khởi động giao diện tại Port 5173
 ```
 
-> Truy cập: **`http://localhost:5173`**
+> Truy cập ứng dụng: **`http://localhost:5173`**
 
 ---
 
-## 9. BẢNG PHÂN RÃ 64 NGHIỆP VỤ
+## 9. BẢNG PHÂN RÃ 68 USE CASES THEO TÁC NHÂN (ACTOR_USECASE.DRAWIO)
 
-Dự án gồm **87 nghiệp vụ** chia thành 8 phân hệ chính:
+Hệ thống được thiết kế và mô hình hóa đầy đủ **68 Use Cases** chia theo 5 trang sơ đồ trong `Actor_UseCase.drawio`:
 
-| Phân hệ | Phạm vi | Số task |
-| :--- | :--- | :---: |
-| **PH1: Auth + User + Catalog + RBAC** | Login, Profile, User CRUD, Danh mục, Phân quyền | 18 |
-| **PH2: Room & CAD** | CRUD phòng, Sơ đồ mặt bằng 2.5D | 8 |
-| **PH3: Equipment & QR** | CRUD TB, Batch Import, Lifecycle, Kiểm kê QR, Thanh lý | 12 |
-| **PH4: Transfer** | Tạo → Duyệt → Hoàn tất luân chuyển | 5 |
-| **PH5: Repair + Parts + Warranty** | Sửa chữa, Xuất kho linh kiện, BH, Deadline | 17 |
-| **PH6: Preventive + RACI Disposal** | Bảo trì dự phòng, Thanh lý 5 bước | 9 |
-| **PH7: Dashboard + Reports + Notifs** | KPI, Thống kê, PDF/Excel, Thông báo, Email | 13 |
-| **PH8: Audit + Health + Seed** | Kiểm toán SHA-256, Giám sát, Seed | 5 |
-| **TỔNG** | | **87** |
+| STT | Tác Nhân (Actor) | Phạm Vi Nghiệp Vụ Chính | Số Use Cases |
+| :---: | :--- | :--- | :---: |
+| **1** | **Admin (BGH & Quản Trị)** | Quản trị tài khoản, ma trận phân quyền RBAC động, danh mục nền (Master Data), phê duyệt thanh lý cuối cùng (ban hành QĐ-TL), sổ cái kiểm toán SHA-256 | **19 UCs** |
+| **2** | **Facility Manager (Quản Lý CSVC)** | Điều phối Kanban SLA, giao việc KTV, xuất kho dự phòng KHO-01, duyệt linh kiện, ra lệnh điều chuyển, kiểm kê thực địa, lập đề xuất thanh lý R ≥ 60% | **18 UCs** |
+| **3** | **Technician (Kỹ Thuật Viên)** | Tiếp nhận sửa chữa, ghi nhật ký khắc phục, xin linh kiện thay thế, xác nhận điều chuyển thiết bị, quét mã QR thực địa | **12 UCs** |
+| **4** | **Lecturer (Giảng Viên / Cán Bộ)** | Tra cứu thiết bị phòng học, tạo phiếu báo hỏng sự cố, theo dõi tiến độ SLA, đánh giá nghiệm thu 1-5 sao | **11 UCs** |
+| **5** | **Guest (Khách Vãng Lai)** | Đăng nhập tài khoản trường (Email/Mã số), gửi OTP qua email thật (SMTP), đặt lại mật khẩu với rate-limiting | **8 UCs** |
+| **TỔNG** | | **68 Use Cases hoàn chỉnh** | **68 UCs** |
 
-Tra cứu chi tiết tại [PROJECT_TASKS_MATRIX.md](file:///d:/Ruo/PROJECT_TASKS_MATRIX.md) và [PROJECT_TASKS_WBS.md](file:///d:/Ruo/PROJECT_TASKS_WBS.md).
+Tra cứu chi tiết sơ đồ tại file [Actor_UseCase.drawio](file:///d:/Ruo/Actor_UseCase.drawio) và đặc tả cơ sở dữ liệu tại [DATABASE_SCHEMA.md](file:///d:/Ruo/DATABASE_SCHEMA.md).
 
 ---
 
