@@ -10,6 +10,7 @@ export const UserManagementPage = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
+  const [statusTab, setStatusTab] = useState('ALL');
   const [selectedUser, setSelectedUser] = useState(null);
 
   // Modals
@@ -129,6 +130,43 @@ export const UserManagementPage = () => {
     }
   };
 
+  const handleApproveUser = async (user, action, targetRole) => {
+    const roleLabel = (targetRole || user.requested_role) === USER_ROLES.FACILITY_MANAGER ? 'Quản Lý CSVC'
+      : (targetRole || user.requested_role) === USER_ROLES.TECHNICIAN ? 'Kỹ Thuật Viên' : 'Giảng Viên';
+
+    const confirmMsg = action === 'approve'
+      ? `Phê duyệt bổ nhiệm cán bộ ${user.full_name} (${user.code}) vào chức vụ [${roleLabel}]?`
+      : `Từ chối nguyện vọng chức vụ và kích hoạt tài khoản ${user.full_name} với vai trò Giảng Viên thường?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await authApi.approveUser(user._id, {
+        action,
+        role: targetRole || user.requested_role
+      });
+
+      if (res.success) {
+        toast.success(res.message, action === 'approve' ? 'Phê Duyệt Thành Công' : 'Đã Từ Chối Bổ Nhiệm');
+        fetchUsers();
+        if (selectedUser && selectedUser._id === user._id) {
+          setSelectedUser(null);
+        }
+      }
+    } catch (err) {
+      toast.error('Lỗi xử lý phê duyệt: ' + err.message);
+    }
+  };
+
+  const pendingCount = users.filter(u => u.status === 'pending_approval').length;
+  const activeCount = users.filter(u => u.status === 'active').length;
+  const lockedCount = users.filter(u => u.status === 'locked').length;
+
+  const filteredUsers = users.filter(u => {
+    if (statusTab === 'ALL') return true;
+    return u.status === statusTab;
+  });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Page Header */}
@@ -151,6 +189,52 @@ export const UserManagementPage = () => {
           <Icons.Plus size={16} />
           <span>Tạo Người Dùng Mới</span>
         </button>
+      </div>
+
+      {/* Status Segmented Tabs */}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {[
+          { key: 'ALL', label: 'Tất Cả', count: users.length, color: 'var(--blueprint-500)' },
+          { key: 'pending_approval', label: 'Chờ Phê Duyệt', count: pendingCount, color: '#F59E0B', highlight: pendingCount > 0 },
+          { key: 'active', label: 'Đang Hoạt Động', count: activeCount, color: '#10B981' },
+          { key: 'locked', label: 'Đã Khóa', count: lockedCount, color: '#EF4444' }
+        ].map(tab => {
+          const isActive = statusTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setStatusTab(tab.key)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: `1px solid ${isActive ? tab.color : 'var(--border-default)'}`,
+                background: isActive ? `${tab.color}18` : 'var(--surface-card)',
+                color: isActive ? tab.color : 'var(--ink-secondary)',
+                fontWeight: isActive ? 700 : 500,
+                fontSize: '13px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>{tab.label}</span>
+              <span
+                style={{
+                  padding: '2px 7px',
+                  borderRadius: '10px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  background: tab.highlight && !isActive ? 'rgba(245, 158, 11, 0.2)' : isActive ? tab.color : 'var(--surface-3)',
+                  color: tab.highlight && !isActive ? '#F59E0B' : isActive ? '#FFFFFF' : 'var(--ink-muted)'
+                }}
+              >
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Filter & Search Bar */}
@@ -227,7 +311,7 @@ export const UserManagementPage = () => {
                     <div style={{ marginTop: '8px', fontSize: '13px' }}>Đang nạp danh sách tài khoản...</div>
                   </td>
                 </tr>
-              ) : users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={7} style={{ padding: '48px', textAlign: 'center', color: 'var(--ink-muted)' }}>
                     <Icons.Users size={32} style={{ opacity: 0.4, marginBottom: '8px' }} />
@@ -235,14 +319,19 @@ export const UserManagementPage = () => {
                   </td>
                 </tr>
               ) : (
-                users.map(u => {
+                filteredUsers.map(u => {
                   const roleMeta = ROLE_METADATA[u.role] || ROLE_METADATA[USER_ROLES.LECTURER];
                   const isLocked = u.status === 'locked';
+                  const isPending = u.status === 'pending_approval';
 
                   return (
                     <tr
                       key={u._id}
-                      style={{ borderBottom: '1px solid var(--border-default)', transition: 'background 0.15s ease' }}
+                      style={{
+                        borderBottom: '1px solid var(--border-default)',
+                        background: isPending ? 'rgba(245, 158, 11, 0.05)' : undefined,
+                        transition: 'background 0.15s ease'
+                      }}
                       className="ruo-table-row"
                     >
                       <td style={{ padding: '14px 16px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--blueprint-400)' }}>
@@ -255,14 +344,14 @@ export const UserManagementPage = () => {
                               width: '32px',
                               height: '32px',
                               borderRadius: '50%',
-                              background: roleMeta.bg,
-                              color: roleMeta.color,
+                              background: isPending ? 'rgba(245, 158, 11, 0.15)' : roleMeta.bg,
+                              color: isPending ? '#F59E0B' : roleMeta.color,
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontWeight: 700,
                               fontSize: '12px',
-                              border: `1px solid ${roleMeta.color}40`
+                              border: `1px solid ${isPending ? '#F59E0B40' : `${roleMeta.color}40`}`
                             }}
                           >
                             {u.avatar || u.full_name?.slice(0, 2).toUpperCase() || 'U'}
@@ -283,28 +372,52 @@ export const UserManagementPage = () => {
                         {u.department || 'Đại Học Ruo'}
                       </td>
                       <td style={{ padding: '14px 16px' }}>
-                        <select
-                          className="ruo-select ruo-select-sm"
-                          value={u.role}
-                          onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                          style={{
-                            fontSize: '12px',
-                            fontWeight: 700,
-                            color: roleMeta.color,
-                            background: roleMeta.bg,
-                            border: `1px solid ${roleMeta.color}50`,
-                            borderRadius: 'var(--radius-sm)',
-                            padding: '4px 8px'
-                          }}
-                        >
-                          <option value={USER_ROLES.ADMIN}>Admin</option>
-                          <option value={USER_ROLES.FACILITY_MANAGER}>Facility Manager</option>
-                          <option value={USER_ROLES.TECHNICIAN}>Technician</option>
-                          <option value={USER_ROLES.LECTURER}>Lecturer</option>
-                        </select>
+                        {isPending ? (
+                          <div>
+                            <span style={{ fontSize: '10.5px', color: '#F59E0B', fontWeight: 600, display: 'block', marginBottom: '2px' }}>
+                              Nguyện vọng:
+                            </span>
+                            <span
+                              className="ruo-badge"
+                              style={{
+                                background: 'rgba(245, 158, 11, 0.15)',
+                                color: '#F59E0B',
+                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                fontWeight: 700,
+                                fontSize: '11px'
+                              }}
+                            >
+                              {ROLE_METADATA[u.requested_role]?.label || u.requested_role || 'Chưa chọn'}
+                            </span>
+                          </div>
+                        ) : (
+                          <select
+                            className="ruo-select ruo-select-sm"
+                            value={u.role}
+                            onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                            style={{
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              color: roleMeta.color,
+                              background: roleMeta.bg,
+                              border: `1px solid ${roleMeta.color}50`,
+                              borderRadius: 'var(--radius-sm)',
+                              padding: '4px 8px'
+                            }}
+                          >
+                            <option value={USER_ROLES.ADMIN}>Admin</option>
+                            <option value={USER_ROLES.FACILITY_MANAGER}>Facility Manager</option>
+                            <option value={USER_ROLES.TECHNICIAN}>Technician</option>
+                            <option value={USER_ROLES.LECTURER}>Lecturer</option>
+                          </select>
+                        )}
                       </td>
                       <td style={{ padding: '14px 16px' }}>
-                        {isLocked ? (
+                        {isPending ? (
+                          <span className="ruo-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                            <Icons.Clock size={11} style={{ marginRight: '4px' }} /> Chờ Duyệt
+                          </span>
+                        ) : isLocked ? (
                           <span className="ruo-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
                             <Icons.Lock size={11} style={{ marginRight: '4px' }} /> Đã khóa
                           </span>
@@ -316,33 +429,78 @@ export const UserManagementPage = () => {
                       </td>
                       <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          {isPending ? (
+                            <>
+                              <button
+                                className="ruo-btn ruo-btn-sm"
+                                onClick={() => handleApproveUser(u, 'approve', u.requested_role)}
+                                style={{
+                                  background: '#10B981',
+                                  color: '#FFFFFF',
+                                  border: 'none',
+                                  fontWeight: 700,
+                                  fontSize: '11px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '5px 9px'
+                                }}
+                                title="Phê duyệt bổ nhiệm chức vụ"
+                              >
+                                <Icons.Check size={12} strokeWidth={2.5} />
+                                <span>Duyệt</span>
+                              </button>
+
+                              <button
+                                className="ruo-btn ruo-btn-sm"
+                                onClick={() => handleApproveUser(u, 'reject')}
+                                style={{
+                                  background: 'transparent',
+                                  color: '#EF4444',
+                                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                                  fontSize: '11px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '5px 8px'
+                                }}
+                                title="Từ chối nguyện vọng (kích hoạt vai trò Giảng Viên)"
+                              >
+                                <Icons.X size={12} strokeWidth={2.5} />
+                                <span>Từ Chối</span>
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                className="ruo-btn ruo-btn-ghost ruo-btn-sm"
+                                onClick={() => {
+                                  setUserToReset(u);
+                                  setNewPasswordInput(`Ruo@${Math.floor(1000 + Math.random() * 9000)}`);
+                                  setIsResetPasswordModalOpen(true);
+                                }}
+                                title="Reset mật khẩu"
+                              >
+                                <Icons.Key size={14} />
+                              </button>
+
+                              <button
+                                className={`ruo-btn ruo-btn-sm ${isLocked ? 'ruo-btn-success' : 'ruo-btn-danger'}`}
+                                onClick={() => handleToggleLock(u._id, u.status)}
+                                title={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                                style={{ padding: '4px 8px' }}
+                              >
+                                {isLocked ? <Icons.Unlock size={13} /> : <Icons.Lock size={13} />}
+                              </button>
+                            </>
+                          )}
+
                           <button
                             className="ruo-btn ruo-btn-ghost ruo-btn-sm"
                             onClick={() => setSelectedUser(u)}
                             title="Xem chi tiết"
                           >
                             <Icons.Eye size={14} />
-                          </button>
-
-                          <button
-                            className="ruo-btn ruo-btn-ghost ruo-btn-sm"
-                            onClick={() => {
-                              setUserToReset(u);
-                              setNewPasswordInput(`Ruo@${Math.floor(1000 + Math.random() * 9000)}`);
-                              setIsResetPasswordModalOpen(true);
-                            }}
-                            title="Reset mật khẩu"
-                          >
-                            <Icons.Key size={14} />
-                          </button>
-
-                          <button
-                            className={`ruo-btn ruo-btn-sm ${isLocked ? 'ruo-btn-success' : 'ruo-btn-danger'}`}
-                            onClick={() => handleToggleLock(u._id, u.status)}
-                            title={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
-                            style={{ padding: '4px 8px' }}
-                          >
-                            {isLocked ? <Icons.Unlock size={13} /> : <Icons.Lock size={13} />}
                           </button>
                         </div>
                       </td>
@@ -574,10 +732,18 @@ export const UserManagementPage = () => {
                 </div>
                 <div>
                   <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', fontWeight: 600 }}>TRẠNG THÁI TÀI KHOẢN</div>
-                  <div style={{ fontWeight: 600, color: selectedUser.status === 'locked' ? '#EF4444' : '#10B981' }}>
-                    {selectedUser.status === 'locked' ? 'Đang bị khóa' : 'Đang hoạt động'}
+                  <div style={{ fontWeight: 600, color: selectedUser.status === 'locked' ? '#EF4444' : selectedUser.status === 'pending_approval' ? '#F59E0B' : '#10B981' }}>
+                    {selectedUser.status === 'locked' ? 'Đang bị khóa' : selectedUser.status === 'pending_approval' ? '⏳ Chờ Admin phê duyệt bổ nhiệm' : 'Đang hoạt động'}
                   </div>
                 </div>
+                {selectedUser.requested_role && (
+                  <div>
+                    <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', fontWeight: 600 }}>NGUYỆN VỌNG CHỨC VỤ</div>
+                    <div style={{ fontWeight: 700, color: '#F59E0B' }}>
+                      {ROLE_METADATA[selectedUser.requested_role]?.label || selectedUser.requested_role}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', fontWeight: 600 }}>NGÀY TẠO TÀI KHOẢN</div>
                   <div style={{ fontWeight: 600, color: 'var(--ink-secondary)' }}>
@@ -587,7 +753,28 @@ export const UserManagementPage = () => {
               </div>
             </div>
 
-            <div className="ruo-modal-footer">
+            <div className="ruo-modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              {selectedUser.status === 'pending_approval' && (
+                <>
+                  <button
+                    type="button"
+                    className="ruo-btn ruo-btn-danger"
+                    onClick={() => handleApproveUser(selectedUser, 'reject')}
+                  >
+                    <Icons.X size={14} />
+                    <span>Từ Chối (Về Giảng Viên)</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="ruo-btn ruo-btn-success"
+                    style={{ background: '#10B981', color: '#fff', border: 'none' }}
+                    onClick={() => handleApproveUser(selectedUser, 'approve', selectedUser.requested_role)}
+                  >
+                    <Icons.Check size={14} />
+                    <span>Phê Duyệt Bổ Nhiệm</span>
+                  </button>
+                </>
+              )}
               <button className="ruo-btn ruo-btn-secondary" onClick={() => setSelectedUser(null)}>
                 Đóng
               </button>

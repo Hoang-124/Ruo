@@ -176,7 +176,8 @@ export const authApi = {
   createUser: (data) => api.post('/auth/users', data),
   updateUserRole: (id, role) => api.patch(`/auth/users/${id}/role`, { role }),
   toggleUserLock: (id) => api.patch(`/auth/users/${id}/lock`),
-  adminResetPassword: (id, password) => api.post(`/auth/users/${id}/reset-password`, { password })
+  adminResetPassword: (id, password) => api.post(`/auth/users/${id}/reset-password`, { password }),
+  approveUser: (id, data) => api.post(`/auth/users/${id}/approve`, data)
 };
 
 export const equipmentApi = {

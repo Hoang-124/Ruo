@@ -184,7 +184,12 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return {
         success: false,
-        message: error.message || 'Không thể kết nối đến máy chủ Backend (Port 5000).'
+        message: error.data?.message || error.message || 'Không thể kết nối đến máy chủ Backend (Port 5000).',
+        isPending: Boolean(error.data?.isPending),
+        isLocked: Boolean(error.data?.isLocked),
+        remainingMinutes: error.data?.remainingMinutes,
+        attemptsLeft: error.data?.attemptsLeft,
+        failedAttempts: error.data?.failedAttempts
       };
     }
   }, []);

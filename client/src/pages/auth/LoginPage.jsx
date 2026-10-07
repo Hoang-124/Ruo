@@ -138,7 +138,9 @@ export const LoginPage = ({ onLoginSuccess }) => {
         }
       } else {
         setErrorMsg(res.message || 'Thông tin tài khoản hoặc mật khẩu không chính xác.');
-        if (res.isLocked) {
+        if (res.isPending) {
+          toast.warning(res.message, 'Tài Khoản Đang Chờ Phê Duyệt');
+        } else if (res.isLocked) {
           setLockoutData({
             isLocked: true,
             remainingMinutes: res.remainingMinutes || 15
@@ -311,13 +313,25 @@ export const LoginPage = ({ onLoginSuccess }) => {
       });
 
       if (res && res.success) {
-        setSuccessMsg(res.message || 'Đăng ký tài khoản thành công! Đang chuyển hướng...');
-        toast.success(res.message || `Đăng ký thành công! Chào mừng ${regFullName.trim()}`, 'Đăng Ký Thành Công');
-        setTimeout(() => {
-          if (onLoginSuccess) {
-            onLoginSuccess();
-          }
-        }, 600);
+        if (res.isPending) {
+          const pendingNotice = res.message || 'Đăng ký thành công! Hồ sơ của bạn đã được chuyển tới Ban Quản Trị (Admin) để phê duyệt bổ nhiệm chức vụ.';
+          setSuccessMsg(pendingNotice);
+          toast.info(pendingNotice, 'Hồ Sơ Đang Chờ Duyệt');
+          setTimeout(() => {
+            setIdentifier(regEmail.trim());
+            setActiveTab('login');
+            setErrorMsg(null);
+            setSuccessMsg('Hồ sơ đăng ký đã gửi thành công! Vui lòng đợi Ban Quản Trị (Admin) phê duyệt chức vụ trước khi đăng nhập.');
+          }, 2000);
+        } else {
+          setSuccessMsg(res.message || 'Đăng ký tài khoản thành công! Đang chuyển hướng...');
+          toast.success(res.message || `Đăng ký thành công! Chào mừng ${regFullName.trim()}`, 'Đăng Ký Thành Công');
+          setTimeout(() => {
+            if (onLoginSuccess) {
+              onLoginSuccess();
+            }
+          }, 600);
+        }
       } else {
         const msg = res?.message || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.';
         setErrorMsg(msg);
@@ -1184,6 +1198,26 @@ export const LoginPage = ({ onLoginSuccess }) => {
                         Quản Lý CSVC
                       </button>
                     </div>
+                    {(regRole === 'technician' || regRole === 'facility_manager') && (
+                      <div
+                        style={{
+                          marginTop: '6px',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          background: isLight ? '#FFFBEB' : 'rgba(245, 158, 11, 0.12)',
+                          border: `1px solid ${isLight ? '#FDE68A' : 'rgba(245, 158, 11, 0.3)'}`,
+                          color: isLight ? '#B45309' : '#FBBF24',
+                          fontSize: '11px',
+                          lineHeight: 1.35,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Icons.Shield size={13} color={isLight ? '#B45309' : '#FBBF24'} style={{ flexShrink: 0 }} />
+                        <span>Chức vụ này cần <strong>Admin phê duyệt</strong> trước khi kích hoạt.</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>

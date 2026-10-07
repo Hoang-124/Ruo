@@ -17,7 +17,8 @@ import {
   getUserById,
   updateUserRole,
   toggleUserLock,
-  adminResetPassword
+  adminResetPassword,
+  approveUser
 } from '../controllers/authController.js';
 import { protect, requireRole } from '../middlewares/authMiddleware.js';
 import { createRateLimiter } from '../middlewares/securityMiddleware.js';
@@ -70,5 +71,6 @@ router.get('/users/:id', protect, requireRole(USER_ROLES.ADMIN), getUserById);
 router.patch('/users/:id/role', protect, requireRole(USER_ROLES.ADMIN), updateUserRole);
 router.patch('/users/:id/lock', protect, requireRole(USER_ROLES.ADMIN), toggleUserLock);
 router.post('/users/:id/reset-password', protect, requireRole(USER_ROLES.ADMIN), adminResetPassword);
+router.post('/users/:id/approve', protect, requireRole(USER_ROLES.ADMIN), approveUser);
 
 export default router;

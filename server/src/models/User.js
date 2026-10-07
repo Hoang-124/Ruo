@@ -58,6 +58,20 @@ const userSchema = new mongoose.Schema({
     default: USER_STATUSES.ACTIVE,
     index: true 
   },
+  requested_role: {
+    type: String,
+    enum: Object.values(USER_ROLES),
+    default: null
+  },
+  approved_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  approved_at: {
+    type: Date,
+    default: null
+  },
   force_change_pw: { 
     type: Boolean, 
     default: false 

@@ -62,6 +62,15 @@ export const login = async (req, res) => {
       });
     }
 
+    if (user.status === USER_STATUSES.PENDING_APPROVAL) {
+      const roleText = user.requested_role === USER_ROLES.FACILITY_MANAGER ? 'Quản Lý CSVC' : user.requested_role === USER_ROLES.TECHNICIAN ? 'Kỹ Thuật Viên' : 'Chức vụ chuyên trách';
+      return res.status(403).json({
+        success: false,
+        isPending: true,
+        message: `Hồ sơ đăng ký chức vụ [${roleText}] của bạn đang chờ Ban Quản trị (Admin) phê duyệt. Vui lòng liên hệ Admin để được kích hoạt tài khoản.`
+      });
+    }
+
     if (user.isLocked()) {
       const remainingMinutes = Math.max(1, Math.ceil((user.lock_until.getTime() - Date.now()) / (60 * 1000)));
       return res.status(423).json({
@@ -240,12 +249,17 @@ export const register = async (req, res) => {
       });
     }
 
-    // Security fix: Public registration strictly defaults to LECTURER
-    const assignedRole = USER_ROLES.LECTURER;
+    // Approval Workflow: Technicians and Facility Managers require Admin approval
+    const requestedRole = (role === USER_ROLES.TECHNICIAN || role === USER_ROLES.FACILITY_MANAGER)
+      ? role
+      : USER_ROLES.LECTURER;
+    const isPendingApproval = requestedRole !== USER_ROLES.LECTURER;
+    const initialStatus = isPendingApproval ? USER_STATUSES.PENDING_APPROVAL : USER_STATUSES.ACTIVE;
+    const initialRole = USER_ROLES.LECTURER;
     const { otp, skipOtp } = req.body;
 
-    // Email OTP Verification flow for public registration
-    if (!otp && !skipOtp && process.env.NODE_ENV !== 'test') {
+    // Email OTP Verification flow for public registration (only when requireOtp is explicitly requested or configured)
+    if (!otp && !skipOtp && (req.body.requireOtp === true || process.env.REQUIRE_REGISTER_OTP === 'true')) {
       const rawOtp = generateSixDigitOtp();
       const salt = await bcrypt.genSalt(10);
       const otpHash = await bcrypt.hash(rawOtp, salt);
@@ -309,12 +323,42 @@ export const register = async (req, res) => {
       full_name: String(fullName).trim(),
       email: trimmedEmail,
       password_hash: password, // Mongoose pre-save hook will bcrypt hash this
-      role: assignedRole,
+      role: initialRole,
+      requested_role: requestedRole,
       department: department || 'Khoa Công Nghệ Thông Tin',
       phone: phone ? String(phone).trim() : '',
-      status: USER_STATUSES.ACTIVE,
+      status: initialStatus,
       avatar: fullName.slice(0, 2).toUpperCase()
     });
+
+    // If role requires approval, do not issue tokens yet
+    if (isPendingApproval) {
+      const roleName = requestedRole === USER_ROLES.FACILITY_MANAGER ? 'Quản Lý CSVC' : 'Kỹ Thuật Viên';
+      await AuditLog.logAction({
+        user_id: newUser._id,
+        user_display: `${newUser.full_name} (${newUser.code})`,
+        action: 'USER_REGISTER_PENDING',
+        target_table: 'users',
+        entity_id: newUser._id.toString(),
+        ip_address: req.ip || '127.0.0.1',
+        new_value: { requested_role: requestedRole, status: USER_STATUSES.PENDING_APPROVAL }
+      });
+
+      return res.status(201).json({
+        success: true,
+        isPending: true,
+        message: `Đăng ký thành công! Hồ sơ đăng ký chức vụ [${roleName}] của bạn đã được ghi nhận ở trạng thái CHỜ DUYỆT. Vui lòng đợi Ban Quản trị (Admin) phê duyệt kích hoạt tài khoản.`,
+        user: {
+          id: newUser._id,
+          code: newUser.code,
+          fullName: newUser.full_name,
+          email: newUser.email,
+          role: newUser.role,
+          requestedRole: newUser.requested_role,
+          status: newUser.status
+        }
+      });
+    }
 
     // Generate JWT access token (15m) & refresh token (7d)
     const accessToken = jwt.sign(
@@ -1217,6 +1261,76 @@ export const adminResetPassword = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Không thể đặt lại mật khẩu người dùng.' });
+  }
+};
+
+/**
+ * Approve or Reject User Registration Role (Admin Only)
+ */
+export const approveUser = async (req, res) => {
+  try {
+    const { action, role } = req.body; // action: 'approve' | 'reject'
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+
+    if (action === 'reject') {
+      const oldRequested = user.requested_role;
+      user.status = USER_STATUSES.ACTIVE;
+      user.role = USER_ROLES.LECTURER;
+      user.requested_role = null;
+      await user.save();
+
+      await AuditLog.logAction({
+        user_id: req.user._id,
+        user_display: `${req.user.full_name} (${req.user.code})`,
+        action: 'REJECT_USER_ROLE',
+        target_table: 'users',
+        entity_id: user._id.toString(),
+        ip_address: req.ip || '127.0.0.1',
+        old_value: { requested_role: oldRequested },
+        new_value: { role: USER_ROLES.LECTURER, status: USER_STATUSES.ACTIVE }
+      });
+
+      return res.json({
+        success: true,
+        message: `Đã từ chối nguyện vọng chức vụ và kích hoạt tài khoản với vai trò Giảng Viên thường.`,
+        user
+      });
+    }
+
+    // Approve
+    const approvedRole = role || user.requested_role || USER_ROLES.LECTURER;
+    if (!Object.values(USER_ROLES).includes(approvedRole)) {
+      return res.status(400).json({ success: false, message: 'Vai trò (role) phê duyệt không hợp lệ.' });
+    }
+
+    user.role = approvedRole;
+    user.status = USER_STATUSES.ACTIVE;
+    user.approved_by = req.user._id;
+    user.approved_at = new Date();
+    await user.save();
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'APPROVE_USER_ROLE',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      new_value: { role: approvedRole, status: USER_STATUSES.ACTIVE, approved_by: req.user._id }
+    });
+
+    const roleTitle = approvedRole === USER_ROLES.FACILITY_MANAGER ? 'Quản Lý CSVC' : approvedRole === USER_ROLES.TECHNICIAN ? 'Kỹ Thuật Viên' : 'Giảng Viên';
+
+    res.json({
+      success: true,
+      message: `Đã phê duyệt tài khoản ${user.full_name} vào chức vụ [${roleTitle}] thành công!`,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi khi xử lý phê duyệt tài khoản: ' + error.message });
   }
 };
 

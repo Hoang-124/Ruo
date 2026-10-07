@@ -10,7 +10,8 @@ export const USER_ROLES = {
 
 export const USER_STATUSES = {
   ACTIVE: 'active',
-  LOCKED: 'locked'
+  LOCKED: 'locked',
+  PENDING_APPROVAL: 'pending_approval'
 };
 
 export const ROOM_TYPES = {
