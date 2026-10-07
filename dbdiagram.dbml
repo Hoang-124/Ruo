@@ -1,7 +1,7 @@
 // ========================================
 // RUO - Facility Management System
 // 5 Actors: Guest · Lecturer · Facility Manager · Technician · Admin
-// 20 Collections · 48 Use Cases
+// 20 Collections · 68 Use Cases
 // ========================================
 // TIP: Bỏ các ref → users để tránh mạng nhện
 // Các trường *_by đều FK → users (ghi trong note)
