@@ -3,7 +3,7 @@
 > **20 collections · 48 Use Cases · 5 Actors:** Guest, Lecturer, Facility Manager, Technician, Admin
 > (cộng actor trừu tượng **User** = mọi người đã đăng nhập)
 >
-> Sơ đồ: [dbdiagram.dbml](file:///d:/Ruo/dbdiagram.dbml) (bản gộp) · [dbml/](file:///d:/Ruo/dbml) (6 module) · [Actor_UseCase.drawio](file:///d:/Ruo/Actor_UseCase.drawio) (6 trang: tổng quan + mỗi actor 1 trang)
+> Sơ đồ: [dbdiagram.dbml](file:///d:/Ruo/dbdiagram.dbml) (bản gộp) · [dbml/](file:///d:/Ruo/dbml) (6 module) · [Actor_UseCase.drawio](file:///d:/Ruo/Actor_UseCase.drawio) (6 trang, mỗi actor 1 trang)
 
 ---
 
@@ -14,7 +14,7 @@
 | 1 | Maintenance Staff quá rộng | Tách thành **Facility Manager** (giao việc, duyệt, quyết định) và **Technician** (đi làm thực địa) |
 | 2 | Gộp audit log và login | Bỏ `login_history`. Đăng nhập / đăng xuất / đặt lại mật khẩu ghi vào `audit_logs` |
 | 3 | Maintenance plan không liên quan equipment | Bỏ `maintenance_plans`, `maintenance_logs`. Kiểm kê kiêm luôn việc kiểm tra định kỳ |
-| 4 | Use case rườm rà | 48 UC, mỗi UC là 1 động từ cụ thể. Vẽ 1 trang tổng quan (8 gói) + mỗi actor 1 trang riêng |
+| 4 | Use case rườm rà | 48 UC, mỗi UC là 1 động từ cụ thể. Mỗi actor 1 trang riêng, vẽ đơn giản |
 | 5 | `notification_templates` thừa | Bỏ. Nội dung thông báo là hằng số trong code |
 | 6 | Sửa xong đồ ở đâu, kho dự phòng | Kho = `rooms.room_type = 'warehouse'`, định mức `rooms.required_equipment`. `transfers` đổi thành `equipment_movements` ghi mọi lần di chuyển |
 
