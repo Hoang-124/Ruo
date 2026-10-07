@@ -2,6 +2,7 @@ import express from 'express';
 import {
   login,
   register,
+  verifyRegisterOtp,
   checkDuplicate,
   logout,
   refreshToken,
@@ -12,7 +13,11 @@ import {
   getMe,
   updateProfile,
   createUser,
-  getAllUsers
+  getAllUsers,
+  getUserById,
+  updateUserRole,
+  toggleUserLock,
+  adminResetPassword
 } from '../controllers/authController.js';
 import { protect, requireRole } from '../middlewares/authMiddleware.js';
 import { createRateLimiter } from '../middlewares/securityMiddleware.js';
@@ -32,35 +37,38 @@ const forgotLimiter = createRateLimiter({
   message: 'Quá nhiều yêu cầu OTP từ IP này.'
 });
 
-// UC-1.0: Register & Real-time Duplicate Check
+// Guest Module: Register, Verify email OTP, Real-time Duplicate Check
 router.post('/register', register);
+router.post('/verify-register-otp', verifyRegisterOtp);
 router.get('/check-duplicate', checkDuplicate);
 
-// UC-1.1: Login (email/mã NV + password) -> Access Token (15m) + Refresh Token (7d)
+// Account: Login (email/mã NV + password) -> Access Token (15m) + Refresh Token (7d)
 router.post('/login', loginLimiter, login);
 
-// UC-1.2: Logout (hủy refresh token)
+// Account: Logout (hủy refresh token)
 router.post('/logout', protect, logout);
 
 // Token Refresh (Token rotation)
 router.post('/refresh-token', refreshToken);
 
-// UC-1.3: Forgot Password (gửi OTP 6 số, TTL 15m, rate limit 3 lần/giờ)
+// Guest: Recover password (gửi OTP 6 số, TTL 15m, rate limit 5 lần/giờ)
 router.post('/forgot-password', forgotLimiter, forgotPassword);
 router.post('/verify-reset-otp', verifyResetOtp);
 router.post('/reset-password', resetPassword);
 
-// UC-1.4: Change Password (validate pass cũ + mới >= 8 ký tự, thu hồi refresh token)
+// Account: Change password
 router.post('/change-password', protect, changePassword);
 
-// UC-1.5: Profile View
+// Account: View & Update Profile
 router.get('/me', protect, getMe);
-
-// UC-1.6: Update Profile (sửa SĐT, avatar; khóa cứng mã NV, email, phòng ban)
 router.put('/me', protect, updateProfile);
 
-// UC-10.1 & UC-10.2: Admin User Management
+// Admin Module: User Management (Admin Only)
+router.get('/users', protect, requireRole(USER_ROLES.ADMIN), getAllUsers);
 router.post('/users', protect, requireRole(USER_ROLES.ADMIN), createUser);
-router.get('/users', protect, requireRole(USER_ROLES.ADMIN, USER_ROLES.MANAGER), getAllUsers);
+router.get('/users/:id', protect, requireRole(USER_ROLES.ADMIN), getUserById);
+router.patch('/users/:id/role', protect, requireRole(USER_ROLES.ADMIN), updateUserRole);
+router.patch('/users/:id/lock', protect, requireRole(USER_ROLES.ADMIN), toggleUserLock);
+router.post('/users/:id/reset-password', protect, requireRole(USER_ROLES.ADMIN), adminResetPassword);
 
 export default router;

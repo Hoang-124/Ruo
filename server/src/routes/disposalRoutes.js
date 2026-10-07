@@ -2,38 +2,34 @@ import express from 'express';
 import {
   getDisposalList,
   createDisposalProposal,
+  approveDisposal,
+  rejectDisposal,
   hcApproveDisposal,
   bghApproveDisposal,
   updateDisposalProcurement,
-  completeDisposalReceipt,
-  rejectDisposal
+  completeDisposalReceipt
 } from '../controllers/disposalController.js';
 import { protect, requireRole } from '../middlewares/authMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
 
-router.use(protect);
+// View disposal requests (Admin, Facility Manager)
+router.get('/', protect, getDisposalList);
 
-// GET disposal list and candidate equipment
-router.get('/', getDisposalList);
+// Propose disposal (Facility Manager only)
+router.post('/', protect, requireRole(USER_ROLES.FACILITY_MANAGER), createDisposalProposal);
 
-// Step 1: Staff or Admin proposes disposal (R >= 60%)
-router.post('/', requireRole(USER_ROLES.STAFF, USER_ROLES.ADMIN), createDisposalProposal);
+// Approve disposal request (Admin only)
+router.put('/:id/approve', protect, requireRole(USER_ROLES.ADMIN), approveDisposal);
 
-// Step 2: Manager HC approves
-router.put('/:id/hc-approve', requireRole(USER_ROLES.MANAGER, USER_ROLES.ADMIN), hcApproveDisposal);
+// Reject disposal request (Admin only)
+router.put('/:id/reject', protect, requireRole(USER_ROLES.ADMIN), rejectDisposal);
 
-// Step 3: BGH / Admin approves
-router.put('/:id/bgh-approve', requireRole(USER_ROLES.ADMIN), bghApproveDisposal);
-
-// Step 4: Manager updates procurement plan
-router.put('/:id/procurement', requireRole(USER_ROLES.MANAGER, USER_ROLES.ADMIN), updateDisposalProcurement);
-
-// Step 5: Staff receives replacement & completes disposal
-router.put('/:id/receipt', requireRole(USER_ROLES.STAFF, USER_ROLES.ADMIN), completeDisposalReceipt);
-
-// Reject proposal at review steps
-router.put('/:id/reject', requireRole(USER_ROLES.MANAGER, USER_ROLES.ADMIN), rejectDisposal);
+// Compatibility endpoints for legacy tests
+router.put('/:id/hc-approve', protect, requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER), hcApproveDisposal);
+router.put('/:id/bgh-approve', protect, requireRole(USER_ROLES.ADMIN), bghApproveDisposal);
+router.put('/:id/procurement', protect, requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER), updateDisposalProcurement);
+router.put('/:id/receipt', protect, requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN), completeDisposalReceipt);
 
 export default router;

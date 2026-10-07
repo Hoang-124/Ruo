@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
-import { EQUIPMENT_STATUSES, EQUIPMENT_CONDITIONS } from '../config/constants.js';
+import { EQUIPMENT_STATUSES } from '../config/constants.js';
 
 // Equipment Schema (Module 3: Equipment Management)
+// Conforming to dbdiagram.dbml: equipment collection
 const equipmentSchema = new mongoose.Schema({
   code: { 
     type: String, 
@@ -58,12 +59,6 @@ const equipmentSchema = new mongoose.Schema({
     min: 0, 
     default: 0 
   },
-  condition: {
-    type: String,
-    enum: Object.values(EQUIPMENT_CONDITIONS),
-    default: EQUIPMENT_CONDITIONS.GOOD,
-    index: true
-  },
   purchase_date: { 
     type: Date, 
     required: true, 
@@ -84,15 +79,15 @@ const equipmentSchema = new mongoose.Schema({
     type: Number, 
     default: 20 // 20% per year
   },
-  specs: { 
-    type: mongoose.Schema.Types.Mixed, 
-    default: {} 
-  },
   status: { 
     type: String, 
     enum: Object.values(EQUIPMENT_STATUSES), 
-    default: EQUIPMENT_STATUSES.ACTIVE,
+    default: EQUIPMENT_STATUSES.IN_STOCK,
     index: true 
+  },
+  specs: { 
+    type: mongoose.Schema.Types.Mixed, 
+    default: {} 
   },
   repair_count: { 
     type: Number, 
@@ -135,8 +130,21 @@ equipmentSchema.virtual('rRatio').get(function () {
   return Number(((rep / rem) * 100).toFixed(2));
 });
 
+// Virtual aliases for compatibility with legacy callers
+equipmentSchema.virtual('assetCode').get(function () {
+  return this.code;
+}).set(function (val) {
+  this.code = val;
+});
+
+equipmentSchema.virtual('qrCodeData').get(function () {
+  return this.qr_code;
+}).set(function (val) {
+  this.qr_code = val;
+});
+
 equipmentSchema.set('toJSON', { virtuals: true });
 equipmentSchema.set('toObject', { virtuals: true });
 
-export const Equipment = mongoose.model('Equipment', equipmentSchema);
+export const Equipment = mongoose.models.Equipment || mongoose.model('Equipment', equipmentSchema);
 export default Equipment;

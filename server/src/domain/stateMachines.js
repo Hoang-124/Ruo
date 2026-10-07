@@ -1,70 +1,88 @@
-import { TRANSFER_STATUSES, REPAIR_STATUSES, DISPOSAL_STATUSES, USER_ROLES } from '../config/constants.js';
+import { 
+  MOVEMENT_STATUSES, 
+  REPAIR_STATUSES, 
+  DISPOSAL_STATUSES, 
+  PARTS_REQUEST_STATUSES,
+  INVENTORY_STATUSES,
+  USER_ROLES 
+} from '../config/constants.js';
 
 /**
  * State Transition Maps with Role-Based Authorizations
- * Admin always has universal override capability.
+ * 4 Canonical Roles: Lecturer, Technician, Facility Manager, Admin.
+ * Separation of Duties: Người làm không tự duyệt việc của mình.
  */
 export const STATE_TRANSITIONS = {
-  TRANSFER: {
-    [TRANSFER_STATUSES.PENDING]: [
-      { to: TRANSFER_STATUSES.APPROVED, allowedRoles: [USER_ROLES.MANAGER, USER_ROLES.ADMIN] },
-      { to: TRANSFER_STATUSES.REJECTED, allowedRoles: [USER_ROLES.MANAGER, USER_ROLES.ADMIN] }
+  MOVEMENT: {
+    [MOVEMENT_STATUSES.PENDING]: [
+      { to: MOVEMENT_STATUSES.COMPLETED, allowedRoles: [USER_ROLES.TECHNICIAN] },
+      { to: MOVEMENT_STATUSES.CANCELLED, allowedRoles: [USER_ROLES.FACILITY_MANAGER] }
     ],
-    [TRANSFER_STATUSES.APPROVED]: [
-      { to: TRANSFER_STATUSES.COMPLETED, allowedRoles: [USER_ROLES.STAFF, USER_ROLES.ADMIN] }
-    ],
-    [TRANSFER_STATUSES.REJECTED]: [],
-    [TRANSFER_STATUSES.COMPLETED]: []
+    [MOVEMENT_STATUSES.COMPLETED]: [],
+    [MOVEMENT_STATUSES.CANCELLED]: []
   },
 
   REPAIR: {
     [REPAIR_STATUSES.REPORTED]: [
-      { to: REPAIR_STATUSES.ASSIGNED, allowedRoles: [USER_ROLES.MANAGER, USER_ROLES.ADMIN] }
+      { to: REPAIR_STATUSES.ASSIGNED, allowedRoles: [USER_ROLES.FACILITY_MANAGER] }
     ],
     [REPAIR_STATUSES.ASSIGNED]: [
-      { to: REPAIR_STATUSES.IN_PROGRESS, allowedRoles: [USER_ROLES.STAFF, USER_ROLES.ADMIN] }
+      { to: REPAIR_STATUSES.IN_PROGRESS, allowedRoles: [USER_ROLES.TECHNICIAN] }
     ],
     [REPAIR_STATUSES.IN_PROGRESS]: [
-      { to: REPAIR_STATUSES.RESOLVED, allowedRoles: [USER_ROLES.STAFF, USER_ROLES.ADMIN] }
+      { to: REPAIR_STATUSES.RESOLVED, allowedRoles: [USER_ROLES.TECHNICIAN] },
+      { to: REPAIR_STATUSES.UNREPAIRABLE, allowedRoles: [USER_ROLES.TECHNICIAN] }
     ],
     [REPAIR_STATUSES.RESOLVED]: [
-      { to: REPAIR_STATUSES.CLOSED, allowedRoles: [USER_ROLES.MANAGER, USER_ROLES.ADMIN] }
+      { to: REPAIR_STATUSES.CLOSED, allowedRoles: [USER_ROLES.FACILITY_MANAGER] }
+    ],
+    [REPAIR_STATUSES.UNREPAIRABLE]: [
+      { to: REPAIR_STATUSES.CLOSED, allowedRoles: [USER_ROLES.FACILITY_MANAGER] }
     ],
     [REPAIR_STATUSES.CLOSED]: []
   },
 
   DISPOSAL: {
     [DISPOSAL_STATUSES.PROPOSED]: [
-      { to: DISPOSAL_STATUSES.HC_APPROVED, allowedRoles: [USER_ROLES.MANAGER, USER_ROLES.ADMIN] },
-      { to: DISPOSAL_STATUSES.REJECTED, allowedRoles: [USER_ROLES.MANAGER, USER_ROLES.ADMIN] }
-    ],
-    [DISPOSAL_STATUSES.HC_APPROVED]: [
-      { to: DISPOSAL_STATUSES.BGH_APPROVED, allowedRoles: [USER_ROLES.ADMIN] },
+      { to: DISPOSAL_STATUSES.APPROVED, allowedRoles: [USER_ROLES.ADMIN] },
       { to: DISPOSAL_STATUSES.REJECTED, allowedRoles: [USER_ROLES.ADMIN] }
     ],
-    [DISPOSAL_STATUSES.BGH_APPROVED]: [
-      { to: DISPOSAL_STATUSES.PROCURING, allowedRoles: [USER_ROLES.MANAGER, USER_ROLES.ADMIN] }
+    [DISPOSAL_STATUSES.APPROVED]: [
+      { to: DISPOSAL_STATUSES.COMPLETED, allowedRoles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER] }
     ],
-    [DISPOSAL_STATUSES.PROCURING]: [
-      { to: DISPOSAL_STATUSES.RECEIVED, allowedRoles: [USER_ROLES.STAFF, USER_ROLES.ADMIN] }
-    ],
-    [DISPOSAL_STATUSES.RECEIVED]: [],
-    [DISPOSAL_STATUSES.REJECTED]: []
+    [DISPOSAL_STATUSES.REJECTED]: [],
+    [DISPOSAL_STATUSES.COMPLETED]: []
   },
 
   PARTS_REQUEST: {
-    pending: [
-      { to: 'approved', allowedRoles: [USER_ROLES.MANAGER, USER_ROLES.ADMIN] },
-      { to: 'rejected', allowedRoles: [USER_ROLES.MANAGER, USER_ROLES.ADMIN] }
+    [PARTS_REQUEST_STATUSES.PENDING]: [
+      { to: PARTS_REQUEST_STATUSES.APPROVED, allowedRoles: [USER_ROLES.FACILITY_MANAGER] },
+      { to: PARTS_REQUEST_STATUSES.REJECTED, allowedRoles: [USER_ROLES.FACILITY_MANAGER] }
     ],
-    approved: [],
-    rejected: []
+    [PARTS_REQUEST_STATUSES.APPROVED]: [],
+    [PARTS_REQUEST_STATUSES.REJECTED]: []
+  },
+
+  INVENTORY_SESSION: {
+    [INVENTORY_STATUSES.DRAFT]: [
+      { to: INVENTORY_STATUSES.IN_PROGRESS, allowedRoles: [USER_ROLES.FACILITY_MANAGER] }
+    ],
+    [INVENTORY_STATUSES.IN_PROGRESS]: [
+      { to: INVENTORY_STATUSES.COMPLETED, allowedRoles: [USER_ROLES.FACILITY_MANAGER] }
+    ],
+    [INVENTORY_STATUSES.COMPLETED]: [
+      { to: INVENTORY_STATUSES.RECONCILED, allowedRoles: [USER_ROLES.FACILITY_MANAGER] }
+    ],
+    [INVENTORY_STATUSES.RECONCILED]: []
   }
 };
 
+// Backward compatibility alias for TRANSFER
+STATE_TRANSITIONS.TRANSFER = STATE_TRANSITIONS.MOVEMENT;
+
 /**
  * Validates state transition and checks role authorization
- * @param {string} entityType 'TRANSFER' | 'REPAIR' | 'DISPOSAL' | 'PARTS_REQUEST'
+ * @param {string} entityType 'MOVEMENT' | 'TRANSFER' | 'REPAIR' | 'DISPOSAL' | 'PARTS_REQUEST' | 'INVENTORY_SESSION'
  * @param {string} currentStatus Current state
  * @param {string} targetStatus Target state
  * @param {string} role User role
@@ -91,7 +109,7 @@ export function assertTransition(entityType, currentStatus, targetStatus, role) 
     throw err;
   }
 
-  if (role !== USER_ROLES.ADMIN && !match.allowedRoles.includes(role)) {
+  if (!match.allowedRoles.includes(role)) {
     const err = new Error(
       `Vai trò '${role}' không có thẩm quyền chuyển ${entityType} từ '${currentStatus}' sang '${targetStatus}'. Yêu cầu vai trò: [${match.allowedRoles.join(', ')}].`
     );
@@ -101,3 +119,5 @@ export function assertTransition(entityType, currentStatus, targetStatus, role) 
 
   return true;
 }
+
+export default { STATE_TRANSITIONS, assertTransition };

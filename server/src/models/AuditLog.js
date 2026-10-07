@@ -31,7 +31,8 @@ const auditLogSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
     default: null, 
-    index: true 
+    index: true,
+    alias: 'user'
   },
   user_display: { 
     type: String, 
@@ -56,19 +57,34 @@ const auditLogSchema = new mongoose.Schema({
   },
   previous_hash: { 
     type: String, 
-    required: true 
+    required: true,
+    alias: 'prevHash'
   },
   hash_sha256: { 
     type: String, 
     required: true, 
     unique: true,
-    index: true 
+    index: true,
+    alias: 'sha256Hash'
   }
 }, { 
   timestamps: { createdAt: 'created_at', updatedAt: false } 
 });
 
 auditLogSchema.index({ target_table: 1, entity_id: 1, created_at: -1 });
+
+auditLogSchema.pre(['find', 'findOne', 'countDocuments'], function () {
+  const filter = this.getFilter();
+  if (filter && 'user' in filter) {
+    filter.user_id = filter.user;
+    delete filter.user;
+  }
+  const sort = this.options?.sort;
+  if (sort && typeof sort === 'object' && 'createdAt' in sort) {
+    sort.created_at = sort.createdAt;
+    delete sort.createdAt;
+  }
+});
 
 /**
  * Builds the canonical deterministic payload for hashing

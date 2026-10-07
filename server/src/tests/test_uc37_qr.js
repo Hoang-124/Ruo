@@ -2,8 +2,9 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
-import { Room } from '../models/Facility.js';
-import { EquipmentCategory, Equipment } from '../models/Equipment.js';
+import { Room } from '../models/Room.js';
+import { Equipment } from '../models/Equipment.js';
+import { Category as EquipmentCategory } from '../models/Category.js';
 import { createEquipment, getEquipmentByQR } from '../controllers/equipmentController.js';
 
 dotenv.config();

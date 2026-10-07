@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { DISPOSAL_STATUSES } from '../config/constants.js';
 
-// Disposal Schema (Module 3: RACI 5-Step Asset Disposal Flow)
+// Disposal Schema (Module 3: Equipment, Movement & Disposal)
+// Conforming to dbdiagram.dbml: disposals collection (4 canonical states: proposed | approved | rejected | completed)
 const disposalSchema = new mongoose.Schema({
   equipment_id: { 
     type: mongoose.Schema.Types.ObjectId, 
@@ -9,32 +10,22 @@ const disposalSchema = new mongoose.Schema({
     required: true, 
     index: true 
   },
+  repair_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Repair',
+    default: null,
+    index: true
+  },
   proposed_by: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
     required: true, 
     index: true 
   },
-  manager_approved_by: { 
+  approved_by: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
     default: null 
-  },
-  admin_approved_by: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    default: null 
-  },
-  received_by: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    default: null 
-  },
-  current_step: { 
-    type: Number, 
-    default: 1, 
-    min: 1, 
-    max: 5 
   },
   reason: { 
     type: String, 
@@ -53,15 +44,6 @@ const disposalSchema = new mongoose.Schema({
     default: 0, 
     min: 0 
   },
-  procurement_plan: { 
-    type: String, 
-    default: '' 
-  },
-  replacement_equipment_id: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Equipment', 
-    default: null 
-  },
   status: { 
     type: String, 
     enum: Object.values(DISPOSAL_STATUSES), 
@@ -72,23 +54,26 @@ const disposalSchema = new mongoose.Schema({
     type: Date, 
     default: Date.now 
   },
-  manager_approved_at: { 
+  approved_at: { 
     type: Date, 
     default: null 
   },
-  admin_approved_at: { 
-    type: Date, 
-    default: null 
-  },
-  received_at: { 
-    type: Date, 
-    default: null 
+  completed_at: {
+    type: Date,
+    default: null
   }
 }, { 
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
 });
 
+// Backward compatibility virtuals
+disposalSchema.virtual('admin_approved_by').get(function() { return this.approved_by; }).set(function(v) { this.approved_by = v; });
+disposalSchema.virtual('admin_approved_at').get(function() { return this.approved_at; }).set(function(v) { this.approved_at = v; });
+
+disposalSchema.set('toJSON', { virtuals: true });
+disposalSchema.set('toObject', { virtuals: true });
+
 disposalSchema.index({ status: 1, proposed_at: -1 });
 
-export const Disposal = mongoose.model('Disposal', disposalSchema);
+export const Disposal = mongoose.models.Disposal || mongoose.model('Disposal', disposalSchema);
 export default Disposal;

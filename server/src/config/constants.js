@@ -1,113 +1,169 @@
 // Domain Constants and Enumerations for Ruo University Equipment Management System (UEMS)
+// Conforming to 20 Collections, 5 Actors (Guest, Lecturer, Facility Manager, Technician, Admin) and 68 Use Cases
 
 export const USER_ROLES = {
-  ADMIN: 'admin',
-  MANAGER: 'manager',
-  STAFF: 'staff'
+  LECTURER: 'lecturer',
+  TECHNICIAN: 'technician',
+  FACILITY_MANAGER: 'facility_manager',
+  ADMIN: 'admin'
 };
 
 export const USER_STATUSES = {
   ACTIVE: 'active',
-  LOCKED: 'locked',
-  INACTIVE: 'inactive'
+  LOCKED: 'locked'
 };
 
 export const ROOM_TYPES = {
-  THEORY: 'theory',
-  LAB: 'lab',
-  HALL: 'hall',
-  SMART: 'smart',
-  MEETING: 'meeting',
-  STORAGE: 'storage',
   LECTURE: 'lecture',
+  LAB: 'lab',
   OFFICE: 'office',
-  PRACTICE: 'practice'
+  WAREHOUSE: 'warehouse'
 };
 
 export const ROOM_STATUSES = {
   AVAILABLE: 'available',
-  OCCUPIED: 'occupied',
   MAINTENANCE: 'maintenance',
-  INACTIVE: 'inactive',
-  LOCKED: 'locked'
-};
-
-export const EQUIPMENT_CONDITIONS = {
-  BRAND_NEW: 'brand_new',
-  GOOD: 'good',
-  FAIR: 'fair',
-  DAMAGED: 'damaged',
-  DISPOSED: 'disposed'
+  INACTIVE: 'inactive'
 };
 
 export const EQUIPMENT_STATUSES = {
-  ACTIVE: 'active',
+  IN_USE: 'in_use',
+  IN_STOCK: 'in_stock',
+  BROKEN: 'broken',
   REPAIRING: 'repairing',
-  TRANSFERRING: 'transferring',
   PENDING_DISPOSAL: 'pending_disposal',
   DISPOSED: 'disposed',
   LOST: 'lost'
 };
 
-export const TRANSFER_STATUSES = {
+export const MOVEMENT_TYPES = {
+  TRANSFER: 'transfer',
+  REPLACEMENT: 'replacement',
+  REPAIR_OUT: 'repair_out',
+  REPAIR_RETURN: 'repair_return',
+  TO_STOCK: 'to_stock'
+};
+
+export const MOVEMENT_STATUSES = {
   PENDING: 'pending',
-  APPROVED: 'approved',
-  REJECTED: 'rejected',
-  COMPLETED: 'completed'
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled'
 };
 
-export const REPAIR_PRIORITIES = {
-  CRITICAL: 'critical', // 8 hours SLA
-  HIGH: 'high',         // 12 hours SLA
-  MAJOR: 'major',       // 24 hours SLA
-  MEDIUM: 'medium',     // 24 hours SLA
-  LOW: 'low',           // 48 hours SLA
-  MINOR: 'minor'        // 48 hours SLA
+export const REPAIR_SOURCES = {
+  LECTURER_REPORT: 'lecturer_report',
+  INVENTORY_CHECK: 'inventory_check'
 };
 
-export const TICKET_PRIORITIES = REPAIR_PRIORITIES;
+export const DAMAGE_LEVELS = {
+  MINOR: 'minor',
+  MAJOR: 'major',
+  CRITICAL: 'critical'
+};
+
+export const REPAIR_OUTCOMES = {
+  REPAIRED: 'repaired',
+  UNREPAIRABLE: 'unrepairable'
+};
 
 export const REPAIR_STATUSES = {
   REPORTED: 'reported',
   ASSIGNED: 'assigned',
   IN_PROGRESS: 'in_progress',
   RESOLVED: 'resolved',
+  UNREPAIRABLE: 'unrepairable',
   CLOSED: 'closed'
 };
 
-export const SLA_STATES = {
-  ON_TRACK: 'on_track',
-  AT_RISK: 'at_risk',
-  OVERDUE: 'overdue'
-};
-
-export const MAINTENANCE_FREQUENCIES = {
-  WEEKLY: 'weekly',
-  MONTHLY: 'monthly',
-  QUARTERLY: 'quarterly',
-  YEARLY: 'yearly'
+export const PARTS_REQUEST_STATUSES = {
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected'
 };
 
 export const INVENTORY_STATUSES = {
   DRAFT: 'draft',
   IN_PROGRESS: 'in_progress',
   COMPLETED: 'completed',
-  CANCELLED: 'cancelled'
+  RECONCILED: 'reconciled'
 };
 
-// RACI 5-Step Asset Disposal Flow:
-// 1. Proposed by Staff (R)
-// 2. HC Approved by Manager (A)
-// 3. BGH Approved by Admin (A)
-// 4. Procurement replacement by Manager (C)
-// 5. New Receipt by Staff (I)
+export const INVENTORY_LOG_STATUSES = {
+  MATCHED: 'matched',
+  MISSING: 'missing',
+  DAMAGED: 'damaged',
+  WRONG_LOCATION: 'wrong_location'
+};
+
 export const DISPOSAL_STATUSES = {
   PROPOSED: 'proposed',
-  HC_APPROVED: 'hc_approved',
-  BGH_APPROVED: 'bgh_approved',
-  PROCURING: 'procuring',
-  RECEIVED: 'received',
-  REJECTED: 'rejected'
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+  COMPLETED: 'completed'
+};
+
+export const NOTIFICATION_TYPES = {
+  INCIDENT_REPORTED: 'incident_reported',
+  REPAIR_ASSIGNED: 'repair_assigned',
+  REPAIR_RESOLVED: 'repair_resolved',
+  REPAIR_UNREPAIRABLE: 'repair_unrepairable',
+  REPLACEMENT_NEEDED: 'replacement_needed',
+  MOVEMENT_ORDERED: 'movement_ordered',
+  PARTS_REQUEST: 'parts_request',
+  DISPOSAL_REQUEST: 'disposal_request',
+  WARRANTY_EXPIRING: 'warranty_expiring',
+  DEADLINE_OVERDUE: 'deadline_overdue'
+};
+
+export const NOTIFICATION_REFERENCE_TYPES = {
+  REPAIR: 'repair',
+  EQUIPMENT_MOVEMENT: 'equipment_movement',
+  DISPOSAL: 'disposal',
+  EQUIPMENT: 'equipment',
+  PARTS_REQUEST: 'parts_request'
+};
+
+export const NOTIFICATION_MESSAGES = {
+  incident_reported: {
+    title: 'Báo cáo sự cố mới',
+    message: (code, room) => `Thiết bị ${code} tại ${room} được báo hỏng cần xử lý.`
+  },
+  repair_assigned: {
+    title: 'Nhiệm vụ sửa chữa mới',
+    message: (code, deadline) => `Bạn được phân công sửa chữa thiết bị ${code}. Hạn chót: ${deadline}.`
+  },
+  repair_resolved: {
+    title: 'Thiết bị đã sửa xong',
+    message: (code) => `Thiết bị ${code} đã được kỹ thuật viên sửa thành công. Vui lòng bố trí vị trí.`
+  },
+  repair_unrepairable: {
+    title: 'Thiết bị không thể sửa chữa',
+    message: (code) => `Thiết bị ${code} được xác định hỏng hoàn toàn. Cần lập đề xuất thanh lý.`
+  },
+  replacement_needed: {
+    title: 'Cần thiết bị thay thế',
+    message: (room, category) => `Phòng ${room} đang thiếu thiết bị loại ${category}. Hãy xuất kho dự phòng.`
+  },
+  movement_ordered: {
+    title: 'Lệnh điều chuyển thiết bị',
+    message: (code, from, to) => `Lệnh điều chuyển thiết bị ${code} từ ${from} đến ${to}.`
+  },
+  parts_request: {
+    title: 'Yêu cầu linh kiện sửa chữa',
+    message: (tech, code) => `Kỹ thuật viên ${tech} xin cấp linh kiện cho thiết bị ${code}.`
+  },
+  disposal_request: {
+    title: 'Đề xuất thanh lý tài sản',
+    message: (code) => `Yêu cầu phê duyệt thanh lý cho thiết bị ${code}.`
+  },
+  warranty_expiring: {
+    title: 'Bảo hành sắp hết hạn',
+    message: (code, date) => `Thiết bị ${code} sẽ hết hạn bảo hành vào ngày ${date}.`
+  },
+  deadline_overdue: {
+    title: 'Nhiệm vụ sửa chữa quá hạn (SLA)',
+    message: (code) => `Nhiệm vụ sửa chữa thiết bị ${code} đã vượt quá hạn chót cam kết.`
+  }
 };
 
 export const BUSINESS_HOURS = {
@@ -117,6 +173,3 @@ export const BUSINESS_HOURS = {
   END_MINUTE: 0,
   WORKING_DAYS: [1, 2, 3, 4, 5] // Monday to Friday
 };
-
-// Economic threshold for disposal review (R = Repair Cost / Remaining Value >= 60%)
-export const DISPOSAL_R_RATIO_THRESHOLD = 60;

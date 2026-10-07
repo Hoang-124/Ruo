@@ -9,12 +9,16 @@ import { securityHeaders } from './middlewares/securityMiddleware.js';
 import authRoutes from './routes/authRoutes.js';
 import facilityRoutes from './routes/facilityRoutes.js';
 import equipmentRoutes from './routes/equipmentRoutes.js';
+import repairRoutes from './routes/repairRoutes.js';
+import movementRoutes from './routes/movementRoutes.js';
+import inventoryRoutes from './routes/inventoryRoutes.js';
 import disposalRoutes from './routes/disposalRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
-import transferRoutes from './routes/transferRoutes.js';
-import repairRoutes from './routes/repairRoutes.js';
-import maintenanceRoutes from './routes/maintenanceRoutes.js';
-import inventoryRoutes from './routes/inventoryRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import sparePartRoutes from './routes/sparePartRoutes.js';
+import roleRoutes from './routes/roleRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
+import masterDataRoutes from './routes/masterDataRoutes.js';
 
 dotenv.config();
 
@@ -34,22 +38,27 @@ app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     system: 'Ruo — University Equipment Management System (UEMS)',
-    version: '3.0.0',
+    version: '4.0.0',
     status: 'operational',
     timestamp: new Date().toISOString()
   });
 });
 
-// API Routes Mounting (UEMS Core Modules)
+// API Routes Mounting (UEMS 6 Canonical Modules)
 app.use('/api/auth', authRoutes);
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/equipments', equipmentRoutes);
 app.use('/api/repairs', repairRoutes);
-app.use('/api/transfers', transferRoutes);
-app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/movements', movementRoutes);
+app.use('/api/transfers', movementRoutes); // Backward compatibility
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/disposals', disposalRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/spare-parts', sparePartRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/master', masterDataRoutes);
 
 // Error Handling
 app.use(notFound);

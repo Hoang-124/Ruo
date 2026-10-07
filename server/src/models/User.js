@@ -1,8 +1,10 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { USER_ROLES, USER_STATUSES } from '../config/constants.js';
+import { PasswordReset } from './PasswordReset.js';
 
 // User Schema (Module 1: Authentication & Authorization)
+// Conforming to dbdiagram.dbml: users collection (4 canonical roles: lecturer, technician, facility_manager, admin)
 const userSchema = new mongoose.Schema({
   code: { 
     type: String, 
@@ -22,12 +24,14 @@ const userSchema = new mongoose.Schema({
   },
   password_hash: { 
     type: String, 
-    required: true 
+    required: true,
+    alias: 'passwordHash'
   },
   full_name: { 
     type: String, 
     required: true, 
-    trim: true 
+    trim: true,
+    alias: 'fullName'
   },
   phone: { 
     type: String, 
@@ -39,13 +43,13 @@ const userSchema = new mongoose.Schema({
   },
   department: { 
     type: String, 
-    default: 'Phòng Hành Chính Quản Trị' 
+    default: 'Khoa Công Nghệ Thông Tin' 
   },
   role: { 
     type: String, 
     required: true, 
     enum: Object.values(USER_ROLES),
-    default: USER_ROLES.STAFF,
+    default: USER_ROLES.LECTURER,
     index: true 
   },
   status: { 
@@ -60,20 +64,24 @@ const userSchema = new mongoose.Schema({
   },
   failed_login_attempts: { 
     type: Number, 
-    default: 0 
+    default: 0,
+    alias: 'failedLoginAttempts'
   },
   lock_until: { 
     type: Date, 
     default: null, 
-    index: true 
+    index: true,
+    alias: 'lockUntil'
   },
   last_login_at: { 
     type: Date, 
-    default: null 
+    default: null,
+    alias: 'lastLoginAt'
   },
   last_login_ip: { 
     type: String, 
-    default: '' 
+    default: '',
+    alias: 'lastLoginIp'
   }
 }, { 
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
@@ -121,28 +129,10 @@ userSchema.methods.resetFailedLogin = async function (ipAddress = '') {
   return await this.save();
 };
 
-export const User = mongoose.model('User', userSchema);
+export const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// Department Model
-const departmentSchema = new mongoose.Schema({
-  code: { type: String, required: true, unique: true },
-  name: { type: String, required: true }
-}, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
-
-export const Department = mongoose.models.Department || mongoose.model('Department', departmentSchema);
-
-// PasswordReset Model
-const passwordResetSchema = new mongoose.Schema({
-  email: { type: String, required: true, index: true },
-  otpHash: { type: String, required: true },
-  attempts: { type: Number, default: 0 },
-  expiresAt: { type: Date, required: true, index: { expires: '15m' } },
-  isUsed: { type: Boolean, default: false }
-}, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
-
-passwordResetSchema.alias('created_at', 'createdAt');
-passwordResetSchema.alias('updated_at', 'updatedAt');
-
-export const PasswordReset = mongoose.models.PasswordReset || mongoose.model('PasswordReset', passwordResetSchema);
+// Re-export PasswordReset and RefreshToken for backward test compatibility
+import { RefreshToken } from './RefreshToken.js';
+export { PasswordReset, RefreshToken, RefreshToken as UserSession };
 
 export default User;

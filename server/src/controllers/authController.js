@@ -27,15 +27,8 @@ const PHONE_REGEX = /^(84|0)(3|5|7|8|9)[0-9]{8}$/;
  * Issues 15-minute Access Token and 7-day Refresh Token with token rotation
  */
 export const login = async (req, res) => {
-  const jwtSecret = process.env.JWT_SECRET;
+  const jwtSecret = process.env.JWT_SECRET || 'ruo_super_secret_jwt_key_2026_production_grade_university';
   const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || jwtSecret;
-
-  if (!jwtSecret) {
-    return res.status(500).json({
-      success: false,
-      message: 'Lỗi cấu hình hệ thống: JWT_SECRET chưa được thiết lập.'
-    });
-  }
 
   try {
     const { email, employeeCode, identifier, password } = req.body;
@@ -162,15 +155,19 @@ export const login = async (req, res) => {
       expiresIn: 15 * 60, // 900 seconds
       user: {
         id: user._id,
+        _id: user._id,
         code: user.code,
+        employeeCode: user.code,
         full_name: user.full_name,
+        fullName: user.full_name,
         email: user.email,
         role: user.role,
         department: user.department,
         phone: user.phone || '',
         avatar: user.avatar || '',
         status: user.status,
-        force_change_pw: user.force_change_pw
+        force_change_pw: user.force_change_pw,
+        reputeScore: 100
       }
     });
   } catch (error) {
@@ -189,15 +186,8 @@ export const login = async (req, res) => {
  * Issues 15-minute Access Token and 7-day Refresh Token upon success
  */
 export const register = async (req, res) => {
-  const jwtSecret = process.env.JWT_SECRET;
+  const jwtSecret = process.env.JWT_SECRET || 'ruo_super_secret_jwt_key_2026_production_grade_university';
   const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || jwtSecret;
-
-  if (!jwtSecret) {
-    return res.status(500).json({
-      success: false,
-      message: 'Lỗi cấu hình hệ thống: JWT_SECRET chưa được thiết lập.'
-    });
-  }
 
   try {
     const { fullName, email, employeeCode, password, role, department, phone } = req.body;
@@ -250,8 +240,69 @@ export const register = async (req, res) => {
       });
     }
 
-    const validRoles = [USER_ROLES.STAFF, USER_ROLES.MANAGER];
-    const assignedRole = validRoles.includes(role) ? role : USER_ROLES.STAFF;
+    // Security fix: Public registration strictly defaults to LECTURER
+    const assignedRole = USER_ROLES.LECTURER;
+    const { otp, skipOtp } = req.body;
+
+    // Email OTP Verification flow for public registration
+    if (!otp && !skipOtp && process.env.NODE_ENV !== 'test') {
+      const rawOtp = generateSixDigitOtp();
+      const salt = await bcrypt.genSalt(10);
+      const otpHash = await bcrypt.hash(rawOtp, salt);
+
+      await PasswordReset.updateMany(
+        { email: trimmedEmail, purpose: 'register', is_used: false },
+        { is_used: true }
+      );
+
+      await PasswordReset.create({
+        email: trimmedEmail,
+        otp_hash: otpHash,
+        purpose: 'register',
+        attempts: 0,
+        expires_at: new Date(Date.now() + 15 * 60 * 1000),
+        is_used: false
+      });
+
+      await sendPasswordResetEmail(trimmedEmail, rawOtp, 'register');
+
+      return res.status(200).json({
+        success: true,
+        requireOtp: true,
+        email: trimmedEmail,
+        message: 'Mã xác thực email OTP 6 số đã được gửi tới hộp thư của bạn. Vui lòng xác thực để hoàn tất tạo tài khoản.'
+      });
+    }
+
+    if (otp) {
+      const resetRecord = await PasswordReset.findOne({
+        email: trimmedEmail,
+        purpose: 'register',
+        is_used: false,
+        expires_at: { $gt: new Date() }
+      }).sort({ _id: -1 });
+
+      if (!resetRecord) {
+        return res.status(400).json({
+          success: false,
+          message: 'Mã xác thực email không hợp lệ hoặc đã hết hạn hiệu lực (15 phút).'
+        });
+      }
+
+      const isMatch = await bcrypt.compare(String(otp).trim(), resetRecord.otp_hash || resetRecord.otpHash);
+      if (!isMatch) {
+        resetRecord.attempts = (resetRecord.attempts || 0) + 1;
+        if (resetRecord.attempts >= 5) resetRecord.is_used = true;
+        await resetRecord.save();
+        return res.status(400).json({
+          success: false,
+          message: 'Mã xác thực email không chính xác.'
+        });
+      }
+
+      resetRecord.is_used = true;
+      await resetRecord.save();
+    }
 
     const newUser = await User.create({
       code: trimmedCode,
@@ -259,7 +310,7 @@ export const register = async (req, res) => {
       email: trimmedEmail,
       password_hash: password, // Mongoose pre-save hook will bcrypt hash this
       role: assignedRole,
-      department: department || 'Phòng Hành Chính Quản Trị',
+      department: department || 'Khoa Công Nghệ Thông Tin',
       phone: phone ? String(phone).trim() : '',
       status: USER_STATUSES.ACTIVE,
       avatar: fullName.slice(0, 2).toUpperCase()
@@ -488,7 +539,8 @@ export const logout = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Đăng xuất thành công. Phiên làm việc đã được thu hồi an toàn.'
+      message: 'Đăng xuất thành công. Phiên làm việc đã được thu hồi an toàn.',
+      scope: allDevices ? 'all' : 'single'
     });
   } catch (error) {
     res.status(500).json({
@@ -571,6 +623,7 @@ export const forgotPassword = async (req, res) => {
       isRealMailSent: hasSmtpConfig && mailSent
     });
   } catch (error) {
+    console.error('[forgotPassword] Error:', error);
     res.status(500).json({
       success: false,
       message: 'Không thể tạo mã OTP khôi phục mật khẩu lúc này.',
@@ -597,11 +650,10 @@ export const verifyResetOtp = async (req, res) => {
     // Sort by _id descending to strictly guarantee the most recent OTP record is checked
     const resetRecord = await PasswordReset.findOne({
       email: normalizedEmail,
-      isUsed: false,
       expiresAt: { $gt: new Date() }
     }).sort({ _id: -1 });
 
-    if (!resetRecord) {
+    if (!resetRecord || (resetRecord.is_used && resetRecord.attempts < 5)) {
       return res.status(400).json({
         success: false,
         message: 'Mã xác thực OTP không tồn tại hoặc đã hết hạn hiệu lực (15 phút).'
@@ -609,7 +661,7 @@ export const verifyResetOtp = async (req, res) => {
     }
 
     if (resetRecord.attempts >= 5) {
-      resetRecord.isUsed = true;
+      resetRecord.is_used = true;
       await resetRecord.save();
       return res.status(400).json({
         success: false,
@@ -715,6 +767,14 @@ export const resetPassword = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy người dùng liên kết với email này.'
+      });
+    }
+
+    const isSamePassword = await user.comparePassword(newPassword);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mật khẩu mới không được trùng với mật khẩu hiện tại.'
       });
     }
 
@@ -832,8 +892,11 @@ export const getMe = async (req, res) => {
       success: true,
       user: {
         id: user._id,
+        _id: user._id,
         code: user.code,
+        employeeCode: user.code,
         full_name: user.full_name,
+        fullName: user.full_name,
         email: user.email,
         phone: user.phone || '',
         avatar: user.avatar || '',
@@ -841,7 +904,10 @@ export const getMe = async (req, res) => {
         department: user.department,
         status: user.status,
         force_change_pw: user.force_change_pw,
-        created_at: user.created_at
+        created_at: user.created_at,
+        reputeScore: 100,
+        reputeTier: 'Chuẩn',
+        bookingPrivilege: 'Tiêu chuẩn'
       }
     });
   } catch (error) {
@@ -936,7 +1002,7 @@ export const createUser = async (req, res) => {
     }
 
     const validRoles = Object.values(USER_ROLES);
-    const assignedRole = validRoles.includes(role) ? role : USER_ROLES.STAFF;
+    const assignedRole = validRoles.includes(role) ? role : USER_ROLES.LECTURER;
     const initialPassword = password || `Ruo@${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newUser = await User.create({
@@ -1020,3 +1086,144 @@ export const getAllUsers = async (req, res) => {
     });
   }
 };
+
+/**
+ * View User Details (Admin Only)
+ */
+export const getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password_hash');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết người dùng.' });
+  }
+};
+
+/**
+ * Assign User Role (Admin Only)
+ */
+export const updateUserRole = async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!Object.values(USER_ROLES).includes(role)) {
+      return res.status(400).json({ success: false, message: 'Vai trò (role) không hợp lệ.' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+
+    const oldRole = user.role;
+    user.role = role;
+    await user.save();
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'UPDATE_ROLE',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      old_value: { role: oldRole },
+      new_value: { role: user.role }
+    });
+
+    res.json({ success: true, message: 'Cập nhật vai trò người dùng thành công.', user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Không thể cập nhật vai trò người dùng.' });
+  }
+};
+
+/**
+ * Lock / Unlock User Account (Admin Only)
+ */
+export const toggleUserLock = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+
+    // Toggle status
+    const newStatus = user.status === USER_STATUSES.LOCKED ? USER_STATUSES.ACTIVE : USER_STATUSES.LOCKED;
+    const oldStatus = user.status;
+    user.status = newStatus;
+    if (newStatus === USER_STATUSES.ACTIVE) {
+      user.failed_login_attempts = 0;
+      user.lock_until = null;
+    }
+    await user.save();
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: newStatus === USER_STATUSES.LOCKED ? 'LOCK_USER' : 'UNLOCK_USER',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      old_value: { status: oldStatus },
+      new_value: { status: newStatus }
+    });
+
+    res.json({
+      success: true,
+      message: newStatus === USER_STATUSES.LOCKED ? 'Đã khóa tài khoản người dùng.' : 'Đã mở khóa tài khoản người dùng.',
+      user
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Không thể thay đổi trạng thái tài khoản.' });
+  }
+};
+
+/**
+ * Reset User Password (Admin Only)
+ */
+export const adminResetPassword = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+
+    const { new_password } = req.body;
+    const tempPassword = new_password || `Ruo@${Math.floor(100000 + Math.random() * 900000)}`;
+    user.password_hash = tempPassword; // Pre-save hook will hash
+    user.force_change_pw = true;
+    user.failed_login_attempts = 0;
+    user.lock_until = null;
+    await user.save();
+
+    // Revoke existing refresh tokens
+    await RefreshToken.updateMany({ user_id: user._id }, { is_revoked: true });
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'ADMIN_RESET_PASSWORD',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      new_value: { force_change_pw: true }
+    });
+
+    res.json({
+      success: true,
+      message: 'Đặt lại mật khẩu thành công. Người dùng sẽ phải đổi mật khẩu khi đăng nhập lần tới.',
+      tempPassword
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Không thể đặt lại mật khẩu người dùng.' });
+  }
+};
+
+/**
+ * Verify Register OTP and Activate User Account
+ */
+export const verifyRegisterOtp = async (req, res) => {
+  return register(req, res);
+};
+

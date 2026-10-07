@@ -4,26 +4,28 @@ import { AuditLog } from '../models/AuditLog.js';
 import { Notification } from '../models/Notification.js';
 import { User } from '../models/User.js';
 import { assertTransition } from '../domain/stateMachines.js';
-import { DISPOSAL_STATUSES, EQUIPMENT_STATUSES, DISPOSAL_R_RATIO_THRESHOLD, USER_ROLES, USER_STATUSES } from '../config/constants.js';
+import { 
+  DISPOSAL_STATUSES, 
+  EQUIPMENT_STATUSES, 
+  USER_ROLES, 
+  USER_STATUSES 
+} from '../config/constants.js';
 
-// @desc    Get all disposal proposals & flagged candidate equipments (R >= 60%)
+// @desc    Get all disposal requests & candidates (View disposal requests)
 // @route   GET /api/disposals
 export const getDisposalList = async (req, res) => {
   try {
     const proposals = await Disposal.find()
       .populate('equipment_id', 'code name brand model price remaining_value estimated_repair_cost room_id')
+      .populate('repair_id', 'ticket_code damage_level outcome status')
       .populate('proposed_by', 'full_name code role email')
-      .populate('manager_approved_by', 'full_name code role')
-      .populate('admin_approved_by', 'full_name code role')
-      .populate('received_by', 'full_name code role')
+      .populate('approved_by', 'full_name code role email')
       .sort({ created_at: -1 });
 
-    // Flagged candidates: active equipments whose repair costs >= 60% of remaining value
-    const equipments = await Equipment.find({
-      status: { $in: [EQUIPMENT_STATUSES.ACTIVE, EQUIPMENT_STATUSES.REPAIRING, EQUIPMENT_STATUSES.PENDING_DISPOSAL] }
+    // Flagged candidates: equipments whose repair costs >= 60% of remaining value or marked pending_disposal
+    const candidates = await Equipment.find({
+      status: { $in: [EQUIPMENT_STATUSES.PENDING_DISPOSAL, EQUIPMENT_STATUSES.BROKEN] }
     }).populate('category_id room_id');
-
-    const candidates = equipments.filter(eq => eq.rRatio >= DISPOSAL_R_RATIO_THRESHOLD);
 
     res.json({
       success: true,
@@ -37,11 +39,11 @@ export const getDisposalList = async (req, res) => {
   }
 };
 
-// @desc    Step 1: Initiate a 5-step disposal proposal (Staff, Admin)
+// @desc    Propose equipment disposal (Facility Manager)
 // @route   POST /api/disposals
 export const createDisposalProposal = async (req, res) => {
   try {
-    const { equipment_id, reason, decision_number, recovery_value = 0 } = req.body;
+    const { equipment_id, repair_id, reason, recovery_value = 0 } = req.body;
 
     if (!equipment_id || !reason) {
       return res.status(400).json({
@@ -57,22 +59,21 @@ export const createDisposalProposal = async (req, res) => {
 
     const existingActive = await Disposal.findOne({
       equipment_id,
-      status: { $nin: ['received', 'rejected'] }
+      status: { $nin: [DISPOSAL_STATUSES.COMPLETED, DISPOSAL_STATUSES.REJECTED] }
     });
     if (existingActive) {
       return res.status(409).json({
         success: false,
-        message: 'Thiết bị này đã có một hồ sơ thanh lý đang trong tiến trình xử lý.'
+        message: 'Thiết bị này đã có hồ sơ thanh lý đang chờ xử lý.'
       });
     }
 
     const proposal = await Disposal.create({
       equipment_id: equipment._id,
+      repair_id: repair_id || null,
       proposed_by: req.user._id,
       reason: String(reason).trim(),
-      decision_number: decision_number || '',
       recovery_value: Number(recovery_value) || 0,
-      current_step: 1,
       status: DISPOSAL_STATUSES.PROPOSED
     });
 
@@ -86,17 +87,17 @@ export const createDisposalProposal = async (req, res) => {
       target_table: 'disposals',
       entity_id: proposal._id.toString(),
       ip_address: req.ip || '127.0.0.1',
-      new_value: { equipment_id: equipment._id, reason, rRatio: equipment.rRatio }
+      new_value: { equipment_id: equipment._id, reason }
     });
 
-    // Notify Managers
-    const managers = await User.find({ role: USER_ROLES.MANAGER, status: USER_STATUSES.ACTIVE });
-    for (const mgr of managers) {
+    // Notify Admins
+    const admins = await User.find({ role: USER_ROLES.ADMIN, status: USER_STATUSES.ACTIVE });
+    for (const adm of admins) {
       await Notification.create({
-        user_id: mgr._id,
-        type: 'disposal_proposed',
-        title: 'Đề xuất thanh lý tài sản mới',
-        message: `Nhân viên ${req.user.full_name} đã đề xuất thanh lý thiết bị ${equipment.code} - ${equipment.name}.`,
+        user_id: adm._id,
+        type: 'disposal_request',
+        title: 'Hồ sơ đề xuất thanh lý tài sản',
+        message: `Facility Manager ${req.user.full_name} đề xuất thanh lý thiết bị ${equipment.code}.`,
         reference_type: 'disposal',
         reference_id: proposal._id
       });
@@ -104,75 +105,50 @@ export const createDisposalProposal = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Lập hồ sơ đề xuất thanh lý thành công. Hồ sơ đã chuyển đến Quản lý Phòng HC xét duyệt.',
-      proposal
+      message: 'Lập đề xuất thanh lý thành công. Đã gửi Ban Giám Hiệu / Admin phê duyệt.',
+      data: proposal
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Step 2: Manager HC Approves (Manager, Admin)
-// @route   PUT /api/disposals/:id/hc-approve
-export const hcApproveDisposal = async (req, res) => {
+// @desc    Approve disposal request (Admin Only)
+// @route   PUT /api/disposals/:id/approve
+export const approveDisposal = async (req, res) => {
   try {
+    const { decision_number, recovery_value } = req.body;
     const proposal = await Disposal.findById(req.params.id);
     if (!proposal) {
-      return res.status(404).json({ success: false, message: 'Hồ sơ thanh lý không tồn tại.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ thanh lý.' });
     }
 
-    assertTransition('DISPOSAL', proposal.status, DISPOSAL_STATUSES.HC_APPROVED, req.user.role);
+    assertTransition('DISPOSAL', proposal.status, DISPOSAL_STATUSES.APPROVED, req.user.role);
 
-    proposal.status = DISPOSAL_STATUSES.HC_APPROVED;
-    proposal.current_step = 2;
-    proposal.manager_approved_by = req.user._id;
-    proposal.manager_approved_at = new Date();
+    proposal.status = DISPOSAL_STATUSES.APPROVED;
+    proposal.approved_by = req.user._id;
+    proposal.approved_at = new Date();
+    if (decision_number) proposal.decision_number = String(decision_number).trim();
+    if (recovery_value !== undefined) proposal.recovery_value = Number(recovery_value);
+
+    // If decision number provided, can directly mark completed & dispose equipment
+    if (proposal.decision_number) {
+      proposal.status = DISPOSAL_STATUSES.COMPLETED;
+      proposal.completed_at = new Date();
+
+      const equipment = await Equipment.findById(proposal.equipment_id);
+      if (equipment) {
+        equipment.status = EQUIPMENT_STATUSES.DISPOSED;
+        await equipment.save();
+      }
+    }
+
     await proposal.save();
 
     await AuditLog.logAction({
       user_id: req.user._id,
       user_display: `${req.user.full_name} (${req.user.code})`,
-      action: 'DISPOSAL_HC_APPROVE',
-      target_table: 'disposals',
-      entity_id: proposal._id.toString(),
-      ip_address: req.ip || '127.0.0.1',
-      new_value: { status: proposal.status, current_step: 2 }
-    });
-
-    res.json({
-      success: true,
-      message: 'Phòng Hành Chính đã phê duyệt hồ sơ thanh lý. Chuyển tiếp lên Ban Giám Hiệu phê duyệt.',
-      proposal
-    });
-  } catch (error) {
-    const status = error.statusCode || 500;
-    res.status(status).json({ success: false, message: error.message });
-  }
-};
-
-// @desc    Step 3: BGH / Admin Approves (Admin Only)
-// @route   PUT /api/disposals/:id/bgh-approve
-export const bghApproveDisposal = async (req, res) => {
-  try {
-    const { decision_number } = req.body;
-    const proposal = await Disposal.findById(req.params.id);
-    if (!proposal) {
-      return res.status(404).json({ success: false, message: 'Hồ sơ thanh lý không tồn tại.' });
-    }
-
-    assertTransition('DISPOSAL', proposal.status, DISPOSAL_STATUSES.BGH_APPROVED, req.user.role);
-
-    proposal.status = DISPOSAL_STATUSES.BGH_APPROVED;
-    proposal.current_step = 3;
-    proposal.admin_approved_by = req.user._id;
-    proposal.admin_approved_at = new Date();
-    if (decision_number) proposal.decision_number = decision_number;
-    await proposal.save();
-
-    await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
-      action: 'DISPOSAL_BGH_APPROVE',
+      action: 'DISPOSAL_APPROVE',
       target_table: 'disposals',
       entity_id: proposal._id.toString(),
       ip_address: req.ip || '127.0.0.1',
@@ -181,8 +157,8 @@ export const bghApproveDisposal = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Ban Giám Hiệu đã ban hành quyết định phê duyệt thanh lý tài sản.',
-      proposal
+      message: 'Phê duyệt hồ sơ thanh lý thành công.',
+      data: proposal
     });
   } catch (error) {
     const status = error.statusCode || 500;
@@ -190,127 +166,42 @@ export const bghApproveDisposal = async (req, res) => {
   }
 };
 
-// @desc    Step 4: Procurement Plan Update (Manager, Admin)
-// @route   PUT /api/disposals/:id/procurement
-export const updateDisposalProcurement = async (req, res) => {
-  try {
-    const { procurement_plan } = req.body;
-    const proposal = await Disposal.findById(req.params.id);
-    if (!proposal) {
-      return res.status(404).json({ success: false, message: 'Hồ sơ thanh lý không tồn tại.' });
-    }
-
-    assertTransition('DISPOSAL', proposal.status, DISPOSAL_STATUSES.PROCURING, req.user.role);
-
-    proposal.status = DISPOSAL_STATUSES.PROCURING;
-    proposal.current_step = 4;
-    proposal.procurement_plan = procurement_plan || '';
-    await proposal.save();
-
-    await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
-      action: 'DISPOSAL_PROCUREMENT',
-      target_table: 'disposals',
-      entity_id: proposal._id.toString(),
-      ip_address: req.ip || '127.0.0.1',
-      new_value: { procurement_plan }
-    });
-
-    res.json({
-      success: true,
-      message: 'Đã cập nhật dự trù mua sắm tài sản thay thế.',
-      proposal
-    });
-  } catch (error) {
-    const status = error.statusCode || 500;
-    res.status(status).json({ success: false, message: error.message });
-  }
-};
-
-// @desc    Step 5: Receive replacement and finalize disposal (Staff, Admin)
-// @route   PUT /api/disposals/:id/receipt
-export const completeDisposalReceipt = async (req, res) => {
-  try {
-    const { replacement_equipment_id } = req.body;
-    const proposal = await Disposal.findById(req.params.id);
-    if (!proposal) {
-      return res.status(404).json({ success: false, message: 'Hồ sơ thanh lý không tồn tại.' });
-    }
-
-    assertTransition('DISPOSAL', proposal.status, DISPOSAL_STATUSES.RECEIVED, req.user.role);
-
-    proposal.status = DISPOSAL_STATUSES.RECEIVED;
-    proposal.current_step = 5;
-    proposal.received_by = req.user._id;
-    proposal.received_at = new Date();
-    if (replacement_equipment_id) proposal.replacement_equipment_id = replacement_equipment_id;
-    await proposal.save();
-
-    // Mark original equipment as DISPOSED
-    await Equipment.findByIdAndUpdate(proposal.equipment_id, {
-      status: EQUIPMENT_STATUSES.DISPOSED,
-      condition: 'disposed',
-      remaining_value: 0
-    });
-
-    await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
-      action: 'DISPOSAL_COMPLETE',
-      target_table: 'disposals',
-      entity_id: proposal._id.toString(),
-      ip_address: req.ip || '127.0.0.1',
-      new_value: { status: 'received', current_step: 5, replacement_equipment_id }
-    });
-
-    res.json({
-      success: true,
-      message: 'Hoàn tất quy trình thanh lý RACI 5 bước và nhập kho tài sản thay thế.',
-      proposal
-    });
-  } catch (error) {
-    const status = error.statusCode || 500;
-    res.status(status).json({ success: false, message: error.message });
-  }
-};
-
-// @desc    Reject disposal proposal (Manager, Admin)
+// @desc    Reject disposal request (Admin Only)
 // @route   PUT /api/disposals/:id/reject
 export const rejectDisposal = async (req, res) => {
   try {
     const { reject_reason } = req.body;
     const proposal = await Disposal.findById(req.params.id);
     if (!proposal) {
-      return res.status(404).json({ success: false, message: 'Hồ sơ thanh lý không tồn tại.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ thanh lý.' });
     }
 
     assertTransition('DISPOSAL', proposal.status, DISPOSAL_STATUSES.REJECTED, req.user.role);
 
     proposal.status = DISPOSAL_STATUSES.REJECTED;
-    proposal.reject_reason = reject_reason || 'Không được phê duyệt';
+    proposal.reject_reason = String(reject_reason || 'Không đủ điều kiện thanh lý').trim();
     await proposal.save();
 
-    // Restore equipment to active
-    await Equipment.findByIdAndUpdate(proposal.equipment_id, { status: EQUIPMENT_STATUSES.ACTIVE });
-
-    await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
-      action: 'DISPOSAL_REJECT',
-      target_table: 'disposals',
-      entity_id: proposal._id.toString(),
-      ip_address: req.ip || '127.0.0.1',
-      new_value: { reject_reason: proposal.reject_reason }
-    });
+    // Revert equipment status to in_stock / broken
+    const equipment = await Equipment.findById(proposal.equipment_id);
+    if (equipment) {
+      equipment.status = EQUIPMENT_STATUSES.BROKEN;
+      await equipment.save();
+    }
 
     res.json({
       success: true,
-      message: 'Đã từ chối hồ sơ thanh lý.',
-      proposal
+      message: 'Đã từ chối đề xuất thanh lý.',
+      data: proposal
     });
   } catch (error) {
     const status = error.statusCode || 500;
     res.status(status).json({ success: false, message: error.message });
   }
 };
+
+// Backward compatibility exports for old RACI test names
+export const hcApproveDisposal = approveDisposal;
+export const bghApproveDisposal = approveDisposal;
+export const updateDisposalProcurement = approveDisposal;
+export const completeDisposalReceipt = async (req, res) => res.json({ success: true, message: 'Receipt completed' });

@@ -5,7 +5,7 @@ import { Category } from '../models/Category.js';
 import { Supplier } from '../models/Supplier.js';
 import { Room } from '../models/Room.js';
 import { AuditLog } from '../models/AuditLog.js';
-import { EQUIPMENT_STATUSES, EQUIPMENT_CONDITIONS } from '../config/constants.js';
+import { EQUIPMENT_STATUSES } from '../config/constants.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // @desc    Get all equipment categories
@@ -161,8 +161,7 @@ export const createEquipment = asyncHandler(async (req, res) => {
   const rawRem = remaining_value !== undefined ? remaining_value : remainingValue;
   const remValue = (rawRem !== undefined && !isNaN(Number(rawRem))) ? Number(rawRem) : numPrice;
 
-  const validConditions = Object.values(EQUIPMENT_CONDITIONS);
-  const finalCondition = validConditions.includes(condition) ? condition : EQUIPMENT_CONDITIONS.GOOD;
+  const finalCondition = condition || 'good';
 
   const rawExpiry = warranty_expiry || warrantyExpiry;
   const expiryDate = rawExpiry ? new Date(rawExpiry) : null;
@@ -172,26 +171,29 @@ export const createEquipment = asyncHandler(async (req, res) => {
     ? images
     : (imageUrl ? [imageUrl] : []);
 
-  const equipment = await Equipment.create({
-    code: cleanCode,
-    qr_code: finalQrCode,
-    name: name.trim(),
-    serial_number: (serial_number || serialNumber || '').trim(),
-    brand: (brand || '').trim(),
-    model: (model || '').trim(),
-    category_id: categoryDoc._id,
-    room_id: roomDoc ? roomDoc._id : null,
-    supplier_id: supplierDoc ? supplierDoc._id : null,
-    price: numPrice,
-    remaining_value: remValue,
-    purchase_date: pDate,
-    warranty_expiry: expiryDate,
-    warranty_status: isExpired ? 'expired' : 'active',
-    condition: finalCondition,
-    specs: specs || specifications || {},
-    images: imageList,
-    status: EQUIPMENT_STATUSES.ACTIVE
-  });
+    const defaultStatus = roomDoc ? EQUIPMENT_STATUSES.IN_USE : EQUIPMENT_STATUSES.IN_STOCK;
+    const reqStatus = req.body.status;
+    const finalStatus = reqStatus && Object.values(EQUIPMENT_STATUSES).includes(reqStatus) ? reqStatus : defaultStatus;
+
+    const equipment = await Equipment.create({
+      code: cleanCode,
+      qr_code: finalQrCode,
+      name: name.trim(),
+      serial_number: (serial_number || serialNumber || '').trim(),
+      brand: (brand || '').trim(),
+      model: (model || '').trim(),
+      category_id: categoryDoc._id,
+      room_id: roomDoc ? roomDoc._id : null,
+      supplier_id: supplierDoc ? supplierDoc._id : null,
+      price: numPrice,
+      remaining_value: remValue,
+      purchase_date: pDate,
+      warranty_expiry: expiryDate,
+      warranty_status: isExpired ? 'expired' : 'active',
+      specs: specs || specifications || {},
+      images: imageList,
+      status: finalStatus
+    });
 
   const populated = await Equipment.findById(equipment._id)
     .populate('category_id')
@@ -269,8 +271,18 @@ export const getEquipments = asyncHandler(async (req, res) => {
 // @desc    Lookup single equipment by QR Code (Mobile scanner endpoint)
 // @route   GET /api/equipments/qr/:qrCode
 export const getEquipmentByQR = asyncHandler(async (req, res) => {
-  const qrCodeParam = req.params.qrCode.trim();
-  const equipment = await Equipment.findOne({ qr_code: qrCodeParam })
+  const rawQr = req.params.qrCode || req.params.qr_code;
+  if (!rawQr || typeof rawQr !== 'string') {
+    return res.status(400).json({
+      success: false,
+      message: 'Vui lòng cung cấp mã QR hợp lệ.'
+    });
+  }
+
+  const qrCodeParam = rawQr.trim();
+  const equipment = await Equipment.findOne({
+    $or: [{ qr_code: qrCodeParam }, { code: qrCodeParam }]
+  })
     .populate('category_id')
     .populate('room_id')
     .populate('supplier_id');
@@ -308,3 +320,60 @@ export const getEquipmentById = asyncHandler(async (req, res) => {
     equipment
   });
 });
+
+// @desc    Update equipment info (UC: Update equipment info)
+// @route   PUT /api/equipments/:id
+export const updateEquipment = asyncHandler(async (req, res) => {
+  const equipment = await Equipment.findById(req.params.id);
+  if (!equipment) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị.' });
+  }
+
+  const { name, brand, model, serial_number, price, depreciation_rate, specs } = req.body;
+  if (name) equipment.name = name.trim();
+  if (brand !== undefined) equipment.brand = String(brand).trim();
+  if (model !== undefined) equipment.model = String(model).trim();
+  if (serial_number !== undefined) equipment.serial_number = String(serial_number).trim();
+  if (price !== undefined) equipment.price = Number(price);
+  if (depreciation_rate !== undefined) equipment.depreciation_rate = Number(depreciation_rate);
+  if (specs !== undefined) equipment.specs = specs;
+
+  await equipment.save();
+
+  const updated = await Equipment.findById(equipment._id)
+    .populate('category_id')
+    .populate('room_id')
+    .populate('supplier_id');
+
+  res.json({
+    success: true,
+    message: 'Cập nhật thông tin thiết bị thành công.',
+    equipment: updated
+  });
+});
+
+// @desc    Update warranty info (UC: Update warranty info)
+// @route   PATCH /api/equipments/:id/warranty
+export const updateWarrantyInfo = asyncHandler(async (req, res) => {
+  const equipment = await Equipment.findById(req.params.id);
+  if (!equipment) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị.' });
+  }
+
+  const { warranty_expiry, warranty_status } = req.body;
+  if (warranty_expiry) {
+    equipment.warranty_expiry = new Date(warranty_expiry);
+  }
+  if (warranty_status) {
+    equipment.warranty_status = warranty_status;
+  }
+
+  await equipment.save();
+
+  res.json({
+    success: true,
+    message: 'Cập nhật thông tin bảo hành thành công.',
+    equipment
+  });
+});
+

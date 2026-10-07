@@ -128,7 +128,7 @@ async function runProfileAndPasswordTests() {
         throw new Error('UC-1.5 Thất bại: Lỗ hổng bảo mật — passwordHash bị rò rỉ trong payload.');
       }
 
-      if (u.reputeScore !== 100 || u.employeeCode !== 'SV20220412') {
+      if (u.reputeScore !== 100 || u.employeeCode !== testUser.code) {
         throw new Error('UC-1.5 Thất bại: Dữ liệu hồ sơ không khớp với thực tế trong MongoDB.');
       }
 

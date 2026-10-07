@@ -301,7 +301,7 @@ async function runForgotPasswordTests() {
     // -------------------------------------------------------------------------
     console.log('\n[KỊCH BẢN 7] Kiểm tra cơ chế chống Spam (Giới hạn tối đa 3 lần yêu cầu OTP/giờ):');
     {
-      const rateLimitEmail = 'nam.nv@university.edu.vn';
+      const rateLimitEmail = 'lecturer@ruo.edu.vn';
       await PasswordReset.deleteMany({ email: rateLimitEmail });
 
       // Gửi lần 1

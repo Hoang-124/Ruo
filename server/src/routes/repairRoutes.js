@@ -1,36 +1,44 @@
 import express from 'express';
-import { 
-  getRepairs, 
-  getRepairById, 
-  createRepairReport, 
-  assignRepairTask, 
-  addRepairLog, 
-  resolveRepair, 
-  closeRepair 
+import {
+  getRepairs,
+  getRepairById,
+  createRepairReport,
+  assignRepairTask,
+  acceptRepairTask,
+  addRepairLog,
+  reportRepairOutcome,
+  closeRepairTicket,
+  evaluateRepairQuality
 } from '../controllers/repairController.js';
 import { protect, requireRole } from '../middlewares/authMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
 
-router.use(protect);
+// Read repairs
+router.get('/', protect, getRepairs);
+router.get('/:id', protect, getRepairById);
 
-router.get('/', getRepairs);
-router.get('/:id', getRepairById);
+// Report malfunction (Lecturer, Technician when doing inventory, FM, Admin)
+router.post('/', protect, requireRole(USER_ROLES.LECTURER, USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), createRepairReport);
 
-// Staff or Manager can report equipment malfunction
-router.post('/', requireRole(USER_ROLES.STAFF, USER_ROLES.MANAGER, USER_ROLES.ADMIN), createRepairReport);
+// Assign repair task & replacement equipment (Facility Manager only)
+router.put('/:id/assign', protect, requireRole(USER_ROLES.FACILITY_MANAGER), assignRepairTask);
 
-// Manager assigns task to staff/external unit
-router.put('/:id/assign', requireRole(USER_ROLES.MANAGER, USER_ROLES.ADMIN), assignRepairTask);
+// Accept repair task (Technician only)
+router.put('/:id/accept', protect, requireRole(USER_ROLES.TECHNICIAN), acceptRepairTask);
 
-// Staff logs progress and material costs
-router.post('/:id/logs', requireRole(USER_ROLES.STAFF, USER_ROLES.ADMIN), addRepairLog);
+// Update progress log (Technician only)
+router.post('/:id/logs', protect, requireRole(USER_ROLES.TECHNICIAN), addRepairLog);
 
-// Staff resolves technical repair
-router.put('/:id/resolve', requireRole(USER_ROLES.STAFF, USER_ROLES.ADMIN), resolveRepair);
+// Report repair outcome (Technician only)
+router.put('/:id/outcome', protect, requireRole(USER_ROLES.TECHNICIAN), reportRepairOutcome);
+router.put('/:id/resolve', protect, requireRole(USER_ROLES.TECHNICIAN), reportRepairOutcome);
 
-// Manager reviews and signs off / closes ticket
-router.put('/:id/close', requireRole(USER_ROLES.MANAGER, USER_ROLES.ADMIN), closeRepair);
+// Close repair ticket & assign post-repair location (Facility Manager only)
+router.put('/:id/close', protect, requireRole(USER_ROLES.FACILITY_MANAGER), closeRepairTicket);
+
+// Evaluate repair quality (Lecturer only)
+router.post('/:id/evaluate', protect, requireRole(USER_ROLES.LECTURER), evaluateRepairQuality);
 
 export default router;

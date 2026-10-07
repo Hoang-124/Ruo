@@ -1,9 +1,15 @@
-import { BUSINESS_HOURS, SLA_STATES, TICKET_PRIORITIES } from '../config/constants.js';
+import { BUSINESS_HOURS, DAMAGE_LEVELS } from '../config/constants.js';
+
+export const SLA_STATES = {
+  ON_TRACK: 'on_track',
+  AT_RISK: 'at_risk',
+  OVERDUE: 'overdue'
+};
 
 /**
  * SLA Reactor Service
  * Handles business-hour aware SLA calculation, real-time remaining countdown,
- * and automated state transitions (on_track -> at_risk -> overdue).
+ * and deadline computation for damage levels (minor, major, critical).
  */
 
 /**
@@ -32,19 +38,16 @@ export function addBusinessMinutes(startDate, minutesToAdd) {
     const endTotalMin = BUSINESS_HOURS.END_HOUR * 60 + BUSINESS_HOURS.END_MINUTE;
 
     if (currentTotalMin < startTotalMin) {
-      // Jump to start of today's business hours
       current.setHours(BUSINESS_HOURS.START_HOUR, BUSINESS_HOURS.START_MINUTE, 0, 0);
       continue;
     }
 
     if (currentTotalMin >= endTotalMin) {
-      // After hours, advance to tomorrow 07:30
       current.setDate(current.getDate() + 1);
       current.setHours(BUSINESS_HOURS.START_HOUR, BUSINESS_HOURS.START_MINUTE, 0, 0);
       continue;
     }
 
-    // Inside business hours
     const availableToday = endTotalMin - currentTotalMin;
     if (remaining <= availableToday) {
       current = new Date(current.getTime() + remaining * 60 * 1000);
@@ -60,67 +63,42 @@ export function addBusinessMinutes(startDate, minutesToAdd) {
 }
 
 /**
- * Calculate SLA deadlines for a newly reported incident
+ * Compute deadline from damage level (or priority):
+ * - critical: 8 hours (24/7 calendar clock)
+ * - major / high: 24 business hours
+ * - minor / low: 48 business hours
  */
-export function computeSlaDeadlines(priority, startTime = new Date()) {
-  const isCritical = priority === TICKET_PRIORITIES.CRITICAL;
+export function computeDeadline(damageLevel = DAMAGE_LEVELS.MINOR, startTime = new Date()) {
+  const isCritical = damageLevel === DAMAGE_LEVELS.CRITICAL || damageLevel === 'critical';
+  const isMajor = damageLevel === DAMAGE_LEVELS.MAJOR || damageLevel === 'high' || damageLevel === 'major';
 
-  // 1. Response Deadline
-  let responseMinutes = 30; // default 30 mins to acknowledge
-  let resolutionMinutes = 240; // 4 hours for critical
-
-  if (priority === TICKET_PRIORITIES.HIGH) {
-    responseMinutes = 60;
-    resolutionMinutes = 8 * 60; // 8 hours
-  } else if (priority === TICKET_PRIORITIES.MEDIUM) {
-    responseMinutes = 120;
-    resolutionMinutes = 24 * 60; // 24 hours
-  } else if (priority === TICKET_PRIORITIES.LOW) {
-    responseMinutes = 240;
-    resolutionMinutes = 48 * 60; // 48 hours
-  }
-
-  let responseDeadline;
-  let resolutionDeadline;
-
+  let resolutionMinutes = 48 * 60; // 48h
   if (isCritical) {
-    // Critical incidents run 24/7 calendar clock without pausing
-    responseDeadline = new Date(startTime.getTime() + responseMinutes * 60 * 1000);
-    resolutionDeadline = new Date(startTime.getTime() + resolutionMinutes * 60 * 1000);
-  } else {
-    // Other priorities respect official university working hours
-    responseDeadline = addBusinessMinutes(startTime, responseMinutes);
-    resolutionDeadline = addBusinessMinutes(startTime, resolutionMinutes);
+    resolutionMinutes = 8 * 60; // 8h
+    return new Date(startTime.getTime() + resolutionMinutes * 60 * 1000);
+  } else if (isMajor) {
+    resolutionMinutes = 24 * 60; // 24h
   }
 
-  return {
-    slaStartTime: startTime,
-    responseDeadline,
-    resolutionDeadline,
-    totalMinutes: resolutionMinutes
-  };
+  return addBusinessMinutes(startTime, resolutionMinutes);
 }
 
 /**
  * Evaluate real-time SLA countdown and state
  */
-export function evaluateSlaStatus(slaTracking, now = new Date()) {
-  if (!slaTracking || !slaTracking.resolutionDeadline) {
+export function evaluateSlaStatus(deadline, now = new Date()) {
+  if (!deadline) {
     return { remainingMinutes: 0, state: SLA_STATES.ON_TRACK };
   }
 
-  // Calculate actual difference in calendar minutes
-  const diffMs = new Date(slaTracking.resolutionDeadline).getTime() - now.getTime();
+  const diffMs = new Date(deadline).getTime() - now.getTime();
   const remainingMinutes = Math.round(diffMs / (60 * 1000));
 
   let state = SLA_STATES.ON_TRACK;
-
   if (remainingMinutes <= 0) {
     state = SLA_STATES.OVERDUE;
-  } else if (remainingMinutes <= 60) {
+  } else if (remainingMinutes <= 120) { // under 2h: at risk
     state = SLA_STATES.AT_RISK;
-  } else {
-    state = SLA_STATES.ON_TRACK;
   }
 
   return {
@@ -128,3 +106,5 @@ export function evaluateSlaStatus(slaTracking, now = new Date()) {
     state
   };
 }
+
+export default { addBusinessMinutes, computeDeadline, evaluateSlaStatus, SLA_STATES };

@@ -45,17 +45,16 @@ async function runTests() {
   console.log('\n=== BẮT ĐẦU BỘ KIỂM THỬ TOÀN DIỆN UC-1.1: LOGIN ===\n');
 
   const testEmail = 'hoang.tb220412@university.edu.vn';
-  const testCode = 'SV20220412';
   const correctPassword = 'Ruo@2026';
   const wrongPassword = 'WrongPassword@123';
 
-  // Step 0: Ensure user exists and has a clean login state
   let testUser = await User.findOne({ email: testEmail });
   if (!testUser) {
     console.error('Test user does not exist in DB! Please run npm run seed first.');
     await mongoose.disconnect();
     process.exit(1);
   }
+  const testCode = testUser.code;
   await testUser.resetFailedLogin();
   console.log('✓ Chuẩn bị: Đã reset trạng thái khóa của tài khoản thử nghiệm:', testEmail);
 
