@@ -36,6 +36,7 @@
   /* Hairlines & Precision Dividers (Neutral Obsidian, Zero Blue Tint) */
   --hairline-soft: rgba(255, 255, 255, 0.08);
   --hairline-medium: #1C1C20;
+  --hairline-strong: #2E2E36;
   --hairline-glow: rgba(59, 130, 246, 0.35);
 
   /* High-Legibility Typography Inks */
@@ -115,6 +116,7 @@
 
   --hairline-soft: #E2E8F0;
   --hairline-medium: #CBD5E1;
+  --hairline-strong: #94A3B8;
   --hairline-glow: rgba(37, 99, 235, 0.25);
 
   --ink-pure: #0F172A;
@@ -201,11 +203,14 @@ html, body {
     linear-gradient(to bottom, #F8FAFC 0%, #F1F5F9 100%);
 }
 
-/* Universal Form & Button Typography Inheritance (100% Unified) */
-button, input, select, textarea, optgroup, kbd, code, pre, table, th, td {
+/* Universal Form, Button & SVG Typography Inheritance (100% Unified) */
+button, input, select, textarea, optgroup, kbd, code, pre, table, th, td, svg, svg text, svg tspan {
   font-family: var(--font-sans);
-  font-size: inherit;
   color: inherit;
+}
+
+svg text, svg tspan {
+  font-family: var(--font-sans) !important;
 }
 
 /* Headings & Editorial Display Typography (Unified to Be Vietnam Pro) */

@@ -36,8 +36,8 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
     {
       level: 3,
       name: 'TẦNG 3',
-      title: 'Thí Nghiệm & Lab Máy Tính',
-      highlight: '3 Lab PM & PTN',
+      title: 'Giảng Đường & Trạm Y Tế',
+      highlight: 'Phòng Y Tế & Giảng đường 301 - 319',
       accent: '#0EA5E9'
     },
     {
@@ -50,8 +50,8 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
     {
       level: 1,
       name: 'TẦNG 1',
-      title: 'Sảnh Chính & Công Cộng',
-      highlight: 'Thư viện & Căn tin',
+      title: 'Sảnh Đón Tiếp & Giếng Trời',
+      highlight: 'Thư viện & Sân Giếng Trời',
       accent: '#F59E0B'
     }
   ];

@@ -15,19 +15,19 @@ const router = express.Router();
 // View spare parts stock (Technician, Facility Manager, Admin)
 router.get('/', protect, getSpareParts);
 
-// Update spare parts stock (Facility Manager only)
-router.put('/:id/stock', protect, requireRole(USER_ROLES.FACILITY_MANAGER), updateSparePartStock);
+// Update spare parts stock (Facility Manager, Admin)
+router.put('/:id/stock', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), updateSparePartStock);
 
-// View parts requests
+// View parts requests (Technician, Facility Manager, Admin)
 router.get('/requests', protect, getPartsRequests);
 
-// Request spare parts (Technician only)
-router.post('/requests', protect, requireRole(USER_ROLES.TECHNICIAN), requestSpareParts);
+// Request spare parts (Technician, Facility Manager, Admin)
+router.post('/requests', protect, requireRole(USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requestSpareParts);
 
-// Approve parts request (Facility Manager only)
-router.put('/requests/:id/approve', protect, requireRole(USER_ROLES.FACILITY_MANAGER), approvePartsRequest);
+// Approve parts request (Facility Manager, Admin)
+router.put('/requests/:id/approve', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), approvePartsRequest);
 
-// Reject parts request (Facility Manager only)
-router.put('/requests/:id/reject', protect, requireRole(USER_ROLES.FACILITY_MANAGER), rejectPartsRequest);
+// Reject parts request (Facility Manager, Admin)
+router.put('/requests/:id/reject', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), rejectPartsRequest);
 
 export default router;

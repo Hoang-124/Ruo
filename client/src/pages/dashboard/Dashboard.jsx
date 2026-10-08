@@ -233,21 +233,38 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
 
   // Determine room simulated status for floor plan
   const getRoomSimulatedStatus = useCallback((room) => {
+    if (!room) {
+      return { status: 'available', label: 'Hoạt Động', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.35)' };
+    }
     if (room.statusOverride === 'maintenance') {
       return {
         status: 'maintenance',
         label: 'Bảo Trì',
-        color: '#E5A33B',
-        bg: 'rgba(229, 163, 59, 0.12)',
-        border: 'rgba(229, 163, 59, 0.35)'
+        color: '#F59E0B',
+        bg: 'rgba(245, 158, 11, 0.12)',
+        border: 'rgba(245, 158, 11, 0.35)'
       };
+    }
+    if (room.occupiedAt && room.occupiedAt.length > 0) {
+      // Giả lập mốc thời gian giờ học hiện tại: 10:30 (630 phút tính từ 00:00)
+      const currentMin = 630;
+      const isOccupied = room.occupiedAt.some(slot => currentMin >= slot.start && currentMin <= slot.end);
+      if (isOccupied) {
+        return {
+          status: 'occupied',
+          label: 'Đang Học',
+          color: '#F43F5E',
+          bg: 'rgba(244, 63, 94, 0.12)',
+          border: 'rgba(244, 63, 94, 0.35)'
+        };
+      }
     }
     return {
       status: 'available',
       label: 'Hoạt Động',
-      color: '#2FB37A',
-      bg: 'rgba(47, 179, 122, 0.12)',
-      border: 'rgba(47, 179, 122, 0.35)'
+      color: '#10B981',
+      bg: 'rgba(16, 185, 129, 0.12)',
+      border: 'rgba(16, 185, 129, 0.35)'
     };
   }, []);
 

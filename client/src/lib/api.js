@@ -271,7 +271,9 @@ export const masterDataApi = {
 
 export const roleApi = {
   list: () => api.get('/roles'),
-  update: (name, permissions) => api.put(`/roles/${name}`, { permissions })
+  update: (name, permissions) => api.put(`/roles/${name}`, { permissions }),
+  batchUpdate: (roles) => api.post('/roles/batch-update', { roles }),
+  resetDefaults: () => api.post('/roles/reset-defaults', {})
 };
 
 export const reportApi = {
