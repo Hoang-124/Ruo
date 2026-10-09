@@ -17,6 +17,7 @@ import {
   RepairLog, 
   AuditLog 
 } from '../models/index.js';
+import { FLOOR_PLAN_ROOMS } from './floorPlanRooms.js';
 import { 
   USER_ROLES, 
   EQUIPMENT_STATUSES, 
@@ -196,6 +197,13 @@ const seed = async () => {
       status: ROOM_STATUSES.AVAILABLE
     }
   ]);
+
+  // Mirror the rooms drawn on the classroom floor plan so the Room List matches it.
+  await Room.insertMany(FLOOR_PLAN_ROOMS.map((r) => ({
+    ...r,
+    building: 'A1',
+    status: ROOM_STATUSES.AVAILABLE
+  })));
 
   console.log('[Ruo Seeder] 5. Seeding Spare Parts (with 1 item below min_stock)...');
   await SparePart.create([
