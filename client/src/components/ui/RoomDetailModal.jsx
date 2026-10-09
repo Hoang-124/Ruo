@@ -58,7 +58,7 @@ const TableShell = ({ children }) => (
  * UC-2.3 Room Detail View — read-only drawer for every role.
  * Shows room specs, equipment (serial number + QR code), maintenance history and movement history.
  */
-export const RoomDetailModal = ({ roomCode, onClose }) => {
+export const RoomDetailModal = ({ roomCode, onClose, onEdit }) => {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -102,7 +102,14 @@ export const RoomDetailModal = ({ roomCode, onClose }) => {
             </h2>
             <p className="ruo-drawer-subtitle">UC-2.3 • Chi tiết phòng và thiết bị</p>
           </div>
-          <button type="button" onClick={onClose} className="ruo-drawer-close-btn" aria-label="Đóng"><Icons.Close size={18} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {onEdit && room && (
+              <button id="room-detail-edit-btn" type="button" onClick={() => onEdit(room)} className="ruo-btn ruo-btn-primary ruo-btn-sm">
+                <Icons.Edit size={13} /> Chỉnh Sửa
+              </button>
+            )}
+            <button type="button" onClick={onClose} className="ruo-drawer-close-btn" aria-label="Đóng"><Icons.Close size={18} /></button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '4px', padding: '0 20px', borderBottom: '1px solid var(--border-default)' }} role="tablist">
