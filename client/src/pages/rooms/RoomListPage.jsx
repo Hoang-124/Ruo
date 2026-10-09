@@ -39,6 +39,7 @@ export const RoomListPage = () => {
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [detailCode, setDetailCode] = useState(null);
+  const [editRoom, setEditRoom] = useState(null);
 
   // Debounce the free-text search so every keystroke does not hit the API.
   useEffect(() => {
@@ -192,13 +193,25 @@ export const RoomListPage = () => {
                       </span>
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        className="ruo-btn ruo-btn-secondary ruo-btn-sm"
-                        onClick={(e) => { e.stopPropagation(); setDetailCode(room.code); }}
-                      >
-                        <Icons.Eye size={13} /> Chi Tiết
-                      </button>
+                      <div style={{ display: 'inline-flex', gap: '6px' }}>
+                        <button
+                          type="button"
+                          className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+                          onClick={(e) => { e.stopPropagation(); setDetailCode(room.code); }}
+                        >
+                          <Icons.Eye size={13} /> Chi Tiết
+                        </button>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            id={`room-edit-${room.code}`}
+                            className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+                            onClick={(e) => { e.stopPropagation(); setEditRoom(room); }}
+                          >
+                            <Icons.Edit size={13} /> Sửa
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -242,6 +255,10 @@ export const RoomListPage = () => {
 
       {isCreateOpen && (
         <RoomFormModal onClose={() => setIsCreateOpen(false)} onSaved={() => { setPage(1); fetchRooms(); }} />
+      )}
+
+      {editRoom && (
+        <RoomFormModal room={editRoom} onClose={() => setEditRoom(null)} onSaved={fetchRooms} />
       )}
 
       {detailCode && (

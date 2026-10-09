@@ -3,6 +3,7 @@ import {
   EMPTY_ROOM_FILTERS,
   buildCreateRoomPayload,
   buildRoomListParams,
+  buildUpdateRoomPayload,
   createEmptyRoomForm,
   formatDateTime,
   getEquipmentStatusLabel,
@@ -14,6 +15,7 @@ import {
   getRoomStatusMeta,
   getRoomTypeLabel,
   hasActiveRoomFilters,
+  roomToForm,
   validateRoomForm
 } from './roomDomain';
 
@@ -118,5 +120,35 @@ describe('room detail helpers (UC-2.3)', () => {
     expect(formatDateTime(null)).toBe('—');
     expect(formatDateTime('not-a-date')).toBe('—');
     expect(formatDateTime('2026-03-05T08:30:00')).toMatch(/05\/03\/2026/);
+  });
+});
+
+describe('room edit helpers (UC-2.4)', () => {
+  const room = { code: 'P203', name: 'Phòng 203', floor: 2, room_type: 'lab', capacity: 40, description: '' };
+
+  it('pre-fills the form from a stored room', () => {
+    expect(roomToForm(room)).toEqual({
+      code: 'P203', name: 'Phòng 203', floor: '2', room_type: 'lab', capacity: '40', description: ''
+    });
+    expect(roomToForm({ ...room, description: undefined }).description).toBe('');
+  });
+
+  it('does not validate the immutable code/floor in edit mode', () => {
+    const form = { ...roomToForm(room), code: 'LEGACY-1', floor: '9' };
+    expect(validateRoomForm(form, 'edit')).toEqual({});
+    expect(validateRoomForm(form, 'create').code).toBeTruthy();
+  });
+
+  it('still validates editable fields in edit mode', () => {
+    const errors = validateRoomForm({ ...roomToForm(room), name: ' ', capacity: '0' }, 'edit');
+    expect(Object.keys(errors).sort()).toEqual(['capacity', 'name']);
+  });
+
+  it('sends only the fields that changed', () => {
+    expect(buildUpdateRoomPayload(roomToForm(room), room)).toEqual({});
+    expect(
+      buildUpdateRoomPayload({ ...roomToForm(room), name: ' Lab 203 ', capacity: '45', description: 'Thực hành' }, room)
+    ).toEqual({ name: 'Lab 203', capacity: 45, description: 'Thực hành' });
+    expect(buildUpdateRoomPayload({ ...roomToForm(room), room_type: 'lecture' }, room)).toEqual({ room_type: 'lecture' });
   });
 });

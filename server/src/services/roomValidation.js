@@ -174,6 +174,61 @@ export const validateCreateRoomPayload = (body = {}) => {
   return { valid: Object.keys(errors).length === 0, errors, value };
 };
 
+export const ROOM_EDITABLE_FIELDS = ['name', 'room_type', 'capacity', 'description'];
+
+/**
+ * UC-2.4 Update Room Info.
+ * Editable: name, room_type, capacity, description (room function).
+ * Immutable identity fields (code, building, floor) are rejected when they differ from the stored room,
+ * because equipment, bookings and audit history reference them.
+ *
+ * Returns `changes` (new values) and `previous` (old values) containing ONLY the fields that really
+ * changed, so callers can skip no-op updates and write a minimal audit record.
+ */
+export const validateUpdateRoomPayload = (body = {}, existing = {}) => {
+  const errors = {};
+
+  // --- Immutable identity fields ---
+  if (body.code !== undefined && normalizeRoomCode(body.code) !== existing.code) {
+    errors.code = 'Không thể thay đổi mã phòng.';
+  }
+  const rawBuilding = pick(body, 'building', 'building_code', 'buildingCode');
+  if (rawBuilding !== undefined && String(rawBuilding).trim().toUpperCase() !== existing.building) {
+    errors.building = 'Không thể thay đổi tòa nhà của phòng.';
+  }
+  const rawFloor = pick(body, 'floor', 'floor_number', 'floorNumber');
+  if (rawFloor !== undefined && toInteger(rawFloor) !== existing.floor) {
+    errors.floor = 'Không thể thay đổi tầng của phòng.';
+  }
+
+  // --- Editable fields (validated only when supplied) ---
+  const next = {};
+  if (body.name !== undefined) next.name = validateName(body.name, errors);
+  if (pick(body, 'room_type', 'type') !== undefined) next.room_type = validateRoomType(pick(body, 'room_type', 'type'), errors);
+  if (body.capacity !== undefined) next.capacity = validateCapacity(body.capacity, errors);
+  if (body.description !== undefined) {
+    next.description = validateOptionalText(body.description, 'description', 'Chức năng phòng', 500, errors);
+  }
+
+  const supplied = ROOM_EDITABLE_FIELDS.filter((field) => next[field] !== undefined || errors[field]);
+  if (supplied.length === 0 && Object.keys(errors).length === 0) {
+    errors.body = `Cần cung cấp ít nhất một trường cần sửa: ${ROOM_EDITABLE_FIELDS.join(', ')}.`;
+  }
+
+  const changes = {};
+  const previous = {};
+  for (const field of ROOM_EDITABLE_FIELDS) {
+    if (next[field] === undefined || errors[field]) continue;
+    const before = existing[field] ?? (field === 'description' ? '' : undefined);
+    if (next[field] !== before) {
+      changes[field] = next[field];
+      previous[field] = before ?? null;
+    }
+  }
+
+  return { valid: Object.keys(errors).length === 0, errors, changes, previous };
+};
+
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const LIST_DEFAULT_LIMIT = 20;
