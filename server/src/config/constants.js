@@ -27,6 +27,21 @@ export const ROOM_STATUSES = {
   INACTIVE: 'inactive'
 };
 
+// Room master-data business rules (Module 2: Room & Facility)
+// Room code: P + floor (1-5) + 2-digit index (01-08) -> P101 ... P508
+export const ROOM_RULES = {
+  BUILDING: 'A1',
+  MIN_FLOOR: 1,
+  MAX_FLOOR: 5,
+  MIN_ROOM_INDEX: 1,
+  MAX_ROOM_INDEX: 8,
+  CODE_PATTERN: /^P([1-5])0([1-8])$/,
+  CODE_RANGE_LABEL: 'P101 - P508',
+  MIN_CAPACITY: 1,
+  MAX_CAPACITY: 500,
+  MAX_NAME_LENGTH: 120
+};
+
 export const EQUIPMENT_STATUSES = {
   IN_USE: 'in_use',
   IN_STOCK: 'in_stock',
