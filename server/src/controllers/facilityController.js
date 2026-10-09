@@ -1,6 +1,8 @@
 import { Building, Floor, Room } from '../models/Room.js';
 import { Equipment } from '../models/Equipment.js';
+import { AuditLog } from '../models/AuditLog.js';
 import { ROOM_STATUSES, ROOM_TYPES, EQUIPMENT_STATUSES } from '../config/constants.js';
+import { validateCreateRoomPayload } from '../services/roomValidation.js';
 
 // @desc    Get all buildings and their floors
 // @route   GET /api/facilities/buildings
@@ -37,39 +39,62 @@ export const getAllRooms = async (req, res) => {
   }
 };
 
-// @desc    Create new room (Register room - Admin Only)
+// Builds the audit-log actor context from the authenticated request
+const getAuditActor = (req) => ({
+  user_id: req.user?._id || null,
+  user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'Hệ Thống',
+  ip_address: req.ip || '127.0.0.1'
+});
+
+// @desc    Create new room (Register room - Admin Only) — UC-2.1
 // @route   POST /api/facilities/rooms
 export const createRoom = async (req, res) => {
   try {
-    const { code, name, building, floor, room_type, capacity, area, department, required_equipment } = req.body;
-    if (!code || !name) {
-      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã phòng và tên phòng.' });
+    const { valid, errors, value } = validateCreateRoomPayload(req.body);
+    if (!valid) {
+      return res.status(400).json({
+        success: false,
+        message: Object.values(errors)[0],
+        errors
+      });
     }
 
-    const cleanCode = String(code).trim().toUpperCase();
-    const existing = await Room.findOne({ code: cleanCode });
+    const existing = await Room.findOne({ code: value.code });
     if (existing) {
-      return res.status(409).json({ success: false, message: 'Mã phòng đã tồn tại trong hệ thống.' });
+      return res.status(409).json({
+        success: false,
+        message: `Mã phòng ${value.code} đã tồn tại trong hệ thống.`,
+        errors: { code: `Mã phòng ${value.code} đã tồn tại trong hệ thống.` }
+      });
     }
 
-    const room = await Room.create({
-      code: cleanCode,
-      name: String(name).trim(),
-      building: building || 'A1',
-      floor: Number(floor) || 1,
-      room_type: room_type || ROOM_TYPES.LECTURE,
-      capacity: Number(capacity) || 50,
-      area: Number(area) || 60,
-      department: department || 'Khoa Công Nghệ Thông Tin',
-      required_equipment: required_equipment || []
+    const room = await Room.create(value);
+
+    await AuditLog.logAction({
+      ...getAuditActor(req),
+      action: 'ROOM_CREATED',
+      target_table: 'rooms',
+      entity_id: room._id.toString(),
+      new_value: {
+        code: room.code,
+        name: room.name,
+        building: room.building,
+        floor: room.floor,
+        room_type: room.room_type,
+        capacity: room.capacity
+      }
     });
 
     res.status(201).json({
       success: true,
-      message: 'Đăng ký phòng học thành công.',
+      message: `Đã thêm phòng ${room.code} thành công.`,
       room
     });
   } catch (error) {
+    // Race condition on the unique index: another request created the same code first
+    if (error?.code === 11000) {
+      return res.status(409).json({ success: false, message: 'Mã phòng đã tồn tại trong hệ thống.', errors: { code: 'Mã phòng đã tồn tại trong hệ thống.' } });
+    }
     res.status(500).json({ success: false, message: 'Không thể đăng ký phòng mới.' });
   }
 };
