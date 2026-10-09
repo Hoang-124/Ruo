@@ -37,6 +37,54 @@ export const getRoomTypeLabel = (value) =>
 export const getRoomStatusMeta = (value) =>
   ROOM_STATUS_OPTIONS.find((option) => option.value === value) || { value, label: value || '—', tone: '#8A93A3' };
 
+const EQUIPMENT_STATUS_LABELS = {
+  in_use: 'Đang sử dụng',
+  in_stock: 'Trong kho',
+  broken: 'Hỏng',
+  repairing: 'Đang sửa chữa',
+  pending_disposal: 'Chờ thanh lý',
+  disposed: 'Đã thanh lý',
+  lost: 'Thất lạc'
+};
+
+const REPAIR_STATUS_LABELS = {
+  reported: 'Đã báo hỏng',
+  assigned: 'Đã phân công',
+  in_progress: 'Đang sửa',
+  resolved: 'Đã sửa xong',
+  unrepairable: 'Không thể sửa',
+  closed: 'Đã đóng'
+};
+
+const MOVEMENT_TYPE_LABELS = {
+  transfer: 'Điều chuyển',
+  replacement: 'Thay thế',
+  repair_out: 'Chuyển đi sửa',
+  repair_return: 'Nhận lại sau sửa',
+  to_stock: 'Nhập kho'
+};
+
+const MOVEMENT_STATUS_LABELS = {
+  pending: 'Chờ thực hiện',
+  completed: 'Hoàn thành',
+  cancelled: 'Đã hủy'
+};
+
+const labelOf = (map, value) => map[value] || value || '—';
+
+export const getEquipmentStatusLabel = (value) => labelOf(EQUIPMENT_STATUS_LABELS, value);
+export const getRepairStatusLabel = (value) => labelOf(REPAIR_STATUS_LABELS, value);
+export const getMovementTypeLabel = (value) => labelOf(MOVEMENT_TYPE_LABELS, value);
+export const getMovementStatusLabel = (value) => labelOf(MOVEMENT_STATUS_LABELS, value);
+
+/** dd/MM/yyyy HH:mm in the vi-VN locale; '—' for missing or invalid dates. */
+export const formatDateTime = (value) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
 export const normalizeRoomCode = (code) => String(code ?? '').trim().toUpperCase();
 
 /** Floor encoded in a valid room code (P307 -> 3); null when the code is out of range. */

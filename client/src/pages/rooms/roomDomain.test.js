@@ -4,8 +4,13 @@ import {
   buildCreateRoomPayload,
   buildRoomListParams,
   createEmptyRoomForm,
+  formatDateTime,
+  getEquipmentStatusLabel,
   getFloorFromCode,
+  getMovementStatusLabel,
+  getMovementTypeLabel,
   getPageWindow,
+  getRepairStatusLabel,
   getRoomStatusMeta,
   getRoomTypeLabel,
   hasActiveRoomFilters,
@@ -96,5 +101,22 @@ describe('room list helpers (UC-2.2)', () => {
     expect(getPageWindow(1, 10)).toEqual([1, 2, null, 10]);
     expect(getPageWindow(5, 10)).toEqual([1, null, 4, 5, 6, null, 10]);
     expect(getPageWindow(10, 10)).toEqual([1, null, 9, 10]);
+  });
+});
+
+describe('room detail helpers (UC-2.3)', () => {
+  it('translates equipment, repair and movement states with fallbacks', () => {
+    expect(getEquipmentStatusLabel('in_use')).toBe('Đang sử dụng');
+    expect(getEquipmentStatusLabel('???')).toBe('???');
+    expect(getRepairStatusLabel('in_progress')).toBe('Đang sửa');
+    expect(getMovementTypeLabel('to_stock')).toBe('Nhập kho');
+    expect(getMovementStatusLabel('pending')).toBe('Chờ thực hiện');
+    expect(getMovementStatusLabel(undefined)).toBe('—');
+  });
+
+  it('formats dates safely', () => {
+    expect(formatDateTime(null)).toBe('—');
+    expect(formatDateTime('not-a-date')).toBe('—');
+    expect(formatDateTime('2026-03-05T08:30:00')).toMatch(/05\/03\/2026/);
   });
 });
