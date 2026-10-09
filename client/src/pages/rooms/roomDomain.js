@@ -105,28 +105,35 @@ export const createEmptyRoomForm = () => ({
 const toInt = (value) => (/^-?\d+$/.test(String(value ?? '').trim()) ? Number(String(value).trim()) : NaN);
 
 /**
- * Validates the create-room form. Returns a map { field: message } (empty when valid).
+ * Validates the room form. Returns a map { field: message } (empty when valid).
+ * In 'edit' mode the immutable identity fields (code, floor) are not validated.
  */
-export const validateRoomForm = (form) => {
+export const validateRoomForm = (form, mode = 'create') => {
   const errors = {};
+  const isEdit = mode === 'edit';
   const code = normalizeRoomCode(form.code);
   const codeFloor = getFloorFromCode(code);
 
-  if (!code) {
-    errors.code = 'Vui lòng nhập mã phòng.';
-  } else if (codeFloor === null) {
-    errors.code = `Mã phòng phải nằm trong khoảng ${ROOM_RULES.codeRangeLabel} (P + tầng 1-5 + số phòng 01-08).`;
+  if (!isEdit) {
+    if (!code) {
+      errors.code = 'Vui lòng nhập mã phòng.';
+    } else if (codeFloor === null) {
+      errors.code = `Mã phòng phải nằm trong khoảng ${ROOM_RULES.codeRangeLabel} (P + tầng 1-5 + số phòng 01-08).`;
+    }
   }
 
   const name = String(form.name ?? '').trim();
   if (!name) errors.name = 'Vui lòng nhập tên phòng.';
   else if (name.length > ROOM_RULES.maxName) errors.name = `Tên phòng tối đa ${ROOM_RULES.maxName} ký tự.`;
 
+  // Floor is derived from the (immutable) room code, so it is only validated when creating.
   const floor = toInt(form.floor);
-  if (Number.isNaN(floor) || floor < ROOM_RULES.minFloor || floor > ROOM_RULES.maxFloor) {
-    errors.floor = `Tầng phải từ ${ROOM_RULES.minFloor} đến ${ROOM_RULES.maxFloor}.`;
-  } else if (codeFloor !== null && codeFloor !== floor) {
-    errors.floor = `Mã phòng ${code} thuộc tầng ${codeFloor}, không khớp với tầng ${floor}.`;
+  if (!isEdit) {
+    if (Number.isNaN(floor) || floor < ROOM_RULES.minFloor || floor > ROOM_RULES.maxFloor) {
+      errors.floor = `Tầng phải từ ${ROOM_RULES.minFloor} đến ${ROOM_RULES.maxFloor}.`;
+    } else if (codeFloor !== null && codeFloor !== floor) {
+      errors.floor = `Mã phòng ${code} thuộc tầng ${codeFloor}, không khớp với tầng ${floor}.`;
+    }
   }
 
   if (!ROOM_TYPE_OPTIONS.some((option) => option.value === form.room_type)) {
@@ -157,6 +164,33 @@ export const buildCreateRoomPayload = (form) => ({
   capacity: Number(form.capacity),
   description: String(form.description ?? '').trim()
 });
+
+/** Pre-fills the form from an existing room (edit mode). */
+export const roomToForm = (room) => ({
+  code: room.code || '',
+  name: room.name || '',
+  floor: String(room.floor ?? 1),
+  room_type: room.room_type || 'lecture',
+  capacity: String(room.capacity ?? ''),
+  description: room.description || ''
+});
+
+/**
+ * Builds the PUT /facilities/rooms/:id payload containing ONLY the editable fields that differ
+ * from the stored room. An empty object means there is nothing to save.
+ */
+export const buildUpdateRoomPayload = (form, room) => {
+  const payload = {};
+  const name = String(form.name).trim();
+  const capacity = Number(form.capacity);
+  const description = String(form.description ?? '').trim();
+
+  if (name !== room.name) payload.name = name;
+  if (form.room_type !== room.room_type) payload.room_type = form.room_type;
+  if (capacity !== room.capacity) payload.capacity = capacity;
+  if (description !== (room.description || '')) payload.description = description;
+  return payload;
+};
 
 export const ROOM_LIST_PAGE_SIZE = 10;
 

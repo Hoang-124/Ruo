@@ -1,10 +1,16 @@
+import mongoose from 'mongoose';
 import { Building, Floor, Room } from '../models/Room.js';
 import { Equipment } from '../models/Equipment.js';
 import { Repair } from '../models/Repair.js';
 import { EquipmentMovement } from '../models/EquipmentMovement.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { ROOM_STATUSES, ROOM_TYPES, EQUIPMENT_STATUSES } from '../config/constants.js';
-import { normalizeRoomCode, parseRoomListQuery, validateCreateRoomPayload } from '../services/roomValidation.js';
+import {
+  normalizeRoomCode,
+  parseRoomListQuery,
+  validateCreateRoomPayload,
+  validateUpdateRoomPayload
+} from '../services/roomValidation.js';
 import { HISTORY_LIMIT, summarizeRoomEquipment } from '../services/roomDetail.js';
 
 // @desc    Get all buildings and their floors
@@ -108,6 +114,60 @@ export const createRoom = async (req, res) => {
       return res.status(409).json({ success: false, message: 'Mã phòng đã tồn tại trong hệ thống.', errors: { code: 'Mã phòng đã tồn tại trong hệ thống.' } });
     }
     res.status(500).json({ success: false, message: 'Không thể đăng ký phòng mới.' });
+  }
+};
+
+// @desc    Update room info (Admin only) — UC-2.4
+// @route   PUT /api/facilities/rooms/:id
+export const updateRoom = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Mã định danh phòng không hợp lệ.' });
+    }
+
+    const room = await Room.findById(req.params.id);
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Phòng học không tồn tại.' });
+    }
+
+    const { valid, errors, changes, previous } = validateUpdateRoomPayload(req.body, room.toObject());
+    if (!valid) {
+      return res.status(400).json({ success: false, message: Object.values(errors)[0], errors });
+    }
+
+    if (Object.keys(changes).length === 0) {
+      return res.json({
+        success: true,
+        changed: false,
+        message: `Phòng ${room.code} không có thay đổi nào.`,
+        room
+      });
+    }
+
+    room.set(changes);
+    await room.save();
+
+    await AuditLog.logAction({
+      ...getAuditActor(req),
+      action: 'ROOM_UPDATED',
+      target_table: 'rooms',
+      entity_id: room._id.toString(),
+      old_value: { code: room.code, ...previous },
+      new_value: { code: room.code, ...changes }
+    });
+
+    res.json({
+      success: true,
+      changed: true,
+      changedFields: Object.keys(changes),
+      message: `Đã cập nhật phòng ${room.code} thành công.`,
+      room
+    });
+  } catch (error) {
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    res.status(500).json({ success: false, message: 'Không thể cập nhật thông tin phòng.' });
   }
 };
 

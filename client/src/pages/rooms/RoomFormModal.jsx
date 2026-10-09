@@ -7,8 +7,10 @@ import {
   ROOM_RULES,
   ROOM_TYPE_OPTIONS,
   buildCreateRoomPayload,
+  buildUpdateRoomPayload,
   createEmptyRoomForm,
   getFloorFromCode,
+  roomToForm,
   validateRoomForm
 } from './roomDomain';
 
@@ -24,12 +26,16 @@ const Field = ({ label, error, hint, children }) => (
 );
 
 /**
- * UC-2.1 Create Room — admin-only drawer form.
- * Calls POST /api/facilities/rooms and surfaces field-level errors returned by the server.
+ * UC-2.1 Create Room / UC-2.4 Update Room Info — admin-only drawer form.
+ * - Without `room`: POST /api/facilities/rooms.
+ * - With `room`: PUT /api/facilities/rooms/:id. Code, building and floor are read-only because
+ *   equipment, bookings and audit history reference them; only the changed fields are sent.
+ * Field-level errors returned by the server are shown next to the matching input.
  */
-export const RoomFormModal = ({ onClose, onSaved }) => {
+export const RoomFormModal = ({ room = null, onClose, onSaved }) => {
   const { toast } = useToast();
-  const [form, setForm] = useState(createEmptyRoomForm);
+  const isEdit = Boolean(room);
+  const [form, setForm] = useState(() => (room ? roomToForm(room) : createEmptyRoomForm()));
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,7 +53,7 @@ export const RoomFormModal = ({ onClose, onSaved }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const validationErrors = validateRoomForm(form);
+    const validationErrors = validateRoomForm(form, isEdit ? 'edit' : 'create');
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -55,13 +61,25 @@ export const RoomFormModal = ({ onClose, onSaved }) => {
 
     try {
       setSubmitting(true);
-      const res = await facilityApi.createRoom(buildCreateRoomPayload(form));
-      toast.success(res.message || 'Đã thêm phòng mới thành công.');
-      onSaved?.(res.room);
+      if (isEdit) {
+        const payload = buildUpdateRoomPayload(form, room);
+        if (Object.keys(payload).length === 0) {
+          toast.info?.('Không có thay đổi nào để lưu.');
+          onClose();
+          return;
+        }
+        const res = await facilityApi.updateRoom(room._id, payload);
+        toast.success(res.message || 'Đã cập nhật thông tin phòng.');
+        onSaved?.(res.room);
+      } else {
+        const res = await facilityApi.createRoom(buildCreateRoomPayload(form));
+        toast.success(res.message || 'Đã thêm phòng mới thành công.');
+        onSaved?.(res.room);
+      }
       onClose();
     } catch (err) {
       if (err.data?.errors) setErrors(err.data.errors);
-      toast.error(err.message || 'Không thể thêm phòng.');
+      toast.error(err.message || (isEdit ? 'Không thể cập nhật phòng.' : 'Không thể thêm phòng.'));
     } finally {
       setSubmitting(false);
     }
@@ -72,21 +90,26 @@ export const RoomFormModal = ({ onClose, onSaved }) => {
       <div className="ruo-drawer-panel" style={{ width: '480px', maxWidth: '100%' }} role="dialog" aria-modal="true" aria-labelledby="room-form-title">
         <div className="ruo-drawer-header">
           <div>
-            <h2 id="room-form-title" className="ruo-drawer-title">Thêm Phòng Mới</h2>
-            <p className="ruo-drawer-subtitle">UC-2.1 • Tòa nhà {ROOM_RULES.building} • Mã phòng {ROOM_RULES.codeRangeLabel}</p>
+            <h2 id="room-form-title" className="ruo-drawer-title">{isEdit ? `Chỉnh Sửa Phòng ${room.code}` : 'Thêm Phòng Mới'}</h2>
+            <p className="ruo-drawer-subtitle">
+              {isEdit
+                ? 'UC-2.4 • Mã phòng, tòa nhà và tầng không thể thay đổi'
+                : `UC-2.1 • Tòa nhà ${ROOM_RULES.building} • Mã phòng ${ROOM_RULES.codeRangeLabel}`}
+            </p>
           </div>
           <button type="button" onClick={onClose} className="ruo-drawer-close-btn" aria-label="Đóng"><Icons.Close size={18} /></button>
         </div>
 
         <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Field label="Mã phòng *" error={errors.code} hint="Dạng P + tầng + số phòng, ví dụ P101, P307, P508.">
+            <Field label="Mã phòng *" error={errors.code} hint={isEdit ? undefined : 'Dạng P + tầng + số phòng, ví dụ P101, P307, P508.'}>
               <input
                 id="room-code"
                 className="ruo-portal-input"
                 value={form.code}
-                maxLength={4}
-                autoFocus
+                maxLength={isEdit ? 20 : 4}
+                autoFocus={!isEdit}
+                disabled={isEdit}
                 placeholder="P101"
                 onChange={(e) => handleCodeChange(e.target.value)}
                 style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '0.04em' }}
@@ -99,6 +122,7 @@ export const RoomFormModal = ({ onClose, onSaved }) => {
                 className="ruo-portal-input"
                 value={form.name}
                 maxLength={ROOM_RULES.maxName}
+                autoFocus={isEdit}
                 placeholder="Phòng học lý thuyết 101"
                 onChange={(e) => setField('name', e.target.value)}
               />
@@ -106,10 +130,10 @@ export const RoomFormModal = ({ onClose, onSaved }) => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <Field label="Tòa nhà">
-                <input className="ruo-portal-input" value={ROOM_RULES.building} disabled readOnly aria-label="Tòa nhà" />
+                <input className="ruo-portal-input" value={room?.building || ROOM_RULES.building} disabled readOnly aria-label="Tòa nhà" />
               </Field>
               <Field label="Tầng *" error={errors.floor}>
-                <select id="room-floor" className="ruo-portal-input" value={form.floor} onChange={(e) => setField('floor', e.target.value)}>
+                <select id="room-floor" className="ruo-portal-input" value={form.floor} disabled={isEdit} onChange={(e) => setField('floor', e.target.value)}>
                   {FLOOR_OPTIONS.map((floor) => <option key={floor} value={floor}>Tầng {floor}</option>)}
                 </select>
               </Field>
@@ -147,12 +171,14 @@ export const RoomFormModal = ({ onClose, onSaved }) => {
                 style={{ resize: 'vertical' }}
               />
             </Field>
+
+            {errors.body && <p style={errorStyle} role="alert">{errors.body}</p>}
           </div>
 
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border-default)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button type="button" onClick={onClose} disabled={submitting} className="ruo-btn ruo-btn-secondary ruo-btn-md">Hủy Bỏ</button>
             <button id="room-form-submit" type="submit" disabled={submitting} className="ruo-btn ruo-btn-primary ruo-btn-md">
-              {submitting ? 'Đang lưu...' : 'Thêm Phòng'}
+              {submitting ? 'Đang lưu...' : isEdit ? 'Lưu Thay Đổi' : 'Thêm Phòng'}
             </button>
           </div>
         </form>
