@@ -109,3 +109,32 @@ export const buildCreateRoomPayload = (form) => ({
   capacity: Number(form.capacity),
   description: String(form.description ?? '').trim()
 });
+
+export const ROOM_LIST_PAGE_SIZE = 10;
+
+export const EMPTY_ROOM_FILTERS = { q: '', floor: '', room_type: '', status: '' };
+
+export const hasActiveRoomFilters = (filters) => Object.values(filters).some((value) => String(value).trim() !== '');
+
+/** Builds GET /facilities/rooms query params, dropping blank filters. */
+export const buildRoomListParams = (filters, page = 1, limit = ROOM_LIST_PAGE_SIZE) => {
+  const params = { page, limit };
+  const q = String(filters.q ?? '').trim();
+  if (q) params.q = q;
+  if (filters.floor !== '' && filters.floor != null) params.floor = filters.floor;
+  if (filters.room_type) params.room_type = filters.room_type;
+  if (filters.status) params.status = filters.status;
+  return params;
+};
+
+/** Page numbers to render in the pager: always first/last, current +-1, with null as an ellipsis gap. */
+export const getPageWindow = (page, totalPages) => {
+  const wanted = new Set([1, totalPages, page - 1, page, page + 1]);
+  const pages = [...wanted].filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
+  const result = [];
+  pages.forEach((p, index) => {
+    if (index > 0 && p - pages[index - 1] > 1) result.push(null);
+    result.push(p);
+  });
+  return result;
+};

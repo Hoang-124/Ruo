@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { ROOM_RULES, ROOM_TYPES } from '../config/constants.js';
+import { ROOM_RULES, ROOM_STATUSES, ROOM_TYPES } from '../config/constants.js';
 
 /**
  * Pure validation helpers for the Room & Facility module (UC-2.1 .. UC-2.4).
@@ -172,4 +172,63 @@ export const validateCreateRoomPayload = (body = {}) => {
   };
 
   return { valid: Object.keys(errors).length === 0, errors, value };
+};
+
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const LIST_DEFAULT_LIMIT = 20;
+const LIST_MAX_LIMIT = 100;
+
+/**
+ * UC-2.2 Room List View — turns query-string params into a MongoDB filter + pagination.
+ * Filters: floor (1-5), room_type, status, building, q/search (name or room code).
+ * Pagination is opt-in (page/limit); without either param every matching room is returned
+ * so existing dropdown consumers keep working.
+ */
+export const parseRoomListQuery = (query = {}) => {
+  const errors = {};
+  const filter = {};
+
+  const rawFloor = pick(query, 'floor', 'floorNumber');
+  if (rawFloor !== undefined) {
+    const floor = toInteger(rawFloor);
+    if (Number.isNaN(floor) || floor < ROOM_RULES.MIN_FLOOR || floor > ROOM_RULES.MAX_FLOOR) {
+      errors.floor = `Tầng phải là số nguyên từ ${ROOM_RULES.MIN_FLOOR} đến ${ROOM_RULES.MAX_FLOOR}.`;
+    } else {
+      filter.floor = floor;
+    }
+  }
+
+  const rawType = pick(query, 'room_type', 'type');
+  if (rawType !== undefined) {
+    if (!Object.values(ROOM_TYPES).includes(rawType)) errors.room_type = 'Loại phòng không hợp lệ.';
+    else filter.room_type = rawType;
+  }
+
+  if (query.status !== undefined && query.status !== '') {
+    if (!Object.values(ROOM_STATUSES).includes(query.status)) errors.status = 'Trạng thái phòng không hợp lệ.';
+    else filter.status = query.status;
+  }
+
+  const rawBuilding = pick(query, 'building', 'building_code', 'buildingCode');
+  if (rawBuilding !== undefined) filter.building = String(rawBuilding).trim().toUpperCase();
+
+  const keyword = String(pick(query, 'q', 'search') ?? '').trim();
+  if (keyword) {
+    const pattern = new RegExp(escapeRegex(keyword.slice(0, 60)), 'i');
+    filter.$or = [{ code: pattern }, { name: pattern }];
+  }
+
+  const hasPaging = query.page !== undefined || query.limit !== undefined;
+  let page = 1;
+  let limit = null;
+  if (hasPaging) {
+    page = query.page === undefined ? 1 : toInteger(query.page);
+    limit = query.limit === undefined ? LIST_DEFAULT_LIMIT : toInteger(query.limit);
+    if (Number.isNaN(page) || page < 1) errors.page = 'Trang phải là số nguyên >= 1.';
+    if (Number.isNaN(limit) || limit < 1) errors.limit = 'Số bản ghi mỗi trang phải là số nguyên >= 1.';
+    else limit = Math.min(limit, LIST_MAX_LIMIT);
+  }
+
+  return { valid: Object.keys(errors).length === 0, errors, filter, page, limit, paginated: hasPaging };
 };
