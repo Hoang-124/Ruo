@@ -1,8 +1,11 @@
 import { Building, Floor, Room } from '../models/Room.js';
 import { Equipment } from '../models/Equipment.js';
+import { Repair } from '../models/Repair.js';
+import { EquipmentMovement } from '../models/EquipmentMovement.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { ROOM_STATUSES, ROOM_TYPES, EQUIPMENT_STATUSES } from '../config/constants.js';
-import { parseRoomListQuery, validateCreateRoomPayload } from '../services/roomValidation.js';
+import { normalizeRoomCode, parseRoomListQuery, validateCreateRoomPayload } from '../services/roomValidation.js';
+import { HISTORY_LIMIT, summarizeRoomEquipment } from '../services/roomDetail.js';
 
 // @desc    Get all buildings and their floors
 // @route   GET /api/facilities/buildings
@@ -161,26 +164,50 @@ export const getCadCanvasRooms = async (req, res) => {
   }
 };
 
-// @desc    Get single room details with equipment list (UC: View room equipment)
+// @desc    Get single room details with equipment, maintenance & movement history — UC-2.3
 // @route   GET /api/facilities/rooms/:code
 export const getRoomByCode = async (req, res) => {
   try {
-    const room = await Room.findOne({ code: req.params.code.toUpperCase() })
+    const code = normalizeRoomCode(req.params.code);
+    const room = await Room.findOne({ code })
       .populate('required_equipment.category_id', 'code name');
 
     if (!room) {
-      return res.status(404).json({ success: false, message: 'Phòng học không tồn tại.' });
+      return res.status(404).json({ success: false, message: `Phòng ${code} không tồn tại.` });
     }
 
-    // Equipment stationed in this room
+    // Equipment stationed in this room (serial number & QR code come with the document)
     const equipments = await Equipment.find({ room_id: room._id })
       .populate('category_id', 'code name')
-      .populate('supplier_id', 'code name');
+      .populate('supplier_id', 'code name')
+      .sort({ code: 1 });
+    const equipmentIds = equipments.map((eq) => eq._id);
+
+    // Maintenance history: repair tickets of the equipment currently in the room
+    const maintenanceHistory = equipmentIds.length === 0 ? [] : await Repair.find({ equipment_id: { $in: equipmentIds } })
+      .sort({ reported_at: -1 })
+      .limit(HISTORY_LIMIT)
+      .populate('equipment_id', 'code name serial_number')
+      .populate('assigned_to', 'full_name code');
+
+    // Movement history: every transfer / replacement / repair move into or out of this room
+    const movementHistory = await EquipmentMovement.find({
+      $or: [{ from_room_id: room._id }, { to_room_id: room._id }]
+    })
+      .sort({ created_at: -1 })
+      .limit(HISTORY_LIMIT)
+      .populate('equipment_id', 'code name serial_number')
+      .populate('from_room_id', 'code name')
+      .populate('to_room_id', 'code name')
+      .populate('ordered_by', 'full_name code');
 
     res.json({
       success: true,
       room,
-      equipments
+      equipments,
+      maintenanceHistory,
+      movementHistory,
+      summary: summarizeRoomEquipment(equipments, maintenanceHistory)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi khi tải thông tin chi tiết phòng.' });

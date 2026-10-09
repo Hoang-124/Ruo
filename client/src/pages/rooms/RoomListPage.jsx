@@ -3,6 +3,7 @@ import { Icons } from '../../components/common/SvgIcons';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { facilityApi } from '../../lib/api';
+import { RoomDetailModal } from '../../components/ui/RoomDetailModal';
 import { RoomFormModal } from './RoomFormModal';
 import {
   EMPTY_ROOM_FILTERS,
@@ -37,6 +38,7 @@ export const RoomListPage = () => {
   const [data, setData] = useState({ rooms: [], total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [detailCode, setDetailCode] = useState(null);
 
   // Debounce the free-text search so every keystroke does not hit the API.
   useEffect(() => {
@@ -166,13 +168,19 @@ export const RoomListPage = () => {
                 <th style={thStyle}>Loại Phòng</th>
                 <th style={{ ...thStyle, textAlign: 'right' }}>Sức Chứa</th>
                 <th style={thStyle}>Trạng Thái</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Thao Tác</th>
               </tr>
             </thead>
             <tbody>
               {rooms.map((room) => {
                 const status = getRoomStatusMeta(room.status);
                 return (
-                  <tr key={room._id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                  <tr
+                    key={room._id}
+                    onClick={() => setDetailCode(room.code)}
+                    style={{ borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer' }}
+                    title={`Xem chi tiết phòng ${room.code}`}
+                  >
                     <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--blueprint-400)' }}>{room.code}</td>
                     <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--ink-primary)' }}>{room.name}</td>
                     <td style={{ ...tdStyle, color: 'var(--ink-secondary)' }}>Tòa {room.building} • Tầng {room.floor}</td>
@@ -182,6 +190,15 @@ export const RoomListPage = () => {
                       <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, color: status.tone, background: `${status.tone}22` }}>
                         {status.label}
                       </span>
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+                        onClick={(e) => { e.stopPropagation(); setDetailCode(room.code); }}
+                      >
+                        <Icons.Eye size={13} /> Chi Tiết
+                      </button>
                     </td>
                   </tr>
                 );
@@ -225,6 +242,10 @@ export const RoomListPage = () => {
 
       {isCreateOpen && (
         <RoomFormModal onClose={() => setIsCreateOpen(false)} onSaved={() => { setPage(1); fetchRooms(); }} />
+      )}
+
+      {detailCode && (
+        <RoomDetailModal roomCode={detailCode} onClose={() => setDetailCode(null)} />
       )}
     </div>
   );
