@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  EMPTY_ROOM_FILTERS,
   buildCreateRoomPayload,
+  buildRoomListParams,
   createEmptyRoomForm,
   getFloorFromCode,
+  getPageWindow,
   getRoomStatusMeta,
   getRoomTypeLabel,
+  hasActiveRoomFilters,
   validateRoomForm
 } from './roomDomain';
 
@@ -69,5 +73,28 @@ describe('roomDomain', () => {
     expect(getRoomTypeLabel('mystery')).toBe('mystery');
     expect(getRoomStatusMeta('maintenance').label).toBe('Đang bảo trì');
     expect(getRoomStatusMeta('weird').label).toBe('weird');
+  });
+});
+
+describe('room list helpers (UC-2.2)', () => {
+  it('drops blank filters and trims the search keyword', () => {
+    expect(buildRoomListParams(EMPTY_ROOM_FILTERS)).toEqual({ page: 1, limit: 10 });
+    expect(
+      buildRoomListParams({ q: '  p10 ', floor: '3', room_type: 'lab', status: 'available' }, 2, 5)
+    ).toEqual({ page: 2, limit: 5, q: 'p10', floor: '3', room_type: 'lab', status: 'available' });
+  });
+
+  it('detects whether any filter is active', () => {
+    expect(hasActiveRoomFilters(EMPTY_ROOM_FILTERS)).toBe(false);
+    expect(hasActiveRoomFilters({ ...EMPTY_ROOM_FILTERS, floor: '2' })).toBe(true);
+    expect(hasActiveRoomFilters({ ...EMPTY_ROOM_FILTERS, q: '   ' })).toBe(false);
+  });
+
+  it('builds a compact page window with ellipsis gaps', () => {
+    expect(getPageWindow(1, 1)).toEqual([1]);
+    expect(getPageWindow(1, 3)).toEqual([1, 2, 3]);
+    expect(getPageWindow(1, 10)).toEqual([1, 2, null, 10]);
+    expect(getPageWindow(5, 10)).toEqual([1, null, 4, 5, 6, null, 10]);
+    expect(getPageWindow(10, 10)).toEqual([1, null, 9, 10]);
   });
 });

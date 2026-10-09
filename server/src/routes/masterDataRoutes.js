@@ -31,7 +31,7 @@ router.get('/repair-units', getRepairUnits);
 router.post('/repair-units', protect, requireRole(USER_ROLES.ADMIN), createRepairUnit);
 
 // Rooms & Space (Module 02)
-router.get('/rooms', getAllRooms);
+router.get('/rooms', protect, getAllRooms);
 router.post('/rooms', protect, requireRole(USER_ROLES.ADMIN), createRoom);
 router.get('/rooms/:id/shortage', protect, getRoomShortage);
 router.get('/warehouse/stock', protect, getWarehouseStock);

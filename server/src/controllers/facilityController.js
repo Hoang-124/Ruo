@@ -2,7 +2,7 @@ import { Building, Floor, Room } from '../models/Room.js';
 import { Equipment } from '../models/Equipment.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { ROOM_STATUSES, ROOM_TYPES, EQUIPMENT_STATUSES } from '../config/constants.js';
-import { validateCreateRoomPayload } from '../services/roomValidation.js';
+import { parseRoomListQuery, validateCreateRoomPayload } from '../services/roomValidation.js';
 
 // @desc    Get all buildings and their floors
 // @route   GET /api/facilities/buildings
@@ -18,20 +18,29 @@ export const getBuildings = async (req, res) => {
   }
 };
 
-// @desc    Get all rooms (View room list)
-// @route   GET /api/facilities/rooms
+// @desc    Get all rooms (View room list) — UC-2.2
+// @route   GET /api/facilities/rooms?floor=&room_type=&status=&q=&page=&limit=
 export const getAllRooms = async (req, res) => {
   try {
-    const { building, room_type, status } = req.query;
-    const query = {};
-    if (building) query.building = building;
-    if (room_type) query.room_type = room_type;
-    if (status) query.status = status;
+    const { valid, errors, filter, page, limit, paginated } = parseRoomListQuery(req.query);
+    if (!valid) {
+      return res.status(400).json({ success: false, message: Object.values(errors)[0], errors });
+    }
 
-    const rooms = await Room.find(query).populate('required_equipment.category_id', 'code name');
+    const total = await Room.countDocuments(filter);
+
+    let cursor = Room.find(filter)
+      .populate('required_equipment.category_id', 'code name')
+      .sort({ code: 1 });
+    if (paginated) cursor = cursor.skip((page - 1) * limit).limit(limit);
+    const rooms = await cursor;
+
     res.json({
       success: true,
-      total: rooms.length,
+      total,
+      page,
+      limit: paginated ? limit : total,
+      totalPages: paginated ? Math.max(1, Math.ceil(total / limit)) : 1,
       rooms
     });
   } catch (error) {
