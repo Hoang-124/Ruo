@@ -262,7 +262,11 @@ export const RoomListPage = () => {
       )}
 
       {detailCode && (
-        <RoomDetailModal roomCode={detailCode} onClose={() => setDetailCode(null)} />
+        <RoomDetailModal
+          roomCode={detailCode}
+          onClose={() => setDetailCode(null)}
+          onEdit={isAdmin ? (room) => { setDetailCode(null); setEditRoom(room); } : undefined}
+        />
       )}
     </div>
   );
