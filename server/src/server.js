@@ -47,6 +47,7 @@ app.get('/api/health', (req, res) => {
 
 // API Routes Mounting (UEMS 6 Canonical Modules)
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', authRoutes); // Supports GET /api/admin/users and POST /api/admin/users
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/equipments', equipmentRoutes);
 app.use('/api/repairs', repairRoutes);

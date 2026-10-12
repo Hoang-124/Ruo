@@ -18,8 +18,10 @@ export const UserManagementPage = () => {
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [userToReset, setUserToReset] = useState(null);
   const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [createdUserResult, setCreatedUserResult] = useState(null); // UC-10.1: Lưu thông tin tài khoản & mật khẩu vừa tạo
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Create Form State
+  // Create Form State (UC-10.1)
   const [createForm, setCreateForm] = useState({
     code: '',
     full_name: '',
@@ -30,6 +32,15 @@ export const UserManagementPage = () => {
     password: ''
   });
   const [submitting, setSubmitting] = useState(false);
+
+  // Helper sinh mật khẩu ngẫu nhiên đạt chuẩn bảo mật
+  const handleGenerateRandomPassword = () => {
+    const randomSixDigits = Math.floor(100000 + Math.random() * 900000);
+    const generated = `Ruo@${randomSixDigits}`;
+    setCreateForm(prev => ({ ...prev, password: generated }));
+    setShowPassword(true);
+    toast.info(`Đã tạo mật khẩu ngẫu nhiên: ${generated}`, 'Tạo Mật Khẩu');
+  };
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -52,6 +63,7 @@ export const UserManagementPage = () => {
     fetchUsers();
   }, [fetchUsers]);
 
+  // UC-10.1: Create User
   const handleCreateUser = async (e) => {
     e.preventDefault();
     if (!createForm.code || !createForm.full_name || !createForm.email) {
@@ -62,7 +74,12 @@ export const UserManagementPage = () => {
     try {
       const res = await authApi.createUser(createForm);
       if (res.success) {
-        toast.success(`Đã tạo tài khoản cho ${createForm.full_name} (${res.user?.code})`, 'Tạo Thành Công');
+        const tempPwd = res.user?.tempPassword || res.user?.initialPassword || createForm.password || 'Ruo@2026';
+        setCreatedUserResult({
+          user: res.user,
+          password: tempPwd
+        });
+        toast.success(`Đã tạo tài khoản cho ${createForm.full_name} (${res.user?.code || createForm.code})`, 'Tạo Thành Công');
         setIsCreateModalOpen(false);
         setCreateForm({
           code: '',
@@ -73,10 +90,12 @@ export const UserManagementPage = () => {
           phone: '',
           password: ''
         });
+        setShowPassword(false);
         fetchUsers();
       }
     } catch (err) {
-      toast.error('Lỗi khi tạo người dùng: ' + err.message);
+      const errorMsg = err.data?.message || err.message || 'Lỗi khi tạo người dùng.';
+      toast.error(errorMsg, 'Lỗi Khởi Tạo Người Dùng');
     } finally {
       setSubmitting(false);
     }
@@ -604,14 +623,58 @@ export const UserManagementPage = () => {
                 </div>
 
                 <div>
-                  <label className="ruo-label">Mật Khẩu Khởi Tạo (Để trống để tự tạo Ruo@xxxx)</label>
-                  <input
-                    type="password"
-                    className="ruo-input"
-                    placeholder="Mặc định: Ruo@2026 hoặc ngẫu nhiên"
-                    value={createForm.password}
-                    onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label className="ruo-label" style={{ margin: 0 }}>Mật Khẩu Khởi Tạo (Để trống để tự sinh)</label>
+                    <button
+                      type="button"
+                      onClick={handleGenerateRandomPassword}
+                      style={{
+                        background: 'rgba(59, 130, 246, 0.12)',
+                        border: '1px solid rgba(59, 130, 246, 0.3)',
+                        color: 'var(--laser-cyan)',
+                        padding: '3px 10px',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ⚡ Tự Động Tạo Mật Khẩu
+                    </button>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      className="ruo-input"
+                      style={{ paddingRight: '50px' }}
+                      placeholder="Để trống để hệ thống tự sinh Ruo@xxxxxx"
+                      value={createForm.password}
+                      onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                    />
+                    {createForm.password && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--ink-muted)',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontWeight: 600
+                        }}
+                      >
+                        {showPassword ? 'Ẩn' : 'Hiện'}
+                      </button>
+                    )}
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '4px', display: 'block' }}>
+                    * Mật khẩu tự động đạt chuẩn bảo mật: ≥ 8 ký tự, có chữ hoa, thường, số và ký tự đặc biệt (@).
+                  </span>
                 </div>
               </div>
 
@@ -624,6 +687,65 @@ export const UserManagementPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Bàn giao thông tin tài khoản vừa tạo (UC-10.1) */}
+      {createdUserResult && (
+        <div className="ruo-modal-overlay">
+          <div className="ruo-modal-content" style={{ maxWidth: '480px' }}>
+            <div className="ruo-modal-header" style={{ borderBottom: '1px solid rgba(16, 185, 129, 0.25)' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#10B981' }}>
+                <Icons.CheckCircle size={20} color="#10B981" />
+                Khởi Tạo Tài Khoản Thành Công (UC-10.1)
+              </h2>
+              <button className="ruo-btn-close" onClick={() => setCreatedUserResult(null)}>
+                <Icons.X size={18} />
+              </button>
+            </div>
+
+            <div className="ruo-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--ink-secondary)', margin: 0 }}>
+                Tài khoản đã sẵn sàng hoạt động trong hệ thống. Quản trị viên vui lòng lưu trữ và bàn giao thông tin đăng nhập cho cán bộ:
+              </p>
+
+              <div style={{ background: 'var(--surface-sunken)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-medium)', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                <div><span style={{ color: 'var(--ink-muted)' }}>Mã nhân viên / CB:</span> <strong style={{ color: 'var(--ink-primary)' }}>{createdUserResult.user.code}</strong></div>
+                <div><span style={{ color: 'var(--ink-muted)' }}>Họ và tên:</span> <strong style={{ color: 'var(--ink-primary)' }}>{createdUserResult.user.full_name}</strong></div>
+                <div><span style={{ color: 'var(--ink-muted)' }}>Email đăng nhập:</span> <strong style={{ color: 'var(--ink-primary)' }}>{createdUserResult.user.email}</strong></div>
+                <div><span style={{ color: 'var(--ink-muted)' }}>Vai trò:</span> <strong style={{ color: 'var(--laser-cyan)' }}>{createdUserResult.user.role}</strong></div>
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--hairline-soft)' }}>
+                  <span style={{ color: 'var(--ink-muted)', display: 'block', marginBottom: '4px' }}>Mật khẩu khởi tạo:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <code style={{ fontSize: '16px', fontWeight: 800, color: '#10B981', padding: '4px 10px', background: 'rgba(16, 185, 129, 0.12)', borderRadius: 'var(--radius-sm)', letterSpacing: '0.05em' }}>
+                      {createdUserResult.password || 'Ruo@2026'}
+                    </code>
+                    <button
+                      type="button"
+                      className="ruo-btn ruo-btn-secondary"
+                      style={{ padding: '4px 12px', fontSize: '12px' }}
+                      onClick={() => {
+                        navigator.clipboard.writeText(`Mã NV: ${createdUserResult.user.code}\nEmail: ${createdUserResult.user.email}\nMật khẩu: ${createdUserResult.password || 'Ruo@2026'}`);
+                        toast.success('Đã sao chép thông tin tài khoản vào bộ nhớ tạm!');
+                      }}
+                    >
+                      Sao Chép
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <span style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                * Cán bộ sẽ được yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên vì lý do an toàn bảo mật.
+              </span>
+            </div>
+
+            <div className="ruo-modal-footer">
+              <button type="button" className="ruo-btn ruo-btn-primary" onClick={() => setCreatedUserResult(null)}>
+                Đã Hiểu & Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}
