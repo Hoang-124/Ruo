@@ -1324,7 +1324,7 @@ export const getAllUsers = async (req, res) => {
 };
 
 /**
- * UC-10.2: View User Details & Activity History (Admin Only)
+ * UC-10.2 & UC-10.3: View User Details & Activity History (Admin Only)
  * GET /api/auth/users/:id hoặc GET /api/admin/users/:id
  */
 export const getUserById = async (req, res) => {
@@ -1334,7 +1334,7 @@ export const getUserById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
     }
 
-    // Lấy lịch sử hoạt động / AuditLog gần nhất của người dùng (UC-10.2 Activity)
+    // Lấy lịch sử hoạt động / AuditLog gần nhất của người dùng (UC-10.2 & UC-10.3 Activity)
     let activities = [];
     try {
       activities = await AuditLog.find({
@@ -1343,7 +1343,7 @@ export const getUserById = async (req, res) => {
           { entity_id: user._id.toString() }
         ]
       })
-      .sort({ timestamp: -1 })
+      .sort({ seq: -1, created_at: -1, timestamp: -1 })
       .limit(20);
     } catch (e) {
       activities = [];
@@ -1356,6 +1356,164 @@ export const getUserById = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết người dùng: ' + error.message });
+  }
+};
+
+/**
+ * UC-10.3: Admin Update User Profile, RBAC & Status
+ * PUT /api/admin/users/:id hoặc PUT /api/auth/users/:id
+ */
+export const adminUpdateUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng trong hệ thống.' });
+    }
+
+    const { role, department, phone, full_name, status, requested_role, repute_score } = req.body;
+
+    // Hard-lock: Không được phép sửa mã cán bộ hoặc email để bảo toàn định danh
+    if (req.body.code && req.body.code !== user.code) {
+      return res.status(400).json({ success: false, message: 'Không được phép thay đổi mã cán bộ để bảo toàn định danh hệ thống.' });
+    }
+    if (req.body.email && req.body.email.toLowerCase() !== user.email.toLowerCase()) {
+      return res.status(400).json({ success: false, message: 'Không được phép thay đổi email nhà trường đã cấp.' });
+    }
+
+    // Guard-rail: Tránh Admin tự hạ quyền hoặc tự khóa chính mình
+    if (req.user && req.user._id.toString() === user._id.toString()) {
+      if (role && role !== USER_ROLES.ADMIN) {
+        return res.status(400).json({ success: false, message: 'Bạn không thể tự hạ quyền Admin của chính mình.' });
+      }
+      if (status && status === USER_STATUSES.LOCKED) {
+        return res.status(400).json({ success: false, message: 'Bạn không thể tự khóa tài khoản của chính mình.' });
+      }
+    }
+
+    const oldData = {
+      role: user.role,
+      department: user.department,
+      phone: user.phone,
+      full_name: user.full_name,
+      status: user.status,
+      requested_role: user.requested_role,
+      repute_score: user.repute_score
+    };
+
+    // Validate & update role
+    if (role !== undefined) {
+      if (!Object.values(USER_ROLES).includes(role)) {
+        return res.status(400).json({ success: false, message: `Vai trò [${role}] không hợp lệ trong hệ thống.` });
+      }
+      user.role = role;
+      if (user.requested_role && user.requested_role === role) {
+        user.requested_role = null;
+      }
+    }
+
+    // Validate & update status
+    if (status !== undefined) {
+      const validStatuses = Object.values(USER_STATUSES);
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ success: false, message: `Trạng thái [${status}] không hợp lệ.` });
+      }
+      user.status = status;
+      if (status === USER_STATUSES.ACTIVE) {
+        user.failed_login_attempts = 0;
+        user.lock_until = null;
+      }
+    }
+
+    // Validate & update full_name
+    if (full_name !== undefined) {
+      const trimmedName = String(full_name).trim();
+      if (trimmedName.length < 2) {
+        return res.status(400).json({ success: false, message: 'Họ và tên người dùng phải có ít nhất 2 ký tự.' });
+      }
+      user.full_name = trimmedName;
+    }
+
+    // Update department
+    if (department !== undefined) {
+      user.department = String(department).trim();
+    }
+
+    // Validate & update phone
+    if (phone !== undefined) {
+      const trimmedPhone = String(phone).trim();
+      if (trimmedPhone && !PHONE_REGEX.test(trimmedPhone)) {
+        return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ (yêu cầu định dạng di động Việt Nam 10 số).' });
+      }
+      user.phone = trimmedPhone;
+    }
+
+    // Update requested_role
+    if (requested_role !== undefined) {
+      if (requested_role && !Object.values(USER_ROLES).includes(requested_role)) {
+        return res.status(400).json({ success: false, message: `Chức vụ đăng ký [${requested_role}] không hợp lệ.` });
+      }
+      user.requested_role = requested_role || null;
+    }
+
+    // Validate & update repute_score
+    if (repute_score !== undefined) {
+      const scoreNum = Number(repute_score);
+      if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+        return res.status(400).json({ success: false, message: 'Điểm tín nhiệm phải là số nguyên từ 0 đến 100.' });
+      }
+      user.repute_score = Math.round(scoreNum);
+    }
+
+    await user.save();
+
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    await AuditLog.logAction({
+      user_id: req.user?._id || null,
+      user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'Quản Trị Viên',
+      action: 'RBAC_UPDATE',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: ipAddress,
+      old_value: oldData,
+      new_value: {
+        role: user.role,
+        department: user.department,
+        phone: user.phone,
+        full_name: user.full_name,
+        status: user.status,
+        requested_role: user.requested_role,
+        repute_score: user.repute_score
+      }
+    });
+
+    let activities = [];
+    try {
+      activities = await AuditLog.find({
+        $or: [
+          { user_id: user._id },
+          { entity_id: user._id.toString() }
+        ]
+      })
+      .sort({ seq: -1, created_at: -1, timestamp: -1 })
+      .limit(20);
+    } catch (e) {
+      activities = [];
+    }
+
+    const sanitizedUser = user.toObject();
+    delete sanitizedUser.password_hash;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Cập nhật hồ sơ và phân quyền RBAC người dùng thành công.',
+      user: sanitizedUser,
+      activities
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ khi cập nhật thông tin người dùng: ' + error.message
+    });
   }
 };
 
