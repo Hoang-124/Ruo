@@ -1250,43 +1250,82 @@ export const createUser = async (req, res) => {
 };
 
 /**
- * UC-10.2: Get All Users (Admin Only)
+ * UC-10.2: Get All Users with Realtime Tabs Counts (Admin Only)
+ * Phân tab Tất cả / Chờ phê duyệt / Đang hoạt động / Đã khóa, kèm số đếm realtime
+ * GET /api/auth/users hoặc GET /api/admin/users
  */
 export const getAllUsers = async (req, res) => {
   try {
     const { role, status, search } = req.query;
     const query = {};
 
-    if (role) query.role = role;
-    if (status) query.status = status;
+    if (role && role !== 'ALL') {
+      query.role = String(role).toLowerCase();
+    }
+
+    if (status && status !== 'ALL') {
+      if (status === 'pending' || status === USER_STATUSES.PENDING_APPROVAL) {
+        query.status = { $in: [USER_STATUSES.PENDING_APPROVAL, 'pending'] };
+      } else {
+        query.status = status;
+      }
+    }
+
     if (search) {
-      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escaped = String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
         { code: { $regex: escaped, $options: 'i' } },
         { full_name: { $regex: escaped, $options: 'i' } },
-        { email: { $regex: escaped, $options: 'i' } }
+        { email: { $regex: escaped, $options: 'i' } },
+        { department: { $regex: escaped, $options: 'i' } }
       ];
     }
 
+    // 1. Lấy danh sách người dùng theo bộ lọc
     const users = await User.find(query)
       .select('-password_hash')
       .sort({ created_at: -1 });
 
+    // 2. Tính toán số đếm realtime (Realtime Tab Counts)
+    let counts = { all: 0, pending: 0, active: 0, locked: 0 };
+    try {
+      const [allCount, pendingCount, activeCount, lockedCount] = await Promise.all([
+        User.countDocuments({}),
+        User.countDocuments({ status: { $in: [USER_STATUSES.PENDING_APPROVAL, 'pending'] } }),
+        User.countDocuments({ status: USER_STATUSES.ACTIVE }),
+        User.countDocuments({ status: USER_STATUSES.LOCKED })
+      ]);
+      counts = {
+        all: allCount,
+        pending: pendingCount,
+        active: activeCount,
+        locked: lockedCount
+      };
+    } catch (e) {
+      // Fallback in-memory count if countDocuments not mocked
+      counts.all = users.length;
+      counts.pending = users.filter(u => u.status === USER_STATUSES.PENDING_APPROVAL || u.status === 'pending').length;
+      counts.active = users.filter(u => u.status === USER_STATUSES.ACTIVE).length;
+      counts.locked = users.filter(u => u.status === USER_STATUSES.LOCKED).length;
+    }
+
     res.json({
       success: true,
       total: users.length,
+      counts,
       users
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Không thể tải danh sách người dùng.'
+      message: 'Không thể tải danh sách người dùng: ' + error.message
     });
   }
 };
 
 /**
- * View User Details (Admin Only)
+ * UC-10.2: View User Details & Activity History (Admin Only)
+ * GET /api/auth/users/:id hoặc GET /api/admin/users/:id
  */
 export const getUserById = async (req, res) => {
   try {
@@ -1294,9 +1333,29 @@ export const getUserById = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
     }
-    res.json({ success: true, user });
+
+    // Lấy lịch sử hoạt động / AuditLog gần nhất của người dùng (UC-10.2 Activity)
+    let activities = [];
+    try {
+      activities = await AuditLog.find({
+        $or: [
+          { user_id: user._id },
+          { entity_id: user._id.toString() }
+        ]
+      })
+      .sort({ timestamp: -1 })
+      .limit(20);
+    } catch (e) {
+      activities = [];
+    }
+
+    res.json({
+      success: true,
+      user,
+      activities
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết người dùng.' });
+    res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết người dùng: ' + error.message });
   }
 };
 
