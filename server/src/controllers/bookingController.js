@@ -121,10 +121,62 @@ export const getMyBookings = async (req, res) => {
 export const getPendingApprovals = async (req, res) => {
   const query = { status: BOOKING_STATUSES.PENDING, deletedAt: null };
 
+  console.log('[bookingController] getPendingApprovals called', {
+    requesterRole: req.user?.role,
+    requesterName: req.user?.fullName,
+    query
+  });
+
   const requests = await RoomBooking.find(query)
     .populate('user', 'fullName email employeeCode reputeScore role')
-    .populate('room', 'code name capacity building floorNumber')
-    .sort({ isEscalated: -1, createdAt: 1 });
+    .populate('room', 'code name capacity building floorNumber');
+
+  const rolePriority = {
+    lecturer: 0,
+    academic_affairs: 1,
+    admin: 2,
+    facility_staff: 3,
+    maintenance: 4,
+    student: 5,
+    default: 99
+  };
+
+  requests.sort((a, b) => {
+    const aEscalated = a.isEscalated ? 0 : 1;
+    const bEscalated = b.isEscalated ? 0 : 1;
+
+    if (aEscalated !== bEscalated) {
+      return aEscalated - bEscalated;
+    }
+
+    const aRole = a.user?.role || 'student';
+    const bRole = b.user?.role || 'student';
+    const aRolePriority = rolePriority[aRole] ?? rolePriority.default;
+    const bRolePriority = rolePriority[bRole] ?? rolePriority.default;
+
+    if (aRolePriority !== bRolePriority) {
+      return aRolePriority - bRolePriority;
+    }
+
+    const aStart = new Date(a.startTime || a.createdAt).getTime();
+    const bStart = new Date(b.startTime || b.createdAt).getTime();
+    if (aStart !== bStart) {
+      return aStart - bStart;
+    }
+
+    return new Date(a.createdAt) - new Date(b.createdAt);
+  });
+
+  console.log('[bookingController] pending queue result', {
+    total: requests.length,
+    firstItems: requests.slice(0, 3).map(item => ({
+      bookingCode: item.bookingCode,
+      user: item.user?.fullName,
+      role: item.user?.role,
+      escalated: item.isEscalated,
+      startTime: item.startTime
+    }))
+  });
 
   res.json({
     success: true,

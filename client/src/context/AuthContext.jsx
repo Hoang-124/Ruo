@@ -414,6 +414,7 @@ export const AuthProvider = ({ children }) => {
     isLoggedIn,
     token,
     login,
+    register, // <-- BỔ SUNG DÒNG NÀY VÀO ĐÂY
     logout,
     fetchProfile,
     updateProfile,
