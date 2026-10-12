@@ -1466,7 +1466,7 @@ export const adminUpdateUser = async (req, res) => {
 
     await user.save();
 
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     await AuditLog.logAction({
       user_id: req.user?._id || null,
       user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'Quản Trị Viên',
