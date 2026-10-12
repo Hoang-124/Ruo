@@ -7,6 +7,7 @@ import { useToast } from '../../context/ToastContext';
 /**
  * UC-10.3: User Detail & RBAC Drawer
  * Displays detailed user profile, registered roles, creation date, and activity history.
+ * Supports interactive RBAC role changes, status updates, and audit trail.
  * Strict Native SVG Only.
  */
 export const UserDetailDrawer = ({
@@ -23,21 +24,52 @@ export const UserDetailDrawer = ({
   const [loadingActivities, setLoadingActivities] = useState(false);
   const [userData, setUserData] = useState(user);
 
-  // Sync internal user data when prop changes
+  // Edit Mode & Form State (UC-10.3 RBAC Update)
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    role: USER_ROLES.LECTURER,
+    status: 'active',
+    department: '',
+    phone: '',
+    repute_score: 100
+  });
+
+  // Sync internal user data and edit form when user prop changes
   useEffect(() => {
     if (user) {
       setUserData(user);
+      setEditForm({
+        full_name: user.full_name || '',
+        role: user.role || USER_ROLES.LECTURER,
+        status: user.status || 'active',
+        department: user.department || '',
+        phone: user.phone || '',
+        repute_score: user.repute_score ?? 100
+      });
+      setIsEditing(false);
     }
   }, [user]);
 
-  // Load detailed user info & audit activities on open
+  // Load detailed user info & audit activities on open (GET /api/auth/users/:id)
   useEffect(() => {
     if (isOpen && user?._id) {
       setLoadingActivities(true);
       authApi.getUserById(user._id)
         .then(res => {
           if (res.success) {
-            if (res.user) setUserData(res.user);
+            if (res.user) {
+              setUserData(res.user);
+              setEditForm({
+                full_name: res.user.full_name || '',
+                role: res.user.role || USER_ROLES.LECTURER,
+                status: res.user.status || 'active',
+                department: res.user.department || '',
+                phone: res.user.phone || '',
+                repute_score: res.user.repute_score ?? 100
+              });
+            }
             if (Array.isArray(res.activities)) setActivities(res.activities);
           }
         })
@@ -69,6 +101,76 @@ export const UserDetailDrawer = ({
   const reputeScore = userData.repute_score ?? 100;
   const reputeColor = reputeScore >= 80 ? '#10B981' : reputeScore >= 50 ? '#F59E0B' : '#EF4444';
   const reputeLabel = reputeScore >= 85 ? 'Tín nhiệm xuất sắc' : reputeScore >= 60 ? 'Mức bình thường' : 'Cảnh báo vi phạm';
+
+  // UC-10.3: Submit RBAC & Profile Updates (PUT /api/admin/users/:id)
+  const handleSaveUserUpdate = async (e) => {
+    if (e) e.preventDefault();
+    if (!editForm.full_name || editForm.full_name.trim().length < 2) {
+      toast.error('Họ và tên người dùng phải có ít nhất 2 ký tự.');
+      return;
+    }
+    if (editForm.phone && !/^(84|0)(3|5|7|8|9)[0-9]{8}$/.test(editForm.phone.trim())) {
+      toast.error('Số điện thoại không hợp lệ (yêu cầu định dạng di động Việt Nam 10 chữ số).');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        role: editForm.role,
+        status: editForm.status,
+        full_name: editForm.full_name.trim(),
+        department: editForm.department.trim(),
+        phone: editForm.phone.trim(),
+        repute_score: editForm.repute_score
+      };
+
+      const res = await authApi.adminUpdateUser(userData._id, payload);
+      if (res.success && res.user) {
+        setUserData(res.user);
+        if (Array.isArray(res.activities)) setActivities(res.activities);
+        setIsEditing(false);
+        toast.success(res.message || 'Cập nhật phân quyền RBAC và hồ sơ thành công!', 'Cập Nhật Thành Công');
+        if (onUserUpdated) {
+          onUserUpdated(res.user);
+        }
+      }
+    } catch (err) {
+      const errorMsg = err.data?.message || err.message || 'Lỗi khi cập nhật thông tin người dùng.';
+      toast.error(errorMsg, 'Lỗi Cập Nhật');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Quick Approve Requested Role
+  const handleQuickApproveRole = async () => {
+    if (!userData.requested_role) return;
+    const targetRole = userData.requested_role;
+    const targetLabel = ROLE_METADATA[targetRole]?.label || targetRole;
+
+    if (!window.confirm(`Bạn có chắc muốn phê duyệt bổ nhiệm cán bộ ${userData.full_name} (${userData.code}) vào chức vụ [${targetLabel}]?`)) return;
+
+    setSaving(true);
+    try {
+      const res = await authApi.adminUpdateUser(userData._id, {
+        role: targetRole,
+        status: 'active',
+        requested_role: null
+      });
+
+      if (res.success && res.user) {
+        setUserData(res.user);
+        if (Array.isArray(res.activities)) setActivities(res.activities);
+        toast.success(`Đã bổ nhiệm thành công ${userData.full_name} vào chức vụ [${targetLabel}].`, 'Phê Duyệt Hoàn Tất');
+        if (onUserUpdated) onUserUpdated(res.user);
+      }
+    } catch (err) {
+      toast.error(err.data?.message || err.message || 'Lỗi phê duyệt chức vụ.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const getActionMeta = (action) => {
     switch (action) {
@@ -102,7 +204,7 @@ export const UserDetailDrawer = ({
       <div
         className="ruo-modal-content"
         style={{
-          maxWidth: '720px',
+          maxWidth: '740px',
           width: '94%',
           maxHeight: '92vh',
           display: 'flex',
@@ -163,6 +265,19 @@ export const UserDetailDrawer = ({
                 >
                   {userData.code}
                 </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    background: roleMeta.bg,
+                    color: roleMeta.color,
+                    border: `1px solid ${roleMeta.color}40`
+                  }}
+                >
+                  {roleMeta.label}
+                </span>
               </div>
               <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--ink-secondary)' }}>
                 Chi tiết hồ sơ nhân sự, phân quyền RBAC và lịch sử tài khoản (UC-10.3)
@@ -170,14 +285,47 @@ export const UserDetailDrawer = ({
             </div>
           </div>
 
-          <button
-            className="ruo-btn-close"
-            onClick={onClose}
-            title="Đóng (Esc)"
-            style={{ padding: '6px', borderRadius: '8px' }}
-          >
-            <Icons.X size={18} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {!isEditing ? (
+              <button
+                type="button"
+                className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+                onClick={() => setIsEditing(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                title="Bật chế độ chỉnh sửa phân quyền RBAC và hồ sơ"
+              >
+                <Icons.Settings size={13} color="var(--laser-cyan)" />
+                <span>Chỉnh Sửa RBAC</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="ruo-btn ruo-btn-ghost ruo-btn-sm"
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditForm({
+                    full_name: userData.full_name || '',
+                    role: userData.role || USER_ROLES.LECTURER,
+                    status: userData.status || 'active',
+                    department: userData.department || '',
+                    phone: userData.phone || '',
+                    repute_score: userData.repute_score ?? 100
+                  });
+                }}
+              >
+                Hủy Chỉnh Sửa
+              </button>
+            )}
+
+            <button
+              className="ruo-btn-close"
+              onClick={onClose}
+              title="Đóng (Esc)"
+              style={{ padding: '6px', borderRadius: '8px' }}
+            >
+              <Icons.X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Segmented Navigation Tabs */}
@@ -223,7 +371,7 @@ export const UserDetailDrawer = ({
           })}
         </div>
 
-        {/* Drawer Body with Tab Views */}
+        {/* Drawer Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* TAB 1: Profile & Contact */}
           {activeTab === 'profile' && (
@@ -263,7 +411,7 @@ export const UserDetailDrawer = ({
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '2px' }}>
                       <span style={{ fontSize: '20px', fontWeight: 800, color: reputeColor }}>
-                        {reputeScore}
+                        {isEditing ? editForm.repute_score : reputeScore}
                       </span>
                       <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>/ 100</span>
                       <span
@@ -284,11 +432,20 @@ export const UserDetailDrawer = ({
 
                 <div style={{ width: '150px' }}>
                   <div style={{ height: '7px', width: '100%', background: 'var(--surface-3)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(100, Math.max(0, reputeScore))}%`, height: '100%', background: reputeColor, borderRadius: '4px' }} />
+                    <div style={{ width: `${Math.min(100, Math.max(0, isEditing ? editForm.repute_score : reputeScore))}%`, height: '100%', background: reputeColor, borderRadius: '4px' }} />
                   </div>
-                  <span style={{ fontSize: '10.5px', color: 'var(--ink-muted)', display: 'block', marginTop: '4px', textAlign: 'right' }}>
-                    Hệ thống đánh giá tự động
-                  </span>
+                  {isEditing && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={editForm.repute_score}
+                        onChange={(e) => setEditForm({ ...editForm, repute_score: Number(e.target.value) })}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -297,7 +454,7 @@ export const UserDetailDrawer = ({
                 <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
                   <div style={{ color: 'var(--ink-muted)', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span>MÃ CÁN BỘ / MSSV</span>
-                    <span style={{ color: 'var(--ink-faint)', fontSize: '10px' }}>(Khóa cứng)</span>
+                    <span style={{ color: 'var(--ink-faint)', fontSize: '10px' }}>(Khóa cứng UC-10.3)</span>
                   </div>
                   <div style={{ fontWeight: 700, color: 'var(--blueprint-400)', marginTop: '4px', fontFamily: 'var(--font-mono)', fontSize: '14px' }}>
                     {userData.code}
@@ -306,8 +463,8 @@ export const UserDetailDrawer = ({
 
                 <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
                   <div style={{ color: 'var(--ink-muted)', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <span>EMAIL ĐĂNG NHẬP</span>
-                    <span style={{ color: 'var(--ink-faint)', fontSize: '10px' }}>(Khóa cứng)</span>
+                    <span>EMAIL NHÀ TRƯỜNG</span>
+                    <span style={{ color: 'var(--ink-faint)', fontSize: '10px' }}>(Khóa cứng UC-10.3)</span>
                   </div>
                   <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginTop: '4px' }}>
                     {userData.email}
@@ -315,17 +472,55 @@ export const UserDetailDrawer = ({
                 </div>
 
                 <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ color: 'var(--ink-muted)', fontSize: '11px', fontWeight: 600 }}>HỌ VÀ TÊN</div>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      className="ruo-input"
+                      value={editForm.full_name}
+                      onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                      style={{ marginTop: '4px' }}
+                    />
+                  ) : (
+                    <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginTop: '4px' }}>
+                      {userData.full_name}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
                   <div style={{ color: 'var(--ink-muted)', fontSize: '11px', fontWeight: 600 }}>SỐ ĐIỆN THOẠI</div>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginTop: '4px' }}>
-                    {userData.phone || 'Chưa cập nhật'}
-                  </div>
+                  {isEditing ? (
+                    <input
+                      type="tel"
+                      className="ruo-input"
+                      placeholder="0912345678"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      style={{ marginTop: '4px' }}
+                    />
+                  ) : (
+                    <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginTop: '4px' }}>
+                      {userData.phone || 'Chưa cập nhật'}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
                   <div style={{ color: 'var(--ink-muted)', fontSize: '11px', fontWeight: 600 }}>KHOA / ĐƠN VỊ CÔNG TÁC</div>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginTop: '4px' }}>
-                    {userData.department || 'Đại Học Ruo'}
-                  </div>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      className="ruo-input"
+                      value={editForm.department}
+                      onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                      style={{ marginTop: '4px' }}
+                    />
+                  ) : (
+                    <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginTop: '4px' }}>
+                      {userData.department || 'Đại Học Ruo'}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
@@ -335,13 +530,13 @@ export const UserDetailDrawer = ({
                   </div>
                 </div>
 
-                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
+                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)', gridColumn: 'span 2' }}>
                   <div style={{ color: 'var(--ink-muted)', fontSize: '11px', fontWeight: 600 }}>ĐĂNG NHẬP GẦN NHẤT</div>
                   <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginTop: '4px', fontSize: '12.5px' }}>
                     {userData.last_login_at ? new Date(userData.last_login_at).toLocaleString('vi-VN') : 'Chưa có lượt đăng nhập'}
                     {userData.last_login_ip && (
-                      <span style={{ display: 'block', fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
-                        IP: {userData.last_login_ip}
+                      <span style={{ display: 'inline-block', marginLeft: '12px', fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                        Địa chỉ IP: <code>{userData.last_login_ip}</code>
                       </span>
                     )}
                   </div>
@@ -350,93 +545,195 @@ export const UserDetailDrawer = ({
             </div>
           )}
 
-          {/* TAB 2: RBAC & Permissions Scaffold */}
+          {/* TAB 2: RBAC & Permissions Management (UC-10.3) */}
           {activeTab === 'rbac' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Role Selection & Configuration */}
+              <div
+                style={{
+                  background: 'var(--surface-sunken)',
+                  padding: '18px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-default)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: 'var(--ink-primary)' }}>
+                      Cấu Hình Vai Trò & Phân Quyền (RBAC)
+                    </h4>
+                    <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
+                      Xác lập quyền hạn thao tác tài sản và chức năng cho tài khoản
+                    </span>
+                  </div>
+                  {isEditing && (
+                    <span style={{ fontSize: '11.5px', color: 'var(--laser-cyan)', fontWeight: 700 }}>
+                      Đang chỉnh sửa
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label className="ruo-label">Vai Trò Hệ Thống (Role) *</label>
+                    {isEditing ? (
+                      <select
+                        className="ruo-select"
+                        value={editForm.role}
+                        onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                        style={{ width: '100%' }}
+                      >
+                        <option value={USER_ROLES.LECTURER}>Lecturer (Giảng Viên)</option>
+                        <option value={USER_ROLES.TECHNICIAN}>Technician (Kỹ Thuật Viên)</option>
+                        <option value={USER_ROLES.FACILITY_MANAGER}>Facility Manager (Quản Lý CSVC)</option>
+                        <option value={USER_ROLES.ADMIN}>Admin (Quản Trị Viên Toàn Quyền)</option>
+                      </select>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                        <span
+                          style={{
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            background: roleMeta.bg,
+                            color: roleMeta.color,
+                            border: `1px solid ${roleMeta.color}40`
+                          }}
+                        >
+                          {roleMeta.label || userData.role}
+                        </span>
+                        <code style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>{userData.role}</code>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="ruo-label">Trạng Thái Tài Khoản *</label>
+                    {isEditing ? (
+                      <select
+                        className="ruo-select"
+                        value={editForm.status}
+                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                        style={{ width: '100%' }}
+                      >
+                        <option value="active">Đang Hoạt Động (Active)</option>
+                        <option value="pending_approval">Chờ Phê Duyệt (Pending)</option>
+                        <option value="locked">Đã Khóa (Locked)</option>
+                      </select>
+                    ) : (
+                      <div style={{ marginTop: '4px' }}>
+                        {isLocked ? (
+                          <span className="ruo-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                            <Icons.Lock size={12} style={{ marginRight: '4px' }} /> Đang bị khóa
+                          </span>
+                        ) : isPending ? (
+                          <span className="ruo-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                            <Icons.Clock size={12} style={{ marginRight: '4px' }} /> Chờ phê duyệt
+                          </span>
+                        ) : (
+                          <span className="ruo-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                            <Icons.CheckCircle size={12} style={{ marginRight: '4px' }} /> Đang hoạt động
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Registered Role Appointment (Nguyện vọng chức vụ) */}
+              {userData.requested_role && (
+                <div
+                  style={{
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    padding: '16px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: '11.5px', color: '#F59E0B', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Icons.Clock size={13} color="#F59E0B" />
+                      NGUYỆN VỌNG BỔ NHIỆM CHỨC VỤ ĐĂNG KÝ
+                    </span>
+                    <div style={{ fontWeight: 800, color: 'var(--ink-primary)', fontSize: '15px', marginTop: '4px' }}>
+                      {ROLE_METADATA[userData.requested_role]?.label || userData.requested_role}
+                    </div>
+                    <span style={{ fontSize: '12px', color: 'var(--ink-secondary)', display: 'block', marginTop: '2px' }}>
+                      Cán bộ đã đề xuất chức danh này khi khởi tạo tài khoản.
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="ruo-btn ruo-btn-success"
+                    onClick={handleQuickApproveRole}
+                    disabled={saving}
+                    style={{ background: '#10B981', color: '#fff', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Icons.Check size={14} />
+                    <span>Duyệt Bổ Nhiệm Nhanh</span>
+                  </button>
+                </div>
+              )}
+
+              {/* RBAC Capabilities Breakdown Matrix */}
               <div
                 style={{
                   background: 'var(--surface-sunken)',
                   padding: '16px',
                   borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--border-default)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px'
+                  fontSize: '12.5px'
                 }}
               >
-                <div>
-                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                    VAI TRÒ HIỆN TẠI (ROLE)
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                    <span
-                      style={{
-                        padding: '4px 12px',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: 700,
-                        background: roleMeta.bg,
-                        color: roleMeta.color,
-                        border: `1px solid ${roleMeta.color}40`
-                      }}
-                    >
-                      {roleMeta.label || userData.role}
-                    </span>
-                    <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
-                      Mã vai trò: <code>{userData.role}</code>
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                    TRẠNG THÁI TÀI KHOẢN
-                  </span>
-                  <div style={{ marginTop: '4px' }}>
-                    {isLocked ? (
-                      <span className="ruo-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                        <Icons.Lock size={12} style={{ marginRight: '4px' }} /> Đang bị khóa
-                      </span>
-                    ) : isPending ? (
-                      <span className="ruo-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                        <Icons.Clock size={12} style={{ marginRight: '4px' }} /> Chờ phê duyệt
-                      </span>
-                    ) : (
-                      <span className="ruo-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-                        <Icons.CheckCircle size={12} style={{ marginRight: '4px' }} /> Đang hoạt động
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <h5 style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 700, color: 'var(--ink-primary)' }}>
+                  Đặc Quyền Của Vai Trò [{ROLE_METADATA[isEditing ? editForm.role : userData.role]?.label}]
+                </h5>
+                <ul style={{ margin: 0, paddingLeft: '18px', color: 'var(--ink-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {(isEditing ? editForm.role : userData.role) === USER_ROLES.ADMIN && (
+                    <>
+                      <li>Toàn quyền quản trị danh mục người dùng, cấp phát tài khoản, phân quyền RBAC</li>
+                      <li>Phê duyệt đề xuất thanh lý, thiết lập ma trận phân quyền phòng ban</li>
+                      <li>Truy vết nhật ký kiểm toán mật mã SHA-256 toàn trường</li>
+                    </>
+                  )}
+                  {(isEditing ? editForm.role : userData.role) === USER_ROLES.FACILITY_MANAGER && (
+                    <>
+                      <li>Quản lý điều chuyển tài sản, kho lưu trữ và mặt bằng các tòa nhà</li>
+                      <li>Tạo phiên kiểm kê định kỳ và đối soát tình trạng phòng học</li>
+                      <li>Khởi tạo đề xuất thanh lý thiết bị hỏng không thể phục hồi</li>
+                    </>
+                  )}
+                  {(isEditing ? editForm.role : userData.role) === USER_ROLES.TECHNICIAN && (
+                    <>
+                      <li>Tiếp nhận và xử lý phiếu báo hỏng kỹ thuật (Kanban board)</li>
+                      <li>Thực hiện lệnh điều chuyển tài sản và quét mã QR Code thiết bị</li>
+                      <li>Yêu cầu xuất linh kiện dự phòng thay thế từ kho kỹ thuật</li>
+                    </>
+                  )}
+                  {(isEditing ? editForm.role : userData.role) === USER_ROLES.LECTURER && (
+                    <>
+                      <li>Tra cứu danh mục trang thiết bị và sơ đồ tòa nhà</li>
+                      <li>Gửi phiếu báo hỏng cơ sở vật chất tức thời</li>
+                      <li>Xem lịch sử báo cáo và cập nhật hồ sơ cá nhân</li>
+                    </>
+                  )}
+                </ul>
               </div>
-
-              {userData.requested_role && (
-                <div
-                  style={{
-                    background: 'rgba(245, 158, 11, 0.08)',
-                    padding: '14px 16px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid rgba(245, 158, 11, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <div>
-                    <span style={{ fontSize: '11.5px', color: '#F59E0B', fontWeight: 700 }}>
-                      NGUYỆN VỌNG BỔ NHIỆM CHỨC VỤ ĐĂNG KÝ
-                    </span>
-                    <div style={{ fontWeight: 700, color: 'var(--ink-primary)', fontSize: '14px', marginTop: '2px' }}>
-                      {ROLE_METADATA[userData.requested_role]?.label || userData.requested_role}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {/* TAB 3: Activity Audit History */}
+          {/* TAB 3: Activity Audit History (UC-10.3) */}
           {activeTab === 'history' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -539,13 +836,11 @@ export const UserDetailDrawer = ({
           }}
         >
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            {onOpenResetPassword && (
+            {onOpenResetPassword && !isEditing && (
               <button
                 type="button"
                 className="ruo-btn ruo-btn-secondary ruo-btn-sm"
-                onClick={() => {
-                  onOpenResetPassword(userData);
-                }}
+                onClick={() => onOpenResetPassword(userData)}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
                 <Icons.Key size={13} color="#F59E0B" />
@@ -553,7 +848,7 @@ export const UserDetailDrawer = ({
               </button>
             )}
 
-            {onToggleLock && (
+            {onToggleLock && !isEditing && (
               <button
                 type="button"
                 className={`ruo-btn ruo-btn-sm ${isLocked ? 'ruo-btn-success' : 'ruo-btn-danger'}`}
@@ -566,9 +861,43 @@ export const UserDetailDrawer = ({
             )}
           </div>
 
-          <button type="button" className="ruo-btn ruo-btn-secondary" onClick={onClose}>
-            Đóng
-          </button>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            {isEditing ? (
+              <>
+                <button
+                  type="button"
+                  className="ruo-btn ruo-btn-secondary"
+                  onClick={() => setIsEditing(false)}
+                  disabled={saving}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="ruo-btn ruo-btn-primary"
+                  onClick={handleSaveUserUpdate}
+                  disabled={saving}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  {saving ? (
+                    <>
+                      <Icons.Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                      <span>Đang lưu...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icons.Check size={14} />
+                      <span>Lưu Thay Đổi (PUT /api/admin/users)</span>
+                    </>
+                  )}
+                </button>
+              </>
+            ) : (
+              <button type="button" className="ruo-btn ruo-btn-secondary" onClick={onClose}>
+                Đóng
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
