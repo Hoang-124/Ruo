@@ -5,6 +5,7 @@ const categorySchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
   name: { type: String, required: true, trim: true },
   description: { type: String, default: '' },
+  depreciation_rate: { type: Number, default: 20, min: 0, max: 100 },
   depreciationYears: { type: Number, default: 5 }
 }, { 
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 

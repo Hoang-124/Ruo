@@ -5,7 +5,9 @@ const repairUnitSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
   name: { type: String, required: true, trim: true },
   specialty: { type: String, default: 'Điện tử & Thiết bị viễn thông' },
+  contact_person: { type: String, default: '' },
   phone: { type: String, default: '' },
+  email: { type: String, default: '' },
   address: { type: String, default: '' }
 }, { 
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 

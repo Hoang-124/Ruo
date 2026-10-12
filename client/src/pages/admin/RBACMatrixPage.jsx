@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { roleApi } from '../../lib/api';
@@ -212,6 +212,22 @@ export const RBACMatrixPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModule, setSelectedModule] = useState('ALL');
   const [focusedRole, setFocusedRole] = useState('ALL'); // 'ALL' or specific roleId
+  const knownPermissionCodes = new Set(permissionModules.flatMap(module => module.permissions.map(permission => permission.code)));
+  const additionalPermissions = [...new Set(dbRoles.flatMap(role => role.permissions || []))]
+    .filter(code => !knownPermissionCodes.has(code))
+    .map(code => ({
+      code,
+      label: code,
+      defaultRoles: dbRoles.filter(role => (role.permissions || []).includes(code)).map(role => role.name)
+    }));
+  const allPermissionModules = additionalPermissions.length
+    ? [...permissionModules, {
+      id: 'mod_custom',
+      name: 'Quyền bổ sung từ chính sách lưu trong hệ thống',
+      shortName: 'Quyền bổ sung',
+      permissions: additionalPermissions
+    }]
+    : permissionModules;
 
   useEffect(() => {
     loadRoles();
@@ -224,12 +240,26 @@ export const RBACMatrixPage = () => {
       const rolesList = res?.roles || [];
       setDbRoles(rolesList);
 
+      const knownCodes = new Set(permissionModules.flatMap(module => module.permissions.map(permission => permission.code)));
+      const extraCodes = [...new Set(rolesList.flatMap(role => role.permissions || []))]
+        .filter(code => !knownCodes.has(code));
+      const extraModule = extraCodes.length ? [{
+        id: 'mod_custom',
+        name: 'Quyền bổ sung từ chính sách lưu trong hệ thống',
+        shortName: 'Quyền bổ sung',
+        permissions: extraCodes.map(code => ({
+          code,
+          label: code,
+          defaultRoles: rolesList.filter(role => (role.permissions || []).includes(code)).map(role => role.name)
+        }))
+      }] : [];
+      const modules = [...permissionModules, ...extraModule];
       const state = {};
       canonicalRoles.forEach(r => {
         const found = rolesList.find(dbR => dbR.name === r.id);
         const perms = found ? (found.permissions || []) : [];
 
-        permissionModules.forEach(mod => {
+        modules.forEach(mod => {
           mod.permissions.forEach(p => {
             const key = `${r.id}:${p.code}`;
             if (found && perms.length > 0) {
@@ -265,9 +295,7 @@ export const RBACMatrixPage = () => {
     toast.info(`Đã ${enable ? 'bật' : 'tắt'} toàn bộ quyền của nhóm cho vai trò này.`);
   };
 
-  const activeSodViolations = useMemo(() => {
-    return SOD_RULES.filter(rule => rule.check(matrixState));
-  }, [matrixState]);
+  const activeSodViolations = SOD_RULES.filter(rule => rule.check(matrixState));
 
   const handleFixAllSod = () => {
     activeSodViolations.forEach(v => v.fix(setMatrixState));
@@ -301,10 +329,10 @@ export const RBACMatrixPage = () => {
     try {
       setSaving(true);
 
-      // Assemble payload for all 4 roles
+      // Persist each role through the live-policy endpoint.
       const payload = canonicalRoles.map(r => {
         const activePerms = [];
-        permissionModules.forEach(mod => {
+        allPermissionModules.forEach(mod => {
           mod.permissions.forEach(p => {
             if (matrixState[`${r.id}:${p.code}`]) {
               activePerms.push(p.code);
@@ -317,11 +345,9 @@ export const RBACMatrixPage = () => {
         };
       });
 
-      const res = await roleApi.batchUpdate(payload);
-      if (res && res.success) {
-        toast.success('Đã lưu cấu hình ma trận phân quyền RBAC thành công vào cơ sở dữ liệu MongoDB!');
-        await loadRoles();
-      }
+      await Promise.all(payload.map(role => roleApi.update(role.name, role.permissions)));
+      toast.success('Đã lưu cấu hình ma trận phân quyền RBAC thành công vào cơ sở dữ liệu MongoDB!');
+      await loadRoles();
     } catch (err) {
       toast.error('Lỗi khi lưu ma trận phân quyền: ' + err.message);
     } finally {
@@ -336,7 +362,7 @@ export const RBACMatrixPage = () => {
       exportedAt: new Date().toISOString(),
       roles: canonicalRoles.map(r => {
         const perms = [];
-        permissionModules.forEach(mod => {
+        allPermissionModules.forEach(mod => {
           mod.permissions.forEach(p => {
             if (matrixState[`${r.id}:${p.code}`]) {
               perms.push({ code: p.code, label: p.label, module: mod.name });
@@ -363,7 +389,7 @@ export const RBACMatrixPage = () => {
       toast.success('Đã xuất ma trận phân quyền dạng JSON.');
     } else {
       let csv = 'Module,Mã Quyền,Nội Dung Nghiệp Vụ,Giảng Viên,Kỹ Thuật Viên,Quản Lý CSVC,Quản Trị BGH\n';
-      permissionModules.forEach(mod => {
+      allPermissionModules.forEach(mod => {
         mod.permissions.forEach(p => {
           const l = matrixState[`lecturer:${p.code}`] ? 'CÓ' : 'KHÔNG';
           const t = matrixState[`technician:${p.code}`] ? 'CÓ' : 'KHÔNG';
@@ -384,30 +410,27 @@ export const RBACMatrixPage = () => {
   };
 
   // Filtered permission modules based on search and selectedModule
-  const filteredModules = useMemo(() => {
-    return permissionModules
-      .filter(mod => selectedModule === 'ALL' || mod.id === selectedModule)
-      .map(mod => {
-        const matchingPermissions = mod.permissions.filter(p => {
-          if (!searchTerm.trim()) return true;
-          const query = searchTerm.toLowerCase();
-          return p.code.toLowerCase().includes(query) || p.label.toLowerCase().includes(query);
-        });
-        return {
-          ...mod,
-          permissions: matchingPermissions
-        };
-      })
-      .filter(mod => mod.permissions.length > 0);
-  }, [selectedModule, searchTerm]);
+  const filteredModules = allPermissionModules
+    .filter(mod => selectedModule === 'ALL' || mod.id === selectedModule)
+    .map(mod => {
+      const matchingPermissions = mod.permissions.filter(p => {
+        if (!searchTerm.trim()) return true;
+        const query = searchTerm.toLowerCase();
+        return p.code.toLowerCase().includes(query) || p.label.toLowerCase().includes(query);
+      });
+      return {
+        ...mod,
+        permissions: matchingPermissions
+      };
+    })
+    .filter(mod => mod.permissions.length > 0);
 
   // Visible roles based on focusedRole
-  const visibleRoles = useMemo(() => {
-    if (focusedRole === 'ALL') return canonicalRoles;
-    return canonicalRoles.filter(r => r.id === focusedRole);
-  }, [focusedRole]);
+  const visibleRoles = focusedRole === 'ALL'
+    ? canonicalRoles
+    : canonicalRoles.filter(r => r.id === focusedRole);
 
-  const totalPermissionsCount = permissionModules.reduce((acc, m) => acc + m.permissions.length, 0);
+  const totalPermissionsCount = allPermissionModules.reduce((acc, m) => acc + m.permissions.length, 0);
 
   if (loading) {
     return (
@@ -666,7 +689,7 @@ export const RBACMatrixPage = () => {
             style={{ width: '220px' }}
           >
             <option value="ALL">Tất cả 6 Phân Hệ</option>
-            {permissionModules.map(m => (
+            {allPermissionModules.map(m => (
               <option key={m.id} value={m.id}>{m.shortName}</option>
             ))}
           </select>
@@ -850,7 +873,7 @@ export const RBACMatrixPage = () => {
       >
         <Icons.Info size={16} color="var(--blueprint-400)" style={{ flexShrink: 0 }} />
         <div>
-          <strong>Lưu ý nghiệp vụ kiểm toán:</strong> Mọi thao tác thay đổi phân quyền sau khi bấm <strong>"Lưu Cấu Hình Quyền"</strong> đều được hệ thống ghi nhận thành một bản ghi kiểm toán SHA-256 bất biến trong bảng <code>audit_logs</code> với hành động <code>BATCH_UPDATE_ROLE_PERMISSIONS</code>.
+          <strong>Lưu ý nghiệp vụ kiểm toán:</strong> Mỗi vai trò được cập nhật qua chính sách trực tiếp và ghi nhận thành bản ghi SHA-256 trong sổ kiểm toán với hành động <code>UPDATE_ROLE_PERMISSIONS</code>.
         </div>
       </div>
     </div>
