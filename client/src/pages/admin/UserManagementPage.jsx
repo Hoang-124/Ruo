@@ -3,6 +3,7 @@ import { Icons } from '../../components/common/SvgIcons';
 import { authApi } from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 import { USER_ROLES, ROLE_METADATA } from '../../config/navigation';
+import { UserDetailDrawer } from '../../components/admin/UserDetailDrawer';
 
 export const UserManagementPage = () => {
   const { toast } = useToast();
@@ -419,7 +420,11 @@ export const UserManagementPage = () => {
                         {u.code}
                       </td>
                       <td style={{ padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+                          onClick={() => handleViewUserDetail(u)}
+                          title="Bấm để xem chi tiết hồ sơ & phân quyền RBAC (UC-10.3)"
+                        >
                           <div
                             style={{
                               width: '32px',
@@ -579,7 +584,7 @@ export const UserManagementPage = () => {
                           <button
                             className="ruo-btn ruo-btn-ghost ruo-btn-sm"
                             onClick={() => handleViewUserDetail(u)}
-                            title="Xem chi tiết & lịch sử hoạt động (UC-10.2)"
+                            title="Xem chi tiết hồ sơ & phân quyền RBAC (UC-10.3)"
                           >
                             <Icons.Eye size={14} />
                           </button>
@@ -858,342 +863,23 @@ export const UserManagementPage = () => {
         </div>
       )}
 
-      {/* MODAL 3: View User Details & Activity Audit (UC-10.2) */}
-      {selectedUser && (
-        <div className="ruo-modal-overlay">
-          <div className="ruo-modal-content" style={{ maxWidth: '640px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="ruo-modal-header">
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icons.Eye size={18} color="var(--blueprint-400)" />
-                Chi Tiết Tài Khoản: {selectedUser.full_name}
-              </h2>
-              <button className="ruo-btn-close" onClick={() => setSelectedUser(null)}>
-                <Icons.X size={18} />
-              </button>
-            </div>
-
-            <div className="ruo-modal-body" style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px' }}>
-              {/* User Profile Banner */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '16px',
-                  background: 'var(--surface-sunken)',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-default)',
-                  flexWrap: 'wrap',
-                  gap: '12px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      background: ROLE_METADATA[selectedUser.role]?.bg || 'rgba(62, 123, 250, 0.1)',
-                      color: ROLE_METADATA[selectedUser.role]?.color || '#3E7BFA',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: '18px',
-                      border: `1px solid ${ROLE_METADATA[selectedUser.role]?.color || '#3E7BFA'}40`
-                    }}
-                  >
-                    {selectedUser.avatar || selectedUser.full_name?.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink-primary)' }}>{selectedUser.full_name}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--blueprint-400)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                        {selectedUser.code}
-                      </span>
-                      <span
-                        className="ruo-badge"
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          background: ROLE_METADATA[selectedUser.role]?.bg,
-                          color: ROLE_METADATA[selectedUser.role]?.color,
-                          border: `1px solid ${ROLE_METADATA[selectedUser.role]?.color}40`
-                        }}
-                      >
-                        {ROLE_METADATA[selectedUser.role]?.label || selectedUser.role}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  {selectedUser.status === 'locked' ? (
-                    <span className="ruo-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.3)', fontWeight: 700 }}>
-                      <Icons.Lock size={12} style={{ marginRight: '4px' }} /> Đã khóa
-                    </span>
-                  ) : selectedUser.status === 'pending_approval' ? (
-                    <span className="ruo-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B', border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: 700 }}>
-                      <Icons.Clock size={12} style={{ marginRight: '4px' }} /> Chờ phê duyệt
-                    </span>
-                  ) : (
-                    <span className="ruo-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', border: '1px solid rgba(16, 185, 129, 0.3)', fontWeight: 700 }}>
-                      <Icons.CheckCircle size={12} style={{ marginRight: '4px' }} /> Hoạt động
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Repute Score Card */}
-              {(() => {
-                const reputeScore = selectedUser.repute_score ?? 100;
-                const reputeColor = reputeScore >= 80 ? '#10B981' : reputeScore >= 50 ? '#F59E0B' : '#EF4444';
-                const reputeLabel = reputeScore >= 85 ? 'Tín nhiệm xuất sắc' : reputeScore >= 60 ? 'Mức bình thường' : 'Cảnh báo vi phạm';
-                return (
-                  <div
-                    style={{
-                      background: 'var(--surface-sunken)',
-                      padding: '14px 16px',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--border-default)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '12px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div
-                        style={{
-                          width: '38px',
-                          height: '38px',
-                          borderRadius: '50%',
-                          background: `${reputeColor}18`,
-                          border: `1px solid ${reputeColor}40`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        <Icons.Shield size={18} color={reputeColor} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '11px', color: 'var(--ink-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          Điểm Tín Nhiệm (Repute Score)
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                          <span style={{ fontSize: '18px', fontWeight: 800, color: reputeColor }}>
-                            {reputeScore}
-                          </span>
-                          <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>/ 100</span>
-                          <span
-                            style={{
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              color: reputeColor,
-                              background: `${reputeColor}15`,
-                              padding: '1px 8px',
-                              borderRadius: '6px',
-                              marginLeft: '6px'
-                            }}
-                          >
-                            {reputeLabel}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ width: '130px' }}>
-                      <div style={{ height: '6px', width: '100%', background: 'var(--surface-3)', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.min(100, Math.max(0, reputeScore))}%`, height: '100%', background: reputeColor, borderRadius: '3px' }} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* User Detailed Metadata Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
-                <div style={{ background: 'var(--surface-sunken)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11px', fontWeight: 600 }}>EMAIL NHÀ TRƯỜNG</div>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginTop: '2px' }}>{selectedUser.email}</div>
-                </div>
-                <div style={{ background: 'var(--surface-sunken)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11px', fontWeight: 600 }}>SỐ ĐIỆN THOẠI</div>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginTop: '2px' }}>{selectedUser.phone || 'Chưa cập nhật'}</div>
-                </div>
-                <div style={{ background: 'var(--surface-sunken)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11px', fontWeight: 600 }}>KHOA / ĐƠN VỊ</div>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginTop: '2px' }}>{selectedUser.department || 'Đại Học Ruo'}</div>
-                </div>
-                <div style={{ background: 'var(--surface-sunken)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-soft)' }}>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11px', fontWeight: 600 }}>LẦN ĐĂNG NHẬP CUỐI</div>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-primary)', marginTop: '2px', fontSize: '12px' }}>
-                    {selectedUser.last_login_at ? new Date(selectedUser.last_login_at).toLocaleString('vi-VN') : 'Chưa đăng nhập'}
-                    {selectedUser.last_login_ip && <span style={{ color: 'var(--ink-muted)', display: 'block', fontSize: '11px' }}>IP: {selectedUser.last_login_ip}</span>}
-                  </div>
-                </div>
-                {selectedUser.requested_role && (
-                  <div style={{ background: 'var(--surface-sunken)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(245, 158, 11, 0.3)', gridColumn: 'span 2' }}>
-                    <div style={{ color: '#F59E0B', fontSize: '11px', fontWeight: 700 }}>NGUYỆN VỌNG BỔ NHIỆM CHỨC VỤ</div>
-                    <div style={{ fontWeight: 700, color: 'var(--ink-primary)', marginTop: '2px' }}>
-                      {ROLE_METADATA[selectedUser.requested_role]?.label || selectedUser.requested_role}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Quick Actions Toolbar */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--surface-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--hairline-medium)', flexWrap: 'wrap', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink-secondary)' }}>Thao Tác Nhanh:</span>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                  <button
-                    type="button"
-                    className="ruo-btn ruo-btn-secondary ruo-btn-sm"
-                    onClick={() => {
-                      setUserToReset(selectedUser);
-                      setNewPasswordInput(`Ruo@${Math.floor(1000 + Math.random() * 9000)}`);
-                      setIsResetPasswordModalOpen(true);
-                    }}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <Icons.Key size={13} color="#F59E0B" />
-                    <span>Cấp Lại Mật Khẩu</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`ruo-btn ruo-btn-sm ${selectedUser.status === 'locked' ? 'ruo-btn-success' : 'ruo-btn-danger'}`}
-                    onClick={() => handleToggleLock(selectedUser._id, selectedUser.status)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    {selectedUser.status === 'locked' ? <Icons.Unlock size={13} /> : <Icons.Lock size={13} />}
-                    <span>{selectedUser.status === 'locked' ? 'Mở Khóa Tài Khoản' : 'Khóa Tài Khoản'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* UC-10.2: Lịch Sử Hoạt Động & Kiểm Toán (AuditLog Timeline) */}
-              <div style={{ marginTop: '4px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <h3 style={{ fontSize: '13.5px', fontWeight: 800, margin: 0, color: 'var(--ink-primary)', display: 'flex', alignItems: 'center', gap: '7px' }}>
-                    <Icons.Audit size={15} color="var(--blueprint-400)" />
-                    <span>Nhật Ký Hoạt Động & Kiểm Toán (UC-10.2 Activity)</span>
-                    <span style={{ fontSize: '11px', background: 'var(--surface-3)', color: 'var(--ink-secondary)', padding: '1px 7px', borderRadius: '8px', fontWeight: 700 }}>
-                      {userActivities.length}
-                    </span>
-                  </h3>
-                  {loadingActivities && (
-                    <span style={{ fontSize: '11.5px', color: 'var(--ink-muted)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                      <Icons.Loader size={12} style={{ animation: 'spin 1s linear infinite' }} />
-                      Đang nạp...
-                    </span>
-                  )}
-                </div>
-
-                {loadingActivities ? (
-                  <div style={{ padding: '24px', textAlign: 'center', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
-                    <Icons.Loader size={20} style={{ animation: 'spin 1s linear infinite', color: 'var(--blueprint-400)' }} />
-                    <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--ink-muted)' }}>Đang truy vấn nhật ký kiểm toán từ máy chủ...</div>
-                  </div>
-                ) : userActivities.length === 0 ? (
-                  <div style={{ padding: '24px', textAlign: 'center', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-default)' }}>
-                    <Icons.Clock size={22} style={{ color: 'var(--ink-faint)', marginBottom: '6px' }} />
-                    <div style={{ fontSize: '12.5px', color: 'var(--ink-muted)' }}>Chưa có sự kiện hoạt động nào được ghi nhận cho tài khoản này.</div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
-                    {userActivities.map((act, idx) => {
-                      const meta = getActionMeta(act.action);
-                      const actDate = act.created_at || act.hashed_at || act.timestamp;
-                      return (
-                        <div
-                          key={act._id || idx}
-                          style={{
-                            padding: '10px 12px',
-                            borderRadius: 'var(--radius-sm)',
-                            background: 'var(--surface-sunken)',
-                            border: '1px solid var(--hairline-soft)',
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            justifyContent: 'space-between',
-                            gap: '10px',
-                            fontSize: '12px'
-                          }}
-                        >
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                              <span
-                                style={{
-                                  padding: '2px 7px',
-                                  borderRadius: '4px',
-                                  fontSize: '10.5px',
-                                  fontWeight: 700,
-                                  background: meta.bg,
-                                  color: meta.color,
-                                  border: `1px solid ${meta.color}40`
-                                }}
-                              >
-                                {meta.label}
-                              </span>
-                              {act.target_table && (
-                                <span style={{ fontSize: '11px', color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)' }}>
-                                  [{act.target_table}]
-                                </span>
-                              )}
-                              {act.seq !== undefined && (
-                                <span style={{ fontSize: '10px', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono)' }}>
-                                  #{act.seq}
-                                </span>
-                              )}
-                            </div>
-                            <div style={{ color: 'var(--ink-secondary)', fontSize: '11.5px', marginTop: '2px' }}>
-                              {act.entity_id ? `Thực thể: ${act.entity_id}` : act.user_display || 'Thao tác trên giao diện'}
-                              {act.ip_address && <span style={{ marginLeft: '8px', color: 'var(--ink-muted)' }}>• IP: {act.ip_address}</span>}
-                            </div>
-                          </div>
-
-                          <span style={{ fontSize: '11px', color: 'var(--ink-muted)', whiteSpace: 'nowrap' }}>
-                            {actDate ? new Date(actDate).toLocaleString('vi-VN') : '—'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="ruo-modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              {selectedUser.status === 'pending_approval' && (
-                <>
-                  <button
-                    type="button"
-                    className="ruo-btn ruo-btn-danger"
-                    onClick={() => handleApproveUser(selectedUser, 'reject')}
-                  >
-                    <Icons.X size={14} />
-                    <span>Từ Chối (Về Giảng Viên)</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="ruo-btn ruo-btn-success"
-                    style={{ background: '#10B981', color: '#fff', border: 'none' }}
-                    onClick={() => handleApproveUser(selectedUser, 'approve', selectedUser.requested_role)}
-                  >
-                    <Icons.Check size={14} />
-                    <span>Phê Duyệt Bổ Nhiệm</span>
-                  </button>
-                </>
-              )}
-              <button className="ruo-btn ruo-btn-secondary" onClick={() => setSelectedUser(null)}>
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* UC-10.3: User Detail & RBAC Drawer */}
+      <UserDetailDrawer
+        user={selectedUser}
+        isOpen={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        onUserUpdated={(updatedUser) => {
+          setSelectedUser(updatedUser);
+          setUsers(prev => prev.map(u => u._id === updatedUser._id ? updatedUser : u));
+          fetchUsers();
+        }}
+        onOpenResetPassword={(u) => {
+          setUserToReset(u);
+          setNewPasswordInput(`Ruo@${Math.floor(1000 + Math.random() * 9000)}`);
+          setIsResetPasswordModalOpen(true);
+        }}
+        onToggleLock={(id, status) => handleToggleLock(id, status)}
+      />
     </div>
   );
 };
