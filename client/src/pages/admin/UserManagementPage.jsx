@@ -42,25 +42,36 @@ export const UserManagementPage = () => {
     toast.info(`Đã tạo mật khẩu ngẫu nhiên: ${generated}`, 'Tạo Mật Khẩu');
   };
 
+  // UC-10.2: Realtime tab counts
+  const [statusCounts, setStatusCounts] = useState({ all: 0, pending: 0, active: 0, locked: 0 });
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await authApi.listUsers({
-        search: search || undefined,
-        role: roleFilter !== 'ALL' ? roleFilter : undefined
-      });
+      const params = {};
+      if (search) params.search = search;
+      if (roleFilter !== 'ALL') params.role = roleFilter;
+      if (statusTab !== 'ALL') params.status = statusTab;
+
+      const res = await authApi.listUsers(params);
       if (res.success && Array.isArray(res.users)) {
         setUsers(res.users);
+        if (res.counts) {
+          setStatusCounts(res.counts);
+        }
       }
     } catch (err) {
       toast.error('Không thể tải danh sách người dùng: ' + err.message);
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, toast]);
+  }, [search, roleFilter, statusTab, toast]);
 
   useEffect(() => {
     fetchUsers();
+    // Realtime polling counts every 30s
+    const timer = setInterval(fetchUsers, 30000);
+    return () => clearInterval(timer);
   }, [fetchUsers]);
 
   // UC-10.1: Create User
@@ -177,12 +188,14 @@ export const UserManagementPage = () => {
     }
   };
 
-  const pendingCount = users.filter(u => u.status === 'pending_approval').length;
-  const activeCount = users.filter(u => u.status === 'active').length;
-  const lockedCount = users.filter(u => u.status === 'locked').length;
+  const allCount = statusCounts.all ?? users.length;
+  const pendingCount = statusCounts.pending ?? users.filter(u => u.status === 'pending_approval' || u.status === 'pending').length;
+  const activeCount = statusCounts.active ?? users.filter(u => u.status === 'active').length;
+  const lockedCount = statusCounts.locked ?? users.filter(u => u.status === 'locked').length;
 
   const filteredUsers = users.filter(u => {
     if (statusTab === 'ALL') return true;
+    if (statusTab === 'pending_approval') return u.status === 'pending_approval' || u.status === 'pending';
     return u.status === statusTab;
   });
 
@@ -193,10 +206,10 @@ export const UserManagementPage = () => {
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Icons.Users size={26} color="var(--blueprint-400)" />
-            Quản Lý Tài Khoản Người Dùng (Admin)
+            Danh Mục Tài Khoản Người Dùng (UC-10.2)
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--ink-secondary)' }}>
-            Xem danh sách, chi tiết, tạo tài khoản mới, phân vai trò, khóa tài khoản và thiết lập lại mật khẩu
+            Danh bạ người dùng với phân tab trạng thái, số đếm thời gian thực, quản lý vai trò và truy vết hoạt động
           </p>
         </div>
 
@@ -210,15 +223,16 @@ export const UserManagementPage = () => {
         </button>
       </div>
 
-      {/* Status Segmented Tabs */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      {/* Status Segmented Tabs with Realtime Counts (UC-10.2) */}
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         {[
-          { key: 'ALL', label: 'Tất Cả', count: users.length, color: 'var(--blueprint-500)' },
-          { key: 'pending_approval', label: 'Chờ Phê Duyệt', count: pendingCount, color: '#F59E0B', highlight: pendingCount > 0 },
-          { key: 'active', label: 'Đang Hoạt Động', count: activeCount, color: '#10B981' },
-          { key: 'locked', label: 'Đã Khóa', count: lockedCount, color: '#EF4444' }
+          { key: 'ALL', label: 'Tất Cả', count: allCount, color: 'var(--blueprint-500)', icon: Icons.Users },
+          { key: 'pending_approval', label: 'Chờ Phê Duyệt', count: pendingCount, color: '#F59E0B', highlight: pendingCount > 0, icon: Icons.Clock },
+          { key: 'active', label: 'Đang Hoạt Động', count: activeCount, color: '#10B981', icon: Icons.CheckCircle },
+          { key: 'locked', label: 'Đã Khóa', count: lockedCount, color: '#EF4444', icon: Icons.Key }
         ].map(tab => {
           const isActive = statusTab === tab.key;
+          const TabIcon = tab.icon;
           return (
             <button
               key={tab.key}
@@ -227,7 +241,7 @@ export const UserManagementPage = () => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '8px 14px',
+                padding: '9px 16px',
                 borderRadius: '8px',
                 border: `1px solid ${isActive ? tab.color : 'var(--border-default)'}`,
                 background: isActive ? `${tab.color}18` : 'var(--surface-card)',
@@ -235,18 +249,21 @@ export const UserManagementPage = () => {
                 fontWeight: isActive ? 700 : 500,
                 fontSize: '13px',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
+                boxShadow: isActive ? `0 2px 8px ${tab.color}25` : 'none'
               }}
             >
+              {TabIcon && <TabIcon size={14} color={isActive ? tab.color : 'var(--ink-muted)'} />}
               <span>{tab.label}</span>
               <span
                 style={{
-                  padding: '2px 7px',
+                  padding: '2px 8px',
                   borderRadius: '10px',
                   fontSize: '11px',
-                  fontWeight: 700,
+                  fontWeight: 800,
                   background: tab.highlight && !isActive ? 'rgba(245, 158, 11, 0.2)' : isActive ? tab.color : 'var(--surface-3)',
-                  color: tab.highlight && !isActive ? '#F59E0B' : isActive ? '#FFFFFF' : 'var(--ink-muted)'
+                  color: tab.highlight && !isActive ? '#F59E0B' : isActive ? '#FFFFFF' : 'var(--ink-muted)',
+                  border: tab.highlight && !isActive ? '1px solid rgba(245, 158, 11, 0.4)' : 'none'
                 }}
               >
                 {tab.count}
