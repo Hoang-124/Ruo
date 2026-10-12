@@ -15,6 +15,7 @@ import {
   createUser,
   getAllUsers,
   getUserById,
+  adminUpdateUser,
   updateUserRole,
   toggleUserLock,
   adminResetPassword,
@@ -68,6 +69,7 @@ router.put('/me', protect, updateProfile);
 router.get('/users', protect, requireRole(USER_ROLES.ADMIN), getAllUsers);
 router.post('/users', protect, requireRole(USER_ROLES.ADMIN), createUser);
 router.get('/users/:id', protect, requireRole(USER_ROLES.ADMIN), getUserById);
+router.put('/users/:id', protect, requireRole(USER_ROLES.ADMIN), adminUpdateUser);
 router.patch('/users/:id/role', protect, requireRole(USER_ROLES.ADMIN), updateUserRole);
 router.patch('/users/:id/lock', protect, requireRole(USER_ROLES.ADMIN), toggleUserLock);
 router.post('/users/:id/reset-password', protect, requireRole(USER_ROLES.ADMIN), adminResetPassword);
