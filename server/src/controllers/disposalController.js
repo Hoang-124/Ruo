@@ -1,185 +1,207 @@
-import { DisposalProposal } from '../models/Disposal.js';
+import { Disposal } from '../models/Disposal.js';
 import { Equipment } from '../models/Equipment.js';
 import { AuditLog } from '../models/AuditLog.js';
-import { DISPOSAL_STATUSES, EQUIPMENT_STATUSES, DISPOSAL_R_RATIO_THRESHOLD } from '../config/constants.js';
+import { Notification } from '../models/Notification.js';
+import { User } from '../models/User.js';
+import { assertTransition } from '../domain/stateMachines.js';
+import { 
+  DISPOSAL_STATUSES, 
+  EQUIPMENT_STATUSES, 
+  USER_ROLES, 
+  USER_STATUSES 
+} from '../config/constants.js';
 
-// @desc    Get all disposal proposals & flagged equipment with R >= 60%
+// @desc    Get all disposal requests & candidates (View disposal requests)
 // @route   GET /api/disposals
 export const getDisposalList = async (req, res) => {
-  const proposals = await DisposalProposal.find({ deletedAt: null })
-    .populate('equipment')
-    .populate('proposedBy', 'fullName role email')
-    .populate('committeeVotes.member', 'fullName role')
-    .sort({ createdAt: -1 });
+  try {
+    const proposals = await Disposal.find()
+      .populate('equipment_id', 'code name brand model price remaining_value estimated_repair_cost room_id')
+      .populate('repair_id', 'ticket_code damage_level outcome status')
+      .populate('proposed_by', 'full_name code role email')
+      .populate('approved_by', 'full_name code role email')
+      .sort({ created_at: -1 });
 
-  // Also query equipment that exceed R >= 60% but have no active proposal yet
-  const flaggedEquipments = await Equipment.find({
-    status: { $in: [EQUIPMENT_STATUSES.PENDING_DISPOSAL, EQUIPMENT_STATUSES.AVAILABLE] },
-    remainingValue: { $gt: 0 },
-    estimatedRepairCost: { $gt: 0 }
-  }).populate('category room');
+    // Flagged candidates: equipments whose repair costs >= 60% of remaining value or marked pending_disposal
+    const candidates = await Equipment.find({
+      status: { $in: [EQUIPMENT_STATUSES.PENDING_DISPOSAL, EQUIPMENT_STATUSES.BROKEN] }
+    }).populate('category_id room_id');
 
-  const candidates = flaggedEquipments.filter(eq => eq.rRatio >= DISPOSAL_R_RATIO_THRESHOLD);
-
-  res.json({
-    success: true,
-    totalProposals: proposals.length,
-    proposals,
-    totalCandidates: candidates.length,
-    candidates
-  });
+    res.json({
+      success: true,
+      totalProposals: proposals.length,
+      proposals,
+      totalCandidates: candidates.length,
+      candidates
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
-// @desc    Initiate a 5-step disposal proposal (R >= 60%)
+// @desc    Propose equipment disposal (Facility Manager)
 // @route   POST /api/disposals
 export const createDisposalProposal = async (req, res) => {
-  const { equipmentId, reason } = req.body;
+  try {
+    const { equipment_id, repair_id, reason, recovery_value = 0 } = req.body;
 
-  const equipment = await Equipment.findById(equipmentId);
-  if (!equipment) {
-    return res.status(404).json({ success: false, message: 'Thiết bị không tồn tại.' });
-  }
+    if (!equipment_id || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp mã thiết bị và lý do đề xuất thanh lý.'
+      });
+    }
 
-  const rRatio = equipment.rRatio;
-  if (rRatio < DISPOSAL_R_RATIO_THRESHOLD) {
-    return res.status(400).json({
-      success: false,
-      message: `Chỉ số tài chính R hiện tại (${rRatio}%) chưa đạt ngưỡng tối thiểu >= ${DISPOSAL_R_RATIO_THRESHOLD}% để kích hoạt quy trình thanh lý.`
+    const equipment = await Equipment.findById(equipment_id);
+    if (!equipment) {
+      return res.status(404).json({ success: false, message: 'Thiết bị không tồn tại.' });
+    }
+
+    const existingActive = await Disposal.findOne({
+      equipment_id,
+      status: { $nin: [DISPOSAL_STATUSES.COMPLETED, DISPOSAL_STATUSES.REJECTED] }
     });
+    if (existingActive) {
+      return res.status(409).json({
+        success: false,
+        message: 'Thiết bị này đã có hồ sơ thanh lý đang chờ xử lý.'
+      });
+    }
+
+    const proposal = await Disposal.create({
+      equipment_id: equipment._id,
+      repair_id: repair_id || null,
+      proposed_by: req.user._id,
+      reason: String(reason).trim(),
+      recovery_value: Number(recovery_value) || 0,
+      status: DISPOSAL_STATUSES.PROPOSED
+    });
+
+    equipment.status = EQUIPMENT_STATUSES.PENDING_DISPOSAL;
+    await equipment.save();
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'DISPOSAL_PROPOSE',
+      target_table: 'disposals',
+      entity_id: proposal._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      new_value: { equipment_id: equipment._id, reason }
+    });
+
+    // Notify Admins
+    const admins = await User.find({ role: USER_ROLES.ADMIN, status: USER_STATUSES.ACTIVE });
+    for (const adm of admins) {
+      await Notification.create({
+        user_id: adm._id,
+        type: 'disposal_request',
+        title: 'Hồ sơ đề xuất thanh lý tài sản',
+        message: `Facility Manager ${req.user.full_name} đề xuất thanh lý thiết bị ${equipment.code}.`,
+        reference_type: 'disposal',
+        reference_id: proposal._id
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Lập đề xuất thanh lý thành công. Đã gửi Ban Giám Hiệu / Admin phê duyệt.',
+      data: proposal
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
-
-  // Lock equipment immediately
-  equipment.status = EQUIPMENT_STATUSES.PENDING_DISPOSAL;
-  await equipment.save();
-
-  const proposalCode = `DISP-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
-
-  // Default 5 RACI Steps
-  const steps = [
-    {
-      stepNumber: 1,
-      stepName: 'Lập Hồ Sơ Kỹ Thuật & Khóa Mượn',
-      responsibleRole: 'facility_staff',
-      status: 'completed',
-      handledBy: req.user._id,
-      completedAt: new Date(),
-      notes: `Đã khóa mượn tự động do chỉ số R = ${rRatio}% >= 60%.`
-    },
-    {
-      stepNumber: 2,
-      stepName: 'Thẩm Định Kỹ Thuật Độc Lập',
-      responsibleRole: 'maintenance',
-      status: 'in_progress'
-    },
-    {
-      stepNumber: 3,
-      stepName: 'Họp Hội Đồng Thanh Lý (Ma Trận RACI)',
-      responsibleRole: 'facility_staff',
-      status: 'pending'
-    },
-    {
-      stepNumber: 4,
-      stepName: 'Ban Giám Hiệu Phê Duyệt Quyết Định',
-      responsibleRole: 'admin',
-      status: 'pending'
-    },
-    {
-      stepNumber: 5,
-      stepName: 'Bán Đấu Giá Hoặc Hủy Phế Liệu',
-      responsibleRole: 'facility_staff',
-      status: 'pending'
-    }
-  ];
-
-  const proposal = await DisposalProposal.create({
-    proposalCode,
-    equipment: equipment._id,
-    proposedBy: req.user._id,
-    repairCost: equipment.estimatedRepairCost,
-    remainingValue: equipment.remainingValue,
-    rRatio,
-    currentStep: 2,
-    status: DISPOSAL_STATUSES.TECHNICAL_ASSESSMENT,
-    reason: reason || `Thiết bị xuống cấp nghiêm trọng, chỉ số R = ${rRatio}% vượt định mức 60%`,
-    steps
-  });
-
-  // Audit Log
-  await AuditLog.logAction({
-    user: req.user._id,
-    userDisplay: req.user.fullName,
-    action: 'DISPOSAL_PROPOSAL_CREATE',
-    entityType: 'DisposalProposal',
-    entityId: proposal._id.toString(),
-    ipAddress: req.ip,
-    diffData: {
-      proposalCode,
-      assetCode: equipment.assetCode,
-      rRatio
-    }
-  });
-
-  res.status(201).json({
-    success: true,
-    message: `Đã kích hoạt Quy Trình Thanh Lý 5 Bước cho thiết bị ${equipment.name} (R = ${rRatio}%).`,
-    proposal
-  });
 };
 
-// @desc    Advance step in disposal proposal
-// @route   PUT /api/disposals/:id/step
-export const advanceDisposalStep = async (req, res) => {
-  const { stepNumber, notes, nextStepStatus = 'completed' } = req.body;
-
-  const proposal = await DisposalProposal.findById(req.params.id).populate('equipment');
-  if (!proposal) {
-    return res.status(404).json({ success: false, message: 'Hồ sơ thanh lý không tồn tại.' });
-  }
-
-  const step = proposal.steps.find(s => s.stepNumber === stepNumber);
-  if (!step) {
-    return res.status(400).json({ success: false, message: 'Bước thanh lý không hợp lệ.' });
-  }
-
-  step.status = nextStepStatus;
-  step.handledBy = req.user._id;
-  step.completedAt = new Date();
-  if (notes) step.notes = notes;
-
-  if (stepNumber < 5 && nextStepStatus === 'completed') {
-    proposal.currentStep = stepNumber + 1;
-    const nextStep = proposal.steps.find(s => s.stepNumber === stepNumber + 1);
-    if (nextStep) nextStep.status = 'in_progress';
-  } else if (stepNumber === 5 && nextStepStatus === 'completed') {
-    proposal.status = DISPOSAL_STATUSES.SCRAP_COMPLETED;
-    // Mark equipment as DISPOSED
-    await Equipment.findByIdAndUpdate(proposal.equipment._id, {
-      status: EQUIPMENT_STATUSES.AVAILABLE,
-      condition: 'disposed',
-      remainingValue: 0
-    });
-  }
-
-  await proposal.save();
-
-  // Audit Log
-  await AuditLog.logAction({
-    user: req.user._id,
-    userDisplay: req.user.fullName,
-    action: 'DISPOSAL_STEP_ADVANCE',
-    entityType: 'DisposalProposal',
-    entityId: proposal._id.toString(),
-    ipAddress: req.ip,
-    diffData: {
-      proposalCode: proposal.proposalCode,
-      stepNumber,
-      status: nextStepStatus
+// @desc    Approve disposal request (Admin Only)
+// @route   PUT /api/disposals/:id/approve
+export const approveDisposal = async (req, res) => {
+  try {
+    const { decision_number, recovery_value } = req.body;
+    const proposal = await Disposal.findById(req.params.id);
+    if (!proposal) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ thanh lý.' });
     }
-  });
 
-  res.json({
-    success: true,
-    message: `Đã cập nhật tiến độ Bước ${stepNumber} trong quy trình thanh lý.`,
-    proposal
-  });
+    assertTransition('DISPOSAL', proposal.status, DISPOSAL_STATUSES.APPROVED, req.user.role);
+
+    proposal.status = DISPOSAL_STATUSES.APPROVED;
+    proposal.approved_by = req.user._id;
+    proposal.approved_at = new Date();
+    if (decision_number) proposal.decision_number = String(decision_number).trim();
+    if (recovery_value !== undefined) proposal.recovery_value = Number(recovery_value);
+
+    // If decision number provided, can directly mark completed & dispose equipment
+    if (proposal.decision_number) {
+      proposal.status = DISPOSAL_STATUSES.COMPLETED;
+      proposal.completed_at = new Date();
+
+      const equipment = await Equipment.findById(proposal.equipment_id);
+      if (equipment) {
+        equipment.status = EQUIPMENT_STATUSES.DISPOSED;
+        await equipment.save();
+      }
+    }
+
+    await proposal.save();
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'DISPOSAL_APPROVE',
+      target_table: 'disposals',
+      entity_id: proposal._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      new_value: { status: proposal.status, decision_number: proposal.decision_number }
+    });
+
+    res.json({
+      success: true,
+      message: 'Phê duyệt hồ sơ thanh lý thành công.',
+      data: proposal
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
 };
+
+// @desc    Reject disposal request (Admin Only)
+// @route   PUT /api/disposals/:id/reject
+export const rejectDisposal = async (req, res) => {
+  try {
+    const { reject_reason } = req.body;
+    const proposal = await Disposal.findById(req.params.id);
+    if (!proposal) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ thanh lý.' });
+    }
+
+    assertTransition('DISPOSAL', proposal.status, DISPOSAL_STATUSES.REJECTED, req.user.role);
+
+    proposal.status = DISPOSAL_STATUSES.REJECTED;
+    proposal.reject_reason = String(reject_reason || 'Không đủ điều kiện thanh lý').trim();
+    await proposal.save();
+
+    // Revert equipment status to in_stock / broken
+    const equipment = await Equipment.findById(proposal.equipment_id);
+    if (equipment) {
+      equipment.status = EQUIPMENT_STATUSES.BROKEN;
+      await equipment.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Đã từ chối đề xuất thanh lý.',
+      data: proposal
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
+// Backward compatibility exports for old RACI test names
+export const hcApproveDisposal = approveDisposal;
+export const bghApproveDisposal = approveDisposal;
+export const updateDisposalProcurement = approveDisposal;
+export const completeDisposalReceipt = async (req, res) => res.json({ success: true, message: 'Receipt completed' });

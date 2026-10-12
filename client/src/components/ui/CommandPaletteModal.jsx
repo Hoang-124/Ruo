@@ -1,80 +1,161 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../common/SvgIcons';
+import { useAuth } from '../../context/AuthContext';
 
 const ALL_MODULES = [
+  // Dashboard & Classroom Floor Plan
   {
     id: 'dashboard',
-    label: 'Bản Đồ Không Gian (CAD Architectural Floor Plan)',
-    cat: 'TRỤ CỘT 1 • KHÔNG GIAN',
-    icon: Icons.Building,
-    desc: 'Mặt bằng CAD kiến trúc thời gian thực, Time-Travel Scrubber, IoT Telemetry nhiệt độ và điện năng'
+    label: 'Sơ Đồ Phòng Học',
+    cat: 'KHÔNG GIAN • MẶT BẰNG',
+    icon: Icons.Dashboard,
+    desc: 'Sơ đồ kiến trúc tầng 1-5, tình trạng phòng học và danh mục thiết bị thời gian thực',
+    roles: ['admin', 'facility_manager', 'technician', 'lecturer']
+  },
+  // Lecturer
+  {
+    id: 'report_issue',
+    label: 'Báo Hỏng Thiết Bị (Tạo Phiếu Sự Cố)',
+    cat: 'GIẢNG VIÊN • BÁO HỎNG',
+    icon: Icons.AlertTriangle,
+    desc: 'Báo cáo sự cố thiết bị hư hại, chọn mức độ khẩn cấp (SLA) và gửi hình ảnh hiện trường',
+    roles: ['lecturer']
   },
   {
-    id: 'rooms',
-    label: 'Tra Cứu 108 Phòng Học & Đặt Chỗ Nhanh',
-    cat: 'TRỤ CỘT 2 • LỊCH BIỂU',
-    icon: Icons.Room,
-    desc: 'Tìm kiếm phòng theo sức chứa, thiết bị, kiểm tra xung đột thời khóa biểu và giữ chỗ tức thời'
+    id: 'my_tickets',
+    label: 'Phiếu Sửa Chữa Của Tôi & Đánh Giá 1-5 Sao',
+    cat: 'GIẢNG VIÊN • THEO DÕI',
+    icon: Icons.ClipboardCheck,
+    desc: 'Theo dõi vòng đời khắc phục sự cố và đánh giá chất lượng nghiệm thu sửa chữa',
+    roles: ['lecturer']
+  },
+  // Technician
+  {
+    id: 'assigned_tasks',
+    label: 'Nhiệm Vụ Sửa Chữa (Tasks & Log)',
+    cat: 'KỸ THUẬT • NHIỆM VỤ',
+    icon: Icons.Wrench,
+    desc: 'Tiếp nhận ca sửa chữa, cập nhật nhật ký khắc phục và báo cáo kết quả hoàn tất/không sửa được',
+    roles: ['technician']
   },
   {
-    id: 'calendar',
-    label: 'Lịch Biểu Tuần Chuẩn RFC-5545 Toàn Trường',
-    cat: 'TRỤ CỘT 2 • LỊCH BIỂU',
-    icon: Icons.Calendar,
-    desc: 'Đồng bộ 3 lớp dữ liệu: Lịch chính khóa đào tạo, Sự kiện trường và Lịch tự học sinh viên'
+    id: 'spare_parts',
+    label: 'Kho Linh Kiện & Yêu Cầu Vật Tư Thay Thế',
+    cat: 'KỸ THUẬT • LINH KIỆN',
+    icon: Icons.Package,
+    desc: 'Xem tồn kho linh kiện, cảnh báo tồn kho thấp và tạo phiếu xin cấp linh kiện sửa chữa',
+    roles: ['technician']
   },
   {
-    id: 'approvals',
-    label: 'Hàng Đợi Phê Duyệt Đa Cấp & Tự Động Chuyển Cấp SLA',
-    cat: 'TRỤ CỘT 3 • ĐIỀU HÀNH',
-    icon: Icons.CheckCircle,
-    desc: 'Quản lý yêu cầu sử dụng phòng chờ duyệt, cơ chế tự động chuyển cấp lãnh đạo khi quá hạn SLA'
+    id: 'movement_tasks',
+    label: 'Lệnh Di Chuyển & Thay Thế Thiết Bị Dự Phòng',
+    cat: 'KỸ THUẬT • ĐIỀU ĐỘNG',
+    icon: Icons.ArrowRight,
+    desc: 'Nhận lệnh di chuyển thay thế thiết bị từ KHO-01 hoặc điều động giữa các phòng',
+    roles: ['technician']
   },
+  {
+    id: 'qr_scanner',
+    label: 'Quét Mã QR Thiết Bị Thực Địa',
+    cat: 'KỸ THUẬT • QR SCANNER',
+    icon: Icons.QrCode,
+    desc: 'Quét hoặc nhập mã QR để tra cứu thông số kỹ thuật, tình trạng và lịch sử bảo hành',
+    roles: ['technician']
+  },
+  // Facility Manager
   {
     id: 'tickets_kanban',
-    label: 'Kanban SLA Quản Lý Sự Cố Khẩn Cấp',
-    cat: 'TRỤ CỘT 3 • ĐIỀU HÀNH',
-    icon: Icons.Ticket,
-    desc: 'Đếm ngược SLA theo giờ hành chính 07:30 - 17:00, điều phối kỹ thuật viên xử lý thiết bị hỏng'
+    label: 'Phiếu Sửa Chữa & Điều Phối Kỹ Thuật (Kanban SLA)',
+    cat: 'QUẢN LÝ CSVC • SỬA CHỮA',
+    icon: Icons.Wrench,
+    desc: 'Giao việc cho kỹ thuật viên, cấp đồ dự phòng từ KHO-01 và giám sát hạn SLA',
+    roles: ['facility_manager']
   },
   {
-    id: 'csp_studio',
-    label: 'Bộ Giải Thuật Toán Xếp TKB Tự Động (CSP Engine)',
-    cat: 'TRỤ CỘT 1 • THUẬT TOÁN',
-    icon: Icons.Cpu,
-    desc: 'Thuật toán Backtracking + MRV + LCV + AC-3, tối ưu hóa xếp lịch học 0 xung đột phòng'
+    id: 'warehouse',
+    label: 'Kho Dự Phòng & Định Mức Phòng Học',
+    cat: 'QUẢN LÝ CSVC • KHO DỰ PHÒNG',
+    icon: Icons.Layers,
+    desc: 'Giám sát tồn kho thiết bị dự phòng KHO-01 và cảnh báo thiếu hụt thiết bị phòng học',
+    roles: ['facility_manager']
+  },
+  {
+    id: 'movements',
+    label: 'Lệnh Điều Chuyển Thiết Bị Giữa Các Phòng',
+    cat: 'QUẢN LÝ CSVC • ĐIỀU CHUYỂN',
+    icon: Icons.RefreshCw,
+    desc: 'Lập lệnh luân chuyển tài sản, chọn phòng nguồn/đích và theo dõi trạng thái di chuyển',
+    roles: ['facility_manager']
   },
   {
     id: 'equipments',
-    label: 'Kho Thiết Bị & Quản Lý Mã QR Định Danh',
-    cat: 'TRỤ CỘT 4 • THIẾT BỊ',
+    label: 'Kho Quản Lý Thiết Bị Trường & In Tem QR',
+    cat: 'TÀI SẢN • THIẾT BỊ',
     icon: Icons.Equipment,
-    desc: 'Kiểm kê tài sản thiết bị giảng đường, mượn trả thiết bị Lab, quét mã QR định danh'
+    desc: 'Quản lý toàn bộ thiết bị trường, đăng ký mới, cập nhật bảo hành và in tem nhãn QR',
+    roles: ['facility_manager', 'admin']
   },
   {
-    id: 'disposal_calc',
-    label: 'Máy Tính Thanh Lý Tài Sản Tự Động (Chỉ Số R ≥ 60%)',
-    cat: 'TRỤ CỘT 5 • THANH LÝ',
+    id: 'inventory',
+    label: 'Kiểm Kê CSVC & Đối Soát Mã QR Thực Địa',
+    cat: 'TÀI SẢN • KIỂM KÊ',
+    icon: Icons.CheckCircle,
+    desc: 'Tạo đợt kiểm kê, quét đối soát camera di động và tự động tạo phiếu hỏng phát hiện',
+    roles: ['facility_manager']
+  },
+  {
+    id: 'disposal_propose',
+    label: 'Đề Xuất Thanh Lý Thiết Bị (Hao mòn R ≥ 60%)',
+    cat: 'TÀI SẢN • THANH LÝ',
     icon: Icons.Sliders,
-    desc: 'Tính toán hao mòn kinh tế kỹ thuật tài sản, lập biên bản và hội đồng thanh lý tự động'
+    desc: 'Lọc thiết bị hư hỏng quá hạn khấu hao và lập hồ sơ đề xuất thanh lý kèm giá thu hồi',
+    roles: ['facility_manager']
+  },
+  // Admin
+  {
+    id: 'users',
+    label: 'Quản Trị Người Dùng & Phân Vai Trò',
+    cat: 'QUẢN TRỊ • TÀI KHOẢN',
+    icon: Icons.Users,
+    desc: 'Tạo tài khoản, gán 4 vai trò chuẩn, khóa/mở tài khoản và đặt lại mật khẩu',
+    roles: ['admin']
   },
   {
     id: 'rbac',
-    label: 'Ma Trận Phân Quyền 7 Vai Trò (RBAC Engine)',
-    cat: 'QUẢN TRỊ & BẢO MẬT',
-    icon: Icons.Users,
-    desc: 'Thiết lập thẩm quyền cho Sinh viên, Giảng viên, QL CSVC, Kỹ thuật, Đào tạo, Admin'
+    label: 'Ma Trận Phân Quyền Vai Trò (RBAC Dynamic)',
+    cat: 'QUẢN TRỊ • PHÂN QUYỀN',
+    icon: Icons.Shield,
+    desc: 'Phân quyền chi tiết cho 4 vai trò chính quy theo từng phân hệ chức năng',
+    roles: ['admin']
+  },
+  {
+    id: 'master_data',
+    label: 'Danh Mục Dữ Liệu Nền (Master Data)',
+    cat: 'QUẢN TRỊ • DANH MỤC',
+    icon: Icons.Settings,
+    desc: 'Quản lý Loại thiết bị, Nhà cung cấp, Đơn vị sửa chữa và Danh mục phòng học',
+    roles: ['admin']
+  },
+  {
+    id: 'disposal_approval',
+    label: 'Phê Duyệt Thanh Lý (BGH - Quyết Định QĐ-TL)',
+    cat: 'QUẢN TRỊ • PHÊ DUYỆT',
+    icon: Icons.CheckCircle,
+    desc: 'Ban Giám Hiệu xem xét hồ sơ, phê duyệt với số quyết định thanh lý hoặc từ chối',
+    roles: ['admin']
   },
   {
     id: 'audit_log',
-    label: 'Nhật Ký Kiểm Toán SHA-256 Bất Biến (Audit Trail)',
-    cat: 'QUẢN TRỊ & BẢO MẬT',
+    label: 'Sổ Cái Nhật Ký Kiểm Toán SHA-256 Bất Biến',
+    cat: 'QUẢN TRỊ • KIỂM TOÁN',
     icon: Icons.Audit,
-    desc: 'Lưu vết mật mã học không thể chỉnh sửa mọi thao tác đặt phòng, phê duyệt và thanh lý'
+    desc: 'Truy vết mã hóa không thể can thiệp mọi hành động và xuất khẩu báo cáo CSV',
+    roles: ['admin']
   }
 ];
 
 export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
+  const { currentUser, isTabAllowed } = useAuth();
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -94,7 +175,10 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
 
   if (!isOpen) return null;
 
-  const filtered = ALL_MODULES.filter(
+  const userRole = String(currentUser?.role || '').toLowerCase();
+  const allowedModules = ALL_MODULES.filter(m => !m.roles || m.roles.includes(userRole));
+
+  const filtered = allowedModules.filter(
     (m) =>
       m.label.toLowerCase().includes(query.toLowerCase()) ||
       m.cat.toLowerCase().includes(query.toLowerCase()) ||
@@ -103,29 +187,24 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
 
   return (
     <div
+      className="ruo-modal-backdrop-smooth"
       style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(11, 15, 23, 0.75)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 1000,
-        display: 'flex',
         alignItems: 'flex-start',
-        justifyContent: 'center',
-        paddingTop: '10vh',
-        paddingLeft: '16px',
-        paddingRight: '16px'
+        paddingTop: '10vh'
       }}
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
     >
       <div
+        className="ruo-modal-card-smooth"
         style={{
           width: '100%',
           maxWidth: '680px',
           background: 'var(--surface-panel)',
           border: '1px solid var(--hairline-medium)',
           borderRadius: 'var(--radius-lg)',
-          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.5)',
+          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -178,7 +257,7 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
           <kbd
             style={{
               fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-sans)',
               padding: '2px 8px',
               borderRadius: '4px',
               background: 'var(--canvas-subtle)',
@@ -299,8 +378,8 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
             color: 'var(--ink-muted)'
           }}
         >
-          <span>Hệ Thống Ruo • Phân Hạng 95 Chức Năng 5 Trụ Cột</span>
-          <span style={{ fontFamily: 'var(--font-mono)' }}>Enter Chọn • ↑↓ Di Chuyển</span>
+          <span>Hệ Thống Quản Lý Cơ Sở Vật Chất Ruo UFMS</span>
+          <span style={{ fontFamily: 'var(--font-sans)' }}>Enter Chọn • ↑↓ Di Chuyển</span>
         </div>
       </div>
     </div>

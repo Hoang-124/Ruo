@@ -1,469 +1,500 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
-import { SLABadge } from '../../components/ui/SLABadge';
-import { TICKETS as initialTickets } from '../../mock/mockData';
+import { useToast } from '../../context/ToastContext';
+import { repairApi, authApi, equipmentApi, masterDataApi } from '../../lib/api';
 
 export const TicketKanbanPage = () => {
-  const [tickets, setTickets] = useState(initialTickets);
+  const { toast } = useToast();
+
+  const [loading, setLoading] = useState(true);
+  const [repairs, setRepairs] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
+  const [spareEquipments, setSpareEquipments] = useState([]);
+  const [rooms, setRooms] = useState([]);
+
+  // Active drawer & modals
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [newTicketData, setNewTicketData] = useState({
-    roomCode: 'A1-302',
-    equipmentName: 'Máy chiếu Sony',
-    title: '',
-    description: '',
-    priority: 'high'
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Forms
+  const [assignForm, setAssignForm] = useState({
+    assigned_to: '',
+    damage_level: 'minor',
+    deadline: '',
+    replacement_equipment_id: ''
+  });
+
+  const [closeForm, setCloseForm] = useState({
+    destination_room_id: ''
   });
 
   const columns = [
-    { id: 'open', title: 'MỚI TẠO', badgeType: 'neutral', icon: Icons.Clock },
-    { id: 'assigned', title: 'ĐÃ PHÂN CÔNG', badgeType: 'primary', icon: Icons.User },
-    { id: 'in_progress', title: 'ĐANG XỬ LÝ', badgeType: 'warning', icon: Icons.Wrench },
-    { id: 'resolved', title: 'ĐÃ KHẮC PHỤC (CHỜ DUYỆT)', badgeType: 'purple', icon: Icons.CheckCircle },
-    { id: 'closed', title: 'ĐÃ ĐÓNG (HOÀN TẤT)', badgeType: 'success', icon: Icons.Shield }
+    { id: 'reported', title: 'MỚI TIẾP NHẬN', color: '#F59E0B' },
+    { id: 'assigned', title: 'ĐÃ GIAO KTV', color: 'var(--laser-cyan)' },
+    { id: 'in_progress', title: 'ĐANG XỬ LÝ', color: '#3B82F6' },
+    { id: 'resolved', title: 'ĐÃ KHẮC PHỤC', color: '#10B981' },
+    { id: 'unrepairable', title: 'KHÔNG THỂ SỬA', color: '#EF4444' },
+    { id: 'closed', title: 'ĐÃ ĐÓNG PHIẾU', color: 'var(--ink-secondary)' }
   ];
 
-  const handleCreateTicket = () => {
-    if (!newTicketData.title) {
-      alert('Vui lòng nhập mô tả tóm tắt sự cố!');
-      return;
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [repRes, techRes, eqRes, roomRes] = await Promise.all([
+        repairApi.list(),
+        authApi.listUsers({ role: 'technician' }),
+        equipmentApi.list({ status: 'in_stock' }),
+        masterDataApi.getRooms({ limit: 100 })
+      ]);
+
+      if (repRes && repRes.success) {
+        setRepairs(repRes.repairs || []);
+      }
+      if (techRes && techRes.success) {
+        setTechnicians(techRes.users || []);
+      }
+      if (eqRes && eqRes.success) {
+        setSpareEquipments(eqRes.equipments || []);
+      }
+      if (roomRes && roomRes.success) {
+        setRooms(roomRes.rooms || []);
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tải dữ liệu sửa chữa: ' + err.message);
+    } finally {
+      setLoading(false);
     }
-    const newT = {
-      id: `TCK-2026-${String(tickets.length + 45).padStart(4, '0')}`,
-      roomCode: newTicketData.roomCode,
-      equipmentName: newTicketData.equipmentName,
-      title: newTicketData.title,
-      description: newTicketData.description || 'Không có mô tả thêm.',
-      priority: newTicketData.priority,
-      priorityLabel: newTicketData.priority.toUpperCase(),
-      status: 'open',
-      statusLabel: 'Mới tạo',
-      reporterName: 'Trần Bảo Hoàng',
-      reporterRole: 'Sinh viên',
-      reportedAt: 'Vừa xong',
-      slaRemainingMinutes: newTicketData.priority === 'critical' ? 240 : 480,
-      slaTotalHours: newTicketData.priority === 'critical' ? 4 : 8,
-      slaState: 'on_track',
-      assignedTo: 'Chưa phân công',
-      images: [],
-      timeline: [{ time: 'Vừa xong', event: 'Khởi tạo phiếu báo sự cố' }]
-    };
-    setTickets([newT, ...tickets]);
-    setShowNewModal(false);
-    setNewTicketData({ roomCode: 'A1-302', equipmentName: '', title: '', description: '', priority: 'high' });
   };
 
-  const handleMoveStatus = (ticketId, nextStatus) => {
-    setTickets(prev => prev.map(t => {
-      if (t.id === ticketId) {
-        return {
-          ...t,
-          status: nextStatus,
-          timeline: [...t.timeline, { time: 'Vừa xong', event: `Chuyển trạng thái sang ${nextStatus.toUpperCase()}` }]
-        };
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const openAssign = (ticket) => {
+    setSelectedTicket(ticket);
+    const defaultHours = ticket.damage_level === 'critical' ? 4 : ticket.damage_level === 'major' ? 24 : 48;
+    const defaultDeadline = new Date(Date.now() + defaultHours * 3600 * 1000).toISOString().slice(0, 16);
+
+    setAssignForm({
+      assigned_to: technicians[0]?._id || '',
+      damage_level: ticket.damage_level || 'minor',
+      deadline: defaultDeadline,
+      replacement_equipment_id: ''
+    });
+    setShowAssignModal(true);
+  };
+
+  const handleAssignSubmit = async (e) => {
+    e.preventDefault();
+    if (!assignForm.assigned_to) {
+      toast.error('Vui lòng chọn Kỹ thuật viên phụ trách.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await repairApi.assign(selectedTicket._id, {
+        assigned_to: assignForm.assigned_to,
+        damage_level: assignForm.damage_level,
+        deadline: assignForm.deadline ? new Date(assignForm.deadline) : null,
+        replacement_equipment_id: assignForm.replacement_equipment_id || null
+      });
+
+      if (res && res.success) {
+        toast.success(`Đã giao nhiệm vụ phiếu [${selectedTicket.ticket_code}] thành công!`);
+        setShowAssignModal(false);
+        await fetchData();
       }
-      return t;
-    }));
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket(prev => ({ ...prev, status: nextStatus }));
+    } catch (err) {
+      toast.error('Lỗi khi phân công KTV: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openClose = (ticket) => {
+    setSelectedTicket(ticket);
+    const warehouseRoom = rooms.find(r => r.type === 'warehouse');
+    setCloseForm({
+      destination_room_id: ticket.room_id?._id || warehouseRoom?._id || ''
+    });
+    setShowCloseModal(true);
+  };
+
+  const handleCloseSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      const res = await repairApi.closeTicket(selectedTicket._id, {
+        destination_room_id: closeForm.destination_room_id || null
+      });
+
+      if (res && res.success) {
+        toast.success(`Đã nghiệm thu và đóng phiếu sửa chữa [${selectedTicket.ticket_code}]!`);
+        setShowCloseModal(false);
+        await fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi đóng phiếu: ' + err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <div>
-      {/* Page Header */}
-      <div className="page-header">
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
-          <h1 className="page-title">Quản Lý Sự Cố & Kanban Giám Sát SLA (Trụ Cột 3)</h1>
-          <div className="page-subtitle">
-            Hệ thống tính giờ làm việc hành chính (Business Hours Only) và cảnh báo sớm 3 giai đoạn: On Track • At Risk • Overdue
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>FACILITY MANAGER</span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>MODULE 04 • QUẢN LÝ VÒNG ĐỜI SỬA CHỮA (KANBAN SLA)</span>
           </div>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
+            Trung Tâm Điều Phối Sửa Chữa Thiết Bị
+          </h1>
+          <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
+            Giao việc cho Kỹ thuật viên, cấp đồ dự phòng thay thế từ kho, duyệt linh kiện và chọn nơi về sau khi sửa xong.
+          </p>
         </div>
 
-        <div className="header-actions">
-          <button className="btn btn-primary" onClick={() => setShowNewModal(true)}>
-            <Icons.Plus size={16} />
-            <span>Báo Cáo Sự Cố Mới</span>
-          </button>
-        </div>
+        <button
+          onClick={fetchData}
+          className="laser-btn laser-btn-secondary"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
+        >
+          <Icons.RefreshCw size={16} />
+          <span>Làm Mới</span>
+        </button>
       </div>
 
-      {/* Kanban Board Columns Container */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(5, 1fr)',
-          gap: '16px',
-          alignItems: 'start',
-          overflowX: 'auto',
-          minWidth: '1100px',
-          paddingBottom: '20px'
-        }}
-      >
-        {columns.map((col) => {
-          const colTickets = tickets.filter(t => t.status === col.id);
-          const ColIcon = col.icon;
-          return (
-            <div
-              key={col.id}
-              style={{
-                background: 'var(--bg-card)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-color)',
-                padding: '14px',
-                minHeight: '520px',
-                display: 'flex',
-                flexDirection: 'column'
-              }}
-            >
-              {/* Column Header */}
+      {/* Kanban Board Grid */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--ink-muted)' }}>
+          <Icons.RefreshCw size={28} className="spin" style={{ marginBottom: '12px' }} />
+          <div>Đang nạp bảng điều phối Kanban...</div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '14px', alignItems: 'start' }}>
+          {columns.map(col => {
+            const colTickets = repairs.filter(r => r.status === col.id);
+
+            return (
               <div
+                key={col.id}
                 style={{
+                  background: 'var(--surface-card)',
+                  border: '1px solid var(--hairline-medium)',
+                  borderRadius: 'var(--radius-lg)',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '14px',
-                  paddingBottom: '10px',
-                  borderBottom: '1px solid var(--border-color)'
+                  flexDirection: 'column',
+                  minHeight: '400px'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '13px' }}>
-                  <ColIcon size={16} color="var(--color-primary-600)" />
-                  <span>{col.title}</span>
+                {/* Column Header */}
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--hairline-medium)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: col.color }} />
+                    <strong style={{ fontSize: '12.5px', color: 'var(--ink-pure)', letterSpacing: '0.02em' }}>{col.title}</strong>
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 800, padding: '2px 7px', borderRadius: '10px', background: 'var(--surface-panel)', color: 'var(--ink-secondary)' }}>
+                    {colTickets.length}
+                  </span>
                 </div>
-                <span className={`badge badge-${col.badgeType}`}>
-                  {colTickets.length}
-                </span>
-              </div>
 
-              {/* Tickets in this Column */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-                {colTickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    onClick={() => setSelectedTicket(ticket)}
-                    style={{
-                      background: 'var(--bg-page)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '14px',
-                      cursor: 'pointer',
-                      transition: 'all var(--transition-fast)',
-                      boxShadow: 'var(--shadow-xs)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--color-primary-400)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border-color)';
-                      e.currentTarget.style.transform = 'none';
-                    }}
-                  >
-                    {/* Ticket Code & Priority Badge */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '12px', color: 'var(--color-primary-700)' }}>
-                        {ticket.id}
-                      </span>
-                      <span
-                        className={`badge ${
-                          ticket.priority === 'critical'
-                            ? 'badge-danger sla-overdue-pulse'
-                            : ticket.priority === 'high'
-                            ? 'badge-warning'
-                            : 'badge-primary'
-                        }`}
-                        style={{ fontSize: '10px' }}
+                {/* Column Body Cards */}
+                <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto', maxHeight: '700px' }}>
+                  {colTickets.map(t => {
+                    const eq = t.equipment_id || {};
+                    const room = t.room_id || {};
+                    const isReported = t.status === 'reported';
+                    const isResolved = t.status === 'resolved';
+
+                    return (
+                      <div
+                        key={t._id}
+                        style={{
+                          background: 'var(--surface-panel)',
+                          border: '1px solid var(--hairline-soft)',
+                          borderRadius: 'var(--radius-md)',
+                          padding: '12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          transition: 'border-color 0.15s'
+                        }}
+                        onClick={() => setSelectedTicket(t)}
                       >
-                        {ticket.priority.toUpperCase()}
-                      </span>
-                    </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 800, color: 'var(--laser-cyan)' }}>
+                            {t.ticket_code}
+                          </span>
+                          <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 6px', borderRadius: '3px', background: t.damage_level === 'critical' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)', color: t.damage_level === 'critical' ? '#EF4444' : '#F59E0B' }}>
+                            {t.damage_level}
+                          </span>
+                        </div>
 
-                    {/* Title & Room */}
-                    <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.3, wordBreak: 'break-word' }}>
-                      {ticket.title}
-                    </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-pure)' }}>{eq.name}</div>
+                          <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>Phòng: {room.code || 'Chưa gán'}</div>
+                        </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--text-secondary)', overflow: 'hidden' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-                        <Icons.Room size={12} /> {ticket.roomCode}
-                      </span>
-                      <span>•</span>
-                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{ticket.equipmentName}</span>
-                    </div>
+                        <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', background: 'var(--surface-card)', padding: '6px 8px', borderRadius: '4px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                          {t.incident_description}
+                        </div>
 
-                    {/* SLA Badge */}
-                    <div style={{ marginTop: '4px' }}>
-                      <SLABadge
-                        slaState={ticket.slaState}
-                        remainingMinutes={ticket.slaRemainingMinutes}
-                        totalHours={ticket.slaTotalHours}
-                      />
-                    </div>
+                        {t.assigned_to && (
+                          <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
+                            KTV: <strong style={{ color: 'var(--ink-pure)' }}>{t.assigned_to.full_name}</strong>
+                          </div>
+                        )}
 
-                    {/* Assigned info */}
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                      <Icons.User size={12} />
-                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                        {ticket.assignedTo}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                        {/* Quick action buttons */}
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }} onClick={(e) => e.stopPropagation()}>
+                          {isReported && (
+                            <button
+                              onClick={() => openAssign(t)}
+                              className="laser-btn laser-btn-primary"
+                              style={{ width: '100%', padding: '6px', fontSize: '11.5px', fontWeight: 700 }}
+                            >
+                              Giao KTV & Cấp Đồ
+                            </button>
+                          )}
 
-                {colTickets.length === 0 && (
-                  <div
-                    style={{
-                      border: '2px dashed var(--border-color)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '32px 16px',
-                      textAlign: 'center',
-                      color: 'var(--text-muted)',
-                      fontSize: '12px'
-                    }}
-                  >
-                    Không có ticket nào
-                  </div>
-                )}
+                          {isResolved && (
+                            <button
+                              onClick={() => openClose(t)}
+                              className="laser-btn laser-btn-primary"
+                              style={{ width: '100%', padding: '6px', fontSize: '11.5px', fontWeight: 700 }}
+                            >
+                              Nghiệm Thu & Đóng Phiếu
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {colTickets.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '30px 0', fontSize: '12px', color: 'var(--hairline-medium)' }}>
+                      Không có phiếu
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Ticket Detail Drawer Panel */}
-      {selectedTicket && (
-        <div className="modal-overlay" onClick={() => setSelectedTicket(null)}>
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '600px' }}
-          >
-            <div className="modal-header">
+      {/* Ticket Detail Drawer */}
+      {selectedTicket && !showAssignModal && !showCloseModal && (
+        <div className="ruo-drawer-backdrop" onClick={() => setSelectedTicket(null)}>
+          <div className="ruo-drawer-panel" style={{ width: '580px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--color-primary-700)', fontSize: '16px' }}>
-                    {selectedTicket.id}
-                  </span>
-                  <span className={`badge ${selectedTicket.priority === 'critical' ? 'badge-danger' : 'badge-warning'}`}>
-                    {selectedTicket.priorityLabel}
-                  </span>
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  Báo cáo bởi: {selectedTicket.reporterName} ({selectedTicket.reporterRole}) lúc {selectedTicket.reportedAt}
-                </div>
+                <h2 className="ruo-drawer-title">{selectedTicket.ticket_code}</h2>
+                <p className="ruo-drawer-subtitle">{selectedTicket.equipment_id?.name} ({selectedTicket.equipment_id?.code})</p>
               </div>
-              <button onClick={() => setSelectedTicket(null)} className="icon-btn">
-                <Icons.X size={18} />
-              </button>
+              <button onClick={() => setSelectedTicket(null)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
             </div>
 
-            <div className="modal-body">
-              <h3 style={{ fontSize: '17px', fontWeight: 800, marginBottom: '8px' }}>
-                {selectedTicket.title}
-              </h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
-                {selectedTicket.description}
-              </p>
+            <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ background: 'var(--surface-panel)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                <div>Phòng học: <strong>{selectedTicket.room_id?.code}</strong></div>
+                <div>Trạng thái: <strong>{selectedTicket.status}</strong></div>
+                <div>Mức hư hỏng: <strong>{selectedTicket.damage_level}</strong></div>
+                <div>KTV phụ trách: <strong>{selectedTicket.assigned_to?.full_name || 'Chưa giao'}</strong></div>
+              </div>
 
-              {/* SLA Engine Metrics Card */}
-              <div
-                style={{
-                  background: 'var(--bg-card-subtle)',
-                  padding: '16px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-color)',
-                  marginBottom: '20px'
-                }}
-              >
-                <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Icons.Clock size={16} color="var(--color-primary-600)" />
-                  Cam Kết Thời Gian Giải Quyết (SLA Matrix):
+              <div>
+                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--ink-muted)', fontWeight: 700, marginBottom: '4px' }}>
+                  Mô Tả Sự Cố
                 </div>
-                <div className="grid-cols-2" style={{ gap: '10px', fontSize: '13px' }}>
-                  <div>
-                    <span style={{ color: 'var(--text-secondary)' }}>Tiêu chuẩn SLA:</span>{' '}
-                    <strong>{selectedTicket.slaTotalHours} giờ hành chính</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-secondary)' }}>Kỹ thuật viên phụ trách:</span>{' '}
-                    <strong>{selectedTicket.assignedTo}</strong>
-                  </div>
-                </div>
-                <div style={{ marginTop: '10px' }}>
-                  <SLABadge
-                    slaState={selectedTicket.slaState}
-                    remainingMinutes={selectedTicket.slaRemainingMinutes}
-                    totalHours={selectedTicket.slaTotalHours}
-                  />
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}>
+                  {selectedTicket.incident_description}
                 </div>
               </div>
 
-              {/* Double Confirmation Flow (UC-1.18: Nghiệm thu 2 chiều) */}
-              {selectedTicket.status === 'resolved' && (
-                <div
-                  style={{
-                    background: 'var(--color-purple-50)',
-                    border: '1px solid var(--color-purple-500)',
-                    padding: '16px',
-                    borderRadius: 'var(--radius-md)',
-                    marginBottom: '20px'
-                  }}
-                >
-                  <h4 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-purple-700)', marginBottom: '6px' }}>
-                    Quy trình Nghiệm thu Đóng Ticket 2 Chiều:
-                  </h4>
-                  <p style={{ fontSize: '13px', color: 'var(--color-purple-700)', marginBottom: '12px' }}>
-                    Kỹ thuật viên đã báo cáo sửa chữa xong. Bạn vui lòng xác nhận kết quả hoạt động tại hiện trường:
-                  </p>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                      className="btn btn-success btn-sm"
-                      onClick={() => handleMoveStatus(selectedTicket.id, 'closed')}
-                    >
-                      <Icons.CheckCircle size={14} /> Hài Lòng & Đóng Ticket (5 Sao)
-                    </button>
-                    <button
-                      className="btn btn-outline btn-sm"
-                      style={{ color: 'var(--color-danger-600)', borderColor: 'var(--color-danger-500)' }}
-                      onClick={() => handleMoveStatus(selectedTicket.id, 'in_progress')}
-                    >
-                      Chưa khắc phục xong (Yêu cầu làm lại)
-                    </button>
-                  </div>
+              {selectedTicket.replacement_equipment_id && (
+                <div style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
+                  Thiết bị dự phòng thay thế đã cấp: <strong>{selectedTicket.replacement_equipment_id?.name} ({selectedTicket.replacement_equipment_id?.code})</strong>
                 </div>
               )}
 
-              {/* Action Buttons to Move Ticket */}
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                  CHUYỂN TRẠNG THÁI TIẾN TRÌNH:
+              {selectedTicket.feedback_rating && (
+                <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
+                  <div>Đánh giá của Giảng viên: <strong style={{ color: '#F59E0B' }}>{'★'.repeat(selectedTicket.feedback_rating)} ({selectedTicket.feedback_rating}/5 sao)</strong></div>
+                  {selectedTicket.feedback_comment && <div style={{ marginTop: '2px', color: 'var(--ink-secondary)' }}>"{selectedTicket.feedback_comment}"</div>}
                 </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'assigned')}>
-                    Đã Gán
-                  </button>
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'in_progress')}>
-                    Đang Xử Lý
-                  </button>
-                  <button className="btn btn-purple btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'resolved')}>
-                    Đã Khắc Phục (Resolved)
-                  </button>
-                  <button className="btn btn-success btn-sm" onClick={() => handleMoveStatus(selectedTicket.id, 'closed')}>
-                    Đóng Ticket (Closed)
-                  </button>
-                </div>
-              </div>
+              )}
+            </div>
 
-              {/* Timeline */}
-              <div>
-                <h4 style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Dòng Thời Gian Xử Lý:</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-                  {selectedTicket.timeline.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', width: '80px' }}>
-                        {item.time}
-                      </span>
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-primary-500)' }} />
-                      <span>{item.event}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div className="ruo-drawer-footer">
+              {selectedTicket.status === 'reported' && (
+                <button onClick={() => openAssign(selectedTicket)} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  Giao Nhiệm Vụ Cho KTV
+                </button>
+              )}
+              {selectedTicket.status === 'resolved' && (
+                <button onClick={() => openClose(selectedTicket)} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  Nghiệm Thu & Đóng Phiếu
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* New Incident Report Modal */}
-      {showNewModal && (
-        <div className="modal-overlay" onClick={() => setShowNewModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Tạo Báo Cáo Sự Cố Cơ Sở Vật Chất</h3>
-              <button onClick={() => setShowNewModal(false)} className="icon-btn">
-                <Icons.X size={18} />
-              </button>
+      {/* Assign Modal */}
+      {showAssignModal && selectedTicket && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowAssignModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <div>
+                <h2 className="ruo-drawer-title">Phân Công Kỹ Thuật Viên & Cấp Đồ Dự Phòng</h2>
+                <p className="ruo-drawer-subtitle">{selectedTicket.ticket_code}</p>
+              </div>
+              <button onClick={() => setShowAssignModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
             </div>
-            <div className="modal-body">
-              <div className="grid-cols-2">
-                <div className="form-group">
-                  <label className="form-label">Phòng xảy ra sự cố</label>
+
+            <form onSubmit={handleAssignSubmit}>
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Chọn Kỹ Thuật Viên Phụ Trách *
+                  </label>
                   <select
-                    className="form-control"
-                    value={newTicketData.roomCode}
-                    onChange={(e) => setNewTicketData({ ...newTicketData, roomCode: e.target.value })}
+                    required
+                    value={assignForm.assigned_to}
+                    onChange={(e) => setAssignForm({ ...assignForm, assigned_to: e.target.value })}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', height: '38px' }}
                   >
-                    <option value="A1-302">A1-302 (Phòng lý thuyết)</option>
-                    <option value="B2-105">B2-105 (Lab máy tính)</option>
-                    <option value="A1-405">A1-405 (Hội trường)</option>
-                    <option value="B1-201">B1-201 (Lab vi mạch)</option>
-                    <option value="C1-304">C1-304 (Smart classroom)</option>
+                    {technicians.map(t => (
+                      <option key={t._id} value={t._id}>
+                        {t.full_name} ({t.code} • {t.department || 'Tổ Kỹ Thuật CSVC'})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Mức độ khẩn cấp (SLA)</label>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Mức Độ Hư Hỏng & Thời Hạn SLA
+                  </label>
                   <select
-                    className="form-control"
-                    value={newTicketData.priority}
-                    onChange={(e) => setNewTicketData({ ...newTicketData, priority: e.target.value })}
+                    value={assignForm.damage_level}
+                    onChange={(e) => setAssignForm({ ...assignForm, damage_level: e.target.value })}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', height: '38px' }}
                   >
-                    <option value="critical">[CRITICAL] Khẩn cấp (Cháy nổ, ngập, cúp điện - SLA 4h 24/7)</option>
-                    <option value="high">[HIGH] Cao (Hỏng máy chiếu, điều hòa - SLA 8h)</option>
-                    <option value="medium">[MEDIUM] Trung bình (Cháy bóng đèn, micro rè - SLA 24h)</option>
-                    <option value="low">[LOW] Thấp (Bàn ghế lỏng vít, rách rèm - SLA 48h)</option>
+                    <option value="minor">Hỏng Nhẹ (Minor - SLA 48h)</option>
+                    <option value="major">Hỏng Nặng (Major - SLA 24h)</option>
+                    <option value="critical">Khẩn Cấp (Critical - SLA 4h)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Hạn Xử Lý Hoàn Tất (SLA Deadline)
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={assignForm.deadline}
+                    onChange={(e) => setAssignForm({ ...assignForm, deadline: e.target.value })}
+                    className="ruo-portal-input"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Chọn Thiết Bị Dự Phòng Từ Kho KHO-01 (Tùy chọn)
+                  </label>
+                  <select
+                    value={assignForm.replacement_equipment_id}
+                    onChange={(e) => setAssignForm({ ...assignForm, replacement_equipment_id: e.target.value })}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', height: '38px' }}
+                  >
+                    <option value="">-- Không cấp đồ dự phòng --</option>
+                    {spareEquipments.map(eq => (
+                      <option key={eq._id} value={eq._id}>
+                        {eq.code} - {eq.name} ({eq.brand} {eq.model})
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '4px' }}>
+                    Hệ thống sẽ tự động tạo lệnh di chuyển [replacement] từ kho sang phòng học cho KTV xác nhận.
+                  </div>
+                </div>
+              </div>
+
+              <div className="ruo-drawer-footer">
+                <button type="button" onClick={() => setShowAssignModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  {submitting ? 'Đang Phân Công...' : 'Xác Nhận Giao Việc'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Close Modal */}
+      {showCloseModal && selectedTicket && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowCloseModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '500px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <div>
+                <h2 className="ruo-drawer-title">Nghiệm Thu & Chọn Nơi Về Sau Sửa</h2>
+                <p className="ruo-drawer-subtitle">{selectedTicket.ticket_code}</p>
+              </div>
+              <button onClick={() => setShowCloseModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
+            </div>
+
+            <form onSubmit={handleCloseSubmit}>
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ fontSize: '12.5px', color: 'var(--ink-secondary)' }}>
+                  Theo quy chuẩn vận hành: Nếu phòng học ban đầu đã đủ định mức (hoặc đã được cấp thiết bị dự phòng), thiết bị sau khi sửa xong sẽ được điều chuyển về <strong>Kho dự phòng KHO-01</strong>.
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>
+                    Chọn Nơi Về Của Thiết Bị Sau Sửa Chữa *
+                  </label>
+                  <select
+                    required
+                    value={closeForm.destination_room_id}
+                    onChange={(e) => setCloseForm({ destination_room_id: e.target.value })}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', height: '40px', fontSize: '13px' }}
+                  >
+                    {rooms.map(r => (
+                      <option key={r._id} value={r._id}>
+                        {r.type === 'warehouse' ? `[KHO DỰ PHÒNG] ${r.code} - ${r.name}` : `${r.code} - ${r.name}`}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Thiết bị gặp sự cố</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="VD: Máy chiếu Sony, Điều hòa Daikin, Bóng đèn trần..."
-                  value={newTicketData.equipmentName}
-                  onChange={(e) => setNewTicketData({ ...newTicketData, equipmentName: e.target.value })}
-                />
+              <div className="ruo-drawer-footer">
+                <button type="button" onClick={() => setShowCloseModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  {submitting ? 'Đang Đóng Phiếu...' : 'Xác Nhận & Đóng Phiếu'}
+                </button>
               </div>
-
-              <div className="form-group">
-                <label className="form-label">Tiêu đề sự cố</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Mô tả vắn tắt hiện tượng hỏng hóc..."
-                  value={newTicketData.title}
-                  onChange={(e) => setNewTicketData({ ...newTicketData, title: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Mô tả chi tiết & vị trí hiện trường</label>
-                <textarea
-                  rows="3"
-                  className="form-control"
-                  placeholder="Nhập chi tiết hiện tượng để kỹ thuật viên chuẩn bị sẵn linh kiện thay thế..."
-                  value={newTicketData.description}
-                  onChange={(e) => setNewTicketData({ ...newTicketData, description: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowNewModal(false)}>
-                Hủy bỏ
-              </button>
-              <button className="btn btn-primary" onClick={handleCreateTicket}>
-                <Icons.CheckCircle size={16} /> Gửi Báo Cáo
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       )}
     </div>
   );
 };
+
+export default TicketKanbanPage;

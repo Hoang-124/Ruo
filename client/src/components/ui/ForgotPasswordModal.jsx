@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 // Native Inline SVG Icons strictly adhering to project specifications
 const SvgIcons = {
@@ -59,15 +60,19 @@ const SvgIcons = {
 
 export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSuccessLogin }) => {
   const { forgotPassword, verifyResetOtp, resetPassword } = useAuth();
+  const { toast } = useToast();
 
   const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password, 4: Success
   const [email, setEmail] = useState(defaultEmail);
   const [otp, setOtp] = useState('');
   const [debugOtp, setDebugOtp] = useState('');
+  const [isRealMailSent, setIsRealMailSent] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const [loading, setLoading] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
@@ -83,6 +88,22 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
       return () => clearInterval(timer);
     }
   }, [step]);
+
+  // Close modal on Escape key - safeguard progress in Step 2 & 3
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !verifyingOtp && !sendingOtp && !resettingPassword) {
+        if (step > 1 && step < 4) {
+          toast.info('Bạn đang trong tiến trình xác thực mã OTP. Nhấn nút [✕] ở góc phải nếu bạn muốn hủy bỏ.', 'Tiến Trình Xác Thực');
+          return;
+        }
+        resetModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, verifyingOtp, sendingOtp, resettingPassword, step]);
 
   // Format mm:ss
   const formatTimer = (seconds) => {
@@ -107,40 +128,61 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
 
   if (!isOpen) return null;
 
-  // Step 1: Request OTP
+  // Step 1: Request OTP (Rate limited: 3 requests per hour, TTL: 15 minutes)
   const handleRequestOtp = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setErrorMsg(null);
-    setLoading(true);
+    setSendingOtp(true);
 
-    const res = await forgotPassword(email);
-    setLoading(false);
-
-    if (res.success) {
-      setSuccessMsg(res.message);
-      if (res.debugOtp) {
-        setDebugOtp(res.debugOtp);
+    try {
+      const res = await forgotPassword(email);
+      if (res && res.success) {
+        setSuccessMsg(res.message);
+        if (res.debugOtp) {
+          setDebugOtp(res.debugOtp);
+        } else {
+          setDebugOtp('');
+        }
+        setIsRealMailSent(Boolean(res.isRealMailSent));
+        setStep(2);
+        toast.info(res.message || 'Mã xác thực OTP (6 chữ số) đã được gửi.', 'Đã Gửi OTP');
+      } else {
+        setErrorMsg(res?.message || 'Không thể gửi mã OTP.');
+        if (res?.message && res.message.includes('quá 3 lần')) {
+          toast.warning(res.message, 'Giới Hạn Tần Suất (Rate Limit)');
+        }
       }
-      setStep(2);
-    } else {
-      setErrorMsg(res.message || 'Không thể gửi mã OTP.');
+    } catch (err) {
+      setErrorMsg(err.message || 'Lỗi gửi yêu cầu khôi phục mật khẩu.');
+    } finally {
+      setSendingOtp(false);
     }
   };
 
   // Step 2: Verify OTP
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
+    if (timeLeft <= 0) {
+      setErrorMsg('Mã OTP này đã hết hạn hiệu lực 15 phút. Vui lòng bấm gửi lại mã mới.');
+      return;
+    }
+
     setErrorMsg(null);
-    setLoading(true);
+    setVerifyingOtp(true);
 
-    const res = await verifyResetOtp(email, otp);
-    setLoading(false);
-
-    if (res.success) {
-      setSuccessMsg(res.message);
-      setStep(3);
-    } else {
-      setErrorMsg(res.message || 'Mã xác thực OTP không chính xác.');
+    try {
+      const res = await verifyResetOtp(email, otp);
+      if (res && res.success) {
+        setSuccessMsg(res.message);
+        setStep(3);
+        toast.success('Xác thực mã OTP thành công! Vui lòng tạo mật khẩu mới.', 'Xác Thực OTP');
+      } else {
+        setErrorMsg(res?.message || 'Mã xác thực OTP không chính xác.');
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Lỗi khi kiểm tra mã OTP.');
+    } finally {
+      setVerifyingOtp(false);
     }
   };
 
@@ -150,15 +192,20 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
     if (!isPasswordValid) return;
 
     setErrorMsg(null);
-    setLoading(true);
+    setResettingPassword(true);
 
-    const res = await resetPassword(email, otp, newPassword);
-    setLoading(false);
-
-    if (res.success) {
-      setStep(4);
-    } else {
-      setErrorMsg(res.message || 'Không thể đặt lại mật khẩu.');
+    try {
+      const res = await resetPassword(email, otp, newPassword);
+      if (res && res.success) {
+        setStep(4);
+        toast.success('Đặt lại mật khẩu thành công! Mọi phiên đăng nhập cũ đã được thu hồi an toàn.', 'Hoàn Tất Khôi Phục');
+      } else {
+        setErrorMsg(res?.message || 'Không thể đặt lại mật khẩu.');
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Lỗi khi đặt lại mật khẩu.');
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -173,36 +220,47 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
     onClose();
   };
 
+  // Prevent accidental loss of progress when clicking outside
+  const handleBackdropClick = (e) => {
+    if (e.target !== e.currentTarget) return;
+    if (step > 1 && step < 4) {
+      toast.info('Bạn đang trong tiến trình xác thực mã OTP. Hộp thoại được giữ nguyên để bạn không bị mất dữ liệu.', 'Tiến Trình Xác Thực');
+      return;
+    }
+    resetModal();
+  };
+
+  // Safe close button with confirmation if in progress
+  const handleCloseButton = () => {
+    if (step > 1 && step < 4) {
+      const confirmClose = window.confirm('Bạn có chắc muốn đóng hộp thoại xác thực OTP? (Bạn vẫn có thể mở lại trong 15 phút)');
+      if (!confirmClose) return;
+    }
+    resetModal();
+  };
+
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-        background: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}
-      onClick={(e) => e.target === e.currentTarget && resetModal()}
+      className="ruo-modal-backdrop-smooth"
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
     >
       <div
-        className="card"
+        className="ruo-modal-card-smooth"
         style={{
           width: '100%',
           maxWidth: '520px',
           background: 'var(--surface-panel)',
           border: '1px solid var(--hairline-medium)',
-          borderRadius: 'var(--radius-xl)',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.5)',
-          overflow: 'hidden'
+          borderRadius: 'var(--radius-xl)'
         }}
       >
+        {/* Accent Bar */}
+        <div
+          className="ruo-modal-accent-bar"
+          style={{ background: 'linear-gradient(90deg, #3B82F6 0%, #06B6D4 50%, #10B981 100%)' }}
+        />
         {/* Header */}
         <div
           style={{
@@ -240,8 +298,9 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
           </div>
 
           <button
-            onClick={resetModal}
+            onClick={handleCloseButton}
             className="ruo-icon-button"
+            title="Đóng hộp thoại"
             style={{ width: '32px', height: '32px', borderRadius: '50%' }}
           >
             <SvgIcons.Close size={18} color="var(--ink-muted)" />
@@ -308,11 +367,11 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={sendingOtp}
                 className="laser-btn laser-btn-primary"
                 style={{ width: '100%', padding: '10px', fontSize: '13.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
-                <span>{loading ? 'Đang gửi mã OTP...' : 'Gửi Mã Xác Thực OTP'}</span>
+                <span>{sendingOtp ? 'Đang gửi mã OTP...' : 'Gửi Mã Xác Thực OTP'}</span>
                 <SvgIcons.ArrowRight size={16} />
               </button>
             </form>
@@ -325,11 +384,34 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
                 <span style={{ fontSize: '13px', color: 'var(--ink-secondary)' }}>
                   Gửi tới: <strong style={{ color: 'var(--ink-pure)' }}>{email}</strong>
                 </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12.5px', color: '#F59E0B', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12.5px', color: '#F59E0B', fontFamily: 'var(--font-sans)' }}>
                   <SvgIcons.Clock size={14} color="#F59E0B" />
                   <span>{formatTimer(timeLeft)}</span>
                 </div>
               </div>
+
+              {isRealMailSent && (
+                <div
+                  style={{
+                    background: 'rgba(37, 99, 235, 0.08)',
+                    border: '1px solid rgba(37, 99, 235, 0.25)',
+                    padding: '11px 14px',
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    fontSize: '12px',
+                    color: 'var(--ink-primary)',
+                    lineHeight: 1.45
+                  }}
+                >
+                  <SvgIcons.Mail size={18} color="var(--laser-cyan)" />
+                  <span>
+                    Mã xác thực đã được gửi tới hộp thư thật của bạn. Vui lòng kiểm tra <strong>Hộp thư đến</strong> hoặc mục <strong>Thư rác (Spam/Junk)</strong> để nhận mã OTP 6 số.
+                  </span>
+                </div>
+              )}
 
               {debugOtp && (
                 <div
@@ -370,7 +452,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
                     textAlign: 'center',
                     letterSpacing: '8px',
                     fontWeight: 800,
-                    fontFamily: 'var(--font-mono)'
+                    fontFamily: 'var(--font-sans)'
                   }}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
@@ -379,10 +461,34 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
                 />
               </div>
 
+              {/* Expired or Resend prompt */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '12px' }}>
+                <span style={{ color: timeLeft === 0 ? '#EF4444' : 'var(--ink-muted)' }}>
+                  {timeLeft === 0 ? 'Mã OTP đã hết hạn (15 phút).' : 'Chưa nhận được mã OTP?'}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRequestOtp}
+                  disabled={sendingOtp || verifyingOtp}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: 'var(--laser-cyan)',
+                    fontWeight: 700,
+                    cursor: (sendingOtp || verifyingOtp) ? 'not-allowed' : 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  {sendingOtp ? 'Đang gửi lại...' : 'Gửi lại mã mới'}
+                </button>
+              </div>
+
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button
                   type="button"
                   onClick={() => setStep(1)}
+                  disabled={verifyingOtp || sendingOtp}
                   className="laser-btn laser-btn-ghost"
                   style={{ flex: 1, padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
@@ -392,11 +498,11 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
 
                 <button
                   type="submit"
-                  disabled={otp.length !== 6 || loading}
+                  disabled={otp.length !== 6 || verifyingOtp || timeLeft === 0}
                   className="laser-btn laser-btn-primary"
                   style={{ flex: 2, padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
-                  <span>{loading ? 'Đang kiểm tra...' : 'Xác Thực Mã OTP'}</span>
+                  <span>{verifyingOtp ? 'Đang kiểm tra OTP...' : 'Xác Thực Mã OTP'}</span>
                   <SvgIcons.ArrowRight size={16} />
                 </button>
               </div>
@@ -472,11 +578,11 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
 
               <button
                 type="submit"
-                disabled={!isPasswordValid || loading}
+                disabled={!isPasswordValid || resettingPassword}
                 className="laser-btn laser-btn-primary"
                 style={{ width: '100%', padding: '10px', fontSize: '13.5px' }}
               >
-                {loading ? 'Đang cập nhật mật khẩu...' : 'Lưu Mật Khẩu & Thu Hồi Phiên Cũ'}
+                {resettingPassword ? 'Đang cập nhật mật khẩu...' : 'Lưu Mật Khẩu & Thu Hồi Phiên Cũ'}
               </button>
             </form>
           )}

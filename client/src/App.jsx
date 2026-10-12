@@ -1,62 +1,69 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import { AppHeader } from './components/layout/AppHeader';
 import { Dashboard } from './pages/dashboard/Dashboard';
 import { Icons } from './components/common/SvgIcons';
-import { ROOMS } from './mock/mockData';
+import { useRouter } from './lib/router';
 
-// Code-Splitting: Lazy load secondary subsystems & heavy modals to reduce initial load time
-const RoomListPage = lazy(() => import('./pages/rooms/RoomListPage').then(m => ({ default: m.RoomListPage })));
-const RoomCalendarPage = lazy(() => import('./pages/rooms/RoomCalendarPage').then(m => ({ default: m.RoomCalendarPage })));
+// Code-Splitting: Lazy load UEMS core module pages
+
+// Lecturer Module Pages
+const ReportIssuePage = lazy(() => import('./pages/lecturer/ReportIssuePage').then(m => ({ default: m.ReportIssuePage })));
+const LecturerTicketsPage = lazy(() => import('./pages/lecturer/LecturerTicketsPage').then(m => ({ default: m.LecturerTicketsPage })));
+
+// Technician Module Pages
+const TechnicianTasksPage = lazy(() => import('./pages/technician/TechnicianTasksPage').then(m => ({ default: m.TechnicianTasksPage })));
+const SparePartsPage = lazy(() => import('./pages/technician/SparePartsPage').then(m => ({ default: m.SparePartsPage })));
+const MovementTasksPage = lazy(() => import('./pages/technician/MovementTasksPage').then(m => ({ default: m.MovementTasksPage })));
+const QRScannerPage = lazy(() => import('./pages/technician/QRScannerPage').then(m => ({ default: m.QRScannerPage })));
+
+// Facility Manager Module Pages
 const TicketKanbanPage = lazy(() => import('./pages/incidents/TicketKanbanPage').then(m => ({ default: m.TicketKanbanPage })));
-const CSPStudioPage = lazy(() => import('./pages/allocations/CSPStudioPage').then(m => ({ default: m.CSPStudioPage })));
-const EquipmentDisposalPage = lazy(() => import('./pages/equipments/EquipmentDisposalPage').then(m => ({ default: m.EquipmentDisposalPage })));
-const RBACMatrixPage = lazy(() => import('./pages/admin/RBACMatrixPage').then(m => ({ default: m.RBACMatrixPage })));
-const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage').then(m => ({ default: m.AuditLogPage })));
-const ApprovalQueuePage = lazy(() => import('./pages/approvals/ApprovalQueuePage').then(m => ({ default: m.ApprovalQueuePage })));
+const WarehouseStockPage = lazy(() => import('./pages/facility/WarehouseStockPage').then(m => ({ default: m.WarehouseStockPage })));
+const MovementsPage = lazy(() => import('./pages/facility/MovementsPage').then(m => ({ default: m.MovementsPage })));
+const EquipmentsPage = lazy(() => import('./pages/equipments/EquipmentsPage').then(m => ({ default: m.EquipmentsPage })));
+const InventoryPage = lazy(() => import('./pages/inventory/InventoryPage').then(m => ({ default: m.InventoryPage })));
+const DisposalProposePage = lazy(() => import('./pages/equipments/DisposalProposePage').then(m => ({ default: m.DisposalProposePage })));
 
-const BookingModal = lazy(() => import('./components/ui/BookingModal').then(m => ({ default: m.BookingModal })));
-const QRCheckInModal = lazy(() => import('./components/ui/QRCheckInModal').then(m => ({ default: m.QRCheckInModal })));
+// Admin Module Pages
+const UserManagementPage = lazy(() => import('./pages/admin/UserManagementPage').then(m => ({ default: m.UserManagementPage })));
+const RBACMatrixPage = lazy(() => import('./pages/admin/RBACMatrixPage').then(m => ({ default: m.RBACMatrixPage })));
+const MasterDataPage = lazy(() => import('./pages/admin/MasterDataPage').then(m => ({ default: m.MasterDataPage })));
+const DisposalApprovalPage = lazy(() => import('./pages/admin/DisposalApprovalPage').then(m => ({ default: m.DisposalApprovalPage })));
+const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage').then(m => ({ default: m.AuditLogPage })));
+
+// Auth & Modals
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const UserProfileModal = lazy(() => import('./components/ui/UserProfileModal').then(m => ({ default: m.UserProfileModal })));
 
 // Sleek native SVG loading spinner
 const LazyFallback = () => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '380px', gap: '14px', color: 'var(--ink-muted)' }}>
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3E7BFA" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
-    <span style={{ fontSize: '13px', fontWeight: 600 }}>Đang tải phân hệ...</span>
+    <span style={{ fontSize: '13px', fontWeight: 600 }}>Đang nạp phân hệ vận hành...</span>
   </div>
 );
 
 const MainAppContent = () => {
-  const { isTabAllowed, currentRoleMeta, isLoggedIn } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
-
-  // Modals state
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [selectedBookingRoom, setSelectedBookingRoom] = useState(ROOMS[0]);
-  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const { isTabAllowed, currentRoleMeta, currentUser, isLoggedIn } = useAuth();
+  const { tab: activeTab, setTab: setActiveTab } = useRouter();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [reportPrefill, setReportPrefill] = useState({ equipment: null, room: null });
 
   if (!isLoggedIn) {
     return (
       <Suspense fallback={<LazyFallback />}>
-        <LoginPage onLoginSuccess={() => {}} />
+        <LoginPage onLoginSuccess={() => setActiveTab(currentRoleMeta?.defaultTab || 'dashboard')} />
       </Suspense>
     );
   }
 
-  const handleOpenBooking = (room) => {
-    setSelectedBookingRoom(room || ROOMS[0]);
-    setIsBookingModalOpen(true);
-  };
-
-  // Subpage wrapper with Return-to-CAD button
+  // Subpage wrapper with Return-to-Dashboard breadcrumb
   const renderSubPageWrapper = (title, category, component) => (
     <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '24px 32px 80px' }}>
-      {/* Return to CAD Breadcrumb */}
       <div
         style={{
           display: 'flex',
@@ -64,30 +71,23 @@ const MainAppContent = () => {
           alignItems: 'center',
           marginBottom: '24px',
           paddingBottom: '14px',
-          borderBottom: '1px solid var(--hairline-soft)'
+          borderBottom: '1px solid var(--border-default)'
         }}
       >
         <button
-          onClick={() => setActiveTab('dashboard')}
-          className="laser-btn laser-btn-ghost"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '6px 16px',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '12.5px'
-          }}
-          title="Quay lại Bản Đồ Mặt Bằng CAD"
+          onClick={() => setActiveTab(currentRoleMeta?.defaultTab || 'dashboard')}
+          className="ruo-btn ruo-btn-ghost ruo-btn-sm"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          title="Quay lại Trang Chủ Vận Hành"
         >
           <Icons.ChevronLeft size={14} />
-          <span>Quay lại Bản Đồ CAD</span>
+          <span>Quay lại {currentRoleMeta?.shortLabel || 'Trang Chủ'}</span>
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
           <span style={{ color: 'var(--ink-muted)' }}>{category}</span>
-          <span style={{ color: 'var(--hairline-medium)' }}>/</span>
-          <span style={{ color: 'var(--laser-cyan)', fontWeight: 700 }}>{title}</span>
+          <span style={{ color: 'var(--border-default)' }}>/</span>
+          <span style={{ color: 'var(--blueprint-400)', fontWeight: 700 }}>{title}</span>
         </div>
       </div>
 
@@ -96,152 +96,247 @@ const MainAppContent = () => {
   );
 
   const renderActiveView = () => {
-    // 403 Forbidden check if activeTab is not dashboard and unauthorized
-    if (activeTab !== 'dashboard' && !isTabAllowed(activeTab)) {
+    // Check permission if not landing tab and not allowed
+    const isLandingTab = activeTab === currentRoleMeta?.defaultTab || activeTab === 'dashboard';
+    if (!isLandingTab && !isTabAllowed(activeTab)) {
       return (
-        <div style={{ maxWidth: '640px', margin: '80px auto', textAlign: 'center', padding: '48px 32px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-xl)', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}>
-          <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.12)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', border: '1px solid rgba(239,68,68,0.25)' }}>
-            <Icons.Shield size={28} color="var(--laser-rose)" />
+        <div style={{ maxWidth: '600px', margin: '80px auto', textAlign: 'center', padding: '48px 32px', background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)' }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(229, 72, 77, 0.12)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', border: '1px solid rgba(229,72,77,0.25)' }}>
+            <Icons.Shield size={28} color="#E5484D" />
           </div>
-          <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--ink-pure)', marginBottom: '10px' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--ink-primary)', marginBottom: '10px' }}>
             Truy Cập Bị Giới Hạn Theo Vai Trò (RBAC Guard)
           </h2>
-          <p style={{ fontSize: '13.5px', color: 'var(--ink-secondary)', maxWidth: '480px', margin: '0 auto 24px', lineHeight: 1.6 }}>
-            Vai trò hiện tại của bạn là <strong style={{ color: 'var(--laser-cyan)' }}>{currentRoleMeta?.title || 'Sinh viên'}</strong> không có thẩm quyền truy cập vào phân hệ này theo ma trận phân quyền đại học của Ruo.
+          <p style={{ fontSize: '13px', color: 'var(--ink-secondary)', maxWidth: '460px', margin: '0 auto 24px', lineHeight: 1.6 }}>
+            Vai trò hiện tại của bạn là <strong style={{ color: 'var(--blueprint-400)' }}>{currentRoleMeta?.label || 'Người dùng'}</strong> không có thẩm quyền truy cập vào phân hệ này theo quy chuẩn phân quyền của Ruo UEMS.
           </p>
           <button
-            onClick={() => setActiveTab('dashboard')}
-            className="laser-btn laser-btn-primary"
-            style={{ padding: '8px 24px', borderRadius: 'var(--radius-full)', fontSize: '13px' }}
+            onClick={() => setActiveTab(currentRoleMeta?.defaultTab || 'dashboard')}
+            className="ruo-btn ruo-btn-primary ruo-btn-md"
           >
-            Quay lại Bản Đồ Không Gian
+            Quay lại {currentRoleMeta?.shortLabel || 'Bảng Điều Khiển'}
           </button>
         </div>
       );
     }
 
     switch (activeTab) {
+      // 1. Dashboard (All Actors: Admin, Quản Lý CSVC, Kỹ Thuật Viên, Giảng Viên)
       case 'dashboard':
         return (
-          <Dashboard
+          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '12px 24px 60px' }}>
+            <Dashboard
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              onOpenQRModal={() => setActiveTab(currentUser?.role === 'technician' ? 'qr_scanner' : 'inventory')}
+              onSelectEquipmentForReport={(eq, room) => {
+                setReportPrefill({ equipment: eq, room: room });
+                setActiveTab('report_issue');
+              }}
+            />
+          </div>
+        );
+
+      // 2. Lecturer Views
+      case 'my_rooms':
+        // Hợp nhất vào Sơ đồ phòng học & Bản đồ CAD Tòa A1 tại Dashboard
+        return (
+          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '12px 24px 60px' }}>
+            <Dashboard
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              onOpenQRModal={() => setActiveTab(currentUser?.role === 'technician' ? 'qr_scanner' : 'inventory')}
+              onSelectEquipmentForReport={(eq, room) => {
+                setReportPrefill({ equipment: eq, room: room });
+                setActiveTab('report_issue');
+              }}
+            />
+          </div>
+        );
+
+      case 'report_issue':
+        return renderSubPageWrapper(
+          'Báo Hỏng Thiết Bị Thực Địa',
+          'MODULE 04 • BÁO HỎNG SỰ CỐ',
+          <ReportIssuePage
             onNavigateTab={(tab) => setActiveTab(tab)}
-            onOpenBookingModal={handleOpenBooking}
-            onOpenQRModal={() => setIsQRModalOpen(true)}
+            preselectedEquipment={reportPrefill.equipment}
+            preselectedRoom={reportPrefill.room}
           />
         );
 
-      case 'rooms':
+      case 'my_tickets':
         return renderSubPageWrapper(
-          'Danh Mục 108 Phòng Học & Tra Cứu',
-          'TRỤ CỘT 2 • LỊCH BIỂU',
-          <RoomListPage
-            onOpenBookingModal={handleOpenBooking}
-            onOpenCalendar={() => setActiveTab('calendar')}
-          />
+          'Phiếu Sửa Chữa Của Tôi & Đánh Giá Dịch Vụ',
+          'MODULE 04 • THEO DÕI & ĐÁNH GIÁ',
+          <LecturerTicketsPage onNavigateTab={(tab) => setActiveTab(tab)} />
         );
 
-      case 'calendar':
-      case 'my_bookings':
-      case 'series_booking':
+      // 3. Technician Views
+      case 'assigned_tasks':
         return renderSubPageWrapper(
-          'Lịch Biểu Tuần Chuẩn RFC-5545',
-          'TRỤ CỘT 2 • LỊCH BIỂU',
-          <RoomCalendarPage onOpenBookingModal={handleOpenBooking} />
+          'Nhiệm Vụ Sửa Chữa & Nhật Ký Khắc Phục',
+          'MODULE 04 • KỸ THUẬT VIÊN',
+          <TechnicianTasksPage />
         );
 
-      case 'approvals':
+      case 'spare_parts':
         return renderSubPageWrapper(
-          'Hàng Đợi Phê Duyệt Đa Cấp & SLA Escalation',
-          'TRỤ CỘT 3 • ĐIỀU HÀNH',
-          <ApprovalQueuePage />
+          'Kho Linh Kiện & Phiếu Yêu Cầu Thay Thế',
+          'MODULE 04 • LINH KIỆN VẬT TƯ',
+          <SparePartsPage />
         );
 
+      case 'movement_tasks':
+        return renderSubPageWrapper(
+          'Lệnh Di Chuyển & Thay Thế Thiết Bị Dự Phòng',
+          'MODULE 03 • ĐIỀU ĐỘNG THỰC ĐỊA',
+          <MovementTasksPage />
+        );
+
+      case 'qr_scanner':
+        return renderSubPageWrapper(
+          'Quét Mã QR & Tra Cứu Thông Số Kỹ Thuật',
+          'MODULE 03 • TRA CỨU TẠI CHỖ',
+          <QRScannerPage />
+        );
+
+      // 4. Facility Manager Views
       case 'tickets_kanban':
       case 'tickets':
+      case 'repairs':
+      case 'maintenance': // Legacy alias routed to repairs/kanban
         return renderSubPageWrapper(
-          'Kanban SLA Quản Lý Sự Cố Khẩn Cấp',
-          'TRỤ CỘT 3 • ĐIỀU HÀNH',
+          'Phiếu Sửa Chữa & Điều Phối Kỹ Thuật (Kanban SLA)',
+          'MODULE 04 • QUẢN LÝ SỰ CỐ',
           <TicketKanbanPage />
         );
 
-      case 'csp_studio':
+      case 'warehouse':
         return renderSubPageWrapper(
-          'Bộ Giải Thuật Toán Xếp TKB Tự Động (CSP Engine)',
-          'TRỤ CỘT 1 • THUẬT TOÁN',
-          <CSPStudioPage />
+          'Kho Dự Phòng KHO-01 & Định Mức Phòng Học',
+          'MODULE 03 • KHO DỰ PHÒNG',
+          <WarehouseStockPage />
+        );
+
+      case 'movements':
+      case 'transfers': // Legacy alias routed to movements
+        return renderSubPageWrapper(
+          'Điều Chuyển Trang Thiết Bị Giữa Các Phòng',
+          'MODULE 03 • ĐIỀU CHUYỂN TÀI SẢN',
+          <MovementsPage />
         );
 
       case 'equipments':
-      case 'disposal_calc':
         return renderSubPageWrapper(
-          activeTab === 'disposal_calc'
-            ? 'Quy Trình Thanh Lý Tài Sản & Máy Tính Chỉ Số R ≥ 60%'
-            : 'Kho Quản Lý Thiết Bị & Kiểm Kê Mã QR',
-          activeTab === 'disposal_calc' ? 'TRỤ CỘT 5 • THANH LÝ' : 'TRỤ CỘT 4 • THIẾT BỊ',
-          <EquipmentDisposalPage key={activeTab} initialTab={activeTab === 'disposal_calc' ? 'disposal' : 'inventory'} />
+          'Kho Quản Lý Thiết Bị Trường & Tem Nhãn QR',
+          'MODULE 03 • DANH MỤC THIẾT BỊ',
+          <EquipmentsPage />
+        );
+
+      case 'inventory':
+        return renderSubPageWrapper(
+          'Kiểm Kê CSVC & Đối Soát Mã QR Thực Địa',
+          'MODULE 05 • KIỂM KÊ TÀI SẢN',
+          <InventoryPage />
+        );
+
+      case 'disposal_propose':
+      case 'disposal_calc': // Legacy alias
+        return renderSubPageWrapper(
+          'Đề Xuất Thanh Lý Thiết Bị (Hao Mòn R ≥ 60%)',
+          'MODULE 03 • THANH LÝ TÀI SẢN',
+          <DisposalProposePage />
+        );
+
+      // 5. Admin Views
+      case 'users':
+        return renderSubPageWrapper(
+          'Quản Lý Người Dùng & Phân Bổ Vai Trò',
+          'MODULE 01 • QUẢN TRỊ HỆ THỐNG',
+          <UserManagementPage />
         );
 
       case 'rbac':
         return renderSubPageWrapper(
-          'Ma Trận Phân Quyền 7 Nhóm (RBAC Matrix)',
-          'QUẢN TRỊ HỆ THỐNG',
+          'Ma Trận Phân Quyền 4 Vai Trò (RBAC Dynamic)',
+          'MODULE 01 • PHÂN QUYỀN TRUY CẬP',
           <RBACMatrixPage />
+        );
+
+      case 'master_data':
+        return renderSubPageWrapper(
+          'Danh Mục Dữ Liệu Nền (Loại TB, NCC, Đơn Vị SC, Phòng)',
+          'MODULE 02 • DỮ LIỆU DANH MỤC',
+          <MasterDataPage />
+        );
+
+      case 'disposal_approval':
+      case 'disposals': // Legacy alias for admin
+        return renderSubPageWrapper(
+          'Phê Duyệt Hồ Sơ Thanh Lý (Ban Giám Hiệu QĐ-TL)',
+          'MODULE 03 • QUYẾT ĐỊNH THANH LÝ',
+          <DisposalApprovalPage />
         );
 
       case 'audit_log':
         return renderSubPageWrapper(
-          'Nhật Ký Kiểm Toán SHA-256 Bất Biến',
-          'BẢO MẬT & KIỂM TOÁN',
+          'Sổ Cái Nhật Ký Kiểm Toán SHA-256 Bất Biến',
+          'MODULE 06 • BẢO MẬT & KIỂM TOÁN',
           <AuditLogPage />
         );
 
-      default:
+      // 6. Visual Space Twin (Merged into Dashboard)
+      case 'map':
         return (
-          <Dashboard
-            onNavigateTab={(tab) => setActiveTab(tab)}
-            onOpenBookingModal={handleOpenBooking}
-            onOpenQRModal={() => setIsQRModalOpen(true)}
-          />
+          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '12px 24px 60px' }}>
+            <Dashboard
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              onOpenQRModal={() => setActiveTab(currentUser?.role === 'technician' ? 'qr_scanner' : 'inventory')}
+              onSelectEquipmentForReport={(eq, room) => {
+                setReportPrefill({ equipment: eq, room: room });
+                setActiveTab('report_issue');
+              }}
+            />
+          </div>
+        );
+
+      default:
+        // All canonical actors land on the Interactive Classroom Layout Floor Plan (Building A1 Digital Twin)
+        return (
+          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '12px 24px 60px' }}>
+            <Dashboard
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              onOpenQRModal={() => setActiveTab(currentUser?.role === 'technician' ? 'qr_scanner' : 'inventory')}
+              onSelectEquipmentForReport={(eq, room) => {
+                setReportPrefill({ equipment: eq, room: room });
+                setActiveTab('report_issue');
+              }}
+            />
+          </div>
         );
     }
   };
 
   return (
-    <div className="panoramic-shell blueprint-canvas-bg">
-      {/* 1. Grounded Two-Tier Enterprise Navigation Header */}
+    <div className="panoramic-shell" style={{ minHeight: '100vh', background: 'var(--bg-app)', color: 'var(--ink-primary)' }}>
+      {/* Grounded Navigation Header */}
       <AppHeader
         activeTab={activeTab}
         onSelectTab={(tab) => setActiveTab(tab)}
-        onOpenQRDemo={() => setIsQRModalOpen(true)}
+        onOpenQRDemo={() => setActiveTab(currentUser?.role === 'technician' ? 'qr_scanner' : 'inventory')}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
       />
 
-      {/* 2. Main Subsystem Viewport */}
+      {/* Main Subsystem Viewport */}
       <main className="ruo-main-viewport">
         <Suspense fallback={<LazyFallback />}>
-          {renderActiveView()}
+          <div key={activeTab}>
+            {renderActiveView()}
+          </div>
         </Suspense>
       </main>
 
-      {/* Global Interactive Modals (Lazy Loaded on Demand) */}
+      {/* User Profile Modal */}
       <Suspense fallback={null}>
-        {isBookingModalOpen && (
-          <BookingModal
-            isOpen={isBookingModalOpen}
-            onClose={() => setIsBookingModalOpen(false)}
-            selectedRoom={selectedBookingRoom}
-            onBookingSuccess={() => {}}
-          />
-        )}
-
-        {isQRModalOpen && (
-          <QRCheckInModal
-            isOpen={isQRModalOpen}
-            onClose={() => setIsQRModalOpen(false)}
-            bookingRoom={selectedBookingRoom?.code || 'A1-302'}
-          />
-        )}
-
         {isProfileModalOpen && (
           <UserProfileModal
             isOpen={isProfileModalOpen}
@@ -255,8 +350,10 @@ const MainAppContent = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <MainAppContent />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <MainAppContent />
+      </AuthProvider>
+    </ToastProvider>
   );
 }

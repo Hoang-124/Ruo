@@ -1,5 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { LogoutConfirmModal } from './LogoutConfirmModal';
 
 // Native Inline SVG Icons strictly adhering to project specifications
 const SvgIcons = {
@@ -73,6 +76,18 @@ const SvgIcons = {
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
       <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
     </svg>
+  ),
+  Eye: ({ size = 16, color = 'currentColor' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  EyeOff: ({ size = 16, color = 'currentColor' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
   )
 };
 
@@ -82,9 +97,15 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState('view'); // 'view', 'edit', 'password'
 
   // Edit profile state (UC-1.6)
-  const [phone, setPhone] = useState(currentUser.phone || '');
-  const [avatar, setAvatar] = useState(currentUser.avatar || 'TH');
+  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [avatar, setAvatar] = useState(currentUser?.avatar || 'TH');
   const [editStatus, setEditStatus] = useState({ loading: false, success: null, error: null });
+
+  // Sync state with currentUser when loaded or updated
+  useEffect(() => {
+    if (currentUser?.phone !== undefined) setPhone(currentUser?.phone || '');
+    if (currentUser?.avatar !== undefined) setAvatar(currentUser?.avatar || 'TH');
+  }, [currentUser?.phone, currentUser?.avatar]);
 
   // Change password state (UC-1.4)
   const [oldPassword, setOldPassword] = useState('');
@@ -93,8 +114,32 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
   const [logoutOtherDevices, setLogoutOtherDevices] = useState(true);
   const [passwordStatus, setPasswordStatus] = useState({ loading: false, success: null, error: null });
 
+  // Show/Hide password toggles & tactile shake feedback
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [shakePasswordForm, setShakePasswordForm] = useState(false);
+
+  const triggerShake = () => {
+    setShakePasswordForm(true);
+    setTimeout(() => setShakePasswordForm(false), 450);
+  };
+
   // Logout state (UC-1.2)
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { toast } = useToast();
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
+  // Close modal on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !isLogoutModalOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isLogoutModalOpen, onClose]);
 
   // Live password validation checklist
   const passwordCriteria = useMemo(() => {
@@ -119,80 +164,182 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
     const res = await updateProfile(phone, avatar);
     if (res.success) {
       setEditStatus({ loading: false, success: res.message, error: null });
+      toast.success(res.message || 'Cập nhật số điện thoại và avatar thành công!', 'Hồ Sơ Cá Nhân');
     } else {
       setEditStatus({ loading: false, success: null, error: res.message });
+      toast.error(res.message || 'Không thể cập nhật hồ sơ.');
     }
   };
 
   // Handle Change Password (UC-1.4)
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (!isPasswordValid) return;
+    setPasswordStatus({ loading: false, success: null, error: null });
 
-    setPasswordStatus({ loading: true, success: null, error: null });
-    const res = await changePassword(oldPassword, newPassword, logoutOtherDevices);
-    if (res.success) {
-      setPasswordStatus({ loading: false, success: res.message, error: null });
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } else {
-      setPasswordStatus({ loading: false, success: null, error: res.message });
+    // 1. Kiểm tra mật khẩu hiện tại
+    if (!oldPassword || !oldPassword.trim()) {
+      const msg = 'Vui lòng nhập mật khẩu hiện tại của bạn.';
+      setPasswordStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Thiếu Mật Khẩu Hiện Tại');
+      triggerShake();
+      return;
+    }
+
+    // 2. Kiểm tra mật khẩu mới
+    if (!newPassword || !newPassword.trim()) {
+      const msg = 'Vui lòng nhập mật khẩu mới.';
+      setPasswordStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Thiếu Mật Khẩu Mới');
+      triggerShake();
+      return;
+    }
+
+    // 3. Kiểm tra trường hợp mật khẩu mới trùng với mật khẩu cũ
+    if (oldPassword === newPassword) {
+      const msg = 'Mật khẩu mới không được trùng với mật khẩu hiện tại để đảm bảo an toàn.';
+      setPasswordStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Mật Khẩu Bị Trùng');
+      triggerShake();
+      return;
+    }
+
+    // 4. Kiểm tra các tiêu chuẩn bảo mật mật khẩu mới
+    if (!passwordCriteria.minLength) {
+      const msg = 'Mật khẩu mới phải có tối thiểu 8 ký tự.';
+      setPasswordStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Tiêu Chuẩn Bảo Mật');
+      triggerShake();
+      return;
+    }
+    if (!passwordCriteria.hasUpper) {
+      const msg = 'Mật khẩu mới phải chứa ít nhất 1 chữ in hoa (A-Z).';
+      setPasswordStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Tiêu Chuẩn Bảo Mật');
+      triggerShake();
+      return;
+    }
+    if (!passwordCriteria.hasLower) {
+      const msg = 'Mật khẩu mới phải chứa ít nhất 1 chữ thường (a-z).';
+      setPasswordStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Tiêu Chuẩn Bảo Mật');
+      triggerShake();
+      return;
+    }
+    if (!passwordCriteria.hasNumber) {
+      const msg = 'Mật khẩu mới phải chứa ít nhất 1 chữ số (0-9).';
+      setPasswordStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Tiêu Chuẩn Bảo Mật');
+      triggerShake();
+      return;
+    }
+    if (!passwordCriteria.hasSpecial) {
+      const msg = 'Mật khẩu mới phải chứa ít nhất 1 ký tự đặc biệt (@$!%*?&).';
+      setPasswordStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Tiêu Chuẩn Bảo Mật');
+      triggerShake();
+      return;
+    }
+
+    // 5. Kiểm tra xác nhận lại mật khẩu
+    if (!confirmPassword) {
+      const msg = 'Vui lòng nhập lại mật khẩu mới để xác nhận.';
+      setPasswordStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Chưa Xác Nhận Mật Khẩu');
+      triggerShake();
+      return;
+    }
+    if (!passwordCriteria.isMatching) {
+      const msg = 'Mật khẩu xác nhận không trùng khớp với mật khẩu mới.';
+      setPasswordStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Mật Khẩu Không Khớp');
+      triggerShake();
+      return;
+    }
+
+    // 6. Gửi API đổi mật khẩu
+    try {
+      setPasswordStatus({ loading: true, success: null, error: null });
+      const res = await changePassword(oldPassword, newPassword, logoutOtherDevices);
+      if (res && res.success) {
+        setPasswordStatus({ loading: false, success: res.message, error: null });
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        toast.success(
+          logoutOtherDevices
+            ? 'Đổi mật khẩu thành công! Các phiên đăng nhập trên thiết bị khác đã được thu hồi an toàn.'
+            : 'Đổi mật khẩu thành công!',
+          'Đổi Mật Khẩu'
+        );
+      } else {
+        const errorMsg = res?.message || 'Không thể cập nhật mật khẩu. Vui lòng thử lại.';
+        setPasswordStatus({ loading: false, success: null, error: errorMsg });
+        toast.error(errorMsg, 'Đổi Mật Khẩu Thất Bại');
+        triggerShake();
+      }
+    } catch (err) {
+      const errorMsg = 'Lỗi kết nối máy chủ: ' + err.message;
+      setPasswordStatus({ loading: false, success: null, error: errorMsg });
+      toast.error(errorMsg, 'Lỗi Hệ Thống');
+      triggerShake();
     }
   };
 
-  // Handle Logout (UC-1.2)
-  const handleLogout = async (allDevices = false) => {
-    setIsLoggingOut(true);
-    await logout(allDevices);
-    setIsLoggingOut(false);
+  // Handle Logout Confirmation (UC-1.2)
+  const handleConfirmLogout = async (allDevices = false) => {
+    setIsLogoutModalOpen(false);
     onClose();
+    toast.success(
+      allDevices
+        ? 'Đã thu hồi tất cả phiên và đăng xuất mọi thiết bị an toàn!'
+        : 'Đăng xuất thành công! Phiên làm việc đã kết thúc an toàn.',
+      'Đăng Xuất Thành Công'
+    );
+    try {
+      await logout(allDevices);
+    } catch (err) {
+      toast.error('Có lỗi xảy ra trong quá trình đăng xuất.');
+    }
   };
 
-  const reputeColor = currentUser.reputeScore >= 90 ? '#10B981' : currentUser.reputeScore >= 70 ? '#3B82F6' : currentUser.reputeScore >= 40 ? '#F59E0B' : '#EF4444';
-
-  return (
+  const modalContent = (
     <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-        background: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}
+      className="ruo-modal-backdrop-smooth"
       onClick={(e) => e.target === e.currentTarget && onClose()}
+      role="dialog"
+      aria-modal="true"
     >
       <div
-        className="card"
+        className="ruo-modal-card-smooth"
         style={{
           width: '100%',
           maxWidth: '680px',
-          maxHeight: '90vh',
+          maxHeight: 'min(88vh, 740px)',
+          margin: 'auto',
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--surface-panel)',
           border: '1px solid var(--hairline-medium)',
           borderRadius: 'var(--radius-xl)',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.5)',
+          boxShadow: '0 25px 70px rgba(0, 0, 0, 0.55)',
           overflow: 'hidden'
         }}
       >
+        {/* Accent Bar */}
+        <div
+          className="ruo-modal-accent-bar"
+          style={{ background: 'linear-gradient(90deg, #3B82F6 0%, #6366F1 50%, #10B981 100%)' }}
+        />
         {/* Modal Header */}
         <div
           style={{
-            padding: '20px 24px',
+            padding: '18px 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: '1px solid var(--hairline-soft)',
-            background: 'var(--surface-subtle)'
+            background: 'var(--surface-subtle)',
+            flexShrink: 0
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -242,7 +389,8 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
             borderBottom: '1px solid var(--hairline-soft)',
             padding: '0 24px',
             background: 'var(--surface-subtle)',
-            gap: '8px'
+            gap: '8px',
+            flexShrink: 0
           }}
         >
           <button
@@ -251,7 +399,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
             style={{ padding: '12px 16px', borderRadius: '0', borderBottom: activeTab === 'view' ? '2px solid var(--laser-cyan)' : 'none' }}
           >
             <SvgIcons.User size={14} />
-            <span>Hồ Sơ & Điểm Uy Tín (UC-1.5)</span>
+            <span>Thông Tin Cá Nhân</span>
           </button>
           <button
             onClick={() => setActiveTab('edit')}
@@ -259,7 +407,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
             style={{ padding: '12px 16px', borderRadius: '0', borderBottom: activeTab === 'edit' ? '2px solid var(--laser-cyan)' : 'none' }}
           >
             <SvgIcons.Edit size={14} />
-            <span>Cập Nhật Liên Hệ (UC-1.6)</span>
+            <span>Cập Nhật Liên Hệ</span>
           </button>
           <button
             onClick={() => setActiveTab('password')}
@@ -267,102 +415,65 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
             style={{ padding: '12px 16px', borderRadius: '0', borderBottom: activeTab === 'password' ? '2px solid var(--laser-cyan)' : 'none' }}
           >
             <SvgIcons.Lock size={14} />
-            <span>Đổi Mật Khẩu (UC-1.4)</span>
+            <span>Đổi Mật Khẩu</span>
           </button>
         </div>
 
         {/* Modal Scrollable Body */}
-        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-          {/* TAB 1: PROFILE VIEW & REPUTE SCORE (UC-1.5) */}
+        <div style={{ padding: '24px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+          {/* TAB 1: PROFILE VIEW */}
           {activeTab === 'view' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Repute Score Card */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {/* Account Status & Privilege Banner */}
               <div
                 style={{
                   background: 'var(--surface-sunken)',
                   border: '1px solid var(--hairline-medium)',
                   borderRadius: 'var(--radius-lg)',
-                  padding: '20px',
+                  padding: '16px 20px',
                   display: 'flex',
-                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: '14px'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ color: reputeColor }}>
-                      <SvgIcons.Award size={22} />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)' }}>
-                        Điểm Uy Tín Mượn Phòng (Repute Score)
-                      </span>
-                      <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-                        Hạng thành viên: <strong style={{ color: reputeColor }}>{currentUser.reputeTier}</strong>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '28px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: reputeColor }}>
-                      {currentUser.reputeScore}
-                    </span>
-                    <span style={{ fontSize: '14px', color: 'var(--ink-muted)' }}>/100</span>
-                  </div>
-                </div>
-
-                {/* Progress bar */}
-                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div
                     style={{
-                      width: `${currentUser.reputeScore}%`,
-                      height: '100%',
-                      background: `linear-gradient(90deg, #3B82F6 0%, ${reputeColor} 100%)`,
-                      transition: 'width 0.6s ease'
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
+                      background: 'rgba(59, 130, 246, 0.12)',
+                      color: 'var(--laser-cyan)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
-                  />
-                </div>
-
-                {/* Privileges & Rules Notice */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '10px',
-                    fontSize: '12px',
-                    color: 'var(--ink-secondary)',
-                    background: 'var(--surface-panel)',
-                    padding: '12px 14px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--hairline-soft)'
-                  }}
-                >
-                  <SvgIcons.Shield size={16} color="var(--laser-cyan)" />
+                  >
+                    <SvgIcons.Shield size={20} />
+                  </div>
                   <div>
-                    <strong style={{ color: 'var(--ink-pure)', display: 'block', marginBottom: '3px' }}>
-                      Quyền hạn đặt phòng hiện tại:
-                    </strong>
-                    {currentUser.bookingPrivilege}
+                    <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink-pure)', display: 'block' }}>
+                      Tài Khoản Xác Thực Nội Bộ (SSO)
+                    </span>
+                    <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
+                      Thẩm quyền hệ thống: <strong style={{ color: 'var(--laser-cyan)' }}>{currentUser.roleTitle || 'Quản lý CSVC'}</strong>
+                    </span>
                   </div>
                 </div>
-
-                <div
+                <span
                   style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '10px',
-                    fontSize: '11.5px',
-                    color: '#F59E0B',
-                    background: 'rgba(245, 158, 11, 0.08)',
-                    padding: '10px 12px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid rgba(245, 158, 11, 0.2)'
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: '#10B981',
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-full)'
                   }}
                 >
-                  <SvgIcons.AlertTriangle size={15} color="#F59E0B" />
-                  <span>
-                    <strong>Cơ chế tự động:</strong> No-Show (quá 15 phút không quét mã QR Check-in) sẽ bị trừ 10 điểm. Khi điểm uy tín ≤ 30, tài khoản sẽ tự động bị đình chỉ quyền đặt phòng.
-                  </span>
-                </div>
+                  ĐANG HOẠT ĐỘNG
+                </span>
               </div>
 
               {/* Identity & Academic Info Table */}
@@ -378,7 +489,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                     <SvgIcons.User size={13} />
                     <span>MÃ ĐỊNH DANH (MSSV/CB)</span>
                   </div>
-                  <strong style={{ fontSize: '14px', color: 'var(--ink-pure)', fontFamily: 'var(--font-mono)' }}>
+                  <strong style={{ fontSize: '14px', color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)' }}>
                     {currentUser.code}
                   </strong>
                 </div>
@@ -410,6 +521,26 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                   </div>
                   <strong style={{ fontSize: '13px', color: 'var(--ink-pure)' }}>
                     {currentUser.phone || 'Chưa cập nhật'}
+                  </strong>
+                </div>
+
+                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                    <SvgIcons.User size={13} />
+                    <span>LỚP HỌC VỤ / BỘ MÔN</span>
+                  </div>
+                  <strong style={{ fontSize: '13px', color: 'var(--ink-pure)' }}>
+                    {currentUser.className || 'K67-CNTT-02'}
+                  </strong>
+                </div>
+
+                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                    <SvgIcons.Shield size={13} />
+                    <span>VAI TRÒ & PHÂN QUYỀN</span>
+                  </div>
+                  <strong style={{ fontSize: '13px', color: 'var(--laser-cyan)' }}>
+                    {currentUser.roleTitle || 'Sinh viên'}
                   </strong>
                 </div>
               </div>
@@ -538,7 +669,11 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
 
           {/* TAB 3: CHANGE PASSWORD (UC-1.4) */}
           {activeTab === 'password' && (
-            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <form
+              onSubmit={handleChangePassword}
+              className={shakePasswordForm ? 'ruo-shake' : ''}
+              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+            >
               {passwordStatus.success && (
                 <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-md)', color: '#10B981', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <SvgIcons.Check size={16} />
@@ -552,40 +687,134 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                 </div>
               )}
 
+              {/* Field 1: Mật khẩu hiện tại */}
               <div className="form-group">
-                <label className="form-label">Mật khẩu hiện tại</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                />
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Mật khẩu hiện tại *</span>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)', fontWeight: 400 }}>Mật khẩu đang sử dụng</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showOldPassword ? 'text' : 'password'}
+                    className="form-control"
+                    style={{ paddingRight: '40px' }}
+                    value={oldPassword}
+                    onChange={(e) => {
+                      setOldPassword(e.target.value);
+                      if (passwordStatus.error) setPasswordStatus(prev => ({ ...prev, error: null }));
+                    }}
+                    placeholder="Nhập mật khẩu hiện tại..."
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOldPassword(!showOldPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--ink-muted)',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title={showOldPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showOldPassword ? <SvgIcons.EyeOff size={16} /> : <SvgIcons.Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
+              {/* Field 2: Mật khẩu mới */}
               <div className="form-group">
-                <label className="form-label">Mật khẩu mới</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Mật khẩu mới an toàn"
-                  required
-                />
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Mật khẩu mới *</span>
+                  {oldPassword && newPassword && oldPassword === newPassword && (
+                    <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: 600 }}>
+                      ⚠️ Mật khẩu mới đang trùng mật khẩu hiện tại
+                    </span>
+                  )}
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    className="form-control"
+                    style={{
+                      paddingRight: '40px',
+                      borderColor: (oldPassword && newPassword && oldPassword === newPassword) ? '#EF4444' : undefined
+                    }}
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      if (passwordStatus.error) setPasswordStatus(prev => ({ ...prev, error: null }));
+                    }}
+                    placeholder="Mật khẩu mới an toàn..."
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--ink-muted)',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title={showNewPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showNewPassword ? <SvgIcons.EyeOff size={16} /> : <SvgIcons.Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
+              {/* Field 3: Xác nhận mật khẩu mới */}
               <div className="form-group">
-                <label className="form-label">Xác nhận mật khẩu mới</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Nhập lại mật khẩu mới"
-                  required
-                />
+                <label className="form-label">Xác nhận mật khẩu mới *</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    className="form-control"
+                    style={{
+                      paddingRight: '40px',
+                      borderColor: (confirmPassword && !passwordCriteria.isMatching) ? '#EF4444' : undefined
+                    }}
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (passwordStatus.error) setPasswordStatus(prev => ({ ...prev, error: null }));
+                    }}
+                    placeholder="Nhập lại chính xác mật khẩu mới..."
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--ink-muted)',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showConfirmPassword ? <SvgIcons.EyeOff size={16} /> : <SvgIcons.Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               {/* Password Policy Criteria Checklist */}
@@ -638,18 +867,36 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                   type="checkbox"
                   checked={logoutOtherDevices}
                   onChange={(e) => setLogoutOtherDevices(e.target.checked)}
-                  style={{ width: '16px', height: '16px', accentColor: 'var(--laser-cyan)' }}
+                  style={{ width: '16px', height: '16px', accentColor: 'var(--laser-cyan)', cursor: 'pointer' }}
                 />
                 <span>Thu hồi và đăng xuất khỏi tất cả các phiên làm việc trên thiết bị khác</span>
               </label>
 
+              {/* Action Button: Always responsive, never silent */}
               <button
                 type="submit"
-                disabled={!isPasswordValid || passwordStatus.loading}
+                disabled={passwordStatus.loading}
                 className="laser-btn laser-btn-primary"
-                style={{ alignSelf: 'flex-start', padding: '10px 24px', fontSize: '13px' }}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '11px 26px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  opacity: passwordStatus.loading ? 0.75 : 1,
+                  cursor: passwordStatus.loading ? 'wait' : 'pointer'
+                }}
               >
-                {passwordStatus.loading ? 'Đang cập nhật mật khẩu...' : 'Cập Nhật Mật Khẩu'}
+                {passwordStatus.loading ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'ruoSpin 1s linear infinite' }}>
+                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                      <path d="M12 2a10 10 0 0 1 10 10" />
+                    </svg>
+                    <span>Đang cập nhật mật khẩu...</span>
+                  </span>
+                ) : (
+                  'Cập Nhật Mật Khẩu'
+                )}
               </button>
             </form>
           )}
@@ -668,25 +915,14 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
-              onClick={() => handleLogout(false)}
-              disabled={isLoggingOut}
+              type="button"
+              onClick={() => setIsLogoutModalOpen(true)}
               className="laser-btn laser-btn-ghost"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--ink-secondary)' }}
-              title="Đăng xuất khỏi thiết bị hiện tại"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#EF4444' }}
+              title="Đăng xuất bảo mật khỏi hệ thống Ruo CSVC"
             >
-              <SvgIcons.LogOut size={14} />
-              <span>Đăng xuất thiết bị này</span>
-            </button>
-
-            <button
-              onClick={() => handleLogout(true)}
-              disabled={isLoggingOut}
-              className="laser-btn laser-btn-ghost"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#EF4444' }}
-              title="Đăng xuất khỏi tất cả thiết bị (revoke all sessions)"
-            >
-              <SvgIcons.Shield size={14} color="#EF4444" />
-              <span>Đăng xuất tất cả thiết bị</span>
+              <SvgIcons.LogOut size={14} color="#EF4444" />
+              <span>Đăng Xuất Khỏi Hệ Thống</span>
             </button>
           </div>
 
@@ -699,6 +935,16 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
           </button>
         </div>
       </div>
+
+      {/* Global Logout Confirmation Modal (UC-1.2) */}
+      <LogoutConfirmModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+        userName={currentUser?.name || 'Người dùng'}
+      />
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

@@ -1,21 +1,21 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { User, UserSession, PasswordReset, Department } from '../models/User.js';
+import { User, PasswordReset } from '../models/User.js';
+import { RefreshToken } from '../models/RefreshToken.js';
 import { AuditLog } from '../models/AuditLog.js';
-import { USER_STATUSES } from '../config/constants.js';
+import { USER_STATUSES, USER_ROLES } from '../config/constants.js';
 import { sendPasswordResetEmail, generateSixDigitOtp } from '../utils/mailer.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'ruo_super_secret_jwt_key_2026_production_grade_university';
-const ACCESS_TOKEN_EXPIRY = '15m'; // UC-1.1 requirement: 15 minutes
-const REFRESH_TOKEN_EXPIRY = '7d';  // UC-1.1 requirement: 7 days
+const ACCESS_TOKEN_EXPIRY = '15m'; // UC-1.1: 15 minutes
+const REFRESH_TOKEN_EXPIRY = '7d';  // UC-1.1: 7 days
 
-// Helper: Hash token for storage & revocation checks
+// Helper: SHA-256 hash for secure token storage
 const hashToken = (token) => {
   return crypto.createHash('sha256').update(token).digest('hex');
 };
 
-// Password policy regex: >= 8 chars, at least 1 uppercase, 1 lowercase, 1 digit, 1 special char
+// Password policy regex: >= 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special char
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d\s]).{8,}$/;
 
 // Phone number regex (Vietnam 10-digit mobile)
@@ -23,11 +23,13 @@ const PHONE_REGEX = /^(84|0)(3|5|7|8|9)[0-9]{8}$/;
 
 /**
  * UC-1.1: Login
- * Authenticate with email or employeeCode + password
- * Issues 15-minute Access Token and 7-day Refresh Token
- * Records IP, user-agent, and creates session in MongoDB
+ * Authenticate with email or employee code + password
+ * Issues 15-minute Access Token and 7-day Refresh Token with token rotation
  */
 export const login = async (req, res) => {
+  const jwtSecret = process.env.JWT_SECRET || 'ruo_super_secret_jwt_key_2026_production_grade_university';
+  const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || jwtSecret;
+
   try {
     const { email, employeeCode, identifier, password } = req.body;
     const loginInput = identifier || email || employeeCode;
@@ -35,16 +37,16 @@ export const login = async (req, res) => {
     if (!loginInput || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng cung cấp mã sinh viên/cán bộ hoặc email cùng mật khẩu.'
+        message: 'Vui lòng cung cấp mã nhân viên hoặc email cùng mật khẩu.'
       });
     }
 
     const trimmedInput = String(loginInput).trim();
     const query = trimmedInput.includes('@')
       ? { email: trimmedInput.toLowerCase() }
-      : { employeeCode: trimmedInput.toUpperCase() };
+      : { code: trimmedInput.toUpperCase() };
 
-    const user = await User.findOne(query).populate('department');
+    const user = await User.findOne(query);
 
     if (!user) {
       return res.status(401).json({
@@ -53,60 +55,106 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check locked status (e.g. critically low repute score or manual lock)
     if (user.status === USER_STATUSES.LOCKED) {
       return res.status(403).json({
         success: false,
-        message: 'Tài khoản của bạn đã bị khóa do vi phạm chính sách hoặc điểm uy tín quá thấp.'
+        message: 'Tài khoản của bạn đã bị khóa bởi lệnh quản trị.'
       });
     }
 
-    const isMatch = (password === 'Ruo@2026') || (await user.comparePassword(password));
-    if (!isMatch) {
-      return res.status(401).json({
+    if (user.status === USER_STATUSES.PENDING_APPROVAL) {
+      const roleText = user.requested_role === USER_ROLES.FACILITY_MANAGER ? 'Quản Lý CSVC' : user.requested_role === USER_ROLES.TECHNICIAN ? 'Kỹ Thuật Viên' : 'Chức vụ chuyên trách';
+      return res.status(403).json({
         success: false,
-        message: 'Thông tin đăng nhập hoặc mật khẩu không chính xác.'
+        isPending: true,
+        message: `Hồ sơ đăng ký chức vụ [${roleText}] của bạn đang chờ Ban Quản trị (Admin) phê duyệt. Vui lòng liên hệ Admin để được kích hoạt tài khoản.`
       });
     }
+
+    if (user.isLocked()) {
+      const remainingMinutes = Math.max(1, Math.ceil((user.lock_until.getTime() - Date.now()) / (60 * 1000)));
+      return res.status(423).json({
+        success: false,
+        isLocked: true,
+        remainingMinutes,
+        message: `Tài khoản đã bị tạm khóa 15 phút do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau ${remainingMinutes} phút.`
+      });
+    }
+
+    const ipAddress = req.ip || req.socket.remoteAddress || '127.0.0.1';
+    const isMatch = await user.comparePassword(password);
+
+    if (!isMatch) {
+      const lockResult = await user.handleFailedLogin();
+
+      if (lockResult.isLocked) {
+        await AuditLog.logAction({
+          user_id: user._id,
+          user_display: `${user.full_name} (${user.code})`,
+          action: 'USER_ACCOUNT_TEMP_LOCKED',
+          target_table: 'users',
+          entity_id: user._id.toString(),
+          ip_address: ipAddress,
+          new_value: {
+            reason: 'FAILED_LOGIN_EXCEEDED_5_ATTEMPTS',
+            lockDurationMinutes: 15,
+            lockUntil: user.lock_until
+          }
+        });
+
+        return res.status(423).json({
+          success: false,
+          isLocked: true,
+          remainingMinutes: 15,
+          message: 'Tài khoản của bạn đã bị tạm khóa 15 phút do nhập sai mật khẩu 5 lần liên tiếp.'
+        });
+      }
+
+      return res.status(401).json({
+        success: false,
+        isLocked: false,
+        attemptsLeft: lockResult.attemptsLeft,
+        failedAttempts: lockResult.failedAttempts,
+        message: `Mật khẩu không chính xác. Bạn còn ${lockResult.attemptsLeft} lần thử trước khi tài khoản bị khóa tạm thời 15 phút.`
+      });
+    }
+
+    // Reset failed counter on successful login
+    await user.resetFailedLogin(ipAddress);
 
     // Generate JWT Access Token (15m) and Refresh Token (7d)
     const accessToken = jwt.sign(
-      { id: user._id, userId: user._id, role: user.role, employeeCode: user.employeeCode, jti: crypto.randomUUID() },
-      JWT_SECRET,
+      { id: user._id, userId: user._id, role: user.role, code: user.code, jti: crypto.randomUUID() },
+      jwtSecret,
       { expiresIn: ACCESS_TOKEN_EXPIRY }
     );
 
     const refreshToken = jwt.sign(
       { id: user._id, userId: user._id, role: user.role, type: 'refresh', jti: crypto.randomUUID() },
-      JWT_SECRET,
+      jwtRefreshSecret,
       { expiresIn: REFRESH_TOKEN_EXPIRY }
     );
 
-    // Create session in UserSession
-    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || '127.0.0.1';
-    const userAgent = req.headers['user-agent'] || 'Unknown Browser';
-    const tokenHash = hashToken(accessToken);
-    const refreshTokenHash = hashToken(refreshToken);
+    const hashedRefreshToken = hashToken(refreshToken);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await UserSession.create({
-      tokenHash,
-      refreshTokenHash,
-      user: user._id,
-      ipAddress,
-      userAgent,
-      isRevoked: false,
-      expiresAt
+    await RefreshToken.create({
+      user_id: user._id,
+      token: hashedRefreshToken,
+      device_info: req.headers['user-agent'] || 'Unknown Browser',
+      ip_address: ipAddress,
+      expires_at: expiresAt,
+      is_revoked: false
     });
 
-    // Log action to AuditLog
+    // Record audit log
     await AuditLog.logAction({
-      user: user._id,
-      userDisplay: `${user.fullName} (${user.employeeCode})`,
+      user_id: user._id,
+      user_display: `${user.full_name} (${user.code})`,
       action: 'USER_LOGIN',
-      entityType: 'User',
-      entityId: user._id.toString(),
-      ipAddress
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: ipAddress
     });
 
     res.json({
@@ -116,16 +164,19 @@ export const login = async (req, res) => {
       expiresIn: 15 * 60, // 900 seconds
       user: {
         id: user._id,
-        employeeCode: user.employeeCode,
-        fullName: user.fullName,
+        _id: user._id,
+        code: user.code,
+        employeeCode: user.code,
+        full_name: user.full_name,
+        fullName: user.full_name,
         email: user.email,
         role: user.role,
-        department: user.department ? user.department.name : null,
-        className: user.className,
-        phone: user.phone,
-        avatar: user.avatar,
-        reputeScore: user.reputeScore,
-        status: user.status
+        department: user.department,
+        phone: user.phone || '',
+        avatar: user.avatar || '',
+        status: user.status,
+        force_change_pw: user.force_change_pw,
+        reputeScore: 100
       }
     });
   } catch (error) {
@@ -133,45 +184,60 @@ export const login = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Đã xảy ra lỗi hệ thống trong quá trình xử lý đăng nhập.',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
 /**
- * Register: New User Account Registration
- * Allows new students or lecturers to register for an institutional account
- * Checks unique email and employeeCode, creates session, issues JWT tokens
+ * UC-1.0: Register
+ * Public registration for university staff, lecturers, and technicians
+ * Issues 15-minute Access Token and 7-day Refresh Token upon success
  */
 export const register = async (req, res) => {
+  const jwtSecret = process.env.JWT_SECRET || 'ruo_super_secret_jwt_key_2026_production_grade_university';
+  const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || jwtSecret;
+
   try {
-    const { fullName, email, employeeCode, password, role, departmentName, phone, className } = req.body;
+    const { fullName, email, employeeCode, password, role, department, phone } = req.body;
 
     if (!fullName || !email || !employeeCode || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng điền đầy đủ họ tên, email trường, MSSV/mã cán bộ và mật khẩu.'
+        message: 'Vui lòng cung cấp đầy đủ họ tên, email trường, mã cán bộ và mật khẩu.'
       });
     }
 
     const trimmedEmail = String(email).trim().toLowerCase();
     const trimmedCode = String(employeeCode).trim().toUpperCase();
 
-    // Check duplicate email
-    const existingEmail = await User.findOne({ email: trimmedEmail });
-    if (existingEmail) {
-      return res.status(409).json({
-        success: false,
-        message: 'Email trường này đã được đăng ký trong hệ thống.'
-      });
-    }
+    // Check duplicate email or employeeCode
+    const existing = await User.findOne({
+      $or: [{ email: trimmedEmail }, { code: trimmedCode }]
+    });
 
-    // Check duplicate employeeCode
-    const existingCode = await User.findOne({ employeeCode: trimmedCode });
-    if (existingCode) {
+    if (existing) {
+      const isEmailDup = existing.email.toLowerCase() === trimmedEmail;
+      const isCodeDup = existing.code.toUpperCase() === trimmedCode;
+
+      let message = 'Thông tin đăng ký đã tồn tại trong hệ thống.';
+      let duplicateField = 'both';
+      if (isEmailDup && isCodeDup) {
+        message = 'Cả email và mã cán bộ này đều đã tồn tại trong hệ thống.';
+        duplicateField = 'both';
+      } else if (isEmailDup) {
+        message = 'Email trường này đã tồn tại trong hệ thống. Vui lòng đăng nhập hoặc sử dụng email khác.';
+        duplicateField = 'email';
+      } else if (isCodeDup) {
+        message = 'Mã cán bộ / sinh viên này đã tồn tại trong hệ thống.';
+        duplicateField = 'employeeCode';
+      }
+
       return res.status(409).json({
         success: false,
-        message: 'Mã số sinh viên hoặc mã cán bộ này đã tồn tại trong hệ thống.'
+        errorType: isEmailDup ? 'DUPLICATE_EMAIL' : 'DUPLICATE_CODE',
+        duplicateField,
+        message
       });
     }
 
@@ -183,95 +249,169 @@ export const register = async (req, res) => {
       });
     }
 
-    // Role security: default to student, only allow 'student' or 'lecturer' self-registration
-    const allowedRoles = ['student', 'lecturer'];
-    const chosenRole = allowedRoles.includes(role) ? role : 'student';
+    // Approval Workflow: Technicians and Facility Managers require Admin approval
+    const requestedRole = (role === USER_ROLES.TECHNICIAN || role === USER_ROLES.FACILITY_MANAGER)
+      ? role
+      : USER_ROLES.LECTURER;
+    const isPendingApproval = requestedRole !== USER_ROLES.LECTURER;
+    const initialStatus = isPendingApproval ? USER_STATUSES.PENDING_APPROVAL : USER_STATUSES.ACTIVE;
+    const initialRole = USER_ROLES.LECTURER;
+    const { otp, skipOtp } = req.body;
 
-    // Find or link department if provided
-    let departmentId = null;
-    if (departmentName) {
-      const dept = await Department.findOne({
-        $or: [
-          { name: new RegExp(departmentName, 'i') },
-          { code: new RegExp(departmentName, 'i') }
-        ]
+    // Email OTP Verification flow for public registration (only when requireOtp is explicitly requested or configured)
+    if (!otp && !skipOtp && (req.body.requireOtp === true || process.env.REQUIRE_REGISTER_OTP === 'true')) {
+      const rawOtp = generateSixDigitOtp();
+      const salt = await bcrypt.genSalt(10);
+      const otpHash = await bcrypt.hash(rawOtp, salt);
+
+      await PasswordReset.updateMany(
+        { email: trimmedEmail, purpose: 'register', is_used: false },
+        { is_used: true }
+      );
+
+      await PasswordReset.create({
+        email: trimmedEmail,
+        otp_hash: otpHash,
+        purpose: 'register',
+        attempts: 0,
+        expires_at: new Date(Date.now() + 15 * 60 * 1000),
+        is_used: false
       });
-      if (dept) departmentId = dept._id;
+
+      await sendPasswordResetEmail(trimmedEmail, rawOtp, 'register');
+
+      return res.status(200).json({
+        success: true,
+        requireOtp: true,
+        email: trimmedEmail,
+        message: 'Mã xác thực email OTP 6 số đã được gửi tới hộp thư của bạn. Vui lòng xác thực để hoàn tất tạo tài khoản.'
+      });
     }
 
-    // Create user record
+    if (otp) {
+      const resetRecord = await PasswordReset.findOne({
+        email: trimmedEmail,
+        purpose: 'register',
+        is_used: false,
+        expires_at: { $gt: new Date() }
+      }).sort({ _id: -1 });
+
+      if (!resetRecord) {
+        return res.status(400).json({
+          success: false,
+          message: 'Mã xác thực email không hợp lệ hoặc đã hết hạn hiệu lực (15 phút).'
+        });
+      }
+
+      const isMatch = await bcrypt.compare(String(otp).trim(), resetRecord.otp_hash || resetRecord.otpHash);
+      if (!isMatch) {
+        resetRecord.attempts = (resetRecord.attempts || 0) + 1;
+        if (resetRecord.attempts >= 5) resetRecord.is_used = true;
+        await resetRecord.save();
+        return res.status(400).json({
+          success: false,
+          message: 'Mã xác thực email không chính xác.'
+        });
+      }
+
+      resetRecord.is_used = true;
+      await resetRecord.save();
+    }
+
     const newUser = await User.create({
-      fullName: String(fullName).trim(),
+      code: trimmedCode,
+      full_name: String(fullName).trim(),
       email: trimmedEmail,
-      employeeCode: trimmedCode,
-      passwordHash: password, // Mongoose pre-save hook will bcrypt hash this
-      role: chosenRole,
-      department: departmentId,
+      password_hash: password, // Mongoose pre-save hook will bcrypt hash this
+      role: initialRole,
+      requested_role: requestedRole,
+      department: department || 'Khoa Công Nghệ Thông Tin',
       phone: phone ? String(phone).trim() : '',
-      className: className ? String(className).trim() : '',
-      reputeScore: 100, // Top initial reputation
-      status: USER_STATUSES.ACTIVE,
+      status: initialStatus,
       avatar: fullName.slice(0, 2).toUpperCase()
     });
 
-    if (departmentId) {
-      await newUser.populate('department');
+    // If role requires approval, do not issue tokens yet
+    if (isPendingApproval) {
+      const roleName = requestedRole === USER_ROLES.FACILITY_MANAGER ? 'Quản Lý CSVC' : 'Kỹ Thuật Viên';
+      await AuditLog.logAction({
+        user_id: newUser._id,
+        user_display: `${newUser.full_name} (${newUser.code})`,
+        action: 'USER_REGISTER_PENDING',
+        target_table: 'users',
+        entity_id: newUser._id.toString(),
+        ip_address: req.ip || '127.0.0.1',
+        new_value: { requested_role: requestedRole, status: USER_STATUSES.PENDING_APPROVAL }
+      });
+
+      return res.status(201).json({
+        success: true,
+        isPending: true,
+        message: `Đăng ký thành công! Hồ sơ đăng ký chức vụ [${roleName}] của bạn đã được ghi nhận ở trạng thái CHỜ DUYỆT. Vui lòng đợi Ban Quản trị (Admin) phê duyệt kích hoạt tài khoản.`,
+        user: {
+          id: newUser._id,
+          code: newUser.code,
+          fullName: newUser.full_name,
+          email: newUser.email,
+          role: newUser.role,
+          requestedRole: newUser.requested_role,
+          status: newUser.status
+        }
+      });
     }
 
-    // Generate JWT access token & refresh token
+    // Generate JWT access token (15m) & refresh token (7d)
     const accessToken = jwt.sign(
-      { id: newUser._id, userId: newUser._id, role: newUser.role, employeeCode: newUser.employeeCode, jti: crypto.randomUUID() },
-      JWT_SECRET,
+      { id: newUser._id, userId: newUser._id, role: newUser.role, code: newUser.code, jti: crypto.randomUUID() },
+      jwtSecret,
       { expiresIn: ACCESS_TOKEN_EXPIRY }
     );
 
     const refreshToken = jwt.sign(
       { id: newUser._id, userId: newUser._id, role: newUser.role, type: 'refresh', jti: crypto.randomUUID() },
-      JWT_SECRET,
+      jwtRefreshSecret,
       { expiresIn: REFRESH_TOKEN_EXPIRY }
     );
 
-    const ipAddress = req.ip || req.connection?.remoteAddress || '127.0.0.1';
-    const userAgent = req.headers['user-agent'] || 'Unknown Client';
+    const ipAddress = req.ip || req.socket.remoteAddress || '127.0.0.1';
+    const hashedRefreshToken = hashToken(refreshToken);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await UserSession.create({
-      user: newUser._id,
-      tokenHash: hashToken(accessToken),
-      refreshTokenHash: hashToken(refreshToken),
-      ipAddress,
-      userAgent,
-      isRevoked: false,
-      expiresAt
+    await RefreshToken.create({
+      user_id: newUser._id,
+      token: hashedRefreshToken,
+      device_info: req.headers['user-agent'] || 'Unknown Browser',
+      ip_address: ipAddress,
+      expires_at: expiresAt,
+      is_revoked: false
     });
 
-    // Audit log
+    // Record audit log
     await AuditLog.logAction({
-      user: newUser._id,
-      userDisplay: `${newUser.fullName} (${newUser.employeeCode})`,
+      user_id: newUser._id,
+      user_display: `${newUser.full_name} (${newUser.code})`,
       action: 'USER_REGISTER',
-      entityType: 'User',
-      entityId: newUser._id.toString(),
-      ipAddress
+      target_table: 'users',
+      entity_id: newUser._id.toString(),
+      ip_address: ipAddress,
+      new_value: { code: newUser.code, email: newUser.email, role: newUser.role }
     });
 
     return res.status(201).json({
       success: true,
-      message: 'Đăng ký tài khoản thành công! Chào mừng bạn gia nhập hệ thống Ruo UFMS.',
+      message: 'Đăng ký tài khoản thành công! Chào mừng bạn gia nhập hệ thống Ruo UEMS.',
       token: accessToken,
       refreshToken,
       expiresIn: 15 * 60,
       user: {
         id: newUser._id,
-        employeeCode: newUser.employeeCode,
-        fullName: newUser.fullName,
+        code: newUser.code,
+        full_name: newUser.full_name,
         email: newUser.email,
         role: newUser.role,
-        department: newUser.department ? newUser.department.name : null,
-        className: newUser.className,
-        phone: newUser.phone,
+        department: newUser.department,
+        phone: newUser.phone || '',
         avatar: newUser.avatar,
-        reputeScore: newUser.reputeScore,
         status: newUser.status
       }
     });
@@ -279,81 +419,69 @@ export const register = async (req, res) => {
     console.error('[authController:register] Error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Đã xảy ra lỗi hệ thống trong quá trình xử lý đăng ký tài khoản.',
-      error: error.message
+      message: 'Đã xảy ra lỗi hệ thống trong quá trình đăng ký tài khoản.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
 /**
- * UC-1.2: Logout
- * Revoke current JWT token session or all sessions if allDevices is true
+ * Check duplicate email or code in real-time
  */
-export const logout = async (req, res) => {
+export const checkDuplicate = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    const { allDevices } = req.body;
+    const { email, code } = req.query;
+    const result = {
+      success: true,
+      emailExists: false,
+      codeExists: false,
+      message: ''
+    };
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      const tokenHash = hashToken(token);
-
-      if (allDevices) {
-        // Revoke all sessions for this user across all devices
-        await UserSession.updateMany(
-          { user: req.user._id, isRevoked: false },
-          { isRevoked: true }
-        );
-      } else {
-        // Revoke current session only
-        await UserSession.updateOne(
-          { tokenHash },
-          { isRevoked: true }
-        );
+    if (email) {
+      const cleanEmail = String(email).trim().toLowerCase();
+      const existingEmail = await User.findOne({ email: cleanEmail });
+      if (existingEmail) {
+        result.emailExists = true;
+        result.message = 'Email này đã tồn tại trong hệ thống. Vui lòng đăng nhập hoặc sử dụng email khác.';
       }
     }
 
-    // Log logout to AuditLog
-    await AuditLog.logAction({
-      user: req.user._id,
-      userDisplay: req.user.fullName,
-      action: 'USER_LOGOUT',
-      entityType: 'User',
-      entityId: req.user._id.toString(),
-      ipAddress: req.ip
-    });
+    if (code) {
+      const cleanCode = String(code).trim().toUpperCase();
+      const existingCode = await User.findOne({ code: cleanCode });
+      if (existingCode) {
+        result.codeExists = true;
+        result.message = result.message
+          ? `${result.message} Mã cán bộ này cũng đã tồn tại.`
+          : 'Mã cán bộ / MSSV này đã tồn tại trong hệ thống.';
+      }
+    }
 
-    res.json({
-      success: true,
-      message: allDevices 
-        ? 'Đăng xuất thành công khỏi tất cả các thiết bị.' 
-        : 'Đăng xuất thành công. Phiên làm việc đã kết thúc.'
-    });
+    return res.json(result);
   } catch (error) {
-    console.error('[authController:logout] Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Không thể xử lý yêu cầu đăng xuất.',
-      error: error.message
-    });
+    return res.status(500).json({ success: false, message: 'Lỗi kiểm tra trùng lặp thông tin.' });
   }
 };
 
 /**
- * Refresh Token endpoint: Issue new 15m Access Token using 7d Refresh Token
+ * UC-1.1b: Refresh Token with Automatic Token Rotation
  */
 export const refreshToken = async (req, res) => {
+  const jwtSecret = process.env.JWT_SECRET;
+  const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || jwtSecret;
+
   try {
     const { refreshToken: tokenInput } = req.body;
 
     if (!tokenInput) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng cung cấp Refresh Token hợp lệ.'
+        message: 'Vui lòng cung cấp Refresh Token.'
       });
     }
 
-    const decoded = jwt.verify(tokenInput, JWT_SECRET);
+    const decoded = jwt.verify(tokenInput, jwtRefreshSecret);
     if (decoded.type !== 'refresh') {
       return res.status(401).json({
         success: false,
@@ -361,17 +489,17 @@ export const refreshToken = async (req, res) => {
       });
     }
 
-    const refreshTokenHash = hashToken(tokenInput);
-    const session = await UserSession.findOne({ refreshTokenHash, isRevoked: false });
+    const hashedToken = hashToken(tokenInput);
+    const tokenRecord = await RefreshToken.findOne({ token: hashedToken, is_revoked: false });
 
-    if (!session) {
+    if (!tokenRecord) {
       return res.status(401).json({
         success: false,
-        message: 'Phiên làm việc của Refresh Token không tồn tại hoặc đã bị thu hồi.'
+        message: 'Refresh Token không tồn tại hoặc đã bị thu hồi.'
       });
     }
 
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id || decoded.userId);
     if (!user || user.status === USER_STATUSES.LOCKED) {
       return res.status(403).json({
         success: false,
@@ -379,20 +507,36 @@ export const refreshToken = async (req, res) => {
       });
     }
 
-    // Issue new 15-minute Access Token
+    // Revoke old refresh token (token rotation)
+    tokenRecord.is_revoked = true;
+    await tokenRecord.save();
+
+    // Issue new Access Token (15m) and new Refresh Token (7d)
     const newAccessToken = jwt.sign(
-      { id: user._id, userId: user._id, role: user.role, employeeCode: user.employeeCode, jti: crypto.randomUUID() },
-      JWT_SECRET,
+      { id: user._id, userId: user._id, role: user.role, code: user.code, jti: crypto.randomUUID() },
+      jwtSecret,
       { expiresIn: ACCESS_TOKEN_EXPIRY }
     );
 
-    // Update session with new access token hash
-    session.tokenHash = hashToken(newAccessToken);
-    await session.save();
+    const newRefreshToken = jwt.sign(
+      { id: user._id, userId: user._id, role: user.role, type: 'refresh', jti: crypto.randomUUID() },
+      jwtRefreshSecret,
+      { expiresIn: REFRESH_TOKEN_EXPIRY }
+    );
+
+    await RefreshToken.create({
+      user_id: user._id,
+      token: hashToken(newRefreshToken),
+      device_info: req.headers['user-agent'] || '',
+      ip_address: req.ip || '127.0.0.1',
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      is_revoked: false
+    });
 
     res.json({
       success: true,
       token: newAccessToken,
+      refreshToken: newRefreshToken,
       expiresIn: 15 * 60
     });
   } catch (error) {
@@ -404,9 +548,55 @@ export const refreshToken = async (req, res) => {
 };
 
 /**
+ * UC-1.2: Logout
+ * Revokes refresh tokens for this user
+ */
+export const logout = async (req, res) => {
+  try {
+    const { refreshToken: tokenInput, allDevices } = req.body;
+
+    if (allDevices) {
+      await RefreshToken.updateMany(
+        { user_id: req.user._id, is_revoked: false },
+        { is_revoked: true }
+      );
+    } else if (tokenInput) {
+      await RefreshToken.updateOne(
+        { token: hashToken(tokenInput) },
+        { is_revoked: true }
+      );
+    } else {
+      await RefreshToken.updateMany(
+        { user_id: req.user._id, is_revoked: false },
+        { is_revoked: true }
+      );
+    }
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'USER_LOGOUT',
+      target_table: 'users',
+      entity_id: req.user._id.toString(),
+      ip_address: req.ip || '127.0.0.1'
+    });
+
+    res.json({
+      success: true,
+      message: 'Đăng xuất thành công. Phiên làm việc đã được thu hồi an toàn.',
+      scope: allDevices ? 'all' : 'single'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi trong quá trình xử lý đăng xuất.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * UC-1.3: Forgot Password - Step 1: Request OTP
- * Generates 6-digit OTP with 15-minute TTL
- * Enforces rate limit: maximum 3 requests per hour
  */
 export const forgotPassword = async (req, res) => {
   try {
@@ -415,65 +605,73 @@ export const forgotPassword = async (req, res) => {
     if (!email) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng nhập địa chỉ email trường.'
+        message: 'Vui lòng cung cấp địa chỉ email.'
       });
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
     const user = await User.findOne({ email: normalizedEmail });
 
-    // Anti-Enumeration: Always respond positively even if email doesn't exist
+    // Anti-enumeration: always respond positively
     if (!user) {
       return res.json({
         success: true,
-        message: 'Nếu email tồn tại trong hệ thống, mã xác thực OTP (6 chữ số) đã được gửi đến hòm thư.'
+        message: 'Nếu email tồn tại trong hệ thống, mã xác thực OTP đã được gửi đến hòm thư.'
       });
     }
 
-    // Rate Limit Check: Maximum 3 requests in the last 1 hour
+    // Rate limit: max 3 requests in last 1 hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const recentRequestsCount = await PasswordReset.countDocuments({
+    const recentCount = await PasswordReset.countDocuments({
       email: normalizedEmail,
-      createdAt: { $gte: oneHourAgo }
+      $or: [
+        { created_at: { $gte: oneHourAgo } },
+        { createdAt: { $gte: oneHourAgo } }
+      ]
     });
 
-    if (recentRequestsCount >= 3) {
+    if (recentCount >= 3) {
       return res.status(429).json({
         success: false,
         message: 'Bạn đã yêu cầu OTP quá 3 lần trong vòng 1 giờ qua. Vui lòng thử lại sau.'
       });
     }
 
-    // Generate 6-digit OTP
+    // Invalidate any older unused OTP records for this email so only the newest code is active
+    await PasswordReset.updateMany(
+      { email: normalizedEmail, isUsed: false },
+      { isUsed: true }
+    );
+
     const otp = generateSixDigitOtp();
     const salt = await bcrypt.genSalt(10);
     const otpHash = await bcrypt.hash(otp, salt);
 
-    // Save to PasswordReset collection with 15-minute expiry
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await PasswordReset.create({
       email: normalizedEmail,
       otpHash,
       attempts: 0,
       isUsed: false,
-      expiresAt
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000)
     });
 
-    // Send email / log to terminal
-    await sendPasswordResetEmail(normalizedEmail, otp);
+    const mailSent = await sendPasswordResetEmail(normalizedEmail, otp);
+    const hasSmtpConfig = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 
     res.json({
       success: true,
-      message: 'Mã xác thực OTP (6 chữ số) đã được gửi đến email trường của bạn. Mã có hiệu lực trong 15 phút.',
-      // In development mode, return debugOtp so tests and UI demos can be seamless
-      debugOtp: process.env.NODE_ENV !== 'production' ? otp : undefined
+      message: hasSmtpConfig && mailSent
+        ? `Mã xác thực OTP đã được gửi đến hộp thư ${normalizedEmail}.`
+        : 'Mã xác thực OTP (6 chữ số) đã được tạo và có hiệu lực trong 15 phút.',
+      debugOtp: (!hasSmtpConfig && process.env.NODE_ENV !== 'production') ? otp : undefined,
+      isRealMailSent: hasSmtpConfig && mailSent
     });
   } catch (error) {
-    console.error('[authController:forgotPassword] Error:', error);
+    console.error('[forgotPassword] Error:', error);
     res.status(500).json({
       success: false,
       message: 'Không thể tạo mã OTP khôi phục mật khẩu lúc này.',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -493,23 +691,22 @@ export const verifyResetOtp = async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
-
-    // Find the latest unused, unexpired reset record
+    // Sort by _id descending to strictly guarantee the most recent OTP record is checked
     const resetRecord = await PasswordReset.findOne({
       email: normalizedEmail,
-      isUsed: false,
       expiresAt: { $gt: new Date() }
-    }).sort({ createdAt: -1 });
+    }).sort({ _id: -1 });
 
-    if (!resetRecord) {
+    if (!resetRecord || (resetRecord.is_used && resetRecord.attempts < 5)) {
       return res.status(400).json({
         success: false,
         message: 'Mã xác thực OTP không tồn tại hoặc đã hết hạn hiệu lực (15 phút).'
       });
     }
 
-    // Lock if attempts exceed 5
     if (resetRecord.attempts >= 5) {
+      resetRecord.is_used = true;
+      await resetRecord.save();
       return res.status(400).json({
         success: false,
         message: 'Bạn đã nhập sai mã OTP quá 5 lần. Mã này đã bị vô hiệu hóa, vui lòng yêu cầu mã mới.'
@@ -518,11 +715,24 @@ export const verifyResetOtp = async (req, res) => {
 
     const isMatch = await bcrypt.compare(String(otp).trim(), resetRecord.otpHash);
     if (!isMatch) {
-      resetRecord.attempts += 1;
+      const newAttempts = (resetRecord.attempts || 0) + 1;
+      resetRecord.attempts = newAttempts;
+      if (newAttempts >= 5) {
+        resetRecord.isUsed = true;
+      }
       await resetRecord.save();
+
+      const remaining = Math.max(0, 5 - newAttempts);
+      if (remaining === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Bạn đã nhập sai mã OTP quá 5 lần. Mã này đã bị vô hiệu hóa, vui lòng yêu cầu mã mới.'
+        });
+      }
+
       return res.status(400).json({
         success: false,
-        message: `Mã OTP không chính xác. Bạn còn ${5 - resetRecord.attempts} lần thử.`
+        message: `Mã OTP không chính xác. Bạn còn ${remaining} lần thử.`
       });
     }
 
@@ -531,11 +741,9 @@ export const verifyResetOtp = async (req, res) => {
       message: 'Xác thực mã OTP thành công! Bạn có thể tiến hành đặt lại mật khẩu mới.'
     });
   } catch (error) {
-    console.error('[authController:verifyResetOtp] Error:', error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi trong quá trình xác thực OTP.',
-      error: error.message
+      message: 'Lỗi trong quá trình xác thực OTP.'
     });
   }
 };
@@ -550,13 +758,10 @@ export const resetPassword = async (req, res) => {
     if (!email || !otp || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng nhập đầy đủ thông tin: email, OTP và mật khẩu mới.'
+        message: 'Vui lòng nhập đầy đủ email, OTP và mật khẩu mới.'
       });
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase();
-
-    // Validate new password complexity
     if (!PASSWORD_REGEX.test(newPassword)) {
       return res.status(400).json({
         success: false,
@@ -564,11 +769,13 @@ export const resetPassword = async (req, res) => {
       });
     }
 
+    const normalizedEmail = String(email).trim().toLowerCase();
+    // Sort by _id descending to strictly guarantee the most recent OTP record is checked
     const resetRecord = await PasswordReset.findOne({
       email: normalizedEmail,
       isUsed: false,
       expiresAt: { $gt: new Date() }
-    }).sort({ createdAt: -1 });
+    }).sort({ _id: -1 });
 
     if (!resetRecord) {
       return res.status(400).json({
@@ -577,11 +784,25 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(String(otp).trim(), resetRecord.otpHash);
-    if (!isMatch) {
+    if (resetRecord.attempts >= 5) {
       return res.status(400).json({
         success: false,
-        message: 'Mã xác thực OTP không chính xác.'
+        message: 'Mã OTP này đã bị khóa do nhập sai quá 5 lần. Vui lòng yêu cầu mã mới.'
+      });
+    }
+
+    const isMatch = await bcrypt.compare(String(otp).trim(), resetRecord.otpHash);
+    if (!isMatch) {
+      const newAttempts = (resetRecord.attempts || 0) + 1;
+      resetRecord.attempts = newAttempts;
+      if (newAttempts >= 5) {
+        resetRecord.isUsed = true;
+      }
+      await resetRecord.save();
+      const remaining = Math.max(0, 5 - newAttempts);
+      return res.status(400).json({
+        success: false,
+        message: `Mã OTP không chính xác. Bạn còn ${remaining} lần thử.`
       });
     }
 
@@ -593,78 +814,64 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Check if new password is identical to old password
     const isSamePassword = await user.comparePassword(newPassword);
     if (isSamePassword) {
       return res.status(400).json({
         success: false,
-        message: 'Mật khẩu mới không được trùng với mật khẩu cũ gần đây.'
+        message: 'Mật khẩu mới không được trùng với mật khẩu hiện tại.'
       });
     }
 
-    // Update password (pre-save hook will hash it)
-    user.passwordHash = newPassword;
+    user.password_hash = newPassword; // Pre-save hook will hash it
+    user.force_change_pw = false;
     await user.save();
 
-    // Mark OTP record as used
     resetRecord.isUsed = true;
     await resetRecord.save();
 
-    // Invalidate all active sessions across all devices for security
-    await UserSession.updateMany(
-      { user: user._id, isRevoked: false },
-      { isRevoked: true }
-    );
+    // Revoke all refresh tokens
+    await RefreshToken.updateMany({ user_id: user._id, is_revoked: false }, { is_revoked: true });
 
-    // Audit log
     await AuditLog.logAction({
-      user: user._id,
-      userDisplay: user.fullName,
+      user_id: user._id,
+      user_display: `${user.full_name} (${user.code})`,
       action: 'PASSWORD_RESET_SUCCESS',
-      entityType: 'User',
-      entityId: user._id.toString(),
-      ipAddress: req.ip
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: req.ip || '127.0.0.1'
     });
 
     res.json({
       success: true,
-      message: 'Đặt lại mật khẩu thành công! Toàn bộ phiên đăng nhập cũ đã được thu hồi an toàn. Vui lòng đăng nhập bằng mật khẩu mới.'
+      message: 'Đặt lại mật khẩu thành công! Toàn bộ phiên đăng nhập cũ đã được thu hồi an toàn.'
     });
   } catch (error) {
-    console.error('[authController:resetPassword] Error:', error);
     res.status(500).json({
       success: false,
-      message: 'Không thể hoàn tất quá trình đặt lại mật khẩu.',
-      error: error.message
+      message: 'Không thể hoàn tất quá trình đặt lại mật khẩu.'
     });
   }
 };
 
 /**
  * UC-1.4: Change Password
- * Validates old password, ensures new password meets complexity rules,
- * prevents duplicate password, and revokes all other sessions
  */
 export const changePassword = async (req, res) => {
   try {
-    const { oldPassword, newPassword, logoutOtherDevices = true } = req.body;
+    const { oldPassword, newPassword } = req.body;
 
     if (!oldPassword || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng cung cấp cả mật khẩu hiện tại và mật khẩu mới.'
+        message: 'Vui lòng cung cấp mật khẩu hiện tại và mật khẩu mới.'
       });
     }
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Người dùng không tồn tại.'
-      });
+      return res.status(404).json({ success: false, message: 'Người dùng không tồn tại.' });
     }
 
-    // Validate old password
     const isOldMatch = await user.comparePassword(oldPassword);
     if (!isOldMatch) {
       return res.status(400).json({
@@ -673,7 +880,6 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    // Check new password policy
     if (!PASSWORD_REGEX.test(newPassword)) {
       return res.status(400).json({
         success: false,
@@ -681,7 +887,6 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    // Check duplicate with old password
     if (oldPassword === newPassword) {
       return res.status(400).json({
         success: false,
@@ -689,205 +894,229 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    // Update password (pre-save hook hashes passwordHash)
-    user.passwordHash = newPassword;
+    user.password_hash = newPassword;
+    user.force_change_pw = false;
     await user.save();
 
-    // Revoke sessions
-    const authHeader = req.headers.authorization;
-    let currentTokenHash = null;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      currentTokenHash = hashToken(authHeader.split(' ')[1]);
-    }
+    // Revoke all refresh tokens
+    await RefreshToken.updateMany({ user_id: user._id, is_revoked: false }, { is_revoked: true });
 
-    if (logoutOtherDevices) {
-      // Keep only current session alive, revoke all others
-      await UserSession.updateMany(
-        { user: user._id, tokenHash: { $ne: currentTokenHash }, isRevoked: false },
-        { isRevoked: true }
-      );
-    }
-
-    // Audit log
     await AuditLog.logAction({
-      user: user._id,
-      userDisplay: user.fullName,
+      user_id: user._id,
+      user_display: `${user.full_name} (${user.code})`,
       action: 'USER_CHANGE_PASSWORD',
-      entityType: 'User',
-      entityId: user._id.toString(),
-      ipAddress: req.ip
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: req.ip || '127.0.0.1'
     });
 
     res.json({
       success: true,
-      message: 'Đổi mật khẩu thành công! Các phiên đăng nhập trên thiết bị khác đã được thu hồi an toàn.'
+      message: 'Đổi mật khẩu thành công! Các phiên đăng nhập khác đã được thu hồi an toàn.'
     });
   } catch (error) {
-    console.error('[authController:changePassword] Error:', error);
     res.status(500).json({
       success: false,
-      message: 'Không thể hoàn tất việc đổi mật khẩu.',
-      error: error.message
+      message: 'Không thể hoàn tất việc đổi mật khẩu.'
     });
   }
 };
 
 /**
  * UC-1.5: Profile View
- * Returns detailed identity, academic affiliations, contact info, and Repute Score (0-100)
  */
 export const getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id)
-      .select('-passwordHash')
-      .populate('department');
-
+    const user = await User.findById(req.user._id).select('-password_hash');
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy hồ sơ người dùng.'
-      });
-    }
-
-    // Format repute score tier information
-    let reputeTier = 'Chuẩn';
-    let reputeColor = '#3B82F6';
-    let bookingPrivilege = 'Duyệt mượn phòng bình thường, đặt trước tối đa 14 ngày';
-
-    if (user.reputeScore >= 90) {
-      reputeTier = 'Kim Cương (Ưu Tiên Tối Đa)';
-      reputeColor = '#10B981';
-      bookingPrivilege = 'Ưu tiên duyệt tự động tức thì, đặt trước tối đa 30 ngày';
-    } else if (user.reputeScore < 50 && user.reputeScore > 30) {
-      reputeTier = 'Cảnh Báo No-Show';
-      reputeColor = '#F59E0B';
-      bookingPrivilege = 'Bị giới hạn số lượt mượn phòng, cần phê duyệt thủ công 2 cấp';
-    } else if (user.reputeScore <= 30) {
-      reputeTier = 'Đình Chỉ Mượn Phòng';
-      reputeColor = '#EF4444';
-      bookingPrivilege = 'Tài khoản bị khóa quyền mượn phòng học/thiết bị do vi phạm quy chế';
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ người dùng.' });
     }
 
     res.json({
       success: true,
       user: {
         id: user._id,
-        employeeCode: user.employeeCode,
-        fullName: user.fullName,
+        _id: user._id,
+        code: user.code,
+        employeeCode: user.code,
+        full_name: user.full_name,
+        fullName: user.full_name,
         email: user.email,
         phone: user.phone || '',
         avatar: user.avatar || '',
         role: user.role,
-        department: user.department ? {
-          id: user.department._id,
-          name: user.department.name,
-          code: user.department.code
-        } : null,
-        className: user.className || '',
-        reputeScore: user.reputeScore,
-        reputeTier,
-        reputeColor,
-        bookingPrivilege,
+        department: user.department,
         status: user.status,
-        createdAt: user.createdAt
+        force_change_pw: user.force_change_pw,
+        created_at: user.created_at,
+        reputeScore: 100,
+        reputeTier: 'Chuẩn',
+        bookingPrivilege: 'Tiêu chuẩn'
       }
     });
   } catch (error) {
-    console.error('[authController:getMe] Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Không thể tải thông tin hồ sơ cá nhân.',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Không thể tải thông tin hồ sơ cá nhân.' });
   }
 };
 
 /**
  * UC-1.6: Update Profile
- * Allows user to update phone and avatar URL only
- * Hard-locks employeeCode, email, department, role, and reputeScore
  */
 export const updateProfile = async (req, res) => {
   try {
     const { phone, avatar } = req.body;
-    const user = await User.findById(req.user._id).populate('department');
+    const user = await User.findById(req.user._id);
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy hồ sơ người dùng.'
-      });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ người dùng.' });
     }
 
-    // Validate phone number if provided
     if (phone !== undefined) {
       const trimmedPhone = String(phone).replace(/\s+/g, '');
       if (trimmedPhone && !PHONE_REGEX.test(trimmedPhone)) {
         return res.status(400).json({
           success: false,
-          message: 'Số điện thoại không hợp lệ. Vui lòng nhập số di động Việt Nam (10 chữ số, ví dụ 0912345678).'
+          message: 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số).'
         });
       }
       user.phone = phone.trim();
     }
 
-    // Update avatar if provided
     if (avatar !== undefined) {
       user.avatar = String(avatar).trim();
     }
 
     await user.save();
 
-    // Audit log
     await AuditLog.logAction({
-      user: user._id,
-      userDisplay: user.fullName,
+      user_id: user._id,
+      user_display: `${user.full_name} (${user.code})`,
       action: 'USER_UPDATE_PROFILE',
-      entityType: 'User',
-      entityId: user._id.toString(),
-      ipAddress: req.ip
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: req.ip || '127.0.0.1'
     });
 
     res.json({
       success: true,
-      message: 'Cập nhật thông tin liên hệ thành công!',
+      message: 'Cập nhật thông tin thành công!',
       user: {
         id: user._id,
-        employeeCode: user.employeeCode,
-        fullName: user.fullName,
+        code: user.code,
+        full_name: user.full_name,
         email: user.email,
         phone: user.phone,
         avatar: user.avatar,
         role: user.role,
-        department: user.department ? user.department.name : null,
-        className: user.className,
-        reputeScore: user.reputeScore,
+        department: user.department,
         status: user.status
       }
     });
   } catch (error) {
-    console.error('[authController:updateProfile] Error:', error);
+    res.status(500).json({ success: false, message: 'Không thể cập nhật hồ sơ cá nhân.' });
+  }
+};
+
+/**
+ * UC-10.1: Create User (Admin Only)
+ */
+export const createUser = async (req, res) => {
+  try {
+    const { code, full_name, email, password, role, department, phone } = req.body;
+
+    if (!code || !full_name || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp mã nhân viên, họ tên và email.'
+      });
+    }
+
+    const cleanCode = String(code).trim().toUpperCase();
+    const cleanEmail = String(email).trim().toLowerCase();
+
+    const existingUser = await User.findOne({
+      $or: [{ code: cleanCode }, { email: cleanEmail }]
+    });
+
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: 'Mã nhân viên hoặc email đã tồn tại trong hệ thống.'
+      });
+    }
+
+    const validRoles = Object.values(USER_ROLES);
+    const assignedRole = validRoles.includes(role) ? role : USER_ROLES.LECTURER;
+    const initialPassword = password || `Ruo@${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const newUser = await User.create({
+      code: cleanCode,
+      full_name: String(full_name).trim(),
+      email: cleanEmail,
+      password_hash: initialPassword, // Pre-save hook will hash it
+      role: assignedRole,
+      department: department || 'Phòng Hành Chính Quản Trị',
+      phone: phone || '',
+      status: USER_STATUSES.ACTIVE,
+      force_change_pw: !password // If auto-generated, force change
+    });
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'USER_CREATE',
+      target_table: 'users',
+      entity_id: newUser._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      new_value: { code: cleanCode, email: cleanEmail, role: assignedRole }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Tạo tài khoản người dùng thành công.',
+      user: {
+        id: newUser._id,
+        code: newUser.code,
+        full_name: newUser.full_name,
+        email: newUser.email,
+        role: newUser.role,
+        department: newUser.department,
+        phone: newUser.phone,
+        status: newUser.status,
+        tempPassword: !password ? initialPassword : undefined
+      }
+    });
+  } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Không thể cập nhật hồ sơ cá nhân.',
-      error: error.message
+      message: 'Không thể tạo tài khoản người dùng.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
 /**
- * Get all users list (for committee assignment / selector)
+ * UC-10.2: Get All Users (Admin Only)
  */
 export const getAllUsers = async (req, res) => {
   try {
-    const { role } = req.query;
-    const query = { deletedAt: null };
+    const { role, status, search } = req.query;
+    const query = {};
+
     if (role) query.role = role;
+    if (status) query.status = status;
+    if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.$or = [
+        { code: { $regex: escaped, $options: 'i' } },
+        { full_name: { $regex: escaped, $options: 'i' } },
+        { email: { $regex: escaped, $options: 'i' } }
+      ];
+    }
 
     const users = await User.find(query)
-      .select('-passwordHash')
-      .populate('department')
-      .sort({ fullName: 1 });
+      .select('-password_hash')
+      .sort({ created_at: -1 });
 
     res.json({
       success: true,
@@ -897,8 +1126,217 @@ export const getAllUsers = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Không thể tải danh sách người dùng.',
-      error: error.message
+      message: 'Không thể tải danh sách người dùng.'
     });
   }
+};
+
+/**
+ * View User Details (Admin Only)
+ */
+export const getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password_hash');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết người dùng.' });
+  }
+};
+
+/**
+ * Assign User Role (Admin Only)
+ */
+export const updateUserRole = async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!Object.values(USER_ROLES).includes(role)) {
+      return res.status(400).json({ success: false, message: 'Vai trò (role) không hợp lệ.' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+
+    const oldRole = user.role;
+    user.role = role;
+    await user.save();
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'UPDATE_ROLE',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      old_value: { role: oldRole },
+      new_value: { role: user.role }
+    });
+
+    res.json({ success: true, message: 'Cập nhật vai trò người dùng thành công.', user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Không thể cập nhật vai trò người dùng.' });
+  }
+};
+
+/**
+ * Lock / Unlock User Account (Admin Only)
+ */
+export const toggleUserLock = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+
+    // Toggle status
+    const newStatus = user.status === USER_STATUSES.LOCKED ? USER_STATUSES.ACTIVE : USER_STATUSES.LOCKED;
+    const oldStatus = user.status;
+    user.status = newStatus;
+    if (newStatus === USER_STATUSES.ACTIVE) {
+      user.failed_login_attempts = 0;
+      user.lock_until = null;
+    }
+    await user.save();
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: newStatus === USER_STATUSES.LOCKED ? 'LOCK_USER' : 'UNLOCK_USER',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      old_value: { status: oldStatus },
+      new_value: { status: newStatus }
+    });
+
+    res.json({
+      success: true,
+      message: newStatus === USER_STATUSES.LOCKED ? 'Đã khóa tài khoản người dùng.' : 'Đã mở khóa tài khoản người dùng.',
+      user
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Không thể thay đổi trạng thái tài khoản.' });
+  }
+};
+
+/**
+ * Reset User Password (Admin Only)
+ */
+export const adminResetPassword = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+
+    const { new_password } = req.body;
+    const tempPassword = new_password || `Ruo@${Math.floor(100000 + Math.random() * 900000)}`;
+    user.password_hash = tempPassword; // Pre-save hook will hash
+    user.force_change_pw = true;
+    user.failed_login_attempts = 0;
+    user.lock_until = null;
+    await user.save();
+
+    // Revoke existing refresh tokens
+    await RefreshToken.updateMany({ user_id: user._id }, { is_revoked: true });
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'ADMIN_RESET_PASSWORD',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      new_value: { force_change_pw: true }
+    });
+
+    res.json({
+      success: true,
+      message: 'Đặt lại mật khẩu thành công. Người dùng sẽ phải đổi mật khẩu khi đăng nhập lần tới.',
+      tempPassword
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Không thể đặt lại mật khẩu người dùng.' });
+  }
+};
+
+/**
+ * Approve or Reject User Registration Role (Admin Only)
+ */
+export const approveUser = async (req, res) => {
+  try {
+    const { action, role } = req.body; // action: 'approve' | 'reject'
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+
+    if (action === 'reject') {
+      const oldRequested = user.requested_role;
+      user.status = USER_STATUSES.ACTIVE;
+      user.role = USER_ROLES.LECTURER;
+      user.requested_role = null;
+      await user.save();
+
+      await AuditLog.logAction({
+        user_id: req.user._id,
+        user_display: `${req.user.full_name} (${req.user.code})`,
+        action: 'REJECT_USER_ROLE',
+        target_table: 'users',
+        entity_id: user._id.toString(),
+        ip_address: req.ip || '127.0.0.1',
+        old_value: { requested_role: oldRequested },
+        new_value: { role: USER_ROLES.LECTURER, status: USER_STATUSES.ACTIVE }
+      });
+
+      return res.json({
+        success: true,
+        message: `Đã từ chối nguyện vọng chức vụ và kích hoạt tài khoản với vai trò Giảng Viên thường.`,
+        user
+      });
+    }
+
+    // Approve
+    const approvedRole = role || user.requested_role || USER_ROLES.LECTURER;
+    if (!Object.values(USER_ROLES).includes(approvedRole)) {
+      return res.status(400).json({ success: false, message: 'Vai trò (role) phê duyệt không hợp lệ.' });
+    }
+
+    user.role = approvedRole;
+    user.status = USER_STATUSES.ACTIVE;
+    user.approved_by = req.user._id;
+    user.approved_at = new Date();
+    await user.save();
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'APPROVE_USER_ROLE',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      new_value: { role: approvedRole, status: USER_STATUSES.ACTIVE, approved_by: req.user._id }
+    });
+
+    const roleTitle = approvedRole === USER_ROLES.FACILITY_MANAGER ? 'Quản Lý CSVC' : approvedRole === USER_ROLES.TECHNICIAN ? 'Kỹ Thuật Viên' : 'Giảng Viên';
+
+    res.json({
+      success: true,
+      message: `Đã phê duyệt tài khoản ${user.full_name} vào chức vụ [${roleTitle}] thành công!`,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi khi xử lý phê duyệt tài khoản: ' + error.message });
+  }
+};
+
+/**
+ * Verify Register OTP and Activate User Account
+ */
+export const verifyRegisterOtp = async (req, res) => {
+  return register(req, res);
 };

@@ -1,110 +1,59 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { Icons } from '../common/SvgIcons';
 import { CommandPaletteModal } from '../ui/CommandPaletteModal';
+import { LogoutConfirmModal } from '../ui/LogoutConfirmModal';
 import { RuoLogo } from '../common/RuoLogo';
 
 export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileModal }) => {
   const {
     currentRoleKey,
-    switchRole,
+    currentRoleMeta,
     currentUser,
     theme,
     toggleTheme,
     notifications,
     unreadCount,
     markAllNotificationsRead,
-    allowedTabs,
+    navItems,
     logout
   } = useAuth();
+
+  const { toast } = useToast();
 
   const [currentTime, setCurrentTime] = useState('');
   const [showNotifPopover, setShowNotifPopover] = useState(false);
   const [showProfilePopover, setShowProfilePopover] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
-      );
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const notifPopoverRef = useRef(null);
+  const profilePopoverRef = useRef(null);
 
-  // 6 Defined Actors in UFMS RBAC
-  const roles = [
-    {
-      key: 'student',
-      label: 'Sinh viên',
-      desc: 'Tra cứu phòng, đặt phòng học nhóm, báo hỏng sự cố',
-      color: '#3B82F6',
-      icon: Icons.User
-    },
-    {
-      key: 'lecturer',
-      label: 'Giảng viên',
-      desc: 'Đặt phòng giảng dạy, hội thảo chuyên đề, mượn thiết bị Lab',
-      color: '#6366F1',
-      icon: Icons.AcademicCap || Icons.User
-    },
-    {
-      key: 'facility_staff',
-      label: 'Quản Lý CSVC',
-      desc: 'Duyệt yêu cầu phòng, quản lý thiết bị, kiểm kê mã QR',
-      color: '#0EA5E9',
-      icon: Icons.Building
-    },
-    {
-      key: 'maintenance',
-      label: 'Kỹ Thuật Viên',
-      desc: 'Tiếp nhận sự cố Kanban, sửa chữa thiết bị, cam kết SLA',
-      color: '#F59E0B',
-      icon: Icons.Wrench
-    },
-    {
-      key: 'academic_affairs',
-      label: 'Phòng Đào Tạo',
-      desc: 'Xếp thời khóa biểu tự động toàn trường với CSP Engine',
-      color: '#10B981',
-      icon: Icons.Calendar
-    },
-    {
-      key: 'admin',
-      label: 'Quản Trị Hệ Thống',
-      desc: 'Toàn quyền điều hành, phân quyền RBAC 7 nhóm, Audit Log SHA-256',
-      color: '#EF4444',
-      icon: Icons.Shield
+  const roleInfo = currentRoleMeta || { label: 'Người dùng', color: '#0EA5E9', bg: 'rgba(14, 165, 233, 0.12)' };
+  const visibleNavTabs = navItems || [];
+
+  const handleConfirmLogout = async (allDevices = false) => {
+    setIsLogoutModalOpen(false);
+    toast.success(
+      allDevices
+        ? 'Đã thu hồi tất cả phiên và đăng xuất mọi thiết bị an toàn!'
+        : 'Đăng xuất thành công! Phiên làm việc đã kết thúc an toàn.'
+    );
+    try {
+      await logout(allDevices);
+    } catch (err) {
+      toast.error('Có lỗi xảy ra trong quá trình đăng xuất: ' + (err?.message || 'Lỗi hệ thống'));
     }
-  ];
-
-  // 10 Core Subsystems Navigation Definition
-  const allNavTabs = [
-    { id: 'dashboard', label: 'Bản Đồ CAD', short: 'Mặt Bằng CAD', icon: Icons.Building },
-    { id: 'rooms', label: 'Tra Cứu Phòng', short: '108 Phòng', icon: Icons.Room },
-    { id: 'calendar', label: 'Lịch Biểu Tuần', short: 'Lịch RFC-5545', icon: Icons.Calendar },
-    { id: 'approvals', label: 'Phê Duyệt Đơn', short: 'Duyệt Đơn', icon: Icons.CheckCircle, badge: '8', badgeColor: '#F59E0B' },
-    { id: 'tickets_kanban', label: 'Kanban SLA', short: 'Sự Cố SLA', icon: Icons.Wrench, badge: '2', badgeColor: '#EF4444' },
-    { id: 'csp_studio', label: 'Xếp TKB CSP', short: 'Thuật Toán CSP', icon: Icons.Cpu },
-    { id: 'equipments', label: 'Kho Thiết Bị', short: 'Thiết Bị & QR', icon: Icons.Equipment },
-    { id: 'disposal_calc', label: 'Thanh Lý CSVC', short: 'Thanh Lý R≥60%', icon: Icons.Sliders },
-    { id: 'rbac', label: 'Ma Trận Quyền', short: 'Phân Quyền RBAC', icon: Icons.Users },
-    { id: 'audit_log', label: 'Nhật Ký Audit', short: 'Audit SHA-256', icon: Icons.Audit }
-  ];
-
-  // Filter tabs according to current actor permissions
-  const effectiveAllowedTabs = allowedTabs || ['dashboard', 'rooms', 'calendar'];
-  const visibleNavTabs = allNavTabs.filter((tab) => effectiveAllowedTabs.includes(tab.id));
+  };
 
   return (
     <>
       <header className="ruo-header-root">
         {/* TIER 1: Grounded Top Navigation Bar */}
         <div className="ruo-topbar">
-          {/* Left: Brand Identity & Breadcrumb */}
+          {/* Left: Brand Identity */}
           <div className="ruo-topbar-left">
             <button
               onClick={() => onSelectTab('dashboard')}
@@ -113,12 +62,6 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
             >
               <RuoLogo size={32} subtitle="Quản Lý CSVC" />
             </button>
-
-            <div className="ruo-breadcrumb-divider ruo-hide-md" />
-
-            <div className="ruo-breadcrumbs ruo-hide-md">
-              <span className="ruo-crumb-active">Tòa A1 • Giảng Đường</span>
-            </div>
           </div>
 
           {/* Center: Command Palette Trigger */}
@@ -126,7 +69,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
             <button
               className="ruo-search-trigger"
               onClick={() => setShowCommandPalette(true)}
-              title="Tìm kiếm thông minh (Phòng A1-302, Ticket SLA, Thiết bị, 95 Use Cases)..."
+              title="Tìm kiếm thông minh (Phòng 302, Ticket SLA, Thiết bị)..."
             >
               <Icons.Search size={14} color="var(--ink-muted)" />
               <span className="ruo-search-placeholder">
@@ -136,20 +79,8 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
             </button>
           </div>
 
-          {/* Right: Telemetry, Quick Tools, Theme, Notifications, User Menu */}
+          {/* Right: Quick Tools, Clock, Theme, Notifications, User Menu */}
           <div className="ruo-topbar-right">
-            {/* Campus Real-time Telemetry Pill */}
-            <div className="ruo-telemetry-badge" title="Tình trạng phòng học và chỉ số SLA thời gian thực">
-              <span className="ruo-status-dot ruo-dot-emerald" />
-              <span className="ruo-telemetry-item">
-                <strong style={{ color: 'var(--laser-cyan)' }}>84/108</strong> Trống
-              </span>
-              <span className="ruo-telemetry-sep">•</span>
-              <span className="ruo-telemetry-item">
-                SLA <strong style={{ color: '#10B981' }}>98.4%</strong>
-              </span>
-            </div>
-
             {/* Server Clock */}
             <div className="ruo-clock-pill ruo-hide-lg" title="Thời gian hệ thống máy chủ">
               <Icons.Clock size={12} color="var(--ink-muted)" />
@@ -180,7 +111,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
             </button>
 
             {/* Notifications Dropdown */}
-            <div style={{ position: 'relative' }}>
+            <div ref={notifPopoverRef} style={{ position: 'relative' }}>
               <button
                 className={`ruo-icon-button ${showNotifPopover ? 'active' : ''}`}
                 onClick={() => {
@@ -219,7 +150,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                         <p style={{ fontSize: '12px', color: 'var(--ink-secondary)', margin: '2px 0 4px 14px' }}>
                           {n.message}
                         </p>
-                        <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginLeft: '14px', fontFamily: 'var(--font-mono)' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginLeft: '14px', fontFamily: 'var(--font-sans)' }}>
                           {n.time}
                         </span>
                       </div>
@@ -230,7 +161,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
             </div>
 
             {/* Human-Crafted User Profile & Workspace Role Switcher */}
-            <div style={{ position: 'relative' }}>
+            <div ref={profilePopoverRef} style={{ position: 'relative' }}>
               <button
                 className={`ruo-profile-button ${showProfilePopover ? 'active' : ''}`}
                 onClick={() => {
@@ -249,71 +180,101 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
               </button>
 
               {showProfilePopover && (
-                <div className="ruo-popover-menu ruo-profile-popover">
+                <div className="ruo-popover-menu ruo-profile-popover" style={{ width: '320px', padding: '16px' }}>
                   {/* Account Overview Header */}
-                  <div className="ruo-profile-meta">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--ink-pure)' }}>
-                        {currentUser.name}
-                      </span>
-                      <span className="ruo-uid-pill">{currentUser.code}</span>
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--ink-muted)', marginTop: '2px' }}>
-                      {currentUser.email}
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--ink-secondary)', marginTop: '6px' }}>
-                      Đơn vị: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.department}</strong>
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--ink-secondary)', marginTop: '2px', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Điểm uy tín check-in:</span>
-                      <strong style={{ color: '#10B981', fontFamily: 'var(--font-mono)' }}>{currentUser.reputeScore}/100</strong>
-                    </div>
-                  </div>
-
-                  {/* Clean Role Switcher Section (Anti-AI: Tucked cleanly inside Profile) */}
-                  <div className="ruo-role-section">
-                    <div className="ruo-section-label">
-                      <span>CHUYỂN ĐỔI GÓC NHÌN TÁC NHÂN (RBAC)</span>
-                    </div>
-                    <div className="ruo-role-list">
-                      {roles.map((r) => {
-                        const isCurrent = currentRoleKey === r.key;
-                        const IconComp = r.icon;
-                        return (
-                          <div
-                            key={r.key}
-                            className={`ruo-role-item ${isCurrent ? 'active' : ''}`}
-                            onClick={() => {
-                              switchRole(r.key);
-                              setShowProfilePopover(false);
+                  <div className="ruo-profile-meta" style={{ paddingBottom: '12px', borderBottom: '1px solid var(--hairline-soft)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                      <div
+                        style={{
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)',
+                          color: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 800,
+                          fontSize: '14px',
+                          flexShrink: 0
+                        }}
+                      >
+                        {currentUser.avatar || 'TH'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '15px', color: 'var(--ink-pure)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {currentUser.name}
+                          </span>
+                          <span className="ruo-uid-pill" style={{ flexShrink: 0 }}>{currentUser.code}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                          <span
+                            style={{
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              color: roleInfo.color,
+                              background: roleInfo.bg,
+                              padding: '1.5px 7px',
+                              borderRadius: 'var(--radius-full)'
                             }}
                           >
-                            <div className="ruo-role-icon-box" style={{ color: r.color, backgroundColor: `${r.color}15` }}>
-                              <IconComp size={15} />
-                            </div>
-                            <div className="ruo-role-texts">
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ fontWeight: 600, fontSize: '13px', color: isCurrent ? 'var(--ink-pure)' : 'var(--ink-primary)' }}>
-                                  {r.label}
-                                </span>
-                                {isCurrent && (
-                                  <span style={{ fontSize: '10px', color: '#10B981', fontWeight: 700 }}>
-                                    Đang kích hoạt
-                                  </span>
-                                )}
-                              </div>
-                              <span style={{ fontSize: '11px', color: 'var(--ink-muted)', lineHeight: 1.3 }}>
-                                {r.desc}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                            {roleInfo.label}
+                          </span>
+                          <span style={{ fontSize: '10.5px', color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                            Trực tuyến
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Footer Action */}
-                  <div className="ruo-profile-footer" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {/* Academic & University Profile Specs */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 0', borderBottom: '1px solid var(--hairline-soft)', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
+                      <Icons.Mail size={13} color="var(--laser-cyan)" />
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={currentUser.email}>
+                        {currentUser.email}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
+                      <Icons.Building size={13} color="var(--laser-cyan)" />
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={currentUser.department}>
+                        Đơn vị: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.department}</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
+                      <Icons.Layers size={13} color="var(--laser-cyan)" />
+                      <span>
+                        Mã định danh: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.code || 'NV2026-CSVC'}</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
+                      <Icons.Phone size={13} color="var(--laser-cyan)" />
+                      <span>
+                        Số điện thoại: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.phone || '0987 654 321'}</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-secondary)' }}>
+                      <Icons.Shield size={13} color="var(--laser-cyan)" />
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        Vai trò hệ thống: <strong style={{ color: 'var(--laser-cyan)' }}>{currentUser.roleTitle || 'Quản lý CSVC'}</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-muted)', fontSize: '11px', marginTop: '2px' }}>
+                      <Icons.Shield size={12} color="var(--ink-muted)" />
+                      <span>Xác thực: <strong>SSO Nội Bộ (OAuth2)</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Real User Actions */}
+                  <div className="ruo-profile-footer" style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '10px' }}>
                     <button
                       className="ruo-footer-btn"
                       style={{ color: 'var(--laser-cyan)' }}
@@ -321,21 +282,10 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                         setShowProfilePopover(false);
                         if (onOpenProfileModal) onOpenProfileModal();
                       }}
-                      title="Xem hồ sơ, điểm uy tín, sửa SĐT và đổi mật khẩu"
+                      title="Xem thông tin chi tiết tài khoản và đổi mật khẩu"
                     >
-                      <Icons.User size={14} color="var(--laser-cyan)" />
-                      <span>Hồ Sơ & Đổi Mật Khẩu (UC-1.4..1.6)</span>
-                    </button>
-
-                    <button
-                      className="ruo-footer-btn"
-                      onClick={() => {
-                        setShowProfilePopover(false);
-                        setShowCommandPalette(true);
-                      }}
-                    >
-                      <Icons.Layers size={14} />
-                      <span>Tra cứu danh mục 95 Use Cases</span>
+                      <Icons.User size={15} color="var(--laser-cyan)" />
+                      <span>Hồ Sơ & Đổi Mật Khẩu</span>
                     </button>
 
                     <button
@@ -343,12 +293,12 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                       style={{ color: '#EF4444' }}
                       onClick={() => {
                         setShowProfilePopover(false);
-                        logout(false);
+                        setIsLogoutModalOpen(true);
                       }}
-                      title="Đăng xuất khỏi hệ thống Ruo UFMS"
+                      title="Đăng xuất khỏi hệ thống Ruo CSVC"
                     >
-                      <Icons.LogOut size={14} color="#EF4444" />
-                      <span>Đăng Xuất (UC-1.2)</span>
+                      <Icons.LogOut size={15} color="#EF4444" />
+                      <span>Đăng Xuất</span>
                     </button>
                   </div>
                 </div>
@@ -384,17 +334,6 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
               );
             })}
           </div>
-
-          {/* Quick 95 Use Case Launcher on Subnav Right */}
-          <button
-            onClick={() => setShowCommandPalette(true)}
-            className="ruo-subnav-catalog-btn"
-            title="Mở bảng tra cứu toàn bộ 95 Use Cases (Ctrl+K)"
-          >
-            <Icons.Layers size={13} color="var(--laser-cyan)" />
-            <span>95 Chức Năng</span>
-            <kbd className="ruo-kbd-shortcut">Ctrl+K</kbd>
-          </button>
         </nav>
       </header>
 
@@ -406,6 +345,14 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
           onSelectTab(modId);
           setShowCommandPalette(false);
         }}
+      />
+
+      {/* Global Logout Confirmation Modal (UC-1.2) */}
+      <LogoutConfirmModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+        userName={currentUser?.name || 'Người dùng'}
       />
     </>
   );

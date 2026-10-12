@@ -1,0 +1,89 @@
+// ═══════════════════════════════════════
+// MODULE 4: REPAIR FLOW
+// Actors: Lecturer (Report malfunction, Track status, Evaluate quality)
+//         Facility Manager (Assign task, Approve parts, Close ticket)
+//         Technician (Accept task, Update progress, Request parts, Report outcome)
+// ═══════════════════════════════════════
+
+Table equipment {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+  status String
+}
+
+Table rooms {
+  _id ObjectId [pk]
+  code String [unique]
+  room_type String
+}
+
+Table repair_units {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+}
+
+Table spare_parts {
+  _id ObjectId [pk]
+  code String [unique]
+  name String
+  stock Number
+}
+
+Table repairs {
+  _id ObjectId [pk]
+  equipment_id ObjectId [ref: > equipment._id, note: 'Đồ hỏng']
+  // ── Báo sự cố ──
+  source String [note: 'lecturer_report | inventory_check']
+  reported_by ObjectId [note: 'FK → users (Lecturer hoặc Technician khi kiểm kê)']
+  incident_description String [note: 'Mô tả sự cố gốc']
+  incident_images Array [note: 'Ảnh chụp sự cố']
+  reported_at DateTime
+  // ── Facility Manager giao việc ──
+  assigned_by ObjectId [note: 'FK → users (Facility Manager)']
+  assigned_to ObjectId [note: 'FK → users (Technician)']
+  replacement_equipment_id ObjectId [ref: > equipment._id, note: 'Đồ trong kho lấy ra thay, nullable']
+  deadline DateTime
+  // ── Technician xử lý ──
+  repair_unit_id ObjectId [ref: > repair_units._id, note: 'nullable, khi gửi sửa ngoài']
+  damage_level String [note: 'minor | major | critical']
+  description String [note: 'Mô tả kỹ thuật']
+  total_cost Number
+  outcome String [note: 'repaired | unrepairable']
+  // ── Facility Manager quyết định nơi đến ──
+  destination_room_id ObjectId [ref: > rooms._id, note: 'Sửa xong về đâu (phòng hoặc kho)']
+  status String [note: 'reported | assigned | in_progress | resolved | unrepairable | closed']
+  // ── Lecturer đánh giá ──
+  feedback_rating Number [note: '1-5 sao']
+  feedback_comment String
+  feedback_at DateTime
+  // ── Timestamps ──
+  created_at DateTime
+  updated_at DateTime
+}
+
+Table repair_logs {
+  _id ObjectId [pk]
+  repair_id ObjectId [ref: > repairs._id]
+  action String [note: 'reported | assigned | in_progress | resolved | unrepairable | closed']
+  performed_by ObjectId [note: 'FK → users']
+  description String
+  cost Number
+  images Array
+  timestamp DateTime
+}
+
+Table parts_requests {
+  _id ObjectId [pk]
+  repair_id ObjectId [ref: > repairs._id]
+  requested_by ObjectId [note: 'FK → users (Technician)']
+  approved_by ObjectId [note: 'FK → users (Facility Manager)']
+  items Array [note: '[{ part_id → spare_parts, qty, unit_price }]. Đã duyệt = đã xuất kho']
+  status String [note: 'pending | approved | rejected']
+  reject_reason String
+  created_at DateTime
+  approved_at DateTime
+}
+
+// repair_parts đã bỏ: trùng dữ liệu với parts_requests.items

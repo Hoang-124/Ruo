@@ -1,11 +1,23 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { USERS, NOTIFICATIONS as initialNotifs } from '../mock/mockData';
+import { 
+  authApi, 
+  notificationApi, 
+  getStoredToken, 
+  getStoredRefreshToken, 
+  setStoredTokens, 
+  clearStoredTokens 
+} from '../lib/api';
+import { 
+  USER_ROLES, 
+  ROLE_METADATA, 
+  getNavItemsForRole, 
+  getDefaultTabForRole, 
+  isTabAllowedForRole 
+} from '../config/navigation';
 
 const AuthContext = createContext();
 
-const API_BASE_URL = 'http://localhost:5000/api/auth';
-
-// Helper utility: freeze transitions during theme switch to prevent GPU stutter / dropped frames
+// Freeze transitions temporarily during theme switch
 const freezeTransitionsTemporarily = () => {
   const css = document.createElement('style');
   css.setAttribute('id', 'ruo-theme-transition-lock');
@@ -33,318 +45,262 @@ const freezeTransitionsTemporarily = () => {
   };
 };
 
-// Domain Actors & Role-Based Access Control (RBAC) Mapping
+// Export canonical role permissions for any legacy components
 export const ROLE_PERMISSIONS = {
-  student: {
-    title: 'Sinh viên',
-    desc: 'Tra cứu phòng học, xem lịch biểu, đặt phòng tự học/học nhóm, báo cáo sự cố CSVC',
-    allowedTabs: ['dashboard', 'rooms', 'calendar']
+  [USER_ROLES.ADMIN]: {
+    title: ROLE_METADATA[USER_ROLES.ADMIN].label,
+    desc: ROLE_METADATA[USER_ROLES.ADMIN].description,
+    allowedTabs: getNavItemsForRole(USER_ROLES.ADMIN).map(i => i.id)
   },
-  lecturer: {
-    title: 'Giảng viên',
-    desc: 'Đăng ký phòng giảng dạy định kỳ (RFC-5545), mượn thiết bị di động, báo sự cố phòng học',
-    allowedTabs: ['dashboard', 'rooms', 'calendar', 'equipments']
+  [USER_ROLES.FACILITY_MANAGER]: {
+    title: ROLE_METADATA[USER_ROLES.FACILITY_MANAGER].label,
+    desc: ROLE_METADATA[USER_ROLES.FACILITY_MANAGER].description,
+    allowedTabs: getNavItemsForRole(USER_ROLES.FACILITY_MANAGER).map(i => i.id)
   },
-  facility_staff: {
-    title: 'Quản lý CSVC',
-    desc: 'Duyệt đơn đặt phòng, phân công SLA kỹ thuật, kiểm kê kho thiết bị QR, lập hội đồng thanh lý (R ≥ 60%)',
-    allowedTabs: ['dashboard', 'rooms', 'calendar', 'approvals', 'tickets_kanban', 'equipments', 'disposal_calc']
+  [USER_ROLES.TECHNICIAN]: {
+    title: ROLE_METADATA[USER_ROLES.TECHNICIAN].label,
+    desc: ROLE_METADATA[USER_ROLES.TECHNICIAN].description,
+    allowedTabs: getNavItemsForRole(USER_ROLES.TECHNICIAN).map(i => i.id)
   },
-  maintenance: {
-    title: 'Kỹ thuật viên',
-    desc: 'Tiếp nhận ticket sự cố, đếm ngược SLA sửa chữa, đánh giá kỹ thuật và đề xuất thanh lý máy hỏng',
-    allowedTabs: ['dashboard', 'tickets_kanban', 'equipments', 'disposal_calc']
+  [USER_ROLES.LECTURER]: {
+    title: ROLE_METADATA[USER_ROLES.LECTURER].label,
+    desc: ROLE_METADATA[USER_ROLES.LECTURER].description,
+    allowedTabs: getNavItemsForRole(USER_ROLES.LECTURER).map(i => i.id)
   },
-  academic_affairs: {
-    title: 'Phòng Đào tạo',
-    desc: 'Xếp TKB tự động bằng giải thuật CSP (Backtracking + MRV + LCV), khóa lịch học toàn trường, duyệt ngoại lệ',
-    allowedTabs: ['dashboard', 'rooms', 'calendar', 'csp_studio', 'approvals']
+  // Backward compatibility aliases
+  manager: {
+    title: ROLE_METADATA[USER_ROLES.FACILITY_MANAGER].label,
+    desc: ROLE_METADATA[USER_ROLES.FACILITY_MANAGER].description,
+    allowedTabs: getNavItemsForRole(USER_ROLES.FACILITY_MANAGER).map(i => i.id)
   },
-  admin: {
-    title: 'Quản trị viên (Admin)',
-    desc: 'Toàn quyền điều hành, phân quyền 6 vai trò qua ma trận RBAC, tra cứu nhật ký kiểm toán SHA-256',
-    allowedTabs: ['dashboard', 'rooms', 'calendar', 'approvals', 'tickets_kanban', 'csp_studio', 'equipments', 'disposal_calc', 'rbac', 'audit_log']
+  staff: {
+    title: ROLE_METADATA[USER_ROLES.TECHNICIAN].label,
+    desc: ROLE_METADATA[USER_ROLES.TECHNICIAN].description,
+    allowedTabs: getNavItemsForRole(USER_ROLES.TECHNICIAN).map(i => i.id)
   }
 };
 
 export const AuthProvider = ({ children }) => {
   // Authentication Token State
-  const [token, setToken] = useState(() => localStorage.getItem('ruo_token') || null);
-  const [refreshToken, setRefreshToken] = useState(() => localStorage.getItem('ruo_refresh_token') || null);
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return Boolean(localStorage.getItem('ruo_token') || localStorage.getItem('ruo_is_logged_in') === 'true');
-  });
-
-  // Current active role key: student, lecturer, facility_staff, maintenance, academic_affairs, admin
-  const [currentRoleKey, setCurrentRoleKey] = useState(() => {
-    return localStorage.getItem('ruo_role') || localStorage.getItem('ufms_role') || 'student';
-  });
+  const [token, setToken] = useState(() => getStoredToken());
+  const [refreshToken, setRefreshToken] = useState(() => getStoredRefreshToken());
+  const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getStoredToken()));
 
   // Live profile details from Backend
   const [apiUser, setApiUser] = useState(null);
 
-  // Dark/Light Theme (Default to Obsidian Dark Command Center)
+  // Dark/Light Theme (Default: dark command center)
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('ruo_theme') || localStorage.getItem('ufms_theme') || 'dark';
+    return localStorage.getItem('ruo_theme') || 'dark';
   });
 
-  // Notifications
-  const [notifications, setNotifications] = useState(initialNotifs);
+  // Real Notifications from Backend API
+  const [notifications, setNotifications] = useState([]);
 
   // Apply theme to document element
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Sync role to localStorage
+  // Handle session expiration broadcast from API client
   useEffect(() => {
-    localStorage.setItem('ruo_role', currentRoleKey);
-  }, [currentRoleKey]);
-
-  // Fetch real profile from backend when token changes
-  const fetchProfile = useCallback(async (activeToken = token) => {
-    if (!activeToken) return null;
-    try {
-      const res = await fetch(`${API_BASE_URL}/me`, {
-        headers: { 'Authorization': `Bearer ${activeToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.user) {
-          setApiUser(data.user);
-          if (data.user.role) {
-            setCurrentRoleKey(data.user.role);
-          }
-          return data.user;
-        }
-      } else if (res.status === 401) {
-        // Token expired or revoked
-        setToken(null);
-        setIsLoggedIn(false);
-        localStorage.removeItem('ruo_token');
-        localStorage.removeItem('ruo_refresh_token');
-        localStorage.removeItem('ruo_is_logged_in');
-      }
-    } catch (err) {
-      console.warn('[AuthContext] Backend offline or fetch error, operating in resilient mode:', err.message);
-    }
-    return null;
-  }, [token]);
-
-  useEffect(() => {
-    if (token) {
-      fetchProfile(token);
-    }
-  }, [token, fetchProfile]);
-
-  // UC-1.1: Login (Backend with Mock Fallback)
-  const login = useCallback(async (identifier, password) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password })
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setToken(data.token);
-        setRefreshToken(data.refreshToken);
-        setApiUser(data.user);
-        setIsLoggedIn(true);
-        if (data.user.role) {
-          setCurrentRoleKey(data.user.role);
-        }
-
-        localStorage.setItem('ruo_token', data.token);
-        if (data.refreshToken) {
-          localStorage.setItem('ruo_refresh_token', data.refreshToken);
-        }
-        localStorage.setItem('ruo_is_logged_in', 'true');
-
-        return { success: true, user: data.user };
-      } else {
-        return { success: false, message: data.message || 'Thông tin đăng nhập không chính xác.' };
-      }
-    } catch (error) {
-      console.warn('[AuthContext] Real backend login unreachable, falling back to mock authentication:', error.message);
-      // Resilient demo fallback
-      const foundRole = Object.keys(USERS).find(
-        (key) => USERS[key].email.toLowerCase() === String(identifier).toLowerCase() ||
-                 USERS[key].code.toLowerCase() === String(identifier).toLowerCase()
-      );
-      if (foundRole) {
-        setCurrentRoleKey(foundRole);
-        setIsLoggedIn(true);
-        localStorage.setItem('ruo_is_logged_in', 'true');
-        return { success: true, user: USERS[foundRole] };
-      }
-      return { success: false, message: 'Không thể kết nối đến máy chủ xác thực. Vui lòng kiểm tra cổng 5000.' };
-    }
-  }, []);
-
-  // Register: New institutional account registration
-  const register = useCallback(async (registrationData) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(registrationData)
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setToken(data.token);
-        setRefreshToken(data.refreshToken);
-        setApiUser(data.user);
-        setIsLoggedIn(true);
-        if (data.user.role) {
-          setCurrentRoleKey(data.user.role);
-        }
-
-        localStorage.setItem('ruo_token', data.token);
-        if (data.refreshToken) {
-          localStorage.setItem('ruo_refresh_token', data.refreshToken);
-        }
-        localStorage.setItem('ruo_is_logged_in', 'true');
-
-        return { success: true, message: data.message, user: data.user };
-      } else {
-        return { success: false, message: data.message || 'Đăng ký không thành công.' };
-      }
-    } catch (error) {
-      console.warn('[AuthContext] Real backend register error, fallback offline mode:', error.message);
-      const mockUser = {
-        id: 'usr_' + Date.now(),
-        fullName: registrationData.fullName,
-        email: registrationData.email,
-        employeeCode: registrationData.employeeCode,
-        role: registrationData.role || 'student',
-        department: registrationData.departmentName || 'Khoa Công nghệ Thông tin',
-        className: registrationData.className || 'K68-CNTT',
-        phone: registrationData.phone || '',
-        reputeScore: 100
-      };
-      setApiUser(mockUser);
-      setCurrentRoleKey(mockUser.role);
-      setIsLoggedIn(true);
-      localStorage.setItem('ruo_is_logged_in', 'true');
-      return { success: true, message: 'Đăng ký tài khoản thành công (Offline Mode).', user: mockUser };
-    }
-  }, []);
-
-  // UC-1.2: Logout (Hủy token trên server & xóa client)
-  const logout = useCallback(async (allDevices = false) => {
-    try {
-      if (token) {
-        await fetch(`${API_BASE_URL}/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ allDevices })
-        });
-      }
-    } catch (err) {
-      console.warn('[AuthContext] Logout remote call failed:', err.message);
-    } finally {
+    const handleExpired = () => {
       setToken(null);
       setRefreshToken(null);
       setApiUser(null);
       setIsLoggedIn(false);
-      localStorage.removeItem('ruo_token');
-      localStorage.removeItem('ruo_refresh_token');
-      localStorage.removeItem('ruo_is_logged_in');
+      setNotifications([]);
+    };
+    window.addEventListener('ruo:session-expired', handleExpired);
+    return () => window.removeEventListener('ruo:session-expired', handleExpired);
+  }, []);
+
+  // Fetch real profile from backend when token exists
+  const fetchProfile = useCallback(async () => {
+    const activeToken = getStoredToken();
+    if (!activeToken) return null;
+    try {
+      const data = await authApi.profile();
+      if (data.success && data.user) {
+        setApiUser(data.user);
+        setIsLoggedIn(true);
+        return data.user;
+      }
+    } catch (err) {
+      console.warn('[AuthContext] Backend offline or profile error:', err.message);
     }
-  }, [token]);
+    return null;
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      fetchProfile();
+    }
+  }, [token, fetchProfile]);
+
+  // Fetch live notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!isLoggedIn) return;
+    try {
+      const res = await notificationApi.list();
+      if (res.success && Array.isArray(res.notifications)) {
+        setNotifications(res.notifications);
+      }
+    } catch (err) {
+      // Quietly ignore network polling errors
+    }
+  }, [isLoggedIn]);
+
+  // Periodic notification polling (every 45s)
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 45000);
+      return () => clearInterval(interval);
+    }
+  }, [isLoggedIn, fetchNotifications]);
+
+  // UC-1.1: Login
+  const login = useCallback(async (identifier, password) => {
+    try {
+      const data = await authApi.login(identifier, password);
+      if (data.success && data.token) {
+        setToken(data.token);
+        setRefreshToken(data.refreshToken);
+        setApiUser(data.user);
+        setIsLoggedIn(true);
+        setStoredTokens(data.token, data.refreshToken);
+        return { success: true, user: data.user };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Thông tin tài khoản hoặc mật khẩu không chính xác.',
+          isLocked: Boolean(data.isLocked),
+          remainingMinutes: data.remainingMinutes,
+          attemptsLeft: data.attemptsLeft,
+          failedAttempts: data.failedAttempts
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error.data?.message || error.message || 'Không thể kết nối đến máy chủ Backend (Port 5000).',
+        isPending: Boolean(error.data?.isPending),
+        isLocked: Boolean(error.data?.isLocked),
+        remainingMinutes: error.data?.remainingMinutes,
+        attemptsLeft: error.data?.attemptsLeft,
+        failedAttempts: error.data?.failedAttempts
+      };
+    }
+  }, []);
+
+  // UC-1.0: Register (Enforces lecturer role, requires email OTP)
+  const register = useCallback(async (userData) => {
+    try {
+      const data = await authApi.register(userData);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        duplicateField: error.data?.duplicateField,
+        errorType: error.data?.errorType,
+        message: error.data?.message || error.message || 'Không thể kết nối đến máy chủ Backend (Port 5000).'
+      };
+    }
+  }, []);
+
+  const verifyRegisterOtp = useCallback(async (email, otp) => {
+    try {
+      const data = await authApi.verifyRegisterOtp(email, otp);
+      if (data.success && data.token) {
+        setToken(data.token);
+        setRefreshToken(data.refreshToken);
+        setApiUser(data.user);
+        setIsLoggedIn(true);
+        setStoredTokens(data.token, data.refreshToken);
+      }
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.data?.message || error.message || 'Xác thực OTP thất bại.'
+      };
+    }
+  }, []);
+
+  const checkDuplicate = useCallback(async (params) => {
+    try {
+      return await authApi.checkDuplicate(params);
+    } catch (err) {
+      return { success: false, emailExists: false, codeExists: false };
+    }
+  }, []);
+
+  // UC-1.2: Logout
+  const logout = useCallback(async (allDevices = false) => {
+    try {
+      const refToken = getStoredRefreshToken();
+      if (refToken) {
+        await authApi.logout(refToken, allDevices);
+      }
+    } catch (err) {
+      console.warn('[AuthContext] Remote logout error:', err.message);
+    } finally {
+      clearStoredTokens();
+      setToken(null);
+      setRefreshToken(null);
+      setApiUser(null);
+      setIsLoggedIn(false);
+      setNotifications([]);
+    }
+  }, []);
+
+  // Update Profile
+  const updateProfile = useCallback(async (updateData) => {
+    try {
+      const res = await authApi.updateProfile(updateData);
+      if (res.success && res.user) {
+        setApiUser(prev => ({ ...prev, ...res.user }));
+      }
+      return res;
+    } catch (err) {
+      return { success: false, message: err.message || 'Cập nhật hồ sơ thất bại.' };
+    }
+  }, []);
+
+  // Change Password
+  const changePassword = useCallback(async (passData) => {
+    try {
+      return await authApi.changePassword(passData);
+    } catch (err) {
+      return { success: false, message: err.message || 'Đổi mật khẩu thất bại.' };
+    }
+  }, []);
 
   // UC-1.3: Forgot Password APIs
   const forgotPassword = useCallback(async (email) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      return await res.json();
+      return await authApi.forgotPassword(email);
     } catch (err) {
-      return { success: false, message: 'Lỗi mạng khi yêu cầu mã OTP khôi phục mật khẩu.' };
+      return { success: false, message: err.message || 'Lỗi gửi yêu cầu khôi phục mật khẩu.' };
     }
   }, []);
 
   const verifyResetOtp = useCallback(async (email, otp) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/verify-reset-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
-      });
-      return await res.json();
+      return await authApi.verifyResetOtp(email, otp);
     } catch (err) {
-      return { success: false, message: 'Lỗi mạng khi xác thực mã OTP.' };
+      return { success: false, message: err.message || 'Lỗi xác thực mã OTP.' };
     }
   }, []);
 
   const resetPassword = useCallback(async (email, otp, newPassword) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp, newPassword })
-      });
-      return await res.json();
+      return await authApi.resetPassword(email, otp, newPassword);
     } catch (err) {
-      return { success: false, message: 'Lỗi mạng khi đặt lại mật khẩu.' };
+      return { success: false, message: err.message || 'Lỗi đặt lại mật khẩu.' };
     }
   }, []);
-
-  // UC-1.4: Change Password API
-  const changePassword = useCallback(async (oldPassword, newPassword, logoutOtherDevices = true) => {
-    if (!token) {
-      return { success: false, message: 'Bạn chưa đăng nhập vào hệ thống.' };
-    }
-    try {
-      const res = await fetch(`${API_BASE_URL}/change-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ oldPassword, newPassword, logoutOtherDevices })
-      });
-      return await res.json();
-    } catch (err) {
-      return { success: false, message: 'Lỗi mạng khi thay đổi mật khẩu.' };
-    }
-  }, [token]);
-
-  // UC-1.6: Update Profile API (SĐT, Avatar)
-  const updateProfile = useCallback(async (phone, avatar) => {
-    if (!token) {
-      // Local fallback
-      setApiUser(prev => ({ ...(prev || USERS[currentRoleKey]), phone, avatar }));
-      return { success: true, message: 'Đã cập nhật thông tin thành công (chế độ cục bộ)!' };
-    }
-    try {
-      const res = await fetch(`${API_BASE_URL}/me`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ phone, avatar })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setApiUser(data.user);
-        return { success: true, message: data.message || 'Cập nhật thông tin thành công!', user: data.user };
-      }
-      return { success: false, message: data.message || 'Không thể cập nhật hồ sơ.' };
-    } catch (err) {
-      return { success: false, message: 'Lỗi mạng khi gửi thông tin cập nhật hồ sơ.' };
-    }
-  }, [token, currentRoleKey]);
 
   const toggleTheme = useCallback(() => {
     const unlock = freezeTransitionsTemporarily();
@@ -357,64 +313,110 @@ export const AuthProvider = ({ children }) => {
     });
   }, []);
 
-  const switchRole = useCallback((roleKey) => {
-    if (USERS[roleKey]) {
-      setCurrentRoleKey(roleKey);
+  const markAllNotificationsRead = useCallback(async () => {
+    try {
+      await notificationApi.markAllRead();
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true })));
+    } catch (err) {
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true })));
     }
   }, []);
 
-  const markAllNotificationsRead = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const markNotificationRead = useCallback(async (id) => {
+    try {
+      await notificationApi.markRead(id);
+      setNotifications(prev => prev.map(n => (n._id === id || n.id === id ? { ...n, is_read: true, read: true } : n)));
+    } catch (err) {
+      setNotifications(prev => prev.map(n => (n._id === id || n.id === id ? { ...n, is_read: true, read: true } : n)));
+    }
   }, []);
 
-  // Merge backend user profile with mock data defaults to prevent any UI break
-  const defaultMock = USERS[currentRoleKey] || USERS.student;
-  const currentUser = useMemo(() => {
-    if (!apiUser) return defaultMock;
-    return {
-      id: apiUser.id || defaultMock.id,
-      name: apiUser.fullName || defaultMock.name,
-      code: apiUser.employeeCode || defaultMock.code,
-      email: apiUser.email || defaultMock.email,
-      role: apiUser.role || defaultMock.role,
-      roleTitle: ROLE_PERMISSIONS[apiUser.role]?.title || defaultMock.roleTitle,
-      department: typeof apiUser.department === 'string' ? apiUser.department : (apiUser.department?.name || defaultMock.department),
-      className: apiUser.className || defaultMock.className || '',
-      phone: apiUser.phone || defaultMock.phone || '',
-      avatar: apiUser.avatar || defaultMock.avatar || 'TH',
-      reputeScore: typeof apiUser.reputeScore === 'number' ? apiUser.reputeScore : (defaultMock.reputeScore || 100),
-      reputeTier: apiUser.reputeTier || (apiUser.reputeScore >= 90 ? 'Kim Cương (Ưu Tiên Tối Đa)' : 'Chuẩn'),
-      bookingPrivilege: apiUser.bookingPrivilege || 'Duyệt mượn phòng bình thường'
-    };
-  }, [apiUser, defaultMock]);
+  // Active canonical role derived strictly from backend user profile
+  const activeRole = useMemo(() => {
+    if (!apiUser?.role) return USER_ROLES.LECTURER;
+    const r = String(apiUser.role).toLowerCase();
+    if (Object.values(USER_ROLES).includes(r)) return r;
+    // Map legacy role aliases if any
+    if (r === 'manager') return USER_ROLES.FACILITY_MANAGER;
+    if (r === 'staff' || r === 'maintenance') return USER_ROLES.TECHNICIAN;
+    return USER_ROLES.LECTURER;
+  }, [apiUser]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const currentRoleMeta = ROLE_PERMISSIONS[currentRoleKey] || ROLE_PERMISSIONS.student;
-  const allowedTabs = currentRoleMeta.allowedTabs;
+  const currentRoleMeta = useMemo(() => {
+    return ROLE_METADATA[activeRole] || ROLE_METADATA[USER_ROLES.LECTURER];
+  }, [activeRole]);
+
+  const currentUser = useMemo(() => {
+    if (!apiUser) {
+      return {
+        id: 'guest',
+        name: 'Khách',
+        code: 'GUEST',
+        email: '',
+        role: USER_ROLES.LECTURER,
+        roleTitle: currentRoleMeta.label,
+        department: '',
+        phone: '',
+        avatar: 'RU'
+      };
+    }
+
+    return {
+      id: apiUser._id || apiUser.id,
+      name: apiUser.full_name || apiUser.fullName || 'Người Dùng',
+      code: apiUser.code || apiUser.employeeCode || '',
+      email: apiUser.email || '',
+      role: activeRole,
+      roleTitle: currentRoleMeta.label,
+      department: typeof apiUser.department === 'string' ? apiUser.department : (apiUser.department?.name || 'Đại Học Ruo'),
+      phone: apiUser.phone || '',
+      avatar: apiUser.avatar || (apiUser.full_name ? apiUser.full_name.slice(0, 2).toUpperCase() : 'RU'),
+      status: apiUser.status || 'active'
+    };
+  }, [apiUser, activeRole, currentRoleMeta]);
+
+  const navItems = useMemo(() => {
+    return getNavItemsForRole(activeRole);
+  }, [activeRole]);
+
+  const allowedTabs = useMemo(() => {
+    return navItems.map(item => item.id);
+  }, [navItems]);
 
   const isTabAllowed = useCallback((tabId) => {
-    return allowedTabs.includes(tabId);
-  }, [allowedTabs]);
+    return isTabAllowedForRole(activeRole, tabId);
+  }, [activeRole]);
+
+  const defaultTab = useMemo(() => {
+    return getDefaultTabForRole(activeRole);
+  }, [activeRole]);
+
+  const unreadCount = useMemo(() => {
+    return notifications.filter(n => !n.is_read && !n.read).length;
+  }, [notifications]);
 
   const contextValue = useMemo(() => ({
     currentUser,
-    currentRoleKey,
+    currentRoleKey: activeRole,
     currentRoleMeta,
+    navItems,
     allowedTabs,
+    defaultTab,
     isTabAllowed,
-    switchRole,
     theme,
     toggleTheme,
     notifications,
     unreadCount,
     markAllNotificationsRead,
-    allRoles: USERS,
+    markNotificationRead,
+    fetchNotifications,
     allRolePermissions: ROLE_PERMISSIONS,
-    // Auth & Profile operations (UC-1.1 -> UC-1.6)
     isLoggedIn,
     token,
     login,
-    register, // <-- BỔ SUNG DÒNG NÀY VÀO ĐÂY
+    register,
+    verifyRegisterOtp,
+    checkDuplicate,
     logout,
     fetchProfile,
     updateProfile,
@@ -424,20 +426,25 @@ export const AuthProvider = ({ children }) => {
     resetPassword
   }), [
     currentUser,
-    currentRoleKey,
+    activeRole,
     currentRoleMeta,
+    navItems,
     allowedTabs,
+    defaultTab,
     isTabAllowed,
-    switchRole,
     theme,
     toggleTheme,
     notifications,
     unreadCount,
     markAllNotificationsRead,
+    markNotificationRead,
+    fetchNotifications,
     isLoggedIn,
     token,
     login,
     register,
+    verifyRegisterOtp,
+    checkDuplicate,
     logout,
     fetchProfile,
     updateProfile,
@@ -461,3 +468,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export default AuthContext;
