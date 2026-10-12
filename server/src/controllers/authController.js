@@ -924,6 +924,8 @@ export const changePassword = async (req, res) => {
 
 /**
  * UC-1.5: Profile View
+ * Returns full authenticated user profile object:
+ * Họ tên, mã NV, email, phòng ban, SĐT, avatar, vai trò, điểm tín nhiệm (Repute Score)
  */
 export const getMe = async (req, res) => {
   try {
@@ -931,6 +933,9 @@ export const getMe = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ người dùng.' });
     }
+
+    const reputeScore = user.repute_score !== undefined ? user.repute_score : 100;
+    const reputeTier = reputeScore >= 90 ? 'Xuất Sắc' : (reputeScore >= 70 ? 'Tiêu Chuẩn' : 'Cần Lưu Ý');
 
     res.json({
       success: true,
@@ -949,41 +954,95 @@ export const getMe = async (req, res) => {
         status: user.status,
         force_change_pw: user.force_change_pw,
         created_at: user.created_at,
-        reputeScore: 100,
-        reputeTier: 'Chuẩn',
-        bookingPrivilege: 'Tiêu chuẩn'
+        repute_score: reputeScore,
+        reputeScore: reputeScore,
+        reputeTier,
+        bookingPrivilege: reputeScore >= 70 ? 'Toàn Quyền Tiêu Chuẩn' : 'Hạn Chế Đặt Trước'
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Không thể tải thông tin hồ sơ cá nhân.' });
+    res.status(500).json({ success: false, message: 'Không thể tải thông tin hồ sơ cá nhân: ' + error.message });
   }
 };
 
 /**
  * UC-1.6: Update Profile
+ * Cho phép cập nhật SĐT, họ tên, avatar
+ * Khóa cứng không cho đổi mã NV, email, vai trò
  */
 export const updateProfile = async (req, res) => {
   try {
-    const { phone, avatar } = req.body;
+    const { phone, avatar, full_name, fullName, code, employeeCode, email } = req.body;
     const user = await User.findById(req.user._id);
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ người dùng.' });
     }
 
+    // Khóa cứng: Ngăn chặn tuyệt đối việc thay đổi mã NV / MSSV
+    const attemptedCode = code || employeeCode;
+    if (attemptedCode !== undefined && String(attemptedCode).trim().toUpperCase() !== user.code.toUpperCase()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã nhân viên / MSSV được khóa cứng theo chính sách hệ thống, không được phép thay đổi.'
+      });
+    }
+
+    // Khóa cứng: Ngăn chặn tuyệt đối việc thay đổi Email nhà trường
+    if (email !== undefined && String(email).trim().toLowerCase() !== user.email.toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email nhà trường được khóa cứng theo chính sách hệ thống, không được phép thay đổi.'
+      });
+    }
+
+    let hasChange = false;
+
+    // 1. Cập nhật Họ và tên
+    const nameInput = full_name !== undefined ? full_name : fullName;
+    if (nameInput !== undefined) {
+      const trimmedName = String(nameInput).trim();
+      if (!trimmedName || trimmedName.length < 2 || trimmedName.length > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'Họ và tên phải có độ dài từ 2 đến 100 ký tự.'
+        });
+      }
+      user.full_name = trimmedName;
+      hasChange = true;
+    }
+
+    // 2. Cập nhật Số điện thoại (Di động Việt Nam 10 chữ số)
     if (phone !== undefined) {
       const trimmedPhone = String(phone).replace(/\s+/g, '');
       if (trimmedPhone && !PHONE_REGEX.test(trimmedPhone)) {
         return res.status(400).json({
           success: false,
-          message: 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số).'
+          message: 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số: 03x, 05x, 07x, 08x, 09x).'
         });
       }
-      user.phone = phone.trim();
+      user.phone = trimmedPhone;
+      hasChange = true;
     }
 
+    // 3. Cập nhật Avatar (Ký tự viết tắt hoặc đường dẫn hình ảnh)
     if (avatar !== undefined) {
-      user.avatar = String(avatar).trim();
+      const trimmedAvatar = String(avatar).trim();
+      if (trimmedAvatar.length > 200) {
+        return res.status(400).json({
+          success: false,
+          message: 'Avatar đại diện không được vượt quá 200 ký tự.'
+        });
+      }
+      user.avatar = trimmedAvatar;
+      hasChange = true;
+    }
+
+    if (!hasChange) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp ít nhất một thông tin cần cập nhật (họ tên, số điện thoại, hoặc avatar).'
+      });
     }
 
     await user.save();
@@ -997,23 +1056,32 @@ export const updateProfile = async (req, res) => {
       ip_address: req.ip || '127.0.0.1'
     });
 
+    const reputeScore = user.repute_score !== undefined ? user.repute_score : 100;
+    const reputeTier = reputeScore >= 90 ? 'Xuất Sắc' : (reputeScore >= 70 ? 'Tiêu Chuẩn' : 'Cần Lưu Ý');
+
     res.json({
       success: true,
-      message: 'Cập nhật thông tin thành công!',
+      message: 'Cập nhật thông tin hồ sơ thành công!',
       user: {
         id: user._id,
+        _id: user._id,
         code: user.code,
+        employeeCode: user.code,
         full_name: user.full_name,
+        fullName: user.full_name,
         email: user.email,
-        phone: user.phone,
-        avatar: user.avatar,
+        phone: user.phone || '',
+        avatar: user.avatar || '',
         role: user.role,
         department: user.department,
-        status: user.status
+        status: user.status,
+        repute_score: reputeScore,
+        reputeScore: reputeScore,
+        reputeTier
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Không thể cập nhật hồ sơ cá nhân.' });
+    res.status(500).json({ success: false, message: 'Không thể cập nhật hồ sơ cá nhân: ' + error.message });
   }
 };
 

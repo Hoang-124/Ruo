@@ -255,10 +255,13 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Update Profile
-  const updateProfile = useCallback(async (updateData) => {
+  // Update Profile (UC-1.6)
+  const updateProfile = useCallback(async (dataOrPhone, maybeAvatar) => {
     try {
-      const res = await authApi.updateProfile(updateData);
+      const payload = (typeof dataOrPhone === 'object' && dataOrPhone !== null)
+        ? dataOrPhone
+        : { phone: dataOrPhone, avatar: maybeAvatar };
+      const res = await authApi.updateProfile(payload);
       if (res.success && res.user) {
         setApiUser(prev => ({ ...prev, ...res.user }));
       }
@@ -351,19 +354,27 @@ export const AuthProvider = ({ children }) => {
       return {
         id: 'guest',
         name: 'Khách',
+        fullName: 'Khách',
         code: 'GUEST',
         email: '',
         role: USER_ROLES.LECTURER,
         roleTitle: currentRoleMeta.label,
         department: '',
         phone: '',
-        avatar: 'RU'
+        avatar: 'RU',
+        reputeScore: 100,
+        reputeTier: 'Tiêu Chuẩn',
+        bookingPrivilege: 'Tiêu Chuẩn'
       };
     }
+
+    const repute = apiUser.reputeScore ?? apiUser.repute_score ?? 100;
+    const tier = apiUser.reputeTier || (repute >= 90 ? 'Xuất Sắc' : (repute >= 70 ? 'Tiêu Chuẩn' : 'Cần Lưu Ý'));
 
     return {
       id: apiUser._id || apiUser.id,
       name: apiUser.full_name || apiUser.fullName || 'Người Dùng',
+      fullName: apiUser.full_name || apiUser.fullName || 'Người Dùng',
       code: apiUser.code || apiUser.employeeCode || '',
       email: apiUser.email || '',
       role: activeRole,
@@ -371,7 +382,10 @@ export const AuthProvider = ({ children }) => {
       department: typeof apiUser.department === 'string' ? apiUser.department : (apiUser.department?.name || 'Đại Học Ruo'),
       phone: apiUser.phone || '',
       avatar: apiUser.avatar || (apiUser.full_name ? apiUser.full_name.slice(0, 2).toUpperCase() : 'RU'),
-      status: apiUser.status || 'active'
+      status: apiUser.status || 'active',
+      reputeScore: repute,
+      reputeTier: tier,
+      bookingPrivilege: apiUser.bookingPrivilege || (repute >= 70 ? 'Toàn Quyền Tiêu Chuẩn' : 'Hạn Chế Đặt Trước')
     };
   }, [apiUser, activeRole, currentRoleMeta]);
 
