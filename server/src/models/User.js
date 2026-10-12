@@ -45,6 +45,13 @@ const userSchema = new mongoose.Schema({
     type: String, 
     default: 'Khoa Công Nghệ Thông Tin' 
   },
+  repute_score: {
+    type: Number,
+    default: 100,
+    min: 0,
+    max: 100,
+    alias: 'reputeScore'
+  },
   role: { 
     type: String, 
     required: true, 
