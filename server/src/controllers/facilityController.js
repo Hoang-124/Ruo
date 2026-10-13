@@ -13,6 +13,7 @@ import {
 } from '../services/roomValidation.js';
 import { HISTORY_LIMIT, summarizeRoomEquipment } from '../services/roomDetail.js';
 import { evaluateDeactivation, ROOM_STATUS_LABELS, evaluateStatusChange, validateDeactivationPayload } from '../services/roomStatus.js';
+import { summarizeCadRoom } from '../services/cadCanvas.js';
 
 // @desc    Get all buildings and their floors
 // @route   GET /api/facilities/buildings
@@ -307,17 +308,10 @@ export const getCadCanvasRooms = async (req, res) => {
       eqMap.get(rId).push(eq);
     });
 
-    const enrichedRooms = rooms.map(room => {
-      const roomEqs = eqMap.get(room._id.toString()) || [];
-      const hasBrokenOrRepairing = roomEqs.some(e => e.status === EQUIPMENT_STATUSES.BROKEN || e.status === EQUIPMENT_STATUSES.REPAIRING);
-      
-      return {
-        ...room.toObject(),
-        effectiveStatus: hasBrokenOrRepairing ? ROOM_STATUSES.MAINTENANCE : room.status,
-        equipmentCount: roomEqs.length,
-        equipments: roomEqs
-      };
-    });
+    const enrichedRooms = rooms.map(room => ({
+      ...room.toObject(),
+      ...summarizeCadRoom(room, eqMap.get(room._id.toString()) || [])
+    }));
 
     res.json({
       success: true,
