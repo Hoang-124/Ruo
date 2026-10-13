@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEACTIVATION_REASON_MAX,
   EMPTY_ROOM_FILTERS,
   buildCreateRoomPayload,
+  buildDeactivatePayload,
   buildRoomListParams,
   buildUpdateRoomPayload,
+  canDeactivateRoom,
   createEmptyRoomForm,
   formatDateTime,
   getEquipmentStatusLabel,
@@ -16,6 +19,7 @@ import {
   getRoomTypeLabel,
   hasActiveRoomFilters,
   roomToForm,
+  validateDeactivationReason,
   validateRoomForm
 } from './roomDomain';
 
@@ -150,5 +154,26 @@ describe('room edit helpers (UC-2.4)', () => {
       buildUpdateRoomPayload({ ...roomToForm(room), name: ' Lab 203 ', capacity: '45', description: 'Thực hành' }, room)
     ).toEqual({ name: 'Lab 203', capacity: 45, description: 'Thực hành' });
     expect(buildUpdateRoomPayload({ ...roomToForm(room), room_type: 'lecture' }, room)).toEqual({ room_type: 'lecture' });
+  });
+});
+
+describe('room deactivation helpers (UC-2.5)', () => {
+  it('offers deactivation only for rooms that are not already inactive', () => {
+    expect(canDeactivateRoom({ status: 'available' })).toBe(true);
+    expect(canDeactivateRoom({ status: 'maintenance' })).toBe(true);
+    expect(canDeactivateRoom({ status: 'inactive' })).toBe(false);
+    expect(canDeactivateRoom(null)).toBe(false);
+  });
+
+  it('omits a blank reason and trims a supplied one', () => {
+    expect(buildDeactivatePayload('')).toEqual({});
+    expect(buildDeactivatePayload('   ')).toEqual({});
+    expect(buildDeactivatePayload(undefined)).toEqual({});
+    expect(buildDeactivatePayload('  Cải tạo phòng ')).toEqual({ reason: 'Cải tạo phòng' });
+  });
+
+  it('rejects a reason longer than the limit', () => {
+    expect(validateDeactivationReason('x'.repeat(DEACTIVATION_REASON_MAX))).toBe('');
+    expect(validateDeactivationReason('x'.repeat(DEACTIVATION_REASON_MAX + 1))).toBeTruthy();
   });
 });

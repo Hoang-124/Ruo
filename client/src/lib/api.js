@@ -200,6 +200,7 @@ export const facilityApi = {
   getAllRooms: (params) => api.get('/facilities/rooms', params),
   createRoom: (data) => api.post('/facilities/rooms', data),
   updateRoom: (id, data) => api.put(`/facilities/rooms/${id}`, data),
+  deactivateRoom: (id, data = {}) => api.put(`/facilities/rooms/${id}/deactivate`, data),
   getRoomShortage: (id) => api.get(`/facilities/rooms/${id}/shortage`),
   getWarehouseStock: () => api.get('/facilities/warehouse/stock')
 };

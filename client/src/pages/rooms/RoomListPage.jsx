@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext';
 import { facilityApi } from '../../lib/api';
 import { RoomDetailModal } from '../../components/ui/RoomDetailModal';
 import { RoomFormModal } from './RoomFormModal';
+import { RoomDeactivateModal } from './RoomDeactivateModal';
 import {
   EMPTY_ROOM_FILTERS,
   FLOOR_OPTIONS,
@@ -12,6 +13,7 @@ import {
   ROOM_STATUS_OPTIONS,
   ROOM_TYPE_OPTIONS,
   buildRoomListParams,
+  canDeactivateRoom,
   getPageWindow,
   getRoomStatusMeta,
   getRoomTypeLabel,
@@ -40,6 +42,7 @@ export const RoomListPage = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [detailCode, setDetailCode] = useState(null);
   const [editRoom, setEditRoom] = useState(null);
+  const [deactivateRoom, setDeactivateRoom] = useState(null);
 
   // Debounce the free-text search so every keystroke does not hit the API.
   useEffect(() => {
@@ -211,6 +214,17 @@ export const RoomListPage = () => {
                             <Icons.Edit size={13} /> Sửa
                           </button>
                         )}
+                        {isAdmin && canDeactivateRoom(room) && (
+                          <button
+                            type="button"
+                            id={`room-deactivate-${room.code}`}
+                            className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+                            onClick={(e) => { e.stopPropagation(); setDeactivateRoom(room); }}
+                            title={`Ngừng sử dụng phòng ${room.code}`}
+                          >
+                            <Icons.Pause size={13} /> Ngừng
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -259,6 +273,10 @@ export const RoomListPage = () => {
 
       {editRoom && (
         <RoomFormModal room={editRoom} onClose={() => setEditRoom(null)} onSaved={fetchRooms} />
+      )}
+
+      {deactivateRoom && (
+        <RoomDeactivateModal room={deactivateRoom} onClose={() => setDeactivateRoom(null)} onDone={fetchRooms} />
       )}
 
       {detailCode && (

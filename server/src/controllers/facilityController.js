@@ -12,6 +12,7 @@ import {
   validateUpdateRoomPayload
 } from '../services/roomValidation.js';
 import { HISTORY_LIMIT, summarizeRoomEquipment } from '../services/roomDetail.js';
+import { evaluateDeactivation, validateDeactivationPayload } from '../services/roomStatus.js';
 
 // @desc    Get all buildings and their floors
 // @route   GET /api/facilities/buildings
@@ -168,6 +169,59 @@ export const updateRoom = async (req, res) => {
       return res.status(400).json({ success: false, message: error.message });
     }
     res.status(500).json({ success: false, message: 'Không thể cập nhật thông tin phòng.' });
+  }
+};
+
+// @desc    Deactivate room (soft delete -> INACTIVE, Admin only) — UC-2.5
+// @route   PUT /api/facilities/rooms/:id/deactivate
+// All equipment must be moved out of the room first; the room record itself is never deleted.
+export const deactivateRoom = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Mã định danh phòng không hợp lệ.' });
+    }
+
+    const payload = validateDeactivationPayload(req.body);
+    if (!payload.valid) {
+      return res.status(400).json({ success: false, message: Object.values(payload.errors)[0], errors: payload.errors });
+    }
+
+    const room = await Room.findById(req.params.id);
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Phòng học không tồn tại.' });
+    }
+
+    const equipments = await Equipment.find({ room_id: room._id }).select('code name status');
+    const decision = evaluateDeactivation(room, equipments);
+    if (!decision.allowed) {
+      return res.status(409).json({
+        success: false,
+        code: decision.reason,
+        message: decision.message,
+        equipments: decision.blockers
+      });
+    }
+
+    const previousStatus = room.status;
+    room.status = ROOM_STATUSES.INACTIVE;
+    await room.save();
+
+    await AuditLog.logAction({
+      ...getAuditActor(req),
+      action: 'ROOM_DEACTIVATED',
+      target_table: 'rooms',
+      entity_id: room._id.toString(),
+      old_value: { code: room.code, status: previousStatus },
+      new_value: { code: room.code, status: room.status, ...(payload.reason ? { reason: payload.reason } : {}) }
+    });
+
+    res.json({
+      success: true,
+      message: `Đã ngừng sử dụng phòng ${room.code}.`,
+      room
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Không thể ngừng sử dụng phòng.' });
   }
 };
 
