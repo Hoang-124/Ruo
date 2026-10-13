@@ -1771,43 +1771,62 @@ export const toggleUserLock = async (req, res) => {
 };
 
 /**
- * Reset User Password (Admin Only)
+ * UC-10.5: Force Reset User Password (Admin Only)
+ * POST /api/admin/users/:id/reset-password
  */
 export const adminResetPassword = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng trong hệ thống.' });
     }
 
-    const { new_password } = req.body;
-    const tempPassword = new_password || `Ruo@${Math.floor(100000 + Math.random() * 900000)}`;
-    user.password_hash = tempPassword; // Pre-save hook will hash
+    const inputPassword = req.body.new_password || req.body.password;
+    let tempPassword;
+
+    if (inputPassword) {
+      const trimmed = String(inputPassword).trim();
+      if (trimmed.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Mật khẩu mới phải có tối thiểu 6 ký tự.'
+        });
+      }
+      tempPassword = trimmed;
+    } else {
+      // Tự sinh mật khẩu ngẫu nhiên đạt chuẩn: Ký tự hoa + thường + số + ký tự đặc biệt
+      tempPassword = `Ruo@${Math.floor(100000 + Math.random() * 900000)}`;
+    }
+
+    user.password_hash = tempPassword; // Pre-save hook sẽ mã hóa bcrypt
     user.force_change_pw = true;
     user.failed_login_attempts = 0;
     user.lock_until = null;
     await user.save();
 
-    // Revoke existing refresh tokens
-    await RefreshToken.updateMany({ user_id: user._id }, { is_revoked: true });
+    // Thu hồi toàn bộ phiên làm việc của user để bắt buộc đăng nhập bằng mật khẩu mới
+    const revokedSessions = await revokeUserSessions(user._id);
 
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
+      user_id: req.user?._id || null,
+      user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'Quản Trị Viên',
       action: 'ADMIN_RESET_PASSWORD',
       target_table: 'users',
       entity_id: user._id.toString(),
-      ip_address: req.ip || '127.0.0.1',
-      new_value: { force_change_pw: true }
+      ip_address: ipAddress,
+      new_value: { force_change_pw: true, revoked_sessions: revokedSessions }
     });
 
     res.json({
       success: true,
-      message: 'Đặt lại mật khẩu thành công. Người dùng sẽ phải đổi mật khẩu khi đăng nhập lần tới.',
-      tempPassword
+      message: `Đã đặt lại mật khẩu cho cán bộ ${user.full_name}. Người dùng sẽ phải đổi mật khẩu khi đăng nhập lần tới.`,
+      tempPassword,
+      force_change_pw: true,
+      revokedSessions
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Không thể đặt lại mật khẩu người dùng.' });
+    res.status(500).json({ success: false, message: 'Không thể đặt lại mật khẩu người dùng: ' + error.message });
   }
 };
 
