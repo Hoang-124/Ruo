@@ -6,6 +6,7 @@ import { USER_ROLES, ROLE_METADATA } from '../../config/navigation';
 import { UserDetailDrawer } from '../../components/admin/UserDetailDrawer';
 import { RoleChangeConfirmModal } from '../../components/admin/RoleChangeConfirmModal';
 import { UserLockModal } from '../../components/admin/UserLockModal';
+import { ForceResetPasswordModal } from '../../components/admin/ForceResetPasswordModal';
 
 export const UserManagementPage = () => {
   const { toast } = useToast();
@@ -20,9 +21,9 @@ export const UserManagementPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [userToReset, setUserToReset] = useState(null);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [userToLock, setUserToLock] = useState(null);
   const [lockingUser, setLockingUser] = useState(false);
-  const [newPasswordInput, setNewPasswordInput] = useState('');
   const [createdUserResult, setCreatedUserResult] = useState(null); // UC-10.1: Lưu thông tin tài khoản & mật khẩu vừa tạo
   const [showPassword, setShowPassword] = useState(false);
   const [userActivities, setUserActivities] = useState([]); // UC-10.2: Lịch sử hoạt động của người dùng
@@ -239,19 +240,24 @@ export const UserManagementPage = () => {
     }
   };
 
-  const handleAdminResetPassword = async (e) => {
-    e.preventDefault();
-    if (!userToReset || !newPasswordInput) return;
+  // UC-10.5: Force Reset Password (POST /api/admin/users/:id/reset-password)
+  const handleAdminResetPassword = async (userId, customPassword) => {
+    setResettingPassword(true);
     try {
-      const res = await authApi.adminResetPassword(userToReset._id, newPasswordInput);
+      const res = await authApi.adminResetPassword(userId, customPassword);
       if (res.success) {
-        toast.success(`Đã cấp mật khẩu mới cho ${userToReset.full_name}. Người dùng sẽ phải đổi mật khẩu ở lần đăng nhập tới.`, 'Đặt Lại Mật Khẩu');
+        toast.success(
+          res.message || `Đã đặt lại mật khẩu cho cán bộ. Mật khẩu tạm: ${res.tempPassword}`,
+          'Đặt Lại Mật Khẩu Thành Công (UC-10.5)'
+        );
         setIsResetPasswordModalOpen(false);
         setUserToReset(null);
-        setNewPasswordInput('');
       }
     } catch (err) {
-      toast.error('Lỗi đặt lại mật khẩu: ' + err.message);
+      const errorMsg = err.data?.message || err.message || 'Lỗi đặt lại mật khẩu';
+      toast.error(errorMsg, 'Lỗi Thao Tác');
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -612,10 +618,9 @@ export const UserManagementPage = () => {
                                 className="ruo-btn ruo-btn-ghost ruo-btn-sm"
                                 onClick={() => {
                                   setUserToReset(u);
-                                  setNewPasswordInput(`Ruo@${Math.floor(1000 + Math.random() * 9000)}`);
                                   setIsResetPasswordModalOpen(true);
                                 }}
-                                title="Reset mật khẩu"
+                                title="Đặt lại mật khẩu khẩn cấp (UC-10.5)"
                               >
                                 <Icons.Key size={14} />
                               </button>
@@ -867,51 +872,17 @@ export const UserManagementPage = () => {
         </div>
       )}
 
-      {/* MODAL 2: Reset User Password */}
-      {isResetPasswordModalOpen && userToReset && (
-        <div className="ruo-modal-overlay">
-          <div className="ruo-modal-content" style={{ maxWidth: '460px' }}>
-            <div className="ruo-modal-header">
-              <h2 style={{ fontSize: '17px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icons.Key size={18} color="#F59E0B" />
-                Cấp Lại Mật Khẩu Cho {userToReset.code}
-              </h2>
-              <button className="ruo-btn-close" onClick={() => setIsResetPasswordModalOpen(false)}>
-                <Icons.X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleAdminResetPassword}>
-              <div className="ruo-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <p style={{ fontSize: '13px', color: 'var(--ink-secondary)', margin: 0 }}>
-                  Bạn đang thiết lập mật khẩu tạm thời cho cán bộ <strong>{userToReset.full_name}</strong> ({userToReset.email}).
-                  Hệ thống sẽ bật cờ <code>force_change_pw</code> buộc người dùng đổi mật khẩu sau khi đăng nhập.
-                </p>
-
-                <div>
-                  <label className="ruo-label">Mật khẩu mới khởi tạo</label>
-                  <input
-                    type="text"
-                    className="ruo-input"
-                    required
-                    value={newPasswordInput}
-                    onChange={(e) => setNewPasswordInput(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="ruo-modal-footer">
-                <button type="button" className="ruo-btn ruo-btn-secondary" onClick={() => setIsResetPasswordModalOpen(false)}>
-                  Hủy
-                </button>
-                <button type="submit" className="ruo-btn ruo-btn-primary">
-                  Cập Nhật Mật Khẩu
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* UC-10.5: Force Reset Password Modal */}
+      <ForceResetPasswordModal
+        user={userToReset}
+        isOpen={isResetPasswordModalOpen}
+        onClose={() => {
+          setIsResetPasswordModalOpen(false);
+          setUserToReset(null);
+        }}
+        onConfirm={handleAdminResetPassword}
+        loading={resettingPassword}
+      />
 
       {/* UC-10.3: User Detail & RBAC Drawer */}
       <UserDetailDrawer
@@ -925,7 +896,6 @@ export const UserManagementPage = () => {
         }}
         onOpenResetPassword={(u) => {
           setUserToReset(u);
-          setNewPasswordInput(`Ruo@${Math.floor(1000 + Math.random() * 9000)}`);
           setIsResetPasswordModalOpen(true);
         }}
         onToggleLock={(id, status) => {
