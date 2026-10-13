@@ -560,9 +560,35 @@ export const UserManagementPage = () => {
                             <Icons.Clock size={11} style={{ marginRight: '4px' }} /> Chờ Duyệt
                           </span>
                         ) : isLocked ? (
-                          <span className="ruo-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                            <Icons.Lock size={11} style={{ marginRight: '4px' }} /> Đã khóa
-                          </span>
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' }}>
+                            <span
+                              className="ruo-badge"
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                color: '#EF4444',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                cursor: u.lock_reason ? 'help' : 'default'
+                              }}
+                              title={u.lock_reason ? `Lý do khóa: ${u.lock_reason}` : 'Tài khoản đã bị khóa (Soft Lock)'}
+                            >
+                              <Icons.Lock size={11} style={{ marginRight: '4px' }} /> Đã khóa
+                            </span>
+                            {u.lock_reason && (
+                              <span
+                                style={{
+                                  fontSize: '10.5px',
+                                  color: 'var(--ink-muted)',
+                                  maxWidth: '140px',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                title={u.lock_reason}
+                              >
+                                {u.lock_reason}
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="ruo-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                             <Icons.CheckCircle size={11} style={{ marginRight: '4px' }} /> Hoạt động
