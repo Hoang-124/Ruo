@@ -153,21 +153,33 @@ export const UserManagementPage = () => {
     }
   };
 
+  // UC-10.4: Quick Status Toggle (PUT /api/admin/users/:id/toggle-status) with Session Invalidation
   const handleToggleLock = async (userId, currentStatus) => {
     const willLock = currentStatus !== 'locked';
-    if (!window.confirm(`Bạn có chắc muốn ${willLock ? 'KHÓA' : 'MỞ KHÓA'} tài khoản này?`)) return;
+    const confirmPrompt = willLock
+      ? 'Bạn có chắc muốn KHÓA tài khoản này? Toàn bộ phiên làm việc của người dùng sẽ bị thu hồi ngay lập tức (Session Invalidation).'
+      : 'Bạn có chắc muốn MỞ KHÓA và kích hoạt lại tài khoản này?';
+
+    if (!window.confirm(confirmPrompt)) return;
+
     try {
-      const res = await authApi.toggleUserLock(userId);
+      const targetStatus = willLock ? 'locked' : 'active';
+      const res = await authApi.toggleUserStatus(userId, targetStatus);
       if (res.success) {
-        toast.success(res.message || 'Cập nhật trạng thái tài khoản thành công.');
-        setUsers(prev => prev.map(u => u._id === userId ? { ...u, status: res.status } : u));
+        toast.success(
+          res.message || (willLock ? 'Đã khóa tài khoản và thu hồi phiên làm việc.' : 'Đã mở khóa tài khoản thành công.'),
+          willLock ? 'Đã Khóa Tài Khoản' : 'Mở Khóa Thành Công'
+        );
+        const updatedStatus = res.status || targetStatus;
+        setUsers(prev => prev.map(u => u._id === userId ? { ...u, status: updatedStatus } : u));
         if (selectedUser && selectedUser._id === userId) {
-          setSelectedUser(prev => ({ ...prev, status: res.status }));
+          setSelectedUser(prev => ({ ...prev, status: updatedStatus }));
         }
         fetchUsers();
       }
     } catch (err) {
-      toast.error('Lỗi cập nhật trạng thái khóa: ' + err.message);
+      const errorMsg = err.data?.message || err.message || 'Lỗi cập nhật trạng thái khóa';
+      toast.error(errorMsg, 'Lỗi Thao Tác');
     }
   };
 
@@ -597,7 +609,7 @@ export const UserManagementPage = () => {
                               <button
                                 className={`ruo-btn ruo-btn-sm ${isLocked ? 'ruo-btn-success' : 'ruo-btn-danger'}`}
                                 onClick={() => handleToggleLock(u._id, u.status)}
-                                title={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                                title={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản & thu hồi phiên (UC-10.4)'}
                                 style={{ padding: '4px 8px' }}
                               >
                                 {isLocked ? <Icons.Unlock size={13} /> : <Icons.Lock size={13} />}
