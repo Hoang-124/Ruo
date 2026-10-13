@@ -6,6 +6,7 @@ import { facilityApi } from '../../lib/api';
 import { RoomDetailModal } from '../../components/ui/RoomDetailModal';
 import { RoomFormModal } from './RoomFormModal';
 import { RoomDeactivateModal } from './RoomDeactivateModal';
+import { RoomStatusModal } from './RoomStatusModal';
 import {
   EMPTY_ROOM_FILTERS,
   FLOOR_OPTIONS,
@@ -43,6 +44,7 @@ export const RoomListPage = () => {
   const [detailCode, setDetailCode] = useState(null);
   const [editRoom, setEditRoom] = useState(null);
   const [deactivateRoom, setDeactivateRoom] = useState(null);
+  const [statusRoom, setStatusRoom] = useState(null);
 
   // Debounce the free-text search so every keystroke does not hit the API.
   useEffect(() => {
@@ -214,6 +216,17 @@ export const RoomListPage = () => {
                             <Icons.Edit size={13} /> Sửa
                           </button>
                         )}
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            id={`room-status-${room.code}`}
+                            className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+                            onClick={(e) => { e.stopPropagation(); setStatusRoom(room); }}
+                            title={`Đổi trạng thái phòng ${room.code}`}
+                          >
+                            <Icons.Layers size={13} /> Trạng thái
+                          </button>
+                        )}
                         {isAdmin && canDeactivateRoom(room) && (
                           <button
                             type="button"
@@ -277,6 +290,10 @@ export const RoomListPage = () => {
 
       {deactivateRoom && (
         <RoomDeactivateModal room={deactivateRoom} onClose={() => setDeactivateRoom(null)} onDone={fetchRooms} />
+      )}
+
+      {statusRoom && (
+        <RoomStatusModal room={statusRoom} onClose={() => setStatusRoom(null)} onDone={fetchRooms} />
       )}
 
       {detailCode && (
