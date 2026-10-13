@@ -278,6 +278,26 @@ export const UserDetailDrawer = ({
                 >
                   {roleMeta.label}
                 </span>
+                {isLocked && (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      color: '#EF4444',
+                      border: '1px solid rgba(239, 68, 68, 0.4)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title={userData.lock_reason ? `Lý do: ${userData.lock_reason}` : undefined}
+                  >
+                    <Icons.Lock size={11} />
+                    <span>Đã Khóa (Soft Lock)</span>
+                  </span>
+                )}
               </div>
               <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--ink-secondary)' }}>
                 Chi tiết hồ sơ nhân sự, phân quyền RBAC và lịch sử tài khoản (UC-10.3)
@@ -541,6 +561,37 @@ export const UserDetailDrawer = ({
                     )}
                   </div>
                 </div>
+
+                {/* UC-10.5: Soft Lock Status & Reason Card */}
+                {isLocked && (
+                  <div
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.06)',
+                      padding: '14px 16px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      gridColumn: 'span 2',
+                      display: 'flex',
+                      gap: '12px',
+                      alignItems: 'flex-start'
+                    }}
+                  >
+                    <Icons.Lock size={18} color="#EF4444" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <div style={{ flex: 1, fontSize: '12.5px', lineHeight: '1.5' }}>
+                      <div style={{ fontWeight: 800, color: '#EF4444', marginBottom: '2px' }}>
+                        TÀI KHOẢN ĐANG BỊ KHÓA (SOFT LOCK — UC-10.5)
+                      </div>
+                      <div style={{ color: 'var(--ink-secondary)', marginBottom: '4px' }}>
+                        Lý do khóa: <strong style={{ color: 'var(--ink-primary)' }}>{userData.lock_reason || 'Quản trị viên khóa bảo vệ tài khoản'}</strong>
+                      </div>
+                      {userData.locked_at && (
+                        <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                          Thời điểm khóa: {new Date(userData.locked_at).toLocaleString('vi-VN')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
