@@ -3,6 +3,7 @@ import { Icons } from '../../components/common/SvgIcons';
 import { authApi } from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 import { USER_ROLES, ROLE_METADATA } from '../../config/navigation';
+import { UserDetailDrawer } from '../../components/admin/UserDetailDrawer';
 
 export const UserManagementPage = () => {
   const { toast } = useToast();
@@ -13,13 +14,17 @@ export const UserManagementPage = () => {
   const [statusTab, setStatusTab] = useState('ALL');
   const [selectedUser, setSelectedUser] = useState(null);
 
-  // Modals
+  // Modals & User Details (UC-10.2)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [userToReset, setUserToReset] = useState(null);
   const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [createdUserResult, setCreatedUserResult] = useState(null); // UC-10.1: Lưu thông tin tài khoản & mật khẩu vừa tạo
+  const [showPassword, setShowPassword] = useState(false);
+  const [userActivities, setUserActivities] = useState([]); // UC-10.2: Lịch sử hoạt động của người dùng
+  const [loadingActivities, setLoadingActivities] = useState(false);
 
-  // Create Form State
+  // Create Form State (UC-10.1)
   const [createForm, setCreateForm] = useState({
     code: '',
     full_name: '',
@@ -31,27 +36,48 @@ export const UserManagementPage = () => {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  // Helper sinh mật khẩu ngẫu nhiên đạt chuẩn bảo mật
+  const handleGenerateRandomPassword = () => {
+    const randomSixDigits = Math.floor(100000 + Math.random() * 900000);
+    const generated = `Ruo@${randomSixDigits}`;
+    setCreateForm(prev => ({ ...prev, password: generated }));
+    setShowPassword(true);
+    toast.info(`Đã tạo mật khẩu ngẫu nhiên: ${generated}`, 'Tạo Mật Khẩu');
+  };
+
+  // UC-10.2: Realtime tab counts
+  const [statusCounts, setStatusCounts] = useState({ all: 0, pending: 0, active: 0, locked: 0 });
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await authApi.listUsers({
-        search: search || undefined,
-        role: roleFilter !== 'ALL' ? roleFilter : undefined
-      });
+      const params = {};
+      if (search) params.search = search;
+      if (roleFilter !== 'ALL') params.role = roleFilter;
+      if (statusTab !== 'ALL') params.status = statusTab;
+
+      const res = await authApi.listUsers(params);
       if (res.success && Array.isArray(res.users)) {
         setUsers(res.users);
+        if (res.counts) {
+          setStatusCounts(res.counts);
+        }
       }
     } catch (err) {
       toast.error('Không thể tải danh sách người dùng: ' + err.message);
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, toast]);
+  }, [search, roleFilter, statusTab, toast]);
 
   useEffect(() => {
     fetchUsers();
+    // Realtime polling counts every 30s
+    const timer = setInterval(fetchUsers, 30000);
+    return () => clearInterval(timer);
   }, [fetchUsers]);
 
+  // UC-10.1: Create User
   const handleCreateUser = async (e) => {
     e.preventDefault();
     if (!createForm.code || !createForm.full_name || !createForm.email) {
@@ -62,7 +88,12 @@ export const UserManagementPage = () => {
     try {
       const res = await authApi.createUser(createForm);
       if (res.success) {
-        toast.success(`Đã tạo tài khoản cho ${createForm.full_name} (${res.user?.code})`, 'Tạo Thành Công');
+        const tempPwd = res.user?.tempPassword || res.user?.initialPassword || createForm.password || 'Ruo@2026';
+        setCreatedUserResult({
+          user: res.user,
+          password: tempPwd
+        });
+        toast.success(`Đã tạo tài khoản cho ${createForm.full_name} (${res.user?.code || createForm.code})`, 'Tạo Thành Công');
         setIsCreateModalOpen(false);
         setCreateForm({
           code: '',
@@ -73,10 +104,12 @@ export const UserManagementPage = () => {
           phone: '',
           password: ''
         });
+        setShowPassword(false);
         fetchUsers();
       }
     } catch (err) {
-      toast.error('Lỗi khi tạo người dùng: ' + err.message);
+      const errorMsg = err.data?.message || err.message || 'Lỗi khi tạo người dùng.';
+      toast.error(errorMsg, 'Lỗi Khởi Tạo Người Dùng');
     } finally {
       setSubmitting(false);
     }
@@ -108,9 +141,52 @@ export const UserManagementPage = () => {
         if (selectedUser && selectedUser._id === userId) {
           setSelectedUser(prev => ({ ...prev, status: res.status }));
         }
+        fetchUsers();
       }
     } catch (err) {
       toast.error('Lỗi cập nhật trạng thái khóa: ' + err.message);
+    }
+  };
+
+  // UC-10.2: Xem chi tiết tài khoản kèm lịch sử hoạt động AuditLog
+  const handleViewUserDetail = async (u) => {
+    setSelectedUser(u);
+    setUserActivities([]);
+    setLoadingActivities(true);
+    try {
+      const res = await authApi.getUserById(u._id);
+      if (res.success && res.user) {
+        setSelectedUser(res.user);
+        setUserActivities(res.activities || []);
+      }
+    } catch (err) {
+      console.warn('Lỗi nạp nhật ký hoạt động người dùng:', err.message);
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
+
+  const getActionMeta = (action) => {
+    switch (action) {
+      case 'LOGIN':
+        return { label: 'Đăng nhập hệ thống', color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' };
+      case 'LOGOUT':
+        return { label: 'Đăng xuất', color: '#71717A', bg: 'rgba(113, 113, 122, 0.15)' };
+      case 'UPDATE_PROFILE':
+        return { label: 'Cập nhật hồ sơ cá nhân', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.15)' };
+      case 'CREATE_USER':
+        return { label: 'Khởi tạo tài khoản', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.15)' };
+      case 'LOCK_USER':
+        return { label: 'Khóa tài khoản', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' };
+      case 'UNLOCK_USER':
+        return { label: 'Mở khóa tài khoản', color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' };
+      case 'CHANGE_PASSWORD':
+      case 'RESET_PASSWORD':
+        return { label: 'Đổi mật khẩu', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' };
+      case 'APPROVE_USER':
+        return { label: 'Phê duyệt bổ nhiệm', color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' };
+      default:
+        return { label: action || 'Thao tác hệ thống', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)' };
     }
   };
 
@@ -158,12 +234,14 @@ export const UserManagementPage = () => {
     }
   };
 
-  const pendingCount = users.filter(u => u.status === 'pending_approval').length;
-  const activeCount = users.filter(u => u.status === 'active').length;
-  const lockedCount = users.filter(u => u.status === 'locked').length;
+  const allCount = statusCounts.all ?? users.length;
+  const pendingCount = statusCounts.pending ?? users.filter(u => u.status === 'pending_approval' || u.status === 'pending').length;
+  const activeCount = statusCounts.active ?? users.filter(u => u.status === 'active').length;
+  const lockedCount = statusCounts.locked ?? users.filter(u => u.status === 'locked').length;
 
   const filteredUsers = users.filter(u => {
     if (statusTab === 'ALL') return true;
+    if (statusTab === 'pending_approval') return u.status === 'pending_approval' || u.status === 'pending';
     return u.status === statusTab;
   });
 
@@ -174,10 +252,10 @@ export const UserManagementPage = () => {
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Icons.Users size={26} color="var(--blueprint-400)" />
-            Quản Lý Tài Khoản Người Dùng (Admin)
+            Danh Mục Tài Khoản Người Dùng (UC-10.2)
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--ink-secondary)' }}>
-            Xem danh sách, chi tiết, tạo tài khoản mới, phân vai trò, khóa tài khoản và thiết lập lại mật khẩu
+            Danh bạ người dùng với phân tab trạng thái, số đếm thời gian thực, quản lý vai trò và truy vết hoạt động
           </p>
         </div>
 
@@ -191,15 +269,16 @@ export const UserManagementPage = () => {
         </button>
       </div>
 
-      {/* Status Segmented Tabs */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      {/* Status Segmented Tabs with Realtime Counts (UC-10.2) */}
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         {[
-          { key: 'ALL', label: 'Tất Cả', count: users.length, color: 'var(--blueprint-500)' },
-          { key: 'pending_approval', label: 'Chờ Phê Duyệt', count: pendingCount, color: '#F59E0B', highlight: pendingCount > 0 },
-          { key: 'active', label: 'Đang Hoạt Động', count: activeCount, color: '#10B981' },
-          { key: 'locked', label: 'Đã Khóa', count: lockedCount, color: '#EF4444' }
+          { key: 'ALL', label: 'Tất Cả', count: allCount, color: 'var(--blueprint-500)', icon: Icons.Users },
+          { key: 'pending_approval', label: 'Chờ Phê Duyệt', count: pendingCount, color: '#F59E0B', highlight: pendingCount > 0, icon: Icons.Clock },
+          { key: 'active', label: 'Đang Hoạt Động', count: activeCount, color: '#10B981', icon: Icons.CheckCircle },
+          { key: 'locked', label: 'Đã Khóa', count: lockedCount, color: '#EF4444', icon: Icons.Key }
         ].map(tab => {
           const isActive = statusTab === tab.key;
+          const TabIcon = tab.icon;
           return (
             <button
               key={tab.key}
@@ -208,7 +287,7 @@ export const UserManagementPage = () => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '8px 14px',
+                padding: '9px 16px',
                 borderRadius: '8px',
                 border: `1px solid ${isActive ? tab.color : 'var(--border-default)'}`,
                 background: isActive ? `${tab.color}18` : 'var(--surface-card)',
@@ -216,18 +295,21 @@ export const UserManagementPage = () => {
                 fontWeight: isActive ? 700 : 500,
                 fontSize: '13px',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
+                boxShadow: isActive ? `0 2px 8px ${tab.color}25` : 'none'
               }}
             >
+              {TabIcon && <TabIcon size={14} color={isActive ? tab.color : 'var(--ink-muted)'} />}
               <span>{tab.label}</span>
               <span
                 style={{
-                  padding: '2px 7px',
+                  padding: '2px 8px',
                   borderRadius: '10px',
                   fontSize: '11px',
-                  fontWeight: 700,
+                  fontWeight: 800,
                   background: tab.highlight && !isActive ? 'rgba(245, 158, 11, 0.2)' : isActive ? tab.color : 'var(--surface-3)',
-                  color: tab.highlight && !isActive ? '#F59E0B' : isActive ? '#FFFFFF' : 'var(--ink-muted)'
+                  color: tab.highlight && !isActive ? '#F59E0B' : isActive ? '#FFFFFF' : 'var(--ink-muted)',
+                  border: tab.highlight && !isActive ? '1px solid rgba(245, 158, 11, 0.4)' : 'none'
                 }}
               >
                 {tab.count}
@@ -338,7 +420,11 @@ export const UserManagementPage = () => {
                         {u.code}
                       </td>
                       <td style={{ padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+                          onClick={() => handleViewUserDetail(u)}
+                          title="Bấm để xem chi tiết hồ sơ & phân quyền RBAC (UC-10.3)"
+                        >
                           <div
                             style={{
                               width: '32px',
@@ -497,8 +583,8 @@ export const UserManagementPage = () => {
 
                           <button
                             className="ruo-btn ruo-btn-ghost ruo-btn-sm"
-                            onClick={() => setSelectedUser(u)}
-                            title="Xem chi tiết"
+                            onClick={() => handleViewUserDetail(u)}
+                            title="Xem chi tiết hồ sơ & phân quyền RBAC (UC-10.3)"
                           >
                             <Icons.Eye size={14} />
                           </button>
@@ -604,14 +690,58 @@ export const UserManagementPage = () => {
                 </div>
 
                 <div>
-                  <label className="ruo-label">Mật Khẩu Khởi Tạo (Để trống để tự tạo Ruo@xxxx)</label>
-                  <input
-                    type="password"
-                    className="ruo-input"
-                    placeholder="Mặc định: Ruo@2026 hoặc ngẫu nhiên"
-                    value={createForm.password}
-                    onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label className="ruo-label" style={{ margin: 0 }}>Mật Khẩu Khởi Tạo (Để trống để tự sinh)</label>
+                    <button
+                      type="button"
+                      onClick={handleGenerateRandomPassword}
+                      style={{
+                        background: 'rgba(59, 130, 246, 0.12)',
+                        border: '1px solid rgba(59, 130, 246, 0.3)',
+                        color: 'var(--laser-cyan)',
+                        padding: '3px 10px',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ⚡ Tự Động Tạo Mật Khẩu
+                    </button>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      className="ruo-input"
+                      style={{ paddingRight: '50px' }}
+                      placeholder="Để trống để hệ thống tự sinh Ruo@xxxxxx"
+                      value={createForm.password}
+                      onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                    />
+                    {createForm.password && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--ink-muted)',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontWeight: 600
+                        }}
+                      >
+                        {showPassword ? 'Ẩn' : 'Hiện'}
+                      </button>
+                    )}
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '4px', display: 'block' }}>
+                    * Mật khẩu tự động đạt chuẩn bảo mật: ≥ 8 ký tự, có chữ hoa, thường, số và ký tự đặc biệt (@).
+                  </span>
                 </div>
               </div>
 
@@ -624,6 +754,65 @@ export const UserManagementPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Bàn giao thông tin tài khoản vừa tạo (UC-10.1) */}
+      {createdUserResult && (
+        <div className="ruo-modal-overlay">
+          <div className="ruo-modal-content" style={{ maxWidth: '480px' }}>
+            <div className="ruo-modal-header" style={{ borderBottom: '1px solid rgba(16, 185, 129, 0.25)' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#10B981' }}>
+                <Icons.CheckCircle size={20} color="#10B981" />
+                Khởi Tạo Tài Khoản Thành Công (UC-10.1)
+              </h2>
+              <button className="ruo-btn-close" onClick={() => setCreatedUserResult(null)}>
+                <Icons.X size={18} />
+              </button>
+            </div>
+
+            <div className="ruo-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--ink-secondary)', margin: 0 }}>
+                Tài khoản đã sẵn sàng hoạt động trong hệ thống. Quản trị viên vui lòng lưu trữ và bàn giao thông tin đăng nhập cho cán bộ:
+              </p>
+
+              <div style={{ background: 'var(--surface-sunken)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-medium)', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                <div><span style={{ color: 'var(--ink-muted)' }}>Mã nhân viên / CB:</span> <strong style={{ color: 'var(--ink-primary)' }}>{createdUserResult.user.code}</strong></div>
+                <div><span style={{ color: 'var(--ink-muted)' }}>Họ và tên:</span> <strong style={{ color: 'var(--ink-primary)' }}>{createdUserResult.user.full_name}</strong></div>
+                <div><span style={{ color: 'var(--ink-muted)' }}>Email đăng nhập:</span> <strong style={{ color: 'var(--ink-primary)' }}>{createdUserResult.user.email}</strong></div>
+                <div><span style={{ color: 'var(--ink-muted)' }}>Vai trò:</span> <strong style={{ color: 'var(--laser-cyan)' }}>{createdUserResult.user.role}</strong></div>
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--hairline-soft)' }}>
+                  <span style={{ color: 'var(--ink-muted)', display: 'block', marginBottom: '4px' }}>Mật khẩu khởi tạo:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <code style={{ fontSize: '16px', fontWeight: 800, color: '#10B981', padding: '4px 10px', background: 'rgba(16, 185, 129, 0.12)', borderRadius: 'var(--radius-sm)', letterSpacing: '0.05em' }}>
+                      {createdUserResult.password || 'Ruo@2026'}
+                    </code>
+                    <button
+                      type="button"
+                      className="ruo-btn ruo-btn-secondary"
+                      style={{ padding: '4px 12px', fontSize: '12px' }}
+                      onClick={() => {
+                        navigator.clipboard.writeText(`Mã NV: ${createdUserResult.user.code}\nEmail: ${createdUserResult.user.email}\nMật khẩu: ${createdUserResult.password || 'Ruo@2026'}`);
+                        toast.success('Đã sao chép thông tin tài khoản vào bộ nhớ tạm!');
+                      }}
+                    >
+                      Sao Chép
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <span style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                * Cán bộ sẽ được yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên vì lý do an toàn bảo mật.
+              </span>
+            </div>
+
+            <div className="ruo-modal-footer">
+              <button type="button" className="ruo-btn ruo-btn-primary" onClick={() => setCreatedUserResult(null)}>
+                Đã Hiểu & Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -674,114 +863,23 @@ export const UserManagementPage = () => {
         </div>
       )}
 
-      {/* MODAL 3: View User Details */}
-      {selectedUser && (
-        <div className="ruo-modal-overlay">
-          <div className="ruo-modal-content" style={{ maxWidth: '520px' }}>
-            <div className="ruo-modal-header">
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>
-                Chi Tiết Hồ Sơ: {selectedUser.full_name}
-              </h2>
-              <button className="ruo-btn-close" onClick={() => setSelectedUser(null)}>
-                <Icons.X size={18} />
-              </button>
-            </div>
-
-            <div className="ruo-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', paddingBottom: '16px', borderBottom: '1px solid var(--border-default)' }}>
-                <div
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '50%',
-                    background: ROLE_METADATA[selectedUser.role]?.bg || 'rgba(62, 123, 250, 0.1)',
-                    color: ROLE_METADATA[selectedUser.role]?.color || '#3E7BFA',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 800,
-                    fontSize: '18px'
-                  }}
-                >
-                  {selectedUser.avatar || selectedUser.full_name?.slice(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--ink-primary)' }}>{selectedUser.full_name}</div>
-                  <div style={{ fontSize: '13px', color: 'var(--ink-secondary)', fontFamily: 'var(--font-mono)' }}>Mã CB: {selectedUser.code}</div>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', fontSize: '13px' }}>
-                <div>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', fontWeight: 600 }}>EMAIL</div>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-primary)' }}>{selectedUser.email}</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', fontWeight: 600 }}>SỐ ĐIỆN THOẠI</div>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-primary)' }}>{selectedUser.phone || 'Chưa có'}</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', fontWeight: 600 }}>KHOA / ĐƠN VỊ</div>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-primary)' }}>{selectedUser.department}</div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', fontWeight: 600 }}>VAI TRÒ</div>
-                  <div style={{ fontWeight: 700, color: ROLE_METADATA[selectedUser.role]?.color }}>
-                    {ROLE_METADATA[selectedUser.role]?.label}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', fontWeight: 600 }}>TRẠNG THÁI TÀI KHOẢN</div>
-                  <div style={{ fontWeight: 600, color: selectedUser.status === 'locked' ? '#EF4444' : selectedUser.status === 'pending_approval' ? '#F59E0B' : '#10B981' }}>
-                    {selectedUser.status === 'locked' ? 'Đang bị khóa' : selectedUser.status === 'pending_approval' ? '⏳ Chờ Admin phê duyệt bổ nhiệm' : 'Đang hoạt động'}
-                  </div>
-                </div>
-                {selectedUser.requested_role && (
-                  <div>
-                    <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', fontWeight: 600 }}>NGUYỆN VỌNG CHỨC VỤ</div>
-                    <div style={{ fontWeight: 700, color: '#F59E0B' }}>
-                      {ROLE_METADATA[selectedUser.requested_role]?.label || selectedUser.requested_role}
-                    </div>
-                  </div>
-                )}
-                <div>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', fontWeight: 600 }}>NGÀY TẠO TÀI KHOẢN</div>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-secondary)' }}>
-                    {selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleDateString('vi-VN') : '—'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="ruo-modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              {selectedUser.status === 'pending_approval' && (
-                <>
-                  <button
-                    type="button"
-                    className="ruo-btn ruo-btn-danger"
-                    onClick={() => handleApproveUser(selectedUser, 'reject')}
-                  >
-                    <Icons.X size={14} />
-                    <span>Từ Chối (Về Giảng Viên)</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="ruo-btn ruo-btn-success"
-                    style={{ background: '#10B981', color: '#fff', border: 'none' }}
-                    onClick={() => handleApproveUser(selectedUser, 'approve', selectedUser.requested_role)}
-                  >
-                    <Icons.Check size={14} />
-                    <span>Phê Duyệt Bổ Nhiệm</span>
-                  </button>
-                </>
-              )}
-              <button className="ruo-btn ruo-btn-secondary" onClick={() => setSelectedUser(null)}>
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* UC-10.3: User Detail & RBAC Drawer */}
+      <UserDetailDrawer
+        user={selectedUser}
+        isOpen={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        onUserUpdated={(updatedUser) => {
+          setSelectedUser(updatedUser);
+          setUsers(prev => prev.map(u => u._id === updatedUser._id ? updatedUser : u));
+          fetchUsers();
+        }}
+        onOpenResetPassword={(u) => {
+          setUserToReset(u);
+          setNewPasswordInput(`Ruo@${Math.floor(1000 + Math.random() * 9000)}`);
+          setIsResetPasswordModalOpen(true);
+        }}
+        onToggleLock={(id, status) => handleToggleLock(id, status)}
+      />
     </div>
   );
 };
