@@ -4,6 +4,7 @@ import { authApi } from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 import { USER_ROLES, ROLE_METADATA } from '../../config/navigation';
 import { UserDetailDrawer } from '../../components/admin/UserDetailDrawer';
+import { RoleChangeConfirmModal } from '../../components/admin/RoleChangeConfirmModal';
 
 export const UserManagementPage = () => {
   const { toast } = useToast();
@@ -23,6 +24,10 @@ export const UserManagementPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [userActivities, setUserActivities] = useState([]); // UC-10.2: Lịch sử hoạt động của người dùng
   const [loadingActivities, setLoadingActivities] = useState(false);
+
+  // UC-10.4: Live RBAC Role Change & Confirmation Modal
+  const [pendingRoleChange, setPendingRoleChange] = useState(null); // { user, targetRole }
+  const [updatingRole, setUpdatingRole] = useState(false);
 
   // Create Form State (UC-10.1)
   const [createForm, setCreateForm] = useState({
@@ -115,36 +120,66 @@ export const UserManagementPage = () => {
     }
   };
 
-  const handleRoleChange = async (userId, newRole) => {
+  // UC-10.4: Live RBAC Role Change with Confirmation & Session Invalidation
+  const handleInitiateRoleChange = (u, targetRole) => {
+    if (u.role === targetRole) return;
+    setPendingRoleChange({ user: u, targetRole });
+  };
+
+  const handleConfirmRoleChange = async (userId, targetRole) => {
+    setUpdatingRole(true);
     try {
-      const res = await authApi.updateUserRole(userId, newRole);
+      const res = await authApi.updateUserRole(userId, targetRole);
       if (res.success) {
-        toast.success('Đã cập nhật vai trò người dùng thành công.');
-        setUsers(prev => prev.map(u => u._id === userId ? { ...u, role: newRole } : u));
+        toast.success(
+          res.message || `Đã chuyển vai trò sang [${ROLE_METADATA[targetRole]?.label}] và thu hồi phiên làm việc!`,
+          'Cập Nhật Phân Quyền (Live RBAC)'
+        );
+        setUsers(prev => prev.map(u => u._id === userId ? {
+          ...u,
+          role: targetRole,
+          requested_role: u.requested_role === targetRole ? null : u.requested_role
+        } : u));
         if (selectedUser && selectedUser._id === userId) {
-          setSelectedUser(prev => ({ ...prev, role: newRole }));
+          setSelectedUser(prev => ({ ...prev, role: targetRole, requested_role: prev.requested_role === targetRole ? null : prev.requested_role }));
         }
+        setPendingRoleChange(null);
       }
     } catch (err) {
-      toast.error('Không thể đổi vai trò: ' + err.message);
+      const errorMsg = err.data?.message || err.message || 'Không thể đổi vai trò';
+      toast.error(errorMsg, 'Lỗi Phân Quyền');
+    } finally {
+      setUpdatingRole(false);
     }
   };
 
+  // UC-10.4: Quick Status Toggle (PUT /api/admin/users/:id/toggle-status) with Session Invalidation
   const handleToggleLock = async (userId, currentStatus) => {
     const willLock = currentStatus !== 'locked';
-    if (!window.confirm(`Bạn có chắc muốn ${willLock ? 'KHÓA' : 'MỞ KHÓA'} tài khoản này?`)) return;
+    const confirmPrompt = willLock
+      ? 'Bạn có chắc muốn KHÓA tài khoản này? Toàn bộ phiên làm việc của người dùng sẽ bị thu hồi ngay lập tức (Session Invalidation).'
+      : 'Bạn có chắc muốn MỞ KHÓA và kích hoạt lại tài khoản này?';
+
+    if (!window.confirm(confirmPrompt)) return;
+
     try {
-      const res = await authApi.toggleUserLock(userId);
+      const targetStatus = willLock ? 'locked' : 'active';
+      const res = await authApi.toggleUserStatus(userId, targetStatus);
       if (res.success) {
-        toast.success(res.message || 'Cập nhật trạng thái tài khoản thành công.');
-        setUsers(prev => prev.map(u => u._id === userId ? { ...u, status: res.status } : u));
+        toast.success(
+          res.message || (willLock ? 'Đã khóa tài khoản và thu hồi phiên làm việc.' : 'Đã mở khóa tài khoản thành công.'),
+          willLock ? 'Đã Khóa Tài Khoản' : 'Mở Khóa Thành Công'
+        );
+        const updatedStatus = res.status || targetStatus;
+        setUsers(prev => prev.map(u => u._id === userId ? { ...u, status: updatedStatus } : u));
         if (selectedUser && selectedUser._id === userId) {
-          setSelectedUser(prev => ({ ...prev, status: res.status }));
+          setSelectedUser(prev => ({ ...prev, status: updatedStatus }));
         }
         fetchUsers();
       }
     } catch (err) {
-      toast.error('Lỗi cập nhật trạng thái khóa: ' + err.message);
+      const errorMsg = err.data?.message || err.message || 'Lỗi cập nhật trạng thái khóa';
+      toast.error(errorMsg, 'Lỗi Thao Tác');
     }
   };
 
@@ -480,7 +515,8 @@ export const UserManagementPage = () => {
                           <select
                             className="ruo-select ruo-select-sm"
                             value={u.role}
-                            onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                            onChange={(e) => handleInitiateRoleChange(u, e.target.value)}
+                            title="Điều chỉnh vai trò trực tiếp (Live RBAC)"
                             style={{
                               fontSize: '12px',
                               fontWeight: 700,
@@ -573,7 +609,7 @@ export const UserManagementPage = () => {
                               <button
                                 className={`ruo-btn ruo-btn-sm ${isLocked ? 'ruo-btn-success' : 'ruo-btn-danger'}`}
                                 onClick={() => handleToggleLock(u._id, u.status)}
-                                title={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                                title={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản & thu hồi phiên (UC-10.4)'}
                                 style={{ padding: '4px 8px' }}
                               >
                                 {isLocked ? <Icons.Unlock size={13} /> : <Icons.Lock size={13} />}
@@ -879,6 +915,16 @@ export const UserManagementPage = () => {
           setIsResetPasswordModalOpen(true);
         }}
         onToggleLock={(id, status) => handleToggleLock(id, status)}
+      />
+
+      {/* UC-10.4: Live RBAC Role Change Confirmation Modal */}
+      <RoleChangeConfirmModal
+        user={pendingRoleChange?.user}
+        newRole={pendingRoleChange?.targetRole}
+        isOpen={!!pendingRoleChange}
+        onClose={() => setPendingRoleChange(null)}
+        onConfirm={handleConfirmRoleChange}
+        loading={updatingRole}
       />
     </div>
   );

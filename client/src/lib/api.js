@@ -170,14 +170,15 @@ export const authApi = {
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   verifyResetOtp: (email, otp) => api.post('/auth/verify-reset-otp', { email, otp }),
   resetPassword: (email, otp, newPassword) => api.post('/auth/reset-password', { email, otp, newPassword }),
-  // Admin User Management
+  // Admin User Management (UC-10.1, UC-10.2, UC-10.3, UC-10.4)
   listUsers: (params) => api.get('/auth/users', params),
   getUserById: (id) => api.get(`/auth/users/${id}`),
   createUser: (data) => api.post('/auth/users', data),
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   adminUpdateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   updateUserRole: (id, role) => api.patch(`/auth/users/${id}/role`, { role }),
-  toggleUserLock: (id) => api.patch(`/auth/users/${id}/lock`),
+  toggleUserStatus: (id, status) => api.put(`/admin/users/${id}/toggle-status`, { status }),
+  toggleUserLock: (id) => api.put(`/admin/users/${id}/toggle-status`),
   adminResetPassword: (id, password) => api.post(`/auth/users/${id}/reset-password`, { password }),
   approveUser: (id, data) => api.post(`/auth/users/${id}/approve`, data)
 };

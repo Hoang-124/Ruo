@@ -8,7 +8,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node src/seeds/seedDatabase.js",
-    "test": "node src/tests/test_uc15_uc16.js && node src/tests/test_uc10_1.js && node src/tests/test_uc10_2.js && node src/tests/test_uc10_3.js"
+    "test": "node src/tests/test_uc15_uc16.js && node src/tests/test_uc10_1.js && node src/tests/test_uc10_2.js && node src/tests/test_uc10_3.js && node src/tests/test_uc10_4.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

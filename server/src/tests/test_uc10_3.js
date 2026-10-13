@@ -1,11 +1,14 @@
 import assert from 'assert';
 import { getUserById, adminUpdateUser } from '../controllers/authController.js';
 import { User } from '../models/User.js';
+import { RefreshToken } from '../models/RefreshToken.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { USER_ROLES, USER_STATUSES } from '../config/constants.js';
 
 async function runTests() {
   console.log('--- BẮT ĐẦU KIỂM THỬ UC-10.3: USER DETAIL & RBAC UPDATE ---');
+
+  RefreshToken.updateMany = async () => ({ modifiedCount: 1 });
 
   let mockDb = [
     {

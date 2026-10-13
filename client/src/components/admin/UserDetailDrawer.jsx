@@ -643,6 +643,34 @@ export const UserDetailDrawer = ({
                     )}
                   </div>
                 </div>
+
+                {/* UC-10.4: Session Revocation Warning during live role/status edit */}
+                {isEditing && (editForm.role !== userData.role || editForm.status === 'locked') && (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      display: 'flex',
+                      gap: '10px',
+                      alignItems: 'flex-start',
+                      marginTop: '6px'
+                    }}
+                  >
+                    <Icons.AlertTriangle size={18} color="#EF4444" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <div style={{ fontSize: '12px', lineHeight: '1.5' }}>
+                      <strong style={{ color: '#EF4444', display: 'block', marginBottom: '2px' }}>
+                        Lưu ý thu hồi phiên làm việc (UC-10.4 Session Invalidation)
+                      </strong>
+                      <span style={{ color: 'var(--ink-secondary)' }}>
+                        {editForm.role !== userData.role
+                          ? `Thay đổi vai trò sang [${ROLE_METADATA[editForm.role]?.label}] sẽ lập tức thu hồi toàn bộ Refresh Tokens của cán bộ này để áp dụng phân quyền RBAC mới.`
+                          : 'Khóa tài khoản sẽ lập tức vô hiệu hóa mọi phiên đăng nhập và token hiện tại của người dùng.'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Registered Role Appointment (Nguyện vọng chức vụ) */}
