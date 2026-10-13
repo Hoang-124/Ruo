@@ -1,5 +1,6 @@
-import { EQUIPMENT_STATUSES, ROOM_STATUSES } from '../config/constants.js';
+import { EQUIPMENT_STATUSES, ROOM_RULES, ROOM_STATUSES } from '../config/constants.js';
 import { getBlockingEquipment } from './roomStatus.js';
+import { toInteger } from './roomValidation.js';
 
 /**
  * Pure helpers for the interactive CAD floor plan (UC-2.7 room pod card).
@@ -26,4 +27,23 @@ export const summarizeCadRoom = (room = {}, equipments = []) => {
   }
 
   return { equipments: present, equipmentCount: present.length, brokenCount, effectiveStatus };
+};
+
+/**
+ * Validates the GET /facilities/cad-canvas query.
+ * building defaults to A1, floor to 3 (legacy default); floor must be an integer 1-5.
+ * Returns { valid, errors, buildingCode, floorNumber }.
+ */
+export const parseCadCanvasQuery = (query = {}) => {
+  const errors = {};
+  const buildingCode = String(query.buildingCode ?? ROOM_RULES.BUILDING).trim().toUpperCase();
+  if (!buildingCode) errors.buildingCode = 'Vui lòng nhập mã tòa nhà.';
+
+  const rawFloor = query.floorNumber ?? 3;
+  const floorNumber = toInteger(rawFloor);
+  if (Number.isNaN(floorNumber) || floorNumber < ROOM_RULES.MIN_FLOOR || floorNumber > ROOM_RULES.MAX_FLOOR) {
+    errors.floorNumber = `Tầng phải là số nguyên từ ${ROOM_RULES.MIN_FLOOR} đến ${ROOM_RULES.MAX_FLOOR}.`;
+  }
+
+  return { valid: Object.keys(errors).length === 0, errors, buildingCode, floorNumber };
 };

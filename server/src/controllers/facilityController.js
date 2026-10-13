@@ -13,7 +13,7 @@ import {
 } from '../services/roomValidation.js';
 import { HISTORY_LIMIT, summarizeRoomEquipment } from '../services/roomDetail.js';
 import { evaluateDeactivation, ROOM_STATUS_LABELS, evaluateStatusChange, validateDeactivationPayload } from '../services/roomStatus.js';
-import { summarizeCadRoom } from '../services/cadCanvas.js';
+import { parseCadCanvasQuery, summarizeCadRoom } from '../services/cadCanvas.js';
 
 // @desc    Get all buildings and their floors
 // @route   GET /api/facilities/buildings
@@ -283,16 +283,13 @@ export const updateRoomStatus = async (req, res) => {
 // @route   GET /api/facilities/cad-canvas
 export const getCadCanvasRooms = async (req, res) => {
   try {
-    const { buildingCode = 'A1', floorNumber = 3 } = req.query;
+    const query = parseCadCanvasQuery(req.query);
+    if (!query.valid) {
+      return res.status(400).json({ success: false, message: Object.values(query.errors)[0], errors: query.errors });
+    }
+    const { buildingCode, floorNumber } = query;
 
-    const building = await Building.findOne({ code: buildingCode.toUpperCase() });
-    
-    const query = {
-      building: buildingCode.toUpperCase(),
-      floor: Number(floorNumber)
-    };
-
-    const rooms = await Room.find(query);
+    const rooms = await Room.find({ building: buildingCode, floor: floorNumber });
     const roomIds = rooms.map(r => r._id);
 
     // Group equipments count by room

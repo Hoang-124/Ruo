@@ -17,7 +17,7 @@ import { USER_ROLES } from '../config/constants.js';
 const router = express.Router();
 
 router.get('/buildings', getBuildings);
-router.get('/cad-canvas', getCadCanvasRooms);
+router.get('/cad-canvas', protect, getCadCanvasRooms);
 router.get('/warehouse/stock', protect, getWarehouseStock);
 
 router.get('/rooms', protect, getAllRooms);
