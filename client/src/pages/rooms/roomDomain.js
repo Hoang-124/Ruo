@@ -209,6 +209,12 @@ export const buildDeactivatePayload = (reason) => {
   return text ? { reason: text } : {};
 };
 
+/** UC-2.6: statuses a room can move to (AVAILABLE <-> MAINTENANCE <-> INACTIVE, never to itself). */
+export const getRoomStatusTargets = (current) => ROOM_STATUS_OPTIONS.filter((option) => option.value !== current);
+
+/** Builds the PUT /facilities/rooms/:id/status payload (reason is omitted when blank). */
+export const buildStatusPayload = (status, reason) => ({ status, ...buildDeactivatePayload(reason) });
+
 export const ROOM_LIST_PAGE_SIZE = 10;
 
 export const EMPTY_ROOM_FILTERS = { q: '', floor: '', room_type: '', status: '' };

@@ -5,6 +5,7 @@ import {
   buildCreateRoomPayload,
   buildDeactivatePayload,
   buildRoomListParams,
+  buildStatusPayload,
   buildUpdateRoomPayload,
   canDeactivateRoom,
   createEmptyRoomForm,
@@ -16,6 +17,7 @@ import {
   getPageWindow,
   getRepairStatusLabel,
   getRoomStatusMeta,
+  getRoomStatusTargets,
   getRoomTypeLabel,
   hasActiveRoomFilters,
   roomToForm,
@@ -175,5 +177,18 @@ describe('room deactivation helpers (UC-2.5)', () => {
   it('rejects a reason longer than the limit', () => {
     expect(validateDeactivationReason('x'.repeat(DEACTIVATION_REASON_MAX))).toBe('');
     expect(validateDeactivationReason('x'.repeat(DEACTIVATION_REASON_MAX + 1))).toBeTruthy();
+  });
+});
+
+describe('room status helpers (UC-2.6)', () => {
+  it('offers the two other statuses, never the current one', () => {
+    expect(getRoomStatusTargets('available').map((o) => o.value)).toEqual(['maintenance', 'inactive']);
+    expect(getRoomStatusTargets('maintenance').map((o) => o.value)).toEqual(['available', 'inactive']);
+    expect(getRoomStatusTargets('inactive').map((o) => o.value)).toEqual(['available', 'maintenance']);
+  });
+
+  it('builds the status payload and drops a blank reason', () => {
+    expect(buildStatusPayload('maintenance', '')).toEqual({ status: 'maintenance' });
+    expect(buildStatusPayload('inactive', '  Cải tạo ')).toEqual({ status: 'inactive', reason: 'Cải tạo' });
   });
 });

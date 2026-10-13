@@ -76,3 +76,61 @@ export const evaluateDeactivation = (room = {}, equipments = []) => {
 
   return { allowed: true, reason: null, message: '', blockers: [] };
 };
+
+// UC-2.6 — every status can move to either of the other two (AVAILABLE <-> MAINTENANCE <-> INACTIVE).
+export const ROOM_STATUS_TRANSITIONS = {
+  [ROOM_STATUSES.AVAILABLE]: [ROOM_STATUSES.MAINTENANCE, ROOM_STATUSES.INACTIVE],
+  [ROOM_STATUSES.MAINTENANCE]: [ROOM_STATUSES.AVAILABLE, ROOM_STATUSES.INACTIVE],
+  [ROOM_STATUSES.INACTIVE]: [ROOM_STATUSES.AVAILABLE, ROOM_STATUSES.MAINTENANCE]
+};
+
+export const getAllowedRoomStatuses = (current) => ROOM_STATUS_TRANSITIONS[current] || [];
+
+/**
+ * UC-2.6 Update Room Status.
+ * Returns { ok, httpStatus, code, message, errors, blockers, target, reason }.
+ *  - 400 INVALID_PAYLOAD      : missing/unknown status or bad reason
+ *  - 409 NO_CHANGE            : room already has the requested status
+ *  - 409 INVALID_TRANSITION   : move not allowed by ROOM_STATUS_TRANSITIONS
+ *  - 409 HAS_EQUIPMENT        : moving to INACTIVE while equipment is still stationed in the room
+ */
+export const evaluateStatusChange = (body = {}, room = {}, equipments = []) => {
+  const fail = (httpStatus, code, message, extra = {}) => ({
+    ok: false, httpStatus, code, message, errors: {}, blockers: [], target: null, reason: '', ...extra
+  });
+
+  const target = typeof body.status === 'string' ? body.status.trim() : '';
+  if (!target) {
+    const message = 'Vui lòng chọn trạng thái mới của phòng.';
+    return fail(400, 'INVALID_PAYLOAD', message, { errors: { status: message } });
+  }
+  if (!Object.values(ROOM_STATUSES).includes(target)) {
+    const message = `Trạng thái phòng không hợp lệ. Chấp nhận: ${Object.values(ROOM_STATUSES).join(', ')}.`;
+    return fail(400, 'INVALID_PAYLOAD', message, { errors: { status: message } });
+  }
+
+  const payload = validateDeactivationPayload(body);
+  if (!payload.valid) {
+    return fail(400, 'INVALID_PAYLOAD', Object.values(payload.errors)[0], { errors: payload.errors });
+  }
+
+  if (room.status === target) {
+    return fail(409, 'NO_CHANGE', `Phòng ${room.code} đã ở trạng thái này.`);
+  }
+  if (!getAllowedRoomStatuses(room.status).includes(target)) {
+    return fail(409, 'INVALID_TRANSITION', `Không thể chuyển phòng ${room.code} từ "${room.status}" sang "${target}".`);
+  }
+
+  if (target === ROOM_STATUSES.INACTIVE) {
+    const decision = evaluateDeactivation(room, equipments);
+    if (!decision.allowed) return fail(409, decision.reason, decision.message, { blockers: decision.blockers });
+  }
+
+  return { ok: true, httpStatus: 200, code: null, message: '', errors: {}, blockers: [], target, reason: payload.reason };
+};
+
+export const ROOM_STATUS_LABELS = {
+  [ROOM_STATUSES.AVAILABLE]: 'Sẵn sàng',
+  [ROOM_STATUSES.MAINTENANCE]: 'Đang bảo trì',
+  [ROOM_STATUSES.INACTIVE]: 'Ngừng sử dụng'
+};

@@ -12,7 +12,7 @@ import {
   validateUpdateRoomPayload
 } from '../services/roomValidation.js';
 import { HISTORY_LIMIT, summarizeRoomEquipment } from '../services/roomDetail.js';
-import { evaluateDeactivation, validateDeactivationPayload } from '../services/roomStatus.js';
+import { evaluateDeactivation, ROOM_STATUS_LABELS, evaluateStatusChange, validateDeactivationPayload } from '../services/roomStatus.js';
 
 // @desc    Get all buildings and their floors
 // @route   GET /api/facilities/buildings
@@ -222,6 +222,59 @@ export const deactivateRoom = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Không thể ngừng sử dụng phòng.' });
+  }
+};
+
+// @desc    Change room status AVAILABLE <-> MAINTENANCE <-> INACTIVE (Admin only) — UC-2.6
+// @route   PUT /api/facilities/rooms/:id/status
+export const updateRoomStatus = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Mã định danh phòng không hợp lệ.' });
+    }
+
+    const room = await Room.findById(req.params.id);
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Phòng học không tồn tại.' });
+    }
+
+    // Equipment is only needed for the INACTIVE guard, so skip the query for other targets.
+    const equipments = req.body?.status === ROOM_STATUSES.INACTIVE
+      ? await Equipment.find({ room_id: room._id }).select('code name status')
+      : [];
+
+    const decision = evaluateStatusChange(req.body, room, equipments);
+    if (!decision.ok) {
+      return res.status(decision.httpStatus).json({
+        success: false,
+        code: decision.code,
+        message: decision.message,
+        errors: decision.errors,
+        ...(decision.blockers.length ? { equipments: decision.blockers } : {})
+      });
+    }
+
+    const previousStatus = room.status;
+    room.status = decision.target;
+    await room.save();
+
+    await AuditLog.logAction({
+      ...getAuditActor(req),
+      action: 'ROOM_STATUS_CHANGED',
+      target_table: 'rooms',
+      entity_id: room._id.toString(),
+      old_value: { code: room.code, status: previousStatus },
+      new_value: { code: room.code, status: room.status, ...(decision.reason ? { reason: decision.reason } : {}) }
+    });
+
+    res.json({
+      success: true,
+      message: `Đã chuyển phòng ${room.code} sang trạng thái "${ROOM_STATUS_LABELS[room.status]}".`,
+      previousStatus,
+      room
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Không thể cập nhật trạng thái phòng.' });
   }
 };
 
