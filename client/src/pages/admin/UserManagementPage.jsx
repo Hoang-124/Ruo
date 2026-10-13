@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext';
 import { USER_ROLES, ROLE_METADATA } from '../../config/navigation';
 import { UserDetailDrawer } from '../../components/admin/UserDetailDrawer';
 import { RoleChangeConfirmModal } from '../../components/admin/RoleChangeConfirmModal';
+import { UserLockModal } from '../../components/admin/UserLockModal';
 
 export const UserManagementPage = () => {
   const { toast } = useToast();
@@ -15,10 +16,12 @@ export const UserManagementPage = () => {
   const [statusTab, setStatusTab] = useState('ALL');
   const [selectedUser, setSelectedUser] = useState(null);
 
-  // Modals & User Details (UC-10.2)
+  // Modals & User Details (UC-10.2, UC-10.4, UC-10.5)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [userToReset, setUserToReset] = useState(null);
+  const [userToLock, setUserToLock] = useState(null);
+  const [lockingUser, setLockingUser] = useState(false);
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [createdUserResult, setCreatedUserResult] = useState(null); // UC-10.1: Lưu thông tin tài khoản & mật khẩu vừa tạo
   const [showPassword, setShowPassword] = useState(false);
@@ -153,33 +156,44 @@ export const UserManagementPage = () => {
     }
   };
 
-  // UC-10.4: Quick Status Toggle (PUT /api/admin/users/:id/toggle-status) with Session Invalidation
-  const handleToggleLock = async (userId, currentStatus) => {
-    const willLock = currentStatus !== 'locked';
-    const confirmPrompt = willLock
-      ? 'Bạn có chắc muốn KHÓA tài khoản này? Toàn bộ phiên làm việc của người dùng sẽ bị thu hồi ngay lập tức (Session Invalidation).'
-      : 'Bạn có chắc muốn MỞ KHÓA và kích hoạt lại tài khoản này?';
+  // UC-10.5: Soft Lock & Unlock User Immediately (PATCH /api/auth/users/:id/lock)
+  const handleOpenLockModal = (u) => {
+    setUserToLock(u);
+  };
 
-    if (!window.confirm(confirmPrompt)) return;
-
+  const handleConfirmLock = async (userId, action, reason) => {
+    setLockingUser(true);
     try {
-      const targetStatus = willLock ? 'locked' : 'active';
-      const res = await authApi.toggleUserStatus(userId, targetStatus);
+      const res = await authApi.toggleUserLock(userId, { action, reason });
       if (res.success) {
         toast.success(
-          res.message || (willLock ? 'Đã khóa tài khoản và thu hồi phiên làm việc.' : 'Đã mở khóa tài khoản thành công.'),
-          willLock ? 'Đã Khóa Tài Khoản' : 'Mở Khóa Thành Công'
+          res.message || (action === 'lock' ? 'Đã khóa tài khoản và thu hồi phiên làm việc.' : 'Đã mở khóa tài khoản thành công.'),
+          action === 'lock' ? 'Đã Khóa Tài Khoản (UC-10.5)' : 'Mở Khóa Thành Công'
         );
-        const updatedStatus = res.status || targetStatus;
-        setUsers(prev => prev.map(u => u._id === userId ? { ...u, status: updatedStatus } : u));
+        const updatedStatus = res.status || (action === 'lock' ? 'locked' : 'active');
+        const updatedReason = action === 'lock' ? (reason || 'Quản trị viên khóa tài khoản') : null;
+        setUsers(prev => prev.map(u => u._id === userId ? {
+          ...u,
+          status: updatedStatus,
+          lock_reason: updatedReason,
+          locked_at: action === 'lock' ? new Date().toISOString() : null
+        } : u));
         if (selectedUser && selectedUser._id === userId) {
-          setSelectedUser(prev => ({ ...prev, status: updatedStatus }));
+          setSelectedUser(prev => ({
+            ...prev,
+            status: updatedStatus,
+            lock_reason: updatedReason,
+            locked_at: action === 'lock' ? new Date().toISOString() : null
+          }));
         }
+        setUserToLock(null);
         fetchUsers();
       }
     } catch (err) {
-      const errorMsg = err.data?.message || err.message || 'Lỗi cập nhật trạng thái khóa';
+      const errorMsg = err.data?.message || err.message || 'Lỗi xử lý khóa tài khoản';
       toast.error(errorMsg, 'Lỗi Thao Tác');
+    } finally {
+      setLockingUser(false);
     }
   };
 
@@ -608,8 +622,8 @@ export const UserManagementPage = () => {
 
                               <button
                                 className={`ruo-btn ruo-btn-sm ${isLocked ? 'ruo-btn-success' : 'ruo-btn-danger'}`}
-                                onClick={() => handleToggleLock(u._id, u.status)}
-                                title={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản & thu hồi phiên (UC-10.4)'}
+                                onClick={() => handleOpenLockModal(u)}
+                                title={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản & thu hồi phiên (UC-10.5)'}
                                 style={{ padding: '4px 8px' }}
                               >
                                 {isLocked ? <Icons.Unlock size={13} /> : <Icons.Lock size={13} />}
@@ -914,7 +928,10 @@ export const UserManagementPage = () => {
           setNewPasswordInput(`Ruo@${Math.floor(1000 + Math.random() * 9000)}`);
           setIsResetPasswordModalOpen(true);
         }}
-        onToggleLock={(id, status) => handleToggleLock(id, status)}
+        onToggleLock={(id, status) => {
+          const target = users.find(u => u._id === id) || (selectedUser?._id === id ? selectedUser : { _id: id, status });
+          handleOpenLockModal(target);
+        }}
       />
 
       {/* UC-10.4: Live RBAC Role Change Confirmation Modal */}
@@ -925,6 +942,15 @@ export const UserManagementPage = () => {
         onClose={() => setPendingRoleChange(null)}
         onConfirm={handleConfirmRoleChange}
         loading={updatingRole}
+      />
+
+      {/* UC-10.5: Soft Lock & Unlock Modal */}
+      <UserLockModal
+        user={userToLock}
+        isOpen={!!userToLock}
+        onClose={() => setUserToLock(null)}
+        onConfirm={handleConfirmLock}
+        loading={lockingUser}
       />
     </div>
   );
