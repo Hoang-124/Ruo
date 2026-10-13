@@ -1607,7 +1607,7 @@ export const updateUserRole = async (req, res) => {
 
 /**
  * UC-10.4: Toggle or Update User Status (Admin Only)
- * PUT /api/admin/users/:id/toggle-status hoặc PATCH /api/auth/users/:id/lock
+ * PUT /api/admin/users/:id/toggle-status
  */
 export const toggleUserStatus = async (req, res) => {
   try {
@@ -1616,7 +1616,9 @@ export const toggleUserStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng trong hệ thống.' });
     }
 
-    const { status: targetStatus } = req.body || {};
+    const { status: targetStatus, reason, lock_reason } = req.body || {};
+    const effectiveReason = reason || lock_reason || null;
+
     let newStatus;
     if (targetStatus && Object.values(USER_STATUSES).includes(targetStatus)) {
       newStatus = targetStatus;
@@ -1633,13 +1635,20 @@ export const toggleUserStatus = async (req, res) => {
     }
 
     const oldStatus = user.status;
+    const oldReason = user.lock_reason;
     user.status = newStatus;
     let revokedSessions = 0;
 
     if (newStatus === USER_STATUSES.LOCKED) {
+      user.lock_reason = effectiveReason || 'Quản trị viên khóa tài khoản';
+      user.locked_at = new Date();
+      user.locked_by = req.user?._id || null;
       // Khi tài khoản bị khóa, lập tức thu hồi mọi phiên đăng nhập
       revokedSessions = await revokeUserSessions(user._id);
     } else if (newStatus === USER_STATUSES.ACTIVE) {
+      user.lock_reason = null;
+      user.locked_at = null;
+      user.locked_by = null;
       user.failed_login_attempts = 0;
       user.lock_until = null;
     }
@@ -1654,8 +1663,8 @@ export const toggleUserStatus = async (req, res) => {
       target_table: 'users',
       entity_id: user._id.toString(),
       ip_address: ipAddress,
-      old_value: { status: oldStatus },
-      new_value: { status: newStatus, revoked_sessions: revokedSessions }
+      old_value: { status: oldStatus, lock_reason: oldReason },
+      new_value: { status: newStatus, lock_reason: user.lock_reason, revoked_sessions: revokedSessions }
     });
 
     const sanitizedUser = user.toObject ? user.toObject() : { ...user };
@@ -1677,7 +1686,89 @@ export const toggleUserStatus = async (req, res) => {
   }
 };
 
-export const toggleUserLock = toggleUserStatus;
+/**
+ * UC-10.5: Soft Lock or Unlock User Immediately (Admin Only)
+ * PATCH /api/auth/users/:id/lock
+ */
+export const toggleUserLock = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng trong hệ thống.' });
+    }
+
+    const { action, status: targetStatus, reason, lock_reason } = req.body || {};
+    const effectiveReason = reason || lock_reason || null;
+
+    let newStatus;
+    if (action === 'lock' || targetStatus === USER_STATUSES.LOCKED) {
+      newStatus = USER_STATUSES.LOCKED;
+    } else if (action === 'unlock' || targetStatus === USER_STATUSES.ACTIVE) {
+      newStatus = USER_STATUSES.ACTIVE;
+    } else {
+      // Toggle if not specified
+      newStatus = user.status === USER_STATUSES.LOCKED ? USER_STATUSES.ACTIVE : USER_STATUSES.LOCKED;
+    }
+
+    // Guard-rail: Chặn Admin tự khóa tài khoản của chính mình
+    if (req.user && req.user._id.toString() === user._id.toString() && newStatus === USER_STATUSES.LOCKED) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bạn không thể tự khóa tài khoản Quản trị viên (Admin) của chính mình.'
+      });
+    }
+
+    const oldStatus = user.status;
+    const oldReason = user.lock_reason;
+    user.status = newStatus;
+    let revokedSessions = 0;
+
+    if (newStatus === USER_STATUSES.LOCKED) {
+      user.lock_reason = effectiveReason || 'Quản trị viên khóa tài khoản';
+      user.locked_at = new Date();
+      user.locked_by = req.user?._id || null;
+      // Thu hồi toàn bộ phiên làm việc của user ngay lập tức
+      revokedSessions = await revokeUserSessions(user._id);
+    } else {
+      user.lock_reason = null;
+      user.locked_at = null;
+      user.locked_by = null;
+      user.failed_login_attempts = 0;
+      user.lock_until = null;
+    }
+
+    await user.save();
+
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    await AuditLog.logAction({
+      user_id: req.user?._id || null,
+      user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'Quản Trị Viên',
+      action: newStatus === USER_STATUSES.LOCKED ? 'LOCK_USER' : 'UNLOCK_USER',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: ipAddress,
+      old_value: { status: oldStatus, lock_reason: oldReason },
+      new_value: { status: newStatus, lock_reason: user.lock_reason, revoked_sessions: revokedSessions }
+    });
+
+    const sanitizedUser = user.toObject ? user.toObject() : { ...user };
+    delete sanitizedUser.password_hash;
+
+    const message = newStatus === USER_STATUSES.LOCKED
+      ? `Đã khóa tài khoản người dùng (${user.lock_reason}) và thu hồi ${revokedSessions} phiên làm việc.`
+      : 'Đã kích hoạt và mở khóa tài khoản người dùng thành công.';
+
+    res.json({
+      success: true,
+      status: newStatus,
+      message,
+      user: sanitizedUser,
+      revokedSessions
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Không thể thay đổi trạng thái khóa tài khoản: ' + error.message });
+  }
+};
 
 /**
  * Reset User Password (Admin Only)
