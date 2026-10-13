@@ -1484,6 +1484,12 @@ export const adminUpdateUser = async (req, res) => {
 
     await user.save();
 
+    // UC-10.4: Nếu thay đổi vai trò hoặc chuyển sang trạng thái khóa, thu hồi toàn bộ phiên làm việc
+    let revokedSessions = 0;
+    if ((role && role !== oldData.role) || (status && status === USER_STATUSES.LOCKED)) {
+      revokedSessions = await revokeUserSessions(user._id);
+    }
+
     const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     await AuditLog.logAction({
       user_id: req.user?._id || null,
@@ -1500,7 +1506,8 @@ export const adminUpdateUser = async (req, res) => {
         full_name: user.full_name,
         status: user.status,
         requested_role: user.requested_role,
-        repute_score: user.repute_score
+        repute_score: user.repute_score,
+        revoked_sessions: revokedSessions
       }
     });
 
@@ -1523,8 +1530,11 @@ export const adminUpdateUser = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Cập nhật hồ sơ và phân quyền RBAC người dùng thành công.',
+      message: revokedSessions > 0
+        ? `Cập nhật hồ sơ và thu hồi ${revokedSessions} phiên làm việc của người dùng thành công.`
+        : 'Cập nhật hồ sơ và phân quyền RBAC người dùng thành công.',
       user: sanitizedUser,
+      revokedSessions,
       activities
     });
   } catch (error) {
