@@ -192,6 +192,23 @@ export const buildUpdateRoomPayload = (form, room) => {
   return payload;
 };
 
+export const DEACTIVATION_REASON_MAX = 500;
+
+/** UC-2.5: a room can only be deactivated while it is not already inactive. */
+export const canDeactivateRoom = (room) => Boolean(room) && room.status !== 'inactive';
+
+/** Validates the optional deactivation reason; returns an error message or ''. */
+export const validateDeactivationReason = (reason) =>
+  String(reason ?? '').trim().length > DEACTIVATION_REASON_MAX
+    ? `Lý do tối đa ${DEACTIVATION_REASON_MAX} ký tự.`
+    : '';
+
+/** Builds the PUT /facilities/rooms/:id/deactivate payload (reason is omitted when blank). */
+export const buildDeactivatePayload = (reason) => {
+  const text = String(reason ?? '').trim();
+  return text ? { reason: text } : {};
+};
+
 export const ROOM_LIST_PAGE_SIZE = 10;
 
 export const EMPTY_ROOM_FILTERS = { q: '', floor: '', room_type: '', status: '' };
