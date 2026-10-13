@@ -1536,38 +1536,62 @@ export const adminUpdateUser = async (req, res) => {
 };
 
 /**
- * Assign User Role (Admin Only)
+ * UC-10.4: Assign User Role (Live RBAC Update with Session Invalidation)
+ * PATCH /api/auth/users/:id/role hoặc PATCH /api/admin/users/:id/role
  */
 export const updateUserRole = async (req, res) => {
   try {
     const { role } = req.body;
     if (!Object.values(USER_ROLES).includes(role)) {
-      return res.status(400).json({ success: false, message: 'Vai trò (role) không hợp lệ.' });
+      return res.status(400).json({ success: false, message: `Vai trò [${role}] không hợp lệ trong hệ thống.` });
     }
 
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng trong hệ thống.' });
+    }
+
+    // Guard-rail: Chặn Admin tự hạ quyền của chính mình
+    if (req.user && req.user._id.toString() === user._id.toString() && role !== USER_ROLES.ADMIN) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bạn không thể tự hạ quyền Quản trị viên (Admin) của chính mình.'
+      });
     }
 
     const oldRole = user.role;
     user.role = role;
+    if (user.requested_role && user.requested_role === role) {
+      user.requested_role = null;
+    }
     await user.save();
 
+    // UC-10.4: Thu hồi toàn bộ phiên làm việc (Refresh Tokens) để áp dụng phân quyền mới ngay lập tức
+    const revokedSessions = await revokeUserSessions(user._id);
+
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
+      user_id: req.user?._id || null,
+      user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'Quản Trị Viên',
       action: 'UPDATE_ROLE',
       target_table: 'users',
       entity_id: user._id.toString(),
-      ip_address: req.ip || '127.0.0.1',
+      ip_address: ipAddress,
       old_value: { role: oldRole },
-      new_value: { role: user.role }
+      new_value: { role: user.role, revoked_sessions: revokedSessions }
     });
 
-    res.json({ success: true, message: 'Cập nhật vai trò người dùng thành công.', user });
+    const sanitizedUser = user.toObject ? user.toObject() : { ...user };
+    delete sanitizedUser.password_hash;
+
+    res.json({
+      success: true,
+      message: `Đã cập nhật vai trò người dùng sang [${role}] và thu hồi ${revokedSessions} phiên làm việc cũ để áp dụng phân quyền mới.`,
+      user: sanitizedUser,
+      revokedSessions
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Không thể cập nhật vai trò người dùng.' });
+    res.status(500).json({ success: false, message: 'Không thể cập nhật vai trò người dùng: ' + error.message });
   }
 };
 
