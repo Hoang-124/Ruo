@@ -22,6 +22,24 @@ const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d\s]).{8,}$
 const PHONE_REGEX = /^(84|0)(3|5|7|8|9)[0-9]{8}$/;
 
 /**
+ * Helper: Revoke all active refresh tokens for a user (session invalidation)
+ * Used in UC-10.4 when role changes or account is locked to force re-authentication with new RBAC
+ * Returns number of revoked sessions
+ */
+export const revokeUserSessions = async (userId) => {
+  try {
+    const result = await RefreshToken.updateMany(
+      { user_id: userId, is_revoked: false },
+      { $set: { is_revoked: true } }
+    );
+    return result.modifiedCount || result.nModified || 0;
+  } catch (err) {
+    console.error(`[revokeUserSessions] Failed to revoke sessions for user ${userId}:`, err.message);
+    return 0;
+  }
+};
+
+/**
  * UC-1.1: Login
  * Authenticate with email or employee code + password
  * Issues 15-minute Access Token and 7-day Refresh Token with token rotation
