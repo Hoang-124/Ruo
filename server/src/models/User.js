@@ -94,6 +94,23 @@ const userSchema = new mongoose.Schema({
     index: true,
     alias: 'lockUntil'
   },
+  lock_reason: {
+    type: String,
+    default: null,
+    trim: true,
+    alias: 'lockReason'
+  },
+  locked_at: {
+    type: Date,
+    default: null,
+    alias: 'lockedAt'
+  },
+  locked_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+    alias: 'lockedBy'
+  },
   last_login_at: { 
     type: Date, 
     default: null,

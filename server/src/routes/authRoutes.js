@@ -18,6 +18,7 @@ import {
   adminUpdateUser,
   updateUserRole,
   toggleUserLock,
+  toggleUserStatus,
   adminResetPassword,
   approveUser
 } from '../controllers/authController.js';
@@ -70,9 +71,18 @@ router.get('/users', protect, requireRole(USER_ROLES.ADMIN), getAllUsers);
 router.post('/users', protect, requireRole(USER_ROLES.ADMIN), createUser);
 router.get('/users/:id', protect, requireRole(USER_ROLES.ADMIN), getUserById);
 router.put('/users/:id', protect, requireRole(USER_ROLES.ADMIN), adminUpdateUser);
+
+// UC-10.4: Live RBAC Role Change & Status Toggle
 router.patch('/users/:id/role', protect, requireRole(USER_ROLES.ADMIN), updateUserRole);
+router.put('/users/:id/toggle-status', protect, requireRole(USER_ROLES.ADMIN), toggleUserStatus);
+router.patch('/users/:id/toggle-status', protect, requireRole(USER_ROLES.ADMIN), toggleUserStatus);
+
+// UC-10.5: Soft Lock / Unlock & Force Password Reset
 router.patch('/users/:id/lock', protect, requireRole(USER_ROLES.ADMIN), toggleUserLock);
+router.put('/users/:id/lock', protect, requireRole(USER_ROLES.ADMIN), toggleUserLock);
 router.post('/users/:id/reset-password', protect, requireRole(USER_ROLES.ADMIN), adminResetPassword);
+router.put('/users/:id/reset-password', protect, requireRole(USER_ROLES.ADMIN), adminResetPassword);
+
 router.post('/users/:id/approve', protect, requireRole(USER_ROLES.ADMIN), approveUser);
 
 export default router;
