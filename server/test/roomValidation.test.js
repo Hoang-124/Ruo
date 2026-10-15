@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   validateCreateRoomPayload,
   getFloorFromRoomCode,
+  getRoomCodeVariants,
   isValidRoomCode,
   toInteger
 } from '../src/services/roomValidation.js';
@@ -35,6 +36,12 @@ describe('room code rules (UC-2.1)', () => {
     assert.equal(getFloorFromRoomCode('P307'), 3);
     assert.equal(getFloorFromRoomCode(' p508 '), 5);
     assert.equal(getFloorFromRoomCode('X101'), null);
+  });
+
+  test('maps equivalent room codes in Building A1 (P202 <-> A1-202)', () => {
+    assert.deepEqual(getRoomCodeVariants('p202'), ['P202', 'A1-202']);
+    assert.deepEqual(getRoomCodeVariants('a1-305'), ['A1-305', 'P305']);
+    assert.deepEqual(getRoomCodeVariants('KHO-01'), ['KHO-01']);
   });
 });
 

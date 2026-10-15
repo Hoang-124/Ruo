@@ -23,7 +23,8 @@ export const summarizeBlockingEquipment = (equipments = []) =>
     _id: equipment._id,
     code: equipment.code,
     name: equipment.name,
-    status: equipment.status
+    status: equipment.status,
+    ...(equipment.pendingMovement ? { pendingMovement: equipment.pendingMovement } : {})
   }));
 
 /**

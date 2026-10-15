@@ -1,6 +1,16 @@
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import { User } from '../models/User.js';
+import { Role } from '../models/Role.js';
+import { DEFAULT_CANONICAL_ROLES } from '../controllers/roleController.js';
 import { USER_STATUSES } from '../config/constants.js';
+
+export const hasGrantedPermission = (permissions = [], code = '') => {
+  if (!code || !Array.isArray(permissions)) return false;
+  if (permissions.includes('*') || permissions.includes(code)) return true;
+  const prefix = code.split(':')[0];
+  return Boolean(prefix && permissions.includes(`${prefix}:*`));
+};
 
 export const protect = async (req, res, next) => {
   const jwtSecret = process.env.JWT_SECRET || 'ruo_super_secret_jwt_key_2026_production_grade_university';
@@ -45,7 +55,17 @@ export const protect = async (req, res, next) => {
       });
     }
 
+    let rolePermissions = DEFAULT_CANONICAL_ROLES[user.role]?.permissions || [];
+    if (mongoose.connection.readyState === 1) {
+      const dbRole = await Role.findOne({ name: user.role }).select('permissions');
+      if (dbRole && Array.isArray(dbRole.permissions) && dbRole.permissions.length > 0) {
+        rolePermissions = dbRole.permissions;
+      }
+    }
+
     req.user = user;
+    req.userPermissions = rolePermissions;
+    req.hasPermission = (code) => hasGrantedPermission(rolePermissions, code);
     req.token = token;
     next();
   } catch (error) {
@@ -76,6 +96,31 @@ export const requireRole = (...allowedRoles) => {
     }
 
     next();
+  };
+};
+
+/**
+ * Dynamic permission authorization middleware backed by the Role matrix (UC-12.1).
+ */
+export const requirePermission = (permissionCode, ...fallbackRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Yêu cầu xác thực tài khoản.' });
+    }
+
+    const perms = req.userPermissions || DEFAULT_CANONICAL_ROLES[req.user.role]?.permissions || [];
+    if (hasGrantedPermission(perms, permissionCode)) {
+      return next();
+    }
+
+    if (fallbackRoles.length > 0 && !req.userPermissions && fallbackRoles.includes(req.user.role)) {
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      message: `Quyền truy cập bị từ chối. Nghiệp vụ yêu cầu quyền [${permissionCode}] trên Ma trận RBAC.`
+    });
   };
 };
 

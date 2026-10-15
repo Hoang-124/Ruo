@@ -22,6 +22,7 @@ export const EquipmentBlockerList = ({ items, room = null }) => {
   const [orderedIds, setOrderedIds] = useState(() => new Set());
 
   const markOrdered = (equipment) => setOrderedIds((prev) => new Set(prev).add(equipment._id));
+  const hasAnyOrdered = orderedIds.size > 0 || items.some((item) => Boolean(item.pendingMovement));
 
   return (
     <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
@@ -30,7 +31,8 @@ export const EquipmentBlockerList = ({ items, room = null }) => {
       </div>
       <ul id="room-deactivate-blockers" style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: '220px', overflowY: 'auto' }}>
         {items.map((item) => {
-          const ordered = orderedIds.has(item._id);
+          const ordered = orderedIds.has(item._id) || Boolean(item.pendingMovement);
+          const pendingTarget = item.pendingMovement?.toRoomCode;
           return (
             <li key={item._id || item.code} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', fontSize: '12.5px' }}>
               <span>
@@ -40,7 +42,9 @@ export const EquipmentBlockerList = ({ items, room = null }) => {
               <span style={{ display: 'flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap' }}>
                 <span style={{ color: 'var(--ink-muted)' }}>{getEquipmentStatusLabel(item.status)}</span>
                 {room && (ordered ? (
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#E5A33B' }}>Chờ KTV</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#E5A33B' }}>
+                    {pendingTarget ? `Chờ KTV → ${pendingTarget}` : 'Chờ KTV'}
+                  </span>
                 ) : (
                   <button
                     type="button"
@@ -56,9 +60,9 @@ export const EquipmentBlockerList = ({ items, room = null }) => {
           );
         })}
       </ul>
-      {room && orderedIds.size > 0 && (
+      {room && hasAnyOrdered && (
         <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', background: 'var(--surface-2)', fontSize: '11.5px', color: 'var(--ink-muted)', lineHeight: 1.5 }}>
-          Thiết bị chỉ rời khỏi phòng sau khi Kỹ thuật viên xác nhận lệnh. Khi đã chuyển hết, hãy thực hiện lại thao tác này.
+          Thiết bị chỉ rời khỏi phòng sau khi Kỹ thuật viên xác nhận lệnh điều chuyển thực địa. Khi đã chuyển hết, hãy thực hiện lại thao tác này.
         </div>
       )}
       {transferItem && (

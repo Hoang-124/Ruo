@@ -6,9 +6,11 @@ import {
   POD_HEIGHT,
   POD_MARGIN,
   buildRoomPodIndex,
+  getEquivalentRoomCode,
   getPodLayout,
   getPodStatus,
   getPodTooltip,
+  getRoomPod,
   getShortRoomCode
 } from './roomPod';
 import { RoomPodCard } from './RoomPodCard';
@@ -39,6 +41,13 @@ describe('room pod helpers (UC-2.7)', () => {
       code: 'A1-203', status: 'inactive', effectiveStatus: 'inactive', equipmentCount: 0, brokenCount: 0, equipments: []
     });
     expect(buildRoomPodIndex()).toEqual({});
+  });
+
+  it('resolves equivalent Building A1 room codes (P202 <-> A1-202) on the CAD floor plan', () => {
+    expect(getEquivalentRoomCode('P202')).toBe('A1-202');
+    expect(getEquivalentRoomCode('A1-305')).toBe('P305');
+    const index = buildRoomPodIndex([{ code: 'P202', status: 'available', equipmentCount: 7 }]);
+    expect(getRoomPod(index, 'A1-202')?.equipmentCount).toBe(7);
   });
 
   it('uses the full layout for large rooms and a compact one for small rooms', () => {

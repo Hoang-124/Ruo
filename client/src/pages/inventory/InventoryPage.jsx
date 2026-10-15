@@ -21,15 +21,21 @@ export const InventoryPage = () => {
   // New Session Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newSessionName, setNewSessionName] = useState('');
+  const [scopeType, setScopeType] = useState('building');
+  const [scopeFloor, setScopeFloor] = useState('1');
+  const [scopeRoomId, setScopeRoomId] = useState('');
   const [submittingSession, setSubmittingSession] = useState(false);
 
   const fetchRooms = async () => {
     try {
       const res = await masterDataApi.getRooms({ limit: 100 });
-      const roomList = (res?.rooms || []).filter(r => (r.room_type || r.type) !== 'warehouse');
+      const roomList = res?.rooms || [];
       setRooms(roomList);
       if (roomList.length > 0 && !scannedRoomId) {
         setScannedRoomId(roomList[0]._id);
+      }
+      if (roomList.length > 0 && !scopeRoomId) {
+        setScopeRoomId(roomList[0]._id);
       }
     } catch (err) {
       console.warn('Load rooms warning:', err.message);
@@ -78,18 +84,26 @@ export const InventoryPage = () => {
       toast.error('Vui lòng nhập tên đợt kiểm kê.');
       return;
     }
+    if (scopeType === 'room' && !scopeRoomId) {
+      toast.error('Vui lòng chọn phòng/kho cần kiểm kê.');
+      return;
+    }
 
     try {
       setSubmittingSession(true);
-      const res = await inventoryApi.createSession({
+      const payload = {
         name: newSessionName.trim(),
-        scope_type: 'building'
-      });
+        scope_type: scopeType,
+        ...(scopeType === 'floor' ? { scope_floor: Number(scopeFloor) } : {}),
+        ...(scopeType === 'room' && scopeRoomId ? { scope_ids: [scopeRoomId] } : {})
+      };
+      const res = await inventoryApi.createSession(payload);
 
       if (res && res.success) {
         toast.success('Đã khởi tạo đợt kiểm kê mới thành công!');
         setShowCreateModal(false);
         setNewSessionName('');
+        setScopeType('building');
         await fetchSessions();
       }
     } catch (err) {
@@ -145,7 +159,7 @@ export const InventoryPage = () => {
     try {
       const res = await inventoryApi.reconcile(activeSession._id);
       if (res && res.success) {
-        toast.success('Đã chốt đối soát số liệu kiểm kê thành công!');
+        toast.success(res.message || 'Đã chốt đối soát số liệu kiểm kê thành công!');
         await loadSessionDetails(activeSession._id);
         await fetchSessions();
       }
@@ -362,7 +376,29 @@ export const InventoryPage = () => {
                       const eq = l.equipment_id || {};
                       const isMatched = l.status === 'matched';
                       const isWrong = l.status === 'wrong_location';
-                      const isDamagedLog = l.status === 'damaged';
+                      const isMissing = l.status === 'missing';
+
+                      const badgeBg = isMatched
+                        ? 'rgba(16,185,129,0.15)'
+                        : isWrong
+                          ? 'rgba(245,158,11,0.15)'
+                          : isMissing
+                            ? 'rgba(168,85,247,0.15)'
+                            : 'rgba(239,68,68,0.15)';
+                      const badgeColor = isMatched
+                        ? '#10B981'
+                        : isWrong
+                          ? '#F59E0B'
+                          : isMissing
+                            ? '#A855F7'
+                            : '#EF4444';
+                      const badgeLabel = isMatched
+                        ? 'Khớp Đúng Vị Trí'
+                        : isWrong
+                          ? 'Sai Lệch Phòng'
+                          : isMissing
+                            ? 'Chưa Quét / Thất Lạc'
+                            : 'Hư Hỏng Tại Chỗ';
 
                       return (
                         <tr key={l._id} style={{ borderBottom: '1px solid var(--hairline-soft)' }}>
@@ -380,11 +416,11 @@ export const InventoryPage = () => {
                                 fontWeight: 700,
                                 padding: '3px 8px',
                                 borderRadius: '4px',
-                                background: isMatched ? 'rgba(16,185,129,0.15)' : isWrong ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
-                                color: isMatched ? '#10B981' : isWrong ? '#F59E0B' : '#EF4444'
+                                background: badgeBg,
+                                color: badgeColor
                               }}
                             >
-                              {isMatched ? 'Khớp Đúng Vị Trí' : isWrong ? 'Sai Lệch Phòng' : 'Hư Hỏng Tại Chỗ'}
+                              {badgeLabel}
                             </span>
                             {l.repair_id && (
                               <div style={{ fontSize: '11px', color: '#EF4444', marginTop: '2px' }}>
@@ -417,7 +453,7 @@ export const InventoryPage = () => {
             <div className="ruo-drawer-header">
               <div>
                 <h2 className="ruo-drawer-title">Khởi Tạo Đợt Kiểm Kê Thực Tế</h2>
-                <p className="ruo-drawer-subtitle">Thiết lập đợt kiểm tra đối soát tài sản định kỳ</p>
+                <p className="ruo-drawer-subtitle">Thiết lập đợt kiểm tra đối soát tài sản tại Tòa nhà A1</p>
               </div>
               <button onClick={() => setShowCreateModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
             </div>
@@ -431,13 +467,65 @@ export const InventoryPage = () => {
                   <input
                     type="text"
                     required
-                    placeholder="VD: Kiểm kê định kỳ thiết bị Nhà A1 Học kỳ 1 2026-2027"
+                    placeholder="VD: Kiểm kê định kỳ thiết bị Tòa A1 Học kỳ 1 2026-2027"
                     value={newSessionName}
                     onChange={(e) => setNewSessionName(e.target.value)}
                     className="ruo-portal-input"
                     style={{ width: '100%', height: '38px' }}
                   />
                 </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>
+                    Phạm Vi Kiểm Kê Trong Tòa Nhà A1 *
+                  </label>
+                  <select
+                    value={scopeType}
+                    onChange={(e) => setScopeType(e.target.value)}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', height: '38px' }}
+                  >
+                    <option value="building">Toàn bộ Tòa nhà Đa năng A1 (5 tầng)</option>
+                    <option value="floor">Theo Tầng cụ thể trong Tòa A1 (Tầng 1 – 5)</option>
+                    <option value="room">Theo Phòng học / Kho cụ thể trong Tòa A1</option>
+                  </select>
+                </div>
+
+                {scopeType === 'floor' && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>
+                      Chọn Tầng (Tòa A1) *
+                    </label>
+                    <select
+                      value={scopeFloor}
+                      onChange={(e) => setScopeFloor(e.target.value)}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', height: '38px' }}
+                    >
+                      {[1, 2, 3, 4, 5].map((fl) => (
+                        <option key={fl} value={String(fl)}>Tầng {fl} — Tòa nhà A1</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {scopeType === 'room' && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>
+                      Chọn Phòng Học / Kho (Tòa A1) *
+                    </label>
+                    <select
+                      value={scopeRoomId}
+                      onChange={(e) => setScopeRoomId(e.target.value)}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', height: '38px' }}
+                    >
+                      {rooms.map((r) => (
+                        <option key={r._id} value={r._id}>{r.code} — {r.name} (Tầng {r.floor})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="ruo-drawer-footer">

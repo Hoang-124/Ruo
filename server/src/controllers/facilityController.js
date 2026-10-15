@@ -4,8 +4,9 @@ import { Equipment } from '../models/Equipment.js';
 import { Repair } from '../models/Repair.js';
 import { EquipmentMovement } from '../models/EquipmentMovement.js';
 import { AuditLog } from '../models/AuditLog.js';
-import { ROOM_STATUSES, ROOM_TYPES, EQUIPMENT_STATUSES } from '../config/constants.js';
+import { ROOM_STATUSES, ROOM_TYPES, EQUIPMENT_STATUSES, MOVEMENT_STATUSES } from '../config/constants.js';
 import {
+  getRoomCodeVariants,
   normalizeRoomCode,
   parseRoomListQuery,
   validateCreateRoomPayload,
@@ -14,6 +15,26 @@ import {
 import { HISTORY_LIMIT, summarizeRoomEquipment } from '../services/roomDetail.js';
 import { evaluateDeactivation, ROOM_STATUS_LABELS, evaluateStatusChange, validateDeactivationPayload } from '../services/roomStatus.js';
 import { parseCadCanvasQuery, summarizeCadRoom } from '../services/cadCanvas.js';
+
+const attachPendingMovements = async (equipments = []) => {
+  if (!equipments.length) return [];
+  const eqIds = equipments.map((e) => e._id).filter(Boolean);
+  const pendingMoves = eqIds.length
+    ? await EquipmentMovement.find({ equipment_id: { $in: eqIds }, status: MOVEMENT_STATUSES.PENDING })
+        .populate('to_room_id', 'code name')
+    : [];
+  const pendingByEqId = new Map(
+    pendingMoves.map((m) => [
+      m.equipment_id.toString(),
+      { movementId: m._id, toRoomCode: m.to_room_id?.code || 'Kho/Phòng đích' }
+    ])
+  );
+  return equipments.map((eq) => {
+    const plain = typeof eq.toObject === 'function' ? eq.toObject() : { ...eq };
+    const pending = plain._id ? pendingByEqId.get(plain._id.toString()) : null;
+    return pending ? { ...plain, pendingMovement: pending } : plain;
+  });
+};
 
 // @desc    Get all buildings and their floors
 // @route   GET /api/facilities/buildings
@@ -79,12 +100,12 @@ export const createRoom = async (req, res) => {
       });
     }
 
-    const existing = await Room.findOne({ code: value.code });
+    const existing = await Room.findOne({ code: { $in: getRoomCodeVariants(value.code) } });
     if (existing) {
       return res.status(409).json({
         success: false,
-        message: `Mã phòng ${value.code} đã tồn tại trong hệ thống.`,
-        errors: { code: `Mã phòng ${value.code} đã tồn tại trong hệ thống.` }
+        message: `Mã phòng ${value.code} (${existing.code}) đã tồn tại trong Tòa nhà A1.`,
+        errors: { code: `Mã phòng ${value.code} (${existing.code}) đã tồn tại trong Tòa nhà A1.` }
       });
     }
 
@@ -192,7 +213,8 @@ export const deactivateRoom = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Phòng học không tồn tại.' });
     }
 
-    const equipments = await Equipment.find({ room_id: room._id }).select('code name status');
+    const rawEquipments = await Equipment.find({ room_id: room._id }).select('code name status');
+    const equipments = await attachPendingMovements(rawEquipments);
     const decision = evaluateDeactivation(room, equipments);
     if (!decision.allowed) {
       return res.status(409).json({
@@ -240,9 +262,10 @@ export const updateRoomStatus = async (req, res) => {
     }
 
     // Equipment is only needed for the INACTIVE guard, so skip the query for other targets.
-    const equipments = req.body?.status === ROOM_STATUSES.INACTIVE
+    const rawEquipments = req.body?.status === ROOM_STATUSES.INACTIVE
       ? await Equipment.find({ room_id: room._id }).select('code name status')
       : [];
+    const equipments = await attachPendingMovements(rawEquipments);
 
     const decision = evaluateStatusChange(req.body, room, equipments);
     if (!decision.ok) {
@@ -327,7 +350,7 @@ export const getCadCanvasRooms = async (req, res) => {
 export const getRoomByCode = async (req, res) => {
   try {
     const code = normalizeRoomCode(req.params.code);
-    const room = await Room.findOne({ code })
+    const room = await Room.findOne({ code: { $in: getRoomCodeVariants(code) } })
       .populate('required_equipment.category_id', 'code name');
 
     if (!room) {

@@ -7,17 +7,13 @@ import './MasterDataPage.css';
 const EMPTY_FORMS = {
   categories: { code: '', name: '', depreciation_rate: 20, description: '' },
   suppliers: { code: '', name: '', contact_person: '', phone: '', email: '', address: '' },
-  repair_units: { code: '', name: '', contact_person: '', specialty: '', phone: '', email: '', address: '' },
-  buildings: { code: '', name: '', campusZone: 'Khu A', totalFloors: 5, description: '' },
-  rooms: { code: '', name: '', building: 'A1', floor: 1, room_type: 'lecture', capacity: 60, area: 85 }
+  repair_units: { code: '', name: '', contact_person: '', specialty: '', phone: '', email: '', address: '' }
 };
 
 const TABS = [
   { id: 'categories', label: 'Loại thiết bị' },
   { id: 'suppliers', label: 'Nhà cung cấp' },
-  { id: 'buildings', label: 'Tòa nhà & tầng' },
-  { id: 'repair_units', label: 'Đơn vị sửa chữa' },
-  { id: 'rooms', label: 'Phòng & kho' }
+  { id: 'repair_units', label: 'Đơn vị sửa chữa' }
 ];
 
 const FORM_FIELDS = {
@@ -43,31 +39,13 @@ const FORM_FIELDS = {
     ['phone', 'Điện thoại', 'tel'],
     ['email', 'Email', 'email'],
     ['address', 'Địa chỉ', 'text']
-  ],
-  buildings: [
-    ['code', 'Mã tòa nhà', 'text', true],
-    ['name', 'Tên tòa nhà', 'text', true],
-    ['campusZone', 'Khuôn viên / khu', 'text'],
-    ['totalFloors', 'Số tầng', 'number', true],
-    ['description', 'Mô tả', 'textarea']
-  ],
-  rooms: [
-    ['code', 'Mã phòng / kho', 'text', true],
-    ['name', 'Tên phòng / kho', 'text', true],
-    ['building', 'Mã tòa nhà', 'text', true],
-    ['floor', 'Tầng', 'number', true],
-    ['room_type', 'Loại không gian', 'select', true],
-    ['capacity', 'Sức chứa', 'number'],
-    ['area', 'Diện tích (m²)', 'number']
   ]
 };
 
 const TITLE = {
   categories: 'Loại thiết bị',
   suppliers: 'Nhà cung cấp',
-  buildings: 'Tòa nhà',
-  repair_units: 'Đơn vị sửa chữa',
-  rooms: 'Phòng / kho'
+  repair_units: 'Đơn vị sửa chữa'
 };
 
 export const MasterDataPage = () => {
@@ -88,17 +66,13 @@ export const MasterDataPage = () => {
       const loaders = {
         categories: masterDataApi.getAdminCategories,
         suppliers: masterDataApi.getAdminSuppliers,
-        buildings: masterDataApi.getBuildings,
-        repair_units: masterDataApi.getAdminRepairUnits,
-        rooms: masterDataApi.getRooms
+        repair_units: masterDataApi.getAdminRepairUnits
       };
       const result = await loaders[tab]();
       const keys = {
         categories: 'categories',
         suppliers: 'suppliers',
-        buildings: 'buildings',
-        repair_units: 'repairUnits',
-        rooms: 'rooms'
+        repair_units: 'repairUnits'
       };
       setData(current => ({ ...current, [tab]: result[keys[tab]] || [] }));
     } catch (error) {
@@ -148,18 +122,7 @@ export const MasterDataPage = () => {
     event.preventDefault();
     setSubmitting(true);
     try {
-      if (modalType === 'rooms') {
-        if (editingRecord) {
-          await masterDataApi.updateRoom(editingRecord._id, {
-            name: form.name,
-            room_type: form.room_type,
-            capacity: form.capacity,
-            description: form.description
-          });
-        } else {
-          await masterDataApi.createRoom(form);
-        }
-      } else if (editingRecord) {
+      if (editingRecord) {
         await masterDataApi.update(modalType, editingRecord._id, form);
       } else {
         await masterDataApi.create(modalType, form);
@@ -190,7 +153,6 @@ export const MasterDataPage = () => {
   };
 
   const records = data[activeTab] || [];
-  const isEditable = activeTab !== 'rooms';
 
   const renderCells = (record) => {
     if (activeTab === 'categories') return <>
@@ -199,40 +161,41 @@ export const MasterDataPage = () => {
     if (activeTab === 'suppliers') return <>
       <td>{record.code}</td><td>{record.name}</td><td>{record.contact || record.contact_person || '—'}</td><td>{record.phone || '—'}<br />{record.email || ''}</td><td>{record.address || '—'}</td>
     </>;
-    if (activeTab === 'repair_units') return <>
-      <td>{record.code}</td><td>{record.name}</td><td>{record.specialty || '—'}</td><td>{record.contact_person || '—'}<br />{record.phone || '—'}<br />{record.email || ''}</td><td>{record.address || '—'}</td>
-    </>;
-    if (activeTab === 'buildings') return <>
-      <td>{record.code}</td><td>{record.name}</td><td>{record.campusZone || '—'}</td><td>{record.totalFloors} tầng</td><td>{record.isActive === false ? 'Ngừng sử dụng' : 'Đang hoạt động'}</td>
-    </>;
     return <>
-      <td>{record.code}</td><td>{record.name}</td><td>{record.building || '—'}</td><td>{record.floor || 1}</td><td>{record.room_type || '—'}</td><td>{record.capacity || 0} chỗ · {record.area || 0} m²</td>
+      <td>{record.code}</td><td>{record.name}</td><td>{record.specialty || '—'}</td><td>{record.contact_person || '—'}<br />{record.phone || '—'}<br />{record.email || ''}</td><td>{record.address || '—'}</td>
     </>;
   };
 
   const headers = {
     categories: ['Mã', 'Tên loại', 'Khấu hao / năm', 'Mô tả'],
     suppliers: ['Mã', 'Nhà cung cấp', 'Người liên hệ', 'Liên lạc', 'Địa chỉ'],
-    repair_units: ['Mã', 'Đơn vị sửa chữa', 'Chuyên môn', 'Liên lạc', 'Địa chỉ'],
-    buildings: ['Mã tòa', 'Tên tòa nhà', 'Khu vực', 'Số tầng', 'Trạng thái'],
-    rooms: ['Mã phòng', 'Tên phòng / kho', 'Tòa', 'Tầng', 'Loại', 'Sức chứa / diện tích']
+    repair_units: ['Mã', 'Đơn vị sửa chữa', 'Chuyên môn', 'Liên lạc', 'Địa chỉ']
   };
 
   return (
     <div className="mdp-page">
       <section className="mdp-hero">
         <div className="mdp-heading">
-          <span className="mdp-eyebrow">QUẢN TRỊ HỆ THỐNG · MASTER DATA</span>
+          <span className="mdp-eyebrow">QUẢN TRỊ HỆ THỐNG · MASTER DATA · TÒA NHÀ THÍ ĐIỂM A1</span>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--ink-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Icons.Settings size={26} color="var(--blueprint-400)" /> Danh mục hệ thống
+            <Icons.Settings size={26} color="var(--blueprint-400)" /> Danh mục nền hệ thống
           </h1>
           <p className="mdp-subtitle">
-            Quản lý loại thiết bị, nhà cung cấp, tòa nhà và đơn vị sửa chữa.
+            Quản lý loại thiết bị, nhà cung cấp và đơn vị sửa chữa phục vụ vận hành tại <strong>Tòa nhà Đa năng A1 (5 tầng)</strong>.
           </p>
         </div>
-        <button className="ruo-btn ruo-btn-primary mdp-primary-action" onClick={openCreate}>
-          <Icons.Plus size={16} /> Thêm {TITLE[activeTab]}
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="ruo-btn ruo-btn-secondary"
+            onClick={() => { window.location.hash = 'tab=rooms'; }}
+          >
+            <Icons.Building size={16} /> Quản lý Phòng & Kho Tòa A1
+          </button>
+          <button className="ruo-btn ruo-btn-primary mdp-primary-action" onClick={openCreate}>
+            <Icons.Plus size={16} /> Thêm {TITLE[activeTab]}
+          </button>
+        </div>
       </section>
 
       <div className="mdp-tabs" role="tablist" aria-label="Nhóm danh mục hệ thống">
@@ -264,9 +227,8 @@ export const MasterDataPage = () => {
                 {records.map(record => <tr key={record._id}>
                   {renderCells(record)}
                   <td className="mdp-row-actions">
-                    {isEditable && <button className="mdp-icon-action" onClick={() => openEdit(record)} title="Chỉnh sửa" aria-label={`Chỉnh sửa ${record.name}`}><Icons.Edit size={15} /></button>}
-                    {isEditable && <button className="mdp-icon-action danger" onClick={() => setPendingDelete(record)} title="Xóa" aria-label={`Xóa ${record.name}`}><Icons.XCircle size={15} /></button>}
-                    {!isEditable && <span style={{ color: 'var(--ink-muted)' }}>—</span>}
+                    <button className="mdp-icon-action" onClick={() => openEdit(record)} title="Chỉnh sửa" aria-label={`Chỉnh sửa ${record.name}`}><Icons.Edit size={15} /></button>
+                    <button className="mdp-icon-action danger" onClick={() => setPendingDelete(record)} title="Xóa" aria-label={`Xóa ${record.name}`}><Icons.XCircle size={15} /></button>
                   </td>
                 </tr>)}
                 {records.length === 0 && <tr><td colSpan={headers[activeTab].length + 1} className="mdp-empty">

@@ -4,7 +4,7 @@ import { Icons } from '../../components/common/SvgIcons';
 import { FloorPlan2D } from '../../components/common/FloorPlan2D';
 import { CAMPUS_FLOORS, ROOM_CATEGORIES } from '../../mock/campusBuildingData';
 import { equipmentApi, movementApi, repairApi, disposalApi, auditApi, reportApi, facilityApi } from '../../lib/api';
-import { buildRoomPodIndex } from '../../components/common/roomPod';
+import { buildRoomPodIndex, getRoomPod } from '../../components/common/roomPod';
 import { resolveRoomEquipments, resolveRoomStatus, summarizeRoomEquipment } from './roomPanel';
 import { Button, Card, KPI, StatusBadge, EmptyState } from '../../components/ui/Primitives';
 
@@ -264,7 +264,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
       return { status: 'available', label: 'Hoạt Động', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.35)' };
     }
     // Live status from the database wins over the architectural mock data
-    const livePod = room.code ? roomPods[room.code] : null;
+    const livePod = room.code ? getRoomPod(roomPods, room.code) : null;
     if (livePod?.effectiveStatus === 'inactive') {
       return {
         status: 'inactive',
@@ -316,7 +316,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
   }, [roomPods]);
 
   // Live room (database) wins over the equipment list and the architectural sample data
-  const selectedPod = selectedRoom ? roomPods[selectedRoom.code] : undefined;
+  const selectedPod = selectedRoom ? getRoomPod(roomPods, selectedRoom.code) : undefined;
   const roomEquipmentView = useMemo(
     () => resolveRoomEquipments(selectedRoom, selectedPod, equipmentsList),
     [selectedRoom, selectedPod, equipmentsList]
