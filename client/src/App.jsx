@@ -36,6 +36,7 @@ const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage').then(m => (
 // Auth & Modals
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const UserProfileModal = lazy(() => import('./components/ui/UserProfileModal').then(m => ({ default: m.UserProfileModal })));
+const MandatoryPasswordChangeModal = lazy(() => import('./components/auth/MandatoryPasswordChangeModal').then(m => ({ default: m.MandatoryPasswordChangeModal })));
 
 // Sleek native SVG loading spinner
 const LazyFallback = () => (
@@ -342,6 +343,13 @@ const MainAppContent = () => {
             isOpen={isProfileModalOpen}
             onClose={() => setIsProfileModalOpen(false)}
           />
+        )}
+      </Suspense>
+
+      {/* UC-10.6: Enforce Mandatory Password Change on First Login */}
+      <Suspense fallback={null}>
+        {currentUser?.force_change_pw && (
+          <MandatoryPasswordChangeModal />
         )}
       </Suspense>
     </div>

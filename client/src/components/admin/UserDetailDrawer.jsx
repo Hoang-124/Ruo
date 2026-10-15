@@ -592,6 +592,32 @@ export const UserDetailDrawer = ({
                     </div>
                   </div>
                 )}
+
+                {/* UC-10.6: Force Change Password Warning Card */}
+                {userData.force_change_pw && (
+                  <div
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.06)',
+                      padding: '14px 16px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      gridColumn: 'span 2',
+                      display: 'flex',
+                      gap: '12px',
+                      alignItems: 'flex-start'
+                    }}
+                  >
+                    <Icons.Key size={18} color="#F59E0B" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <div style={{ flex: 1, fontSize: '12.5px', lineHeight: '1.5' }}>
+                      <div style={{ fontWeight: 800, color: '#F59E0B', marginBottom: '2px' }}>
+                        YÊU CẦU ĐỔI MẬT KHẨU KHỞI TẠO ĐANG CHỜ XỬ LÝ (UC-10.6)
+                      </div>
+                      <div style={{ color: 'var(--ink-secondary)' }}>
+                        Cán bộ này đã được cấp mật khẩu tạm. Hệ thống sẽ buộc cán bộ đổi mật khẩu ở lần đăng nhập tiếp theo trước khi cho phép thao tác hệ thống.
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

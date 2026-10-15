@@ -1771,7 +1771,9 @@ export const toggleUserLock = async (req, res) => {
 };
 
 /**
- * UC-10.5: Force Reset User Password (Admin Only)
+ * UC-10.5 & UC-10.6: Reset Password & Enforce Next Login Change (Admin Only)
+ * Cấp mật khẩu ngẫu nhiên hoặc chỉ định, yêu cầu người dùng phải đổi mật khẩu ở lần đăng nhập tới.
+ * POST /api/auth/users/:id/reset-password
  * POST /api/admin/users/:id/reset-password
  */
 export const adminResetPassword = async (req, res) => {
@@ -1815,7 +1817,13 @@ export const adminResetPassword = async (req, res) => {
       target_table: 'users',
       entity_id: user._id.toString(),
       ip_address: ipAddress,
-      new_value: { force_change_pw: true, revoked_sessions: revokedSessions }
+      old_value: { force_change_pw: user.force_change_pw },
+      new_value: {
+        force_change_pw: true,
+        revoked_sessions: revokedSessions,
+        mode: inputPassword ? 'custom_provisioned' : 'auto_generated_random',
+        reset_by: req.user?.code || 'ADMIN'
+      }
     });
 
     res.json({
