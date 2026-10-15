@@ -62,6 +62,13 @@ export const ALL_NAV_ITEMS = {
     icon: Icons.Dashboard,
     roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
   },
+  rooms: {
+    id: 'rooms',
+    label: 'Danh Mục Phòng Học',
+    short: 'Phòng Học',
+    icon: Icons.Room,
+    roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
+  },
 
   // Lecturer Module
   report_issue: {
@@ -129,7 +136,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Điều Chuyển Thiết Bị',
     short: 'Điều Chuyển',
     icon: Icons.RefreshCw,
-    roles: [USER_ROLES.FACILITY_MANAGER]
+    roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN]
   },
   equipments: {
     id: 'equipments',
