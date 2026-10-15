@@ -4,6 +4,9 @@ import { authApi } from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 import { USER_ROLES, ROLE_METADATA } from '../../config/navigation';
 import { UserDetailDrawer } from '../../components/admin/UserDetailDrawer';
+import { RoleChangeConfirmModal } from '../../components/admin/RoleChangeConfirmModal';
+import { UserLockModal } from '../../components/admin/UserLockModal';
+import { ForceResetPasswordModal } from '../../components/admin/ForceResetPasswordModal';
 
 export const UserManagementPage = () => {
   const { toast } = useToast();
@@ -14,15 +17,21 @@ export const UserManagementPage = () => {
   const [statusTab, setStatusTab] = useState('ALL');
   const [selectedUser, setSelectedUser] = useState(null);
 
-  // Modals & User Details (UC-10.2)
+  // Modals & User Details (UC-10.2, UC-10.4, UC-10.5)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [userToReset, setUserToReset] = useState(null);
-  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [userToLock, setUserToLock] = useState(null);
+  const [lockingUser, setLockingUser] = useState(false);
   const [createdUserResult, setCreatedUserResult] = useState(null); // UC-10.1: Lưu thông tin tài khoản & mật khẩu vừa tạo
   const [showPassword, setShowPassword] = useState(false);
   const [userActivities, setUserActivities] = useState([]); // UC-10.2: Lịch sử hoạt động của người dùng
   const [loadingActivities, setLoadingActivities] = useState(false);
+
+  // UC-10.4: Live RBAC Role Change & Confirmation Modal
+  const [pendingRoleChange, setPendingRoleChange] = useState(null); // { user, targetRole }
+  const [updatingRole, setUpdatingRole] = useState(false);
 
   // Create Form State (UC-10.1)
   const [createForm, setCreateForm] = useState({
@@ -115,36 +124,77 @@ export const UserManagementPage = () => {
     }
   };
 
-  const handleRoleChange = async (userId, newRole) => {
+  // UC-10.4: Live RBAC Role Change with Confirmation & Session Invalidation
+  const handleInitiateRoleChange = (u, targetRole) => {
+    if (u.role === targetRole) return;
+    setPendingRoleChange({ user: u, targetRole });
+  };
+
+  const handleConfirmRoleChange = async (userId, targetRole) => {
+    setUpdatingRole(true);
     try {
-      const res = await authApi.updateUserRole(userId, newRole);
+      const res = await authApi.updateUserRole(userId, targetRole);
       if (res.success) {
-        toast.success('Đã cập nhật vai trò người dùng thành công.');
-        setUsers(prev => prev.map(u => u._id === userId ? { ...u, role: newRole } : u));
+        toast.success(
+          res.message || `Đã chuyển vai trò sang [${ROLE_METADATA[targetRole]?.label}] và thu hồi phiên làm việc!`,
+          'Cập Nhật Phân Quyền (Live RBAC)'
+        );
+        setUsers(prev => prev.map(u => u._id === userId ? {
+          ...u,
+          role: targetRole,
+          requested_role: u.requested_role === targetRole ? null : u.requested_role
+        } : u));
         if (selectedUser && selectedUser._id === userId) {
-          setSelectedUser(prev => ({ ...prev, role: newRole }));
+          setSelectedUser(prev => ({ ...prev, role: targetRole, requested_role: prev.requested_role === targetRole ? null : prev.requested_role }));
         }
+        setPendingRoleChange(null);
       }
     } catch (err) {
-      toast.error('Không thể đổi vai trò: ' + err.message);
+      const errorMsg = err.data?.message || err.message || 'Không thể đổi vai trò';
+      toast.error(errorMsg, 'Lỗi Phân Quyền');
+    } finally {
+      setUpdatingRole(false);
     }
   };
 
-  const handleToggleLock = async (userId, currentStatus) => {
-    const willLock = currentStatus !== 'locked';
-    if (!window.confirm(`Bạn có chắc muốn ${willLock ? 'KHÓA' : 'MỞ KHÓA'} tài khoản này?`)) return;
+  // UC-10.5: Soft Lock & Unlock User Immediately (PATCH /api/auth/users/:id/lock)
+  const handleOpenLockModal = (u) => {
+    setUserToLock(u);
+  };
+
+  const handleConfirmLock = async (userId, action, reason) => {
+    setLockingUser(true);
     try {
-      const res = await authApi.toggleUserLock(userId);
+      const res = await authApi.toggleUserLock(userId, { action, reason });
       if (res.success) {
-        toast.success(res.message || 'Cập nhật trạng thái tài khoản thành công.');
-        setUsers(prev => prev.map(u => u._id === userId ? { ...u, status: res.status } : u));
+        toast.success(
+          res.message || (action === 'lock' ? 'Đã khóa tài khoản và thu hồi phiên làm việc.' : 'Đã mở khóa tài khoản thành công.'),
+          action === 'lock' ? 'Đã Khóa Tài Khoản (UC-10.5)' : 'Mở Khóa Thành Công'
+        );
+        const updatedStatus = res.status || (action === 'lock' ? 'locked' : 'active');
+        const updatedReason = action === 'lock' ? (reason || 'Quản trị viên khóa tài khoản') : null;
+        setUsers(prev => prev.map(u => u._id === userId ? {
+          ...u,
+          status: updatedStatus,
+          lock_reason: updatedReason,
+          locked_at: action === 'lock' ? new Date().toISOString() : null
+        } : u));
         if (selectedUser && selectedUser._id === userId) {
-          setSelectedUser(prev => ({ ...prev, status: res.status }));
+          setSelectedUser(prev => ({
+            ...prev,
+            status: updatedStatus,
+            lock_reason: updatedReason,
+            locked_at: action === 'lock' ? new Date().toISOString() : null
+          }));
         }
+        setUserToLock(null);
         fetchUsers();
       }
     } catch (err) {
-      toast.error('Lỗi cập nhật trạng thái khóa: ' + err.message);
+      const errorMsg = err.data?.message || err.message || 'Lỗi xử lý khóa tài khoản';
+      toast.error(errorMsg, 'Lỗi Thao Tác');
+    } finally {
+      setLockingUser(false);
     }
   };
 
@@ -190,19 +240,24 @@ export const UserManagementPage = () => {
     }
   };
 
-  const handleAdminResetPassword = async (e) => {
-    e.preventDefault();
-    if (!userToReset || !newPasswordInput) return;
+  // UC-10.5: Force Reset Password (POST /api/admin/users/:id/reset-password)
+  const handleAdminResetPassword = async (userId, customPassword) => {
+    setResettingPassword(true);
     try {
-      const res = await authApi.adminResetPassword(userToReset._id, newPasswordInput);
+      const res = await authApi.adminResetPassword(userId, customPassword);
       if (res.success) {
-        toast.success(`Đã cấp mật khẩu mới cho ${userToReset.full_name}. Người dùng sẽ phải đổi mật khẩu ở lần đăng nhập tới.`, 'Đặt Lại Mật Khẩu');
+        toast.success(
+          res.message || `Đã đặt lại mật khẩu cho cán bộ. Mật khẩu tạm: ${res.tempPassword}`,
+          'Đặt Lại Mật Khẩu Thành Công (UC-10.5)'
+        );
         setIsResetPasswordModalOpen(false);
         setUserToReset(null);
-        setNewPasswordInput('');
       }
     } catch (err) {
-      toast.error('Lỗi đặt lại mật khẩu: ' + err.message);
+      const errorMsg = err.data?.message || err.message || 'Lỗi đặt lại mật khẩu';
+      toast.error(errorMsg, 'Lỗi Thao Tác');
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -480,7 +535,8 @@ export const UserManagementPage = () => {
                           <select
                             className="ruo-select ruo-select-sm"
                             value={u.role}
-                            onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                            onChange={(e) => handleInitiateRoleChange(u, e.target.value)}
+                            title="Điều chỉnh vai trò trực tiếp (Live RBAC)"
                             style={{
                               fontSize: '12px',
                               fontWeight: 700,
@@ -504,9 +560,35 @@ export const UserManagementPage = () => {
                             <Icons.Clock size={11} style={{ marginRight: '4px' }} /> Chờ Duyệt
                           </span>
                         ) : isLocked ? (
-                          <span className="ruo-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                            <Icons.Lock size={11} style={{ marginRight: '4px' }} /> Đã khóa
-                          </span>
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' }}>
+                            <span
+                              className="ruo-badge"
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                color: '#EF4444',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                cursor: u.lock_reason ? 'help' : 'default'
+                              }}
+                              title={u.lock_reason ? `Lý do khóa: ${u.lock_reason}` : 'Tài khoản đã bị khóa (Soft Lock)'}
+                            >
+                              <Icons.Lock size={11} style={{ marginRight: '4px' }} /> Đã khóa
+                            </span>
+                            {u.lock_reason && (
+                              <span
+                                style={{
+                                  fontSize: '10.5px',
+                                  color: 'var(--ink-muted)',
+                                  maxWidth: '140px',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                title={u.lock_reason}
+                              >
+                                {u.lock_reason}
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="ruo-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                             <Icons.CheckCircle size={11} style={{ marginRight: '4px' }} /> Hoạt động
@@ -562,18 +644,17 @@ export const UserManagementPage = () => {
                                 className="ruo-btn ruo-btn-ghost ruo-btn-sm"
                                 onClick={() => {
                                   setUserToReset(u);
-                                  setNewPasswordInput(`Ruo@${Math.floor(1000 + Math.random() * 9000)}`);
                                   setIsResetPasswordModalOpen(true);
                                 }}
-                                title="Reset mật khẩu"
+                                title="Đặt lại mật khẩu khẩn cấp (UC-10.5)"
                               >
                                 <Icons.Key size={14} />
                               </button>
 
                               <button
                                 className={`ruo-btn ruo-btn-sm ${isLocked ? 'ruo-btn-success' : 'ruo-btn-danger'}`}
-                                onClick={() => handleToggleLock(u._id, u.status)}
-                                title={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                                onClick={() => handleOpenLockModal(u)}
+                                title={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản & thu hồi phiên (UC-10.5)'}
                                 style={{ padding: '4px 8px' }}
                               >
                                 {isLocked ? <Icons.Unlock size={13} /> : <Icons.Lock size={13} />}
@@ -817,51 +898,17 @@ export const UserManagementPage = () => {
         </div>
       )}
 
-      {/* MODAL 2: Reset User Password */}
-      {isResetPasswordModalOpen && userToReset && (
-        <div className="ruo-modal-overlay">
-          <div className="ruo-modal-content" style={{ maxWidth: '460px' }}>
-            <div className="ruo-modal-header">
-              <h2 style={{ fontSize: '17px', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icons.Key size={18} color="#F59E0B" />
-                Cấp Lại Mật Khẩu Cho {userToReset.code}
-              </h2>
-              <button className="ruo-btn-close" onClick={() => setIsResetPasswordModalOpen(false)}>
-                <Icons.X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleAdminResetPassword}>
-              <div className="ruo-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <p style={{ fontSize: '13px', color: 'var(--ink-secondary)', margin: 0 }}>
-                  Bạn đang thiết lập mật khẩu tạm thời cho cán bộ <strong>{userToReset.full_name}</strong> ({userToReset.email}).
-                  Hệ thống sẽ bật cờ <code>force_change_pw</code> buộc người dùng đổi mật khẩu sau khi đăng nhập.
-                </p>
-
-                <div>
-                  <label className="ruo-label">Mật khẩu mới khởi tạo</label>
-                  <input
-                    type="text"
-                    className="ruo-input"
-                    required
-                    value={newPasswordInput}
-                    onChange={(e) => setNewPasswordInput(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="ruo-modal-footer">
-                <button type="button" className="ruo-btn ruo-btn-secondary" onClick={() => setIsResetPasswordModalOpen(false)}>
-                  Hủy
-                </button>
-                <button type="submit" className="ruo-btn ruo-btn-primary">
-                  Cập Nhật Mật Khẩu
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* UC-10.5: Force Reset Password Modal */}
+      <ForceResetPasswordModal
+        user={userToReset}
+        isOpen={isResetPasswordModalOpen}
+        onClose={() => {
+          setIsResetPasswordModalOpen(false);
+          setUserToReset(null);
+        }}
+        onConfirm={handleAdminResetPassword}
+        loading={resettingPassword}
+      />
 
       {/* UC-10.3: User Detail & RBAC Drawer */}
       <UserDetailDrawer
@@ -875,10 +922,31 @@ export const UserManagementPage = () => {
         }}
         onOpenResetPassword={(u) => {
           setUserToReset(u);
-          setNewPasswordInput(`Ruo@${Math.floor(1000 + Math.random() * 9000)}`);
           setIsResetPasswordModalOpen(true);
         }}
-        onToggleLock={(id, status) => handleToggleLock(id, status)}
+        onToggleLock={(id, status) => {
+          const target = users.find(u => u._id === id) || (selectedUser?._id === id ? selectedUser : { _id: id, status });
+          handleOpenLockModal(target);
+        }}
+      />
+
+      {/* UC-10.4: Live RBAC Role Change Confirmation Modal */}
+      <RoleChangeConfirmModal
+        user={pendingRoleChange?.user}
+        newRole={pendingRoleChange?.targetRole}
+        isOpen={!!pendingRoleChange}
+        onClose={() => setPendingRoleChange(null)}
+        onConfirm={handleConfirmRoleChange}
+        loading={updatingRole}
+      />
+
+      {/* UC-10.5: Soft Lock & Unlock Modal */}
+      <UserLockModal
+        user={userToLock}
+        isOpen={!!userToLock}
+        onClose={() => setUserToLock(null)}
+        onConfirm={handleConfirmLock}
+        loading={lockingUser}
       />
     </div>
   );

@@ -170,15 +170,16 @@ export const authApi = {
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   verifyResetOtp: (email, otp) => api.post('/auth/verify-reset-otp', { email, otp }),
   resetPassword: (email, otp, newPassword) => api.post('/auth/reset-password', { email, otp, newPassword }),
-  // Admin User Management
+  // Admin User Management (UC-10.1, UC-10.2, UC-10.3, UC-10.4, UC-10.5)
   listUsers: (params) => api.get('/auth/users', params),
   getUserById: (id) => api.get(`/auth/users/${id}`),
   createUser: (data) => api.post('/auth/users', data),
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   adminUpdateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   updateUserRole: (id, role) => api.patch(`/auth/users/${id}/role`, { role }),
-  toggleUserLock: (id) => api.patch(`/auth/users/${id}/lock`),
-  adminResetPassword: (id, password) => api.post(`/auth/users/${id}/reset-password`, { password }),
+  toggleUserStatus: (id, status, reason) => api.put(`/admin/users/${id}/toggle-status`, { status, reason }),
+  toggleUserLock: (id, payload) => api.patch(`/auth/users/${id}/lock`, typeof payload === 'string' ? { reason: payload } : (payload || {})),
+  adminResetPassword: (id, newPassword) => api.post(`/admin/users/${id}/reset-password`, typeof newPassword === 'string' ? { new_password: newPassword } : (newPassword || {})),
   approveUser: (id, data) => api.post(`/auth/users/${id}/approve`, data)
 };
 

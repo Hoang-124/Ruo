@@ -8,7 +8,11 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node src/seeds/seedDatabase.js",
+<<<<<<< HEAD
     "test": "node src/tests/test_uc15_uc16.js && node src/tests/test_uc10_1.js && node src/tests/test_uc10_2.js && node src/tests/test_uc10_3.js && node src/tests/test_equipment_phase2.js"
+=======
+    "test": "node src/tests/test_uc15_uc16.js && node src/tests/test_uc10_1.js && node src/tests/test_uc10_2.js && node src/tests/test_uc10_3.js && node src/tests/test_uc10_4.js && node src/tests/test_uc10_5.js"
+>>>>>>> d6390982be6c4ebcd1b6fe77f0000306a08b384d
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
