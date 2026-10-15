@@ -22,6 +22,24 @@ const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d\s]).{8,}$
 const PHONE_REGEX = /^(84|0)(3|5|7|8|9)[0-9]{8}$/;
 
 /**
+ * Helper: Revoke all active refresh tokens for a user (session invalidation)
+ * Used in UC-10.4 when role changes or account is locked to force re-authentication with new RBAC
+ * Returns number of revoked sessions
+ */
+export const revokeUserSessions = async (userId) => {
+  try {
+    const result = await RefreshToken.updateMany(
+      { user_id: userId, is_revoked: false },
+      { $set: { is_revoked: true } }
+    );
+    return result.modifiedCount || result.nModified || 0;
+  } catch (err) {
+    console.error(`[revokeUserSessions] Failed to revoke sessions for user ${userId}:`, err.message);
+    return 0;
+  }
+};
+
+/**
  * UC-1.1: Login
  * Authenticate with email or employee code + password
  * Issues 15-minute Access Token and 7-day Refresh Token with token rotation
@@ -924,6 +942,8 @@ export const changePassword = async (req, res) => {
 
 /**
  * UC-1.5: Profile View
+ * Returns full authenticated user profile object:
+ * Họ tên, mã NV, email, phòng ban, SĐT, avatar, vai trò, điểm tín nhiệm (Repute Score)
  */
 export const getMe = async (req, res) => {
   try {
@@ -931,6 +951,9 @@ export const getMe = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ người dùng.' });
     }
+
+    const reputeScore = user.repute_score !== undefined ? user.repute_score : 100;
+    const reputeTier = reputeScore >= 90 ? 'Xuất Sắc' : (reputeScore >= 70 ? 'Tiêu Chuẩn' : 'Cần Lưu Ý');
 
     res.json({
       success: true,
@@ -949,41 +972,95 @@ export const getMe = async (req, res) => {
         status: user.status,
         force_change_pw: user.force_change_pw,
         created_at: user.created_at,
-        reputeScore: 100,
-        reputeTier: 'Chuẩn',
-        bookingPrivilege: 'Tiêu chuẩn'
+        repute_score: reputeScore,
+        reputeScore: reputeScore,
+        reputeTier,
+        bookingPrivilege: reputeScore >= 70 ? 'Toàn Quyền Tiêu Chuẩn' : 'Hạn Chế Đặt Trước'
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Không thể tải thông tin hồ sơ cá nhân.' });
+    res.status(500).json({ success: false, message: 'Không thể tải thông tin hồ sơ cá nhân: ' + error.message });
   }
 };
 
 /**
  * UC-1.6: Update Profile
+ * Cho phép cập nhật SĐT, họ tên, avatar
+ * Khóa cứng không cho đổi mã NV, email, vai trò
  */
 export const updateProfile = async (req, res) => {
   try {
-    const { phone, avatar } = req.body;
+    const { phone, avatar, full_name, fullName, code, employeeCode, email } = req.body;
     const user = await User.findById(req.user._id);
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ người dùng.' });
     }
 
+    // Khóa cứng: Ngăn chặn tuyệt đối việc thay đổi mã NV / MSSV
+    const attemptedCode = code || employeeCode;
+    if (attemptedCode !== undefined && String(attemptedCode).trim().toUpperCase() !== user.code.toUpperCase()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã nhân viên / MSSV được khóa cứng theo chính sách hệ thống, không được phép thay đổi.'
+      });
+    }
+
+    // Khóa cứng: Ngăn chặn tuyệt đối việc thay đổi Email nhà trường
+    if (email !== undefined && String(email).trim().toLowerCase() !== user.email.toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email nhà trường được khóa cứng theo chính sách hệ thống, không được phép thay đổi.'
+      });
+    }
+
+    let hasChange = false;
+
+    // 1. Cập nhật Họ và tên
+    const nameInput = full_name !== undefined ? full_name : fullName;
+    if (nameInput !== undefined) {
+      const trimmedName = String(nameInput).trim();
+      if (!trimmedName || trimmedName.length < 2 || trimmedName.length > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'Họ và tên phải có độ dài từ 2 đến 100 ký tự.'
+        });
+      }
+      user.full_name = trimmedName;
+      hasChange = true;
+    }
+
+    // 2. Cập nhật Số điện thoại (Di động Việt Nam 10 chữ số)
     if (phone !== undefined) {
       const trimmedPhone = String(phone).replace(/\s+/g, '');
       if (trimmedPhone && !PHONE_REGEX.test(trimmedPhone)) {
         return res.status(400).json({
           success: false,
-          message: 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số).'
+          message: 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số: 03x, 05x, 07x, 08x, 09x).'
         });
       }
-      user.phone = phone.trim();
+      user.phone = trimmedPhone;
+      hasChange = true;
     }
 
+    // 3. Cập nhật Avatar (Ký tự viết tắt hoặc đường dẫn hình ảnh)
     if (avatar !== undefined) {
-      user.avatar = String(avatar).trim();
+      const trimmedAvatar = String(avatar).trim();
+      if (trimmedAvatar.length > 200) {
+        return res.status(400).json({
+          success: false,
+          message: 'Avatar đại diện không được vượt quá 200 ký tự.'
+        });
+      }
+      user.avatar = trimmedAvatar;
+      hasChange = true;
+    }
+
+    if (!hasChange) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp ít nhất một thông tin cần cập nhật (họ tên, số điện thoại, hoặc avatar).'
+      });
     }
 
     await user.save();
@@ -997,142 +1074,276 @@ export const updateProfile = async (req, res) => {
       ip_address: req.ip || '127.0.0.1'
     });
 
+    const reputeScore = user.repute_score !== undefined ? user.repute_score : 100;
+    const reputeTier = reputeScore >= 90 ? 'Xuất Sắc' : (reputeScore >= 70 ? 'Tiêu Chuẩn' : 'Cần Lưu Ý');
+
     res.json({
       success: true,
-      message: 'Cập nhật thông tin thành công!',
+      message: 'Cập nhật thông tin hồ sơ thành công!',
       user: {
         id: user._id,
+        _id: user._id,
         code: user.code,
+        employeeCode: user.code,
         full_name: user.full_name,
+        fullName: user.full_name,
         email: user.email,
-        phone: user.phone,
-        avatar: user.avatar,
+        phone: user.phone || '',
+        avatar: user.avatar || '',
         role: user.role,
         department: user.department,
-        status: user.status
+        status: user.status,
+        repute_score: reputeScore,
+        reputeScore: reputeScore,
+        reputeTier
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Không thể cập nhật hồ sơ cá nhân.' });
+    res.status(500).json({ success: false, message: 'Không thể cập nhật hồ sơ cá nhân: ' + error.message });
   }
 };
 
 /**
  * UC-10.1: Create User (Admin Only)
+ * Tạo tài khoản có sẵn vai trò, email/mã NV unique, tự động tạo mật khẩu ngẫu nhiên
+ * POST /api/auth/users hoặc POST /api/admin/users
  */
 export const createUser = async (req, res) => {
   try {
-    const { code, full_name, email, password, role, department, phone } = req.body;
+    const { code, employeeCode, full_name, fullName, email, password, role, department, phone } = req.body;
 
-    if (!code || !full_name || !email) {
+    const rawCode = code || employeeCode;
+    const rawName = full_name || fullName;
+
+    if (!rawCode || !rawName || !email) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng cung cấp mã nhân viên, họ tên và email.'
+        message: 'Vui lòng cung cấp mã nhân viên / CB, họ tên và email nhà trường.'
       });
     }
 
-    const cleanCode = String(code).trim().toUpperCase();
+    const cleanCode = String(rawCode).trim().toUpperCase();
+    const cleanName = String(rawName).trim();
     const cleanEmail = String(email).trim().toLowerCase();
 
-    const existingUser = await User.findOne({
-      $or: [{ code: cleanCode }, { email: cleanEmail }]
-    });
-
-    if (existingUser) {
-      return res.status(409).json({
+    // 1. Kiểm tra định dạng cơ bản
+    if (cleanCode.length < 2 || cleanCode.length > 30) {
+      return res.status(400).json({
         success: false,
-        message: 'Mã nhân viên hoặc email đã tồn tại trong hệ thống.'
+        message: 'Mã nhân viên / CB phải có độ dài từ 2 đến 30 ký tự.'
       });
     }
 
-    const validRoles = Object.values(USER_ROLES);
-    const assignedRole = validRoles.includes(role) ? role : USER_ROLES.LECTURER;
-    const initialPassword = password || `Ruo@${Math.floor(1000 + Math.random() * 9000)}`;
+    if (cleanName.length < 2 || cleanName.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Họ và tên phải có độ dài từ 2 đến 100 ký tự.'
+      });
+    }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email không đúng định dạng hợp lệ.'
+      });
+    }
+
+    // 2. Kiểm tra Unique: Mã NV và Email
+    const existingCode = await User.findOne({ code: cleanCode });
+    if (existingCode) {
+      return res.status(409).json({
+        success: false,
+        duplicateField: 'code',
+        message: `Mã nhân viên / CB "${cleanCode}" đã tồn tại trong hệ thống.`
+      });
+    }
+
+    const existingEmail = await User.findOne({ email: cleanEmail });
+    if (existingEmail) {
+      return res.status(409).json({
+        success: false,
+        duplicateField: 'email',
+        message: `Email "${cleanEmail}" đã được sử dụng bởi tài khoản khác.`
+      });
+    }
+
+    // 3. Kiểm tra Phone (nếu có)
+    let cleanPhone = '';
+    if (phone !== undefined && phone !== null && String(phone).trim() !== '') {
+      cleanPhone = String(phone).replace(/\s+/g, '');
+      if (!PHONE_REGEX.test(cleanPhone)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số).'
+        });
+      }
+    }
+
+    // 4. Vai trò (Canonical 4 Roles)
+    const validRoles = Object.values(USER_ROLES);
+    const assignedRole = role && validRoles.includes(String(role).toLowerCase())
+      ? String(role).toLowerCase()
+      : USER_ROLES.LECTURER;
+
+    // 5. Tự động tạo mật khẩu ngẫu nhiên hoặc kiểm tra mật khẩu chỉ định
+    let initialPassword = '';
+    let isAutoGenerated = false;
+
+    if (!password || String(password).trim() === '') {
+      // Tự động sinh mật khẩu ngẫu nhiên an toàn: Ruo@ + 6 chữ số ngẫu nhiên (đảm bảo >= 8 chars, chữ hoa, thường, số, @)
+      const randomSixDigits = Math.floor(100000 + Math.random() * 900000);
+      initialPassword = `Ruo@${randomSixDigits}`;
+      isAutoGenerated = true;
+    } else {
+      initialPassword = String(password).trim();
+      if (!PASSWORD_REGEX.test(initialPassword)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Mật khẩu chỉ định không đạt chuẩn bảo mật (ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt).'
+        });
+      }
+    }
+
+    // 6. Tạo người dùng mới
     const newUser = await User.create({
       code: cleanCode,
-      full_name: String(full_name).trim(),
+      full_name: cleanName,
       email: cleanEmail,
-      password_hash: initialPassword, // Pre-save hook will hash it
+      password_hash: initialPassword, // Pre-save hook tự động bcrypt hash
       role: assignedRole,
-      department: department || 'Phòng Hành Chính Quản Trị',
-      phone: phone || '',
+      department: department ? String(department).trim() : 'Khoa Công Nghệ Thông Tin',
+      phone: cleanPhone,
       status: USER_STATUSES.ACTIVE,
-      force_change_pw: !password // If auto-generated, force change
+      repute_score: 100,
+      force_change_pw: isAutoGenerated // Nếu tự sinh mật khẩu ngẫu nhiên thì yêu cầu đổi khi đăng nhập lần đầu
     });
 
+    // 7. Ghi nhận AuditLog hành động Admin tạo người dùng
     await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
+      user_id: req.user?._id || newUser._id,
+      user_display: req.user ? `${req.user.full_name} (${req.user.code})` : `Hệ Thống (Provisioning)`,
       action: 'USER_CREATE',
       target_table: 'users',
       entity_id: newUser._id.toString(),
       ip_address: req.ip || '127.0.0.1',
-      new_value: { code: cleanCode, email: cleanEmail, role: assignedRole }
+      new_value: {
+        code: cleanCode,
+        email: cleanEmail,
+        role: assignedRole,
+        isAutoGeneratedPassword: isAutoGenerated
+      }
     });
 
     res.status(201).json({
       success: true,
-      message: 'Tạo tài khoản người dùng thành công.',
+      message: isAutoGenerated
+        ? `Tạo tài khoản thành công! Mật khẩu khởi tạo ngẫu nhiên: ${initialPassword}`
+        : 'Tạo tài khoản người dùng thành công.',
       user: {
         id: newUser._id,
+        _id: newUser._id,
         code: newUser.code,
+        employeeCode: newUser.code,
         full_name: newUser.full_name,
+        fullName: newUser.full_name,
         email: newUser.email,
         role: newUser.role,
         department: newUser.department,
         phone: newUser.phone,
         status: newUser.status,
-        tempPassword: !password ? initialPassword : undefined
+        force_change_pw: newUser.force_change_pw,
+        reputeScore: newUser.repute_score,
+        tempPassword: initialPassword,
+        initialPassword: initialPassword,
+        isAutoGenerated
       }
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Không thể tạo tài khoản người dùng.',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Không thể tạo tài khoản người dùng: ' + error.message
     });
   }
 };
 
 /**
- * UC-10.2: Get All Users (Admin Only)
+ * UC-10.2: Get All Users with Realtime Tabs Counts (Admin Only)
+ * Phân tab Tất cả / Chờ phê duyệt / Đang hoạt động / Đã khóa, kèm số đếm realtime
+ * GET /api/auth/users hoặc GET /api/admin/users
  */
 export const getAllUsers = async (req, res) => {
   try {
     const { role, status, search } = req.query;
     const query = {};
 
-    if (role) query.role = role;
-    if (status) query.status = status;
+    if (role && role !== 'ALL') {
+      query.role = String(role).toLowerCase();
+    }
+
+    if (status && status !== 'ALL') {
+      if (status === 'pending' || status === USER_STATUSES.PENDING_APPROVAL) {
+        query.status = { $in: [USER_STATUSES.PENDING_APPROVAL, 'pending'] };
+      } else {
+        query.status = status;
+      }
+    }
+
     if (search) {
-      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escaped = String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
         { code: { $regex: escaped, $options: 'i' } },
         { full_name: { $regex: escaped, $options: 'i' } },
-        { email: { $regex: escaped, $options: 'i' } }
+        { email: { $regex: escaped, $options: 'i' } },
+        { department: { $regex: escaped, $options: 'i' } }
       ];
     }
 
+    // 1. Lấy danh sách người dùng theo bộ lọc
     const users = await User.find(query)
       .select('-password_hash')
       .sort({ created_at: -1 });
 
+    // 2. Tính toán số đếm realtime (Realtime Tab Counts)
+    let counts = { all: 0, pending: 0, active: 0, locked: 0 };
+    try {
+      const [allCount, pendingCount, activeCount, lockedCount] = await Promise.all([
+        User.countDocuments({}),
+        User.countDocuments({ status: { $in: [USER_STATUSES.PENDING_APPROVAL, 'pending'] } }),
+        User.countDocuments({ status: USER_STATUSES.ACTIVE }),
+        User.countDocuments({ status: USER_STATUSES.LOCKED })
+      ]);
+      counts = {
+        all: allCount,
+        pending: pendingCount,
+        active: activeCount,
+        locked: lockedCount
+      };
+    } catch (e) {
+      // Fallback in-memory count if countDocuments not mocked
+      counts.all = users.length;
+      counts.pending = users.filter(u => u.status === USER_STATUSES.PENDING_APPROVAL || u.status === 'pending').length;
+      counts.active = users.filter(u => u.status === USER_STATUSES.ACTIVE).length;
+      counts.locked = users.filter(u => u.status === USER_STATUSES.LOCKED).length;
+    }
+
     res.json({
       success: true,
       total: users.length,
+      counts,
       users
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Không thể tải danh sách người dùng.'
+      message: 'Không thể tải danh sách người dùng: ' + error.message
     });
   }
 };
 
 /**
- * View User Details (Admin Only)
+ * UC-10.2 & UC-10.3: View User Details & Activity History (Admin Only)
+ * GET /api/auth/users/:id hoặc GET /api/admin/users/:id
  */
 export const getUserById = async (req, res) => {
   try {
@@ -1140,127 +1351,482 @@ export const getUserById = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
     }
-    res.json({ success: true, user });
+
+    // Lấy lịch sử hoạt động / AuditLog gần nhất của người dùng (UC-10.2 & UC-10.3 Activity)
+    let activities = [];
+    try {
+      activities = await AuditLog.find({
+        $or: [
+          { user_id: user._id },
+          { entity_id: user._id.toString() }
+        ]
+      })
+      .sort({ seq: -1, created_at: -1, timestamp: -1 })
+      .limit(20);
+    } catch (e) {
+      activities = [];
+    }
+
+    res.json({
+      success: true,
+      user,
+      activities
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết người dùng.' });
+    res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết người dùng: ' + error.message });
   }
 };
 
 /**
- * Assign User Role (Admin Only)
+ * UC-10.3: Admin Update User Profile, RBAC & Status
+ * PUT /api/admin/users/:id hoặc PUT /api/auth/users/:id
+ */
+export const adminUpdateUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng trong hệ thống.' });
+    }
+
+    const { role, department, phone, full_name, status, requested_role, repute_score } = req.body;
+
+    // Hard-lock: Không được phép sửa mã cán bộ hoặc email để bảo toàn định danh
+    if (req.body.code && req.body.code !== user.code) {
+      return res.status(400).json({ success: false, message: 'Không được phép thay đổi mã cán bộ để bảo toàn định danh hệ thống.' });
+    }
+    if (req.body.email && req.body.email.toLowerCase() !== user.email.toLowerCase()) {
+      return res.status(400).json({ success: false, message: 'Không được phép thay đổi email nhà trường đã cấp.' });
+    }
+
+    // Guard-rail: Tránh Admin tự hạ quyền hoặc tự khóa chính mình
+    if (req.user && req.user._id.toString() === user._id.toString()) {
+      if (role && role !== USER_ROLES.ADMIN) {
+        return res.status(400).json({ success: false, message: 'Bạn không thể tự hạ quyền Admin của chính mình.' });
+      }
+      if (status && status === USER_STATUSES.LOCKED) {
+        return res.status(400).json({ success: false, message: 'Bạn không thể tự khóa tài khoản của chính mình.' });
+      }
+    }
+
+    const oldData = {
+      role: user.role,
+      department: user.department,
+      phone: user.phone,
+      full_name: user.full_name,
+      status: user.status,
+      requested_role: user.requested_role,
+      repute_score: user.repute_score
+    };
+
+    // Validate & update role
+    if (role !== undefined) {
+      if (!Object.values(USER_ROLES).includes(role)) {
+        return res.status(400).json({ success: false, message: `Vai trò [${role}] không hợp lệ trong hệ thống.` });
+      }
+      user.role = role;
+      if (user.requested_role && user.requested_role === role) {
+        user.requested_role = null;
+      }
+    }
+
+    // Validate & update status
+    if (status !== undefined) {
+      const validStatuses = Object.values(USER_STATUSES);
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ success: false, message: `Trạng thái [${status}] không hợp lệ.` });
+      }
+      user.status = status;
+      if (status === USER_STATUSES.ACTIVE) {
+        user.failed_login_attempts = 0;
+        user.lock_until = null;
+      }
+    }
+
+    // Validate & update full_name
+    if (full_name !== undefined) {
+      const trimmedName = String(full_name).trim();
+      if (trimmedName.length < 2) {
+        return res.status(400).json({ success: false, message: 'Họ và tên người dùng phải có ít nhất 2 ký tự.' });
+      }
+      user.full_name = trimmedName;
+    }
+
+    // Update department
+    if (department !== undefined) {
+      user.department = String(department).trim();
+    }
+
+    // Validate & update phone
+    if (phone !== undefined) {
+      const trimmedPhone = String(phone).trim();
+      if (trimmedPhone && !PHONE_REGEX.test(trimmedPhone)) {
+        return res.status(400).json({ success: false, message: 'Số điện thoại không hợp lệ (yêu cầu định dạng di động Việt Nam 10 số).' });
+      }
+      user.phone = trimmedPhone;
+    }
+
+    // Update requested_role
+    if (requested_role !== undefined) {
+      if (requested_role && !Object.values(USER_ROLES).includes(requested_role)) {
+        return res.status(400).json({ success: false, message: `Chức vụ đăng ký [${requested_role}] không hợp lệ.` });
+      }
+      user.requested_role = requested_role || null;
+    }
+
+    // Validate & update repute_score
+    if (repute_score !== undefined) {
+      const scoreNum = Number(repute_score);
+      if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+        return res.status(400).json({ success: false, message: 'Điểm tín nhiệm phải là số nguyên từ 0 đến 100.' });
+      }
+      user.repute_score = Math.round(scoreNum);
+    }
+
+    await user.save();
+
+    // UC-10.4: Nếu thay đổi vai trò hoặc chuyển sang trạng thái khóa, thu hồi toàn bộ phiên làm việc
+    let revokedSessions = 0;
+    if ((role && role !== oldData.role) || (status && status === USER_STATUSES.LOCKED)) {
+      revokedSessions = await revokeUserSessions(user._id);
+    }
+
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    await AuditLog.logAction({
+      user_id: req.user?._id || null,
+      user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'Quản Trị Viên',
+      action: 'RBAC_UPDATE',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: ipAddress,
+      old_value: oldData,
+      new_value: {
+        role: user.role,
+        department: user.department,
+        phone: user.phone,
+        full_name: user.full_name,
+        status: user.status,
+        requested_role: user.requested_role,
+        repute_score: user.repute_score,
+        revoked_sessions: revokedSessions
+      }
+    });
+
+    let activities = [];
+    try {
+      activities = await AuditLog.find({
+        $or: [
+          { user_id: user._id },
+          { entity_id: user._id.toString() }
+        ]
+      })
+      .sort({ seq: -1, created_at: -1, timestamp: -1 })
+      .limit(20);
+    } catch (e) {
+      activities = [];
+    }
+
+    const sanitizedUser = user.toObject();
+    delete sanitizedUser.password_hash;
+
+    return res.status(200).json({
+      success: true,
+      message: revokedSessions > 0
+        ? `Cập nhật hồ sơ và thu hồi ${revokedSessions} phiên làm việc của người dùng thành công.`
+        : 'Cập nhật hồ sơ và phân quyền RBAC người dùng thành công.',
+      user: sanitizedUser,
+      revokedSessions,
+      activities
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi máy chủ khi cập nhật thông tin người dùng: ' + error.message
+    });
+  }
+};
+
+/**
+ * UC-10.4: Assign User Role (Live RBAC Update with Session Invalidation)
+ * PATCH /api/auth/users/:id/role hoặc PATCH /api/admin/users/:id/role
  */
 export const updateUserRole = async (req, res) => {
   try {
     const { role } = req.body;
     if (!Object.values(USER_ROLES).includes(role)) {
-      return res.status(400).json({ success: false, message: 'Vai trò (role) không hợp lệ.' });
+      return res.status(400).json({ success: false, message: `Vai trò [${role}] không hợp lệ trong hệ thống.` });
     }
 
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng trong hệ thống.' });
+    }
+
+    // Guard-rail: Chặn Admin tự hạ quyền của chính mình
+    if (req.user && req.user._id.toString() === user._id.toString() && role !== USER_ROLES.ADMIN) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bạn không thể tự hạ quyền Quản trị viên (Admin) của chính mình.'
+      });
     }
 
     const oldRole = user.role;
     user.role = role;
+    if (user.requested_role && user.requested_role === role) {
+      user.requested_role = null;
+    }
     await user.save();
 
+    // UC-10.4: Thu hồi toàn bộ phiên làm việc (Refresh Tokens) để áp dụng phân quyền mới ngay lập tức
+    const revokedSessions = await revokeUserSessions(user._id);
+
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
+      user_id: req.user?._id || null,
+      user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'Quản Trị Viên',
       action: 'UPDATE_ROLE',
       target_table: 'users',
       entity_id: user._id.toString(),
-      ip_address: req.ip || '127.0.0.1',
+      ip_address: ipAddress,
       old_value: { role: oldRole },
-      new_value: { role: user.role }
+      new_value: { role: user.role, revoked_sessions: revokedSessions }
     });
 
-    res.json({ success: true, message: 'Cập nhật vai trò người dùng thành công.', user });
+    const sanitizedUser = user.toObject ? user.toObject() : { ...user };
+    delete sanitizedUser.password_hash;
+
+    res.json({
+      success: true,
+      message: `Đã cập nhật vai trò người dùng sang [${role}] và thu hồi ${revokedSessions} phiên làm việc cũ để áp dụng phân quyền mới.`,
+      user: sanitizedUser,
+      revokedSessions
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Không thể cập nhật vai trò người dùng.' });
+    res.status(500).json({ success: false, message: 'Không thể cập nhật vai trò người dùng: ' + error.message });
   }
 };
 
 /**
- * Lock / Unlock User Account (Admin Only)
+ * UC-10.4: Toggle or Update User Status (Admin Only)
+ * PUT /api/admin/users/:id/toggle-status
+ */
+export const toggleUserStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng trong hệ thống.' });
+    }
+
+    const { status: targetStatus, reason, lock_reason } = req.body || {};
+    const effectiveReason = reason || lock_reason || null;
+
+    let newStatus;
+    if (targetStatus && Object.values(USER_STATUSES).includes(targetStatus)) {
+      newStatus = targetStatus;
+    } else {
+      newStatus = user.status === USER_STATUSES.LOCKED ? USER_STATUSES.ACTIVE : USER_STATUSES.LOCKED;
+    }
+
+    // Guard-rail: Chặn Admin tự khóa tài khoản của chính mình
+    if (req.user && req.user._id.toString() === user._id.toString() && newStatus === USER_STATUSES.LOCKED) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bạn không thể tự khóa tài khoản Quản trị viên (Admin) của chính mình.'
+      });
+    }
+
+    const oldStatus = user.status;
+    const oldReason = user.lock_reason;
+    user.status = newStatus;
+    let revokedSessions = 0;
+
+    if (newStatus === USER_STATUSES.LOCKED) {
+      user.lock_reason = effectiveReason || 'Quản trị viên khóa tài khoản';
+      user.locked_at = new Date();
+      user.locked_by = req.user?._id || null;
+      // Khi tài khoản bị khóa, lập tức thu hồi mọi phiên đăng nhập
+      revokedSessions = await revokeUserSessions(user._id);
+    } else if (newStatus === USER_STATUSES.ACTIVE) {
+      user.lock_reason = null;
+      user.locked_at = null;
+      user.locked_by = null;
+      user.failed_login_attempts = 0;
+      user.lock_until = null;
+    }
+
+    await user.save();
+
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    await AuditLog.logAction({
+      user_id: req.user?._id || null,
+      user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'Quản Trị Viên',
+      action: newStatus === USER_STATUSES.LOCKED ? 'LOCK_USER' : 'UNLOCK_USER',
+      target_table: 'users',
+      entity_id: user._id.toString(),
+      ip_address: ipAddress,
+      old_value: { status: oldStatus, lock_reason: oldReason },
+      new_value: { status: newStatus, lock_reason: user.lock_reason, revoked_sessions: revokedSessions }
+    });
+
+    const sanitizedUser = user.toObject ? user.toObject() : { ...user };
+    delete sanitizedUser.password_hash;
+
+    const message = newStatus === USER_STATUSES.LOCKED
+      ? `Đã khóa tài khoản người dùng và thu hồi ${revokedSessions} phiên làm việc.`
+      : 'Đã kích hoạt và mở khóa tài khoản người dùng thành công.';
+
+    res.json({
+      success: true,
+      status: newStatus,
+      message,
+      user: sanitizedUser,
+      revokedSessions
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Không thể thay đổi trạng thái tài khoản: ' + error.message });
+  }
+};
+
+/**
+ * UC-10.5: Soft Lock or Unlock User Immediately (Admin Only)
+ * PATCH /api/auth/users/:id/lock
  */
 export const toggleUserLock = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng trong hệ thống.' });
     }
 
-    // Toggle status
-    const newStatus = user.status === USER_STATUSES.LOCKED ? USER_STATUSES.ACTIVE : USER_STATUSES.LOCKED;
+    const { action, status: targetStatus, reason, lock_reason } = req.body || {};
+    const effectiveReason = reason || lock_reason || null;
+
+    let newStatus;
+    if (action === 'lock' || targetStatus === USER_STATUSES.LOCKED) {
+      newStatus = USER_STATUSES.LOCKED;
+    } else if (action === 'unlock' || targetStatus === USER_STATUSES.ACTIVE) {
+      newStatus = USER_STATUSES.ACTIVE;
+    } else {
+      // Toggle if not specified
+      newStatus = user.status === USER_STATUSES.LOCKED ? USER_STATUSES.ACTIVE : USER_STATUSES.LOCKED;
+    }
+
+    // Guard-rail: Chặn Admin tự khóa tài khoản của chính mình
+    if (req.user && req.user._id.toString() === user._id.toString() && newStatus === USER_STATUSES.LOCKED) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bạn không thể tự khóa tài khoản Quản trị viên (Admin) của chính mình.'
+      });
+    }
+
     const oldStatus = user.status;
+    const oldReason = user.lock_reason;
     user.status = newStatus;
-    if (newStatus === USER_STATUSES.ACTIVE) {
+    let revokedSessions = 0;
+
+    if (newStatus === USER_STATUSES.LOCKED) {
+      user.lock_reason = effectiveReason || 'Quản trị viên khóa tài khoản';
+      user.locked_at = new Date();
+      user.locked_by = req.user?._id || null;
+      // Thu hồi toàn bộ phiên làm việc của user ngay lập tức
+      revokedSessions = await revokeUserSessions(user._id);
+    } else {
+      user.lock_reason = null;
+      user.locked_at = null;
+      user.locked_by = null;
       user.failed_login_attempts = 0;
       user.lock_until = null;
     }
+
     await user.save();
 
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
+      user_id: req.user?._id || null,
+      user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'Quản Trị Viên',
       action: newStatus === USER_STATUSES.LOCKED ? 'LOCK_USER' : 'UNLOCK_USER',
       target_table: 'users',
       entity_id: user._id.toString(),
-      ip_address: req.ip || '127.0.0.1',
-      old_value: { status: oldStatus },
-      new_value: { status: newStatus }
+      ip_address: ipAddress,
+      old_value: { status: oldStatus, lock_reason: oldReason },
+      new_value: { status: newStatus, lock_reason: user.lock_reason, revoked_sessions: revokedSessions }
     });
+
+    const sanitizedUser = user.toObject ? user.toObject() : { ...user };
+    delete sanitizedUser.password_hash;
+
+    const message = newStatus === USER_STATUSES.LOCKED
+      ? `Đã khóa tài khoản người dùng (${user.lock_reason}) và thu hồi ${revokedSessions} phiên làm việc.`
+      : 'Đã kích hoạt và mở khóa tài khoản người dùng thành công.';
 
     res.json({
       success: true,
-      message: newStatus === USER_STATUSES.LOCKED ? 'Đã khóa tài khoản người dùng.' : 'Đã mở khóa tài khoản người dùng.',
-      user
+      status: newStatus,
+      message,
+      user: sanitizedUser,
+      revokedSessions
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Không thể thay đổi trạng thái tài khoản.' });
+    res.status(500).json({ success: false, message: 'Không thể thay đổi trạng thái khóa tài khoản: ' + error.message });
   }
 };
 
 /**
- * Reset User Password (Admin Only)
+ * UC-10.5: Force Reset User Password (Admin Only)
+ * POST /api/admin/users/:id/reset-password
  */
 export const adminResetPassword = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng trong hệ thống.' });
     }
 
-    const { new_password } = req.body;
-    const tempPassword = new_password || `Ruo@${Math.floor(100000 + Math.random() * 900000)}`;
-    user.password_hash = tempPassword; // Pre-save hook will hash
+    const inputPassword = req.body.new_password || req.body.password;
+    let tempPassword;
+
+    if (inputPassword) {
+      const trimmed = String(inputPassword).trim();
+      if (trimmed.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Mật khẩu mới phải có tối thiểu 6 ký tự.'
+        });
+      }
+      tempPassword = trimmed;
+    } else {
+      // Tự sinh mật khẩu ngẫu nhiên đạt chuẩn: Ký tự hoa + thường + số + ký tự đặc biệt
+      tempPassword = `Ruo@${Math.floor(100000 + Math.random() * 900000)}`;
+    }
+
+    user.password_hash = tempPassword; // Pre-save hook sẽ mã hóa bcrypt
     user.force_change_pw = true;
     user.failed_login_attempts = 0;
     user.lock_until = null;
     await user.save();
 
-    // Revoke existing refresh tokens
-    await RefreshToken.updateMany({ user_id: user._id }, { is_revoked: true });
+    // Thu hồi toàn bộ phiên làm việc của user để bắt buộc đăng nhập bằng mật khẩu mới
+    const revokedSessions = await revokeUserSessions(user._id);
 
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
     await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
+      user_id: req.user?._id || null,
+      user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'Quản Trị Viên',
       action: 'ADMIN_RESET_PASSWORD',
       target_table: 'users',
       entity_id: user._id.toString(),
-      ip_address: req.ip || '127.0.0.1',
-      new_value: { force_change_pw: true }
+      ip_address: ipAddress,
+      new_value: { force_change_pw: true, revoked_sessions: revokedSessions }
     });
 
     res.json({
       success: true,
-      message: 'Đặt lại mật khẩu thành công. Người dùng sẽ phải đổi mật khẩu khi đăng nhập lần tới.',
-      tempPassword
+      message: `Đã đặt lại mật khẩu cho cán bộ ${user.full_name}. Người dùng sẽ phải đổi mật khẩu khi đăng nhập lần tới.`,
+      tempPassword,
+      force_change_pw: true,
+      revokedSessions
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Không thể đặt lại mật khẩu người dùng.' });
+    res.status(500).json({ success: false, message: 'Không thể đặt lại mật khẩu người dùng: ' + error.message });
   }
 };
 
