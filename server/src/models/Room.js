@@ -3,11 +3,11 @@ import { ROOM_TYPES, ROOM_STATUSES } from '../config/constants.js';
 
 // Building Schema (Spatial Navigation)
 const buildingSchema = new mongoose.Schema({
-  code: { type: String, required: true, unique: true, uppercase: true, trim: true },
-  name: { type: String, required: true, trim: true },
-  campusZone: { type: String, default: 'Khu A' },
-  totalFloors: { type: Number, default: 5 },
-  description: { type: String, default: '' },
+  code: { type: String, required: true, unique: true, uppercase: true, trim: true, minlength: 2, maxlength: 32, match: /^[A-Z0-9][A-Z0-9_-]{1,31}$/ },
+  name: { type: String, required: true, trim: true, minlength: 2, maxlength: 150 },
+  campusZone: { type: String, default: 'Khu A', maxlength: 100 },
+  totalFloors: { type: Number, default: 5, min: 1, max: 100, validate: Number.isInteger },
+  description: { type: String, default: '', maxlength: 500 },
   isActive: { type: Boolean, default: true }
 }, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
 

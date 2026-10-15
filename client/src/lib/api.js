@@ -273,14 +273,21 @@ export const masterDataApi = {
   getRooms: (params) => api.get('/master/rooms', params),
   createRoom: (data) => api.post('/master/rooms', data),
   getRoomShortage: (id) => api.get(`/master/rooms/${id}/shortage`),
-  getWarehouseStock: () => api.get('/master/warehouse/stock')
+  getWarehouseStock: () => api.get('/master/warehouse/stock'),
+  getAdminCategories: () => api.get('/admin/categories'),
+  getAdminSuppliers: () => api.get('/admin/suppliers'),
+  getAdminRepairUnits: () => api.get('/admin/repair-units'),
+  getBuildings: () => api.get('/admin/buildings'),
+  create: (type, data) => api.post(`/admin/${type === 'repair_units' ? 'repair-units' : type}`, data),
+  update: (type, id, data) => api.put(`/admin/${type === 'repair_units' ? 'repair-units' : type}/${id}`, data),
+  remove: (type, id) => api.delete(`/admin/${type === 'repair_units' ? 'repair-units' : type}/${id}`)
 };
 
 export const roleApi = {
-  list: () => api.get('/roles'),
-  update: (name, permissions) => api.put(`/roles/${name}`, { permissions }),
-  batchUpdate: (roles) => api.post('/roles/batch-update', { roles }),
-  resetDefaults: () => api.post('/roles/reset-defaults', {})
+  list: () => api.get('/admin/roles'),
+  update: (id, permissions) => api.put(`/admin/roles/${id}/permissions`, { permissions }),
+  batchUpdate: (roles) => api.post('/admin/roles/batch-update', { roles }),
+  resetDefaults: () => api.post('/admin/roles/reset-defaults', {})
 };
 
 export const reportApi = {

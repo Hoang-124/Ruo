@@ -1914,4 +1914,3 @@ export const approveUser = async (req, res) => {
 export const verifyRegisterOtp = async (req, res) => {
   return register(req, res);
 };
-
