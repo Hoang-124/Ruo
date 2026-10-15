@@ -39,3 +39,7 @@ Thumbs.db
 # Exported planning & documentation artifacts
 exports/
 
+# Root architecture, diagram, and changelog documents
+ARCHITECTURE_DIAGRAM.mmd
+ARCHITECTURE_DOCUMENTATION.md
+CHANGELOG.md
