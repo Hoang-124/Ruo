@@ -278,6 +278,26 @@ export const UserDetailDrawer = ({
                 >
                   {roleMeta.label}
                 </span>
+                {isLocked && (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      color: '#EF4444',
+                      border: '1px solid rgba(239, 68, 68, 0.4)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title={userData.lock_reason ? `Lý do: ${userData.lock_reason}` : undefined}
+                  >
+                    <Icons.Lock size={11} />
+                    <span>Đã Khóa (Soft Lock)</span>
+                  </span>
+                )}
               </div>
               <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--ink-secondary)' }}>
                 Chi tiết hồ sơ nhân sự, phân quyền RBAC và lịch sử tài khoản (UC-10.3)
@@ -541,6 +561,37 @@ export const UserDetailDrawer = ({
                     )}
                   </div>
                 </div>
+
+                {/* UC-10.5: Soft Lock Status & Reason Card */}
+                {isLocked && (
+                  <div
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.06)',
+                      padding: '14px 16px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      gridColumn: 'span 2',
+                      display: 'flex',
+                      gap: '12px',
+                      alignItems: 'flex-start'
+                    }}
+                  >
+                    <Icons.Lock size={18} color="#EF4444" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <div style={{ flex: 1, fontSize: '12.5px', lineHeight: '1.5' }}>
+                      <div style={{ fontWeight: 800, color: '#EF4444', marginBottom: '2px' }}>
+                        TÀI KHOẢN ĐANG BỊ KHÓA (SOFT LOCK — UC-10.5)
+                      </div>
+                      <div style={{ color: 'var(--ink-secondary)', marginBottom: '4px' }}>
+                        Lý do khóa: <strong style={{ color: 'var(--ink-primary)' }}>{userData.lock_reason || 'Quản trị viên khóa bảo vệ tài khoản'}</strong>
+                      </div>
+                      {userData.locked_at && (
+                        <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                          Thời điểm khóa: {new Date(userData.locked_at).toLocaleString('vi-VN')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -643,6 +694,34 @@ export const UserDetailDrawer = ({
                     )}
                   </div>
                 </div>
+
+                {/* UC-10.4: Session Revocation Warning during live role/status edit */}
+                {isEditing && (editForm.role !== userData.role || editForm.status === 'locked') && (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      display: 'flex',
+                      gap: '10px',
+                      alignItems: 'flex-start',
+                      marginTop: '6px'
+                    }}
+                  >
+                    <Icons.AlertTriangle size={18} color="#EF4444" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <div style={{ fontSize: '12px', lineHeight: '1.5' }}>
+                      <strong style={{ color: '#EF4444', display: 'block', marginBottom: '2px' }}>
+                        Lưu ý thu hồi phiên làm việc (UC-10.4 Session Invalidation)
+                      </strong>
+                      <span style={{ color: 'var(--ink-secondary)' }}>
+                        {editForm.role !== userData.role
+                          ? `Thay đổi vai trò sang [${ROLE_METADATA[editForm.role]?.label}] sẽ lập tức thu hồi toàn bộ Refresh Tokens của cán bộ này để áp dụng phân quyền RBAC mới.`
+                          : 'Khóa tài khoản sẽ lập tức vô hiệu hóa mọi phiên đăng nhập và token hiện tại của người dùng.'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Registered Role Appointment (Nguyện vọng chức vụ) */}
