@@ -116,7 +116,7 @@ export const TicketKanbanPage = () => {
 
   const openClose = (ticket) => {
     setSelectedTicket(ticket);
-    const warehouseRoom = rooms.find(r => r.type === 'warehouse');
+    const warehouseRoom = rooms.find(r => (r.room_type || r.type) === 'warehouse');
     setCloseForm({
       destination_room_id: ticket.room_id?._id || warehouseRoom?._id || ''
     });
@@ -476,7 +476,7 @@ export const TicketKanbanPage = () => {
                   >
                     {rooms.map(r => (
                       <option key={r._id} value={r._id}>
-                        {r.type === 'warehouse' ? `[KHO DỰ PHÒNG] ${r.code} - ${r.name}` : `${r.code} - ${r.name}`}
+                        {(r.room_type || r.type) === 'warehouse' ? `[KHO DỰ PHÒNG] ${r.code} - ${r.name}` : `${r.code} - ${r.name}`}
                       </option>
                     ))}
                   </select>

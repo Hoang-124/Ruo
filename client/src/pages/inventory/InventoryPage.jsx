@@ -26,7 +26,7 @@ export const InventoryPage = () => {
   const fetchRooms = async () => {
     try {
       const res = await masterDataApi.getRooms({ limit: 100 });
-      const roomList = (res?.rooms || []).filter(r => r.type !== 'warehouse');
+      const roomList = (res?.rooms || []).filter(r => (r.room_type || r.type) !== 'warehouse');
       setRooms(roomList);
       if (roomList.length > 0 && !scannedRoomId) {
         setScannedRoomId(roomList[0]._id);
@@ -120,7 +120,7 @@ export const InventoryPage = () => {
       });
 
       if (res && res.success) {
-        const log = res.log || {};
+        const log = res.log || res.data || {};
         if (log.status === 'matched') {
           toast.success(`[KHỚP VỊ TRÍ] Thiết bị khớp đúng phòng kiểm kê!`);
         } else if (log.status === 'wrong_location') {

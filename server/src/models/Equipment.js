@@ -76,7 +76,7 @@ const equipmentSchema = new mongoose.Schema({
   },
   warranty_status: { 
     type: String, 
-    enum: ['active', 'expired', 'extended'], 
+    enum: ['active', 'expired', 'extended', 'void'], 
     default: 'active',
     index: true 
   },

@@ -150,9 +150,15 @@ export const MasterDataPage = () => {
     try {
       if (modalType === 'rooms') {
         if (editingRecord) {
-          throw new Error('Chỉnh sửa phòng chưa được bật trong API hiện tại.');
+          await masterDataApi.updateRoom(editingRecord._id, {
+            name: form.name,
+            room_type: form.room_type,
+            capacity: form.capacity,
+            description: form.description
+          });
+        } else {
+          await masterDataApi.createRoom(form);
         }
-        await masterDataApi.createRoom(form);
       } else if (editingRecord) {
         await masterDataApi.update(modalType, editingRecord._id, form);
       } else {

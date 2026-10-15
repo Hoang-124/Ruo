@@ -311,7 +311,7 @@ export const acceptRepairTask = async (req, res) => {
 // @route   POST /api/repairs/:id/logs
 export const addRepairLog = async (req, res) => {
   try {
-    const { action = 'in_progress', description, cost = 0, images = [] } = req.body;
+    const { action = 'in_progress', description, notes, cost = 0, images = [] } = req.body;
     const repair = await Repair.findById(req.params.id);
     if (!repair) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa.' });
@@ -323,12 +323,19 @@ export const addRepairLog = async (req, res) => {
     }
 
     const numCost = Number(cost) || 0;
+    const validActions = ['reported', 'assigned', 'in_progress', 'resolved', 'unrepairable', 'closed', 'escalated'];
+    const rawAction = String(action || '').trim();
+    const isEnumAction = validActions.includes(rawAction);
+    const normalizedAction = isEnumAction ? rawAction : 'in_progress';
+    const combinedDesc = description
+      ? String(description).trim()
+      : [(!isEnumAction ? rawAction : ''), String(notes || '').trim()].filter(Boolean).join(' — ');
 
     const log = await RepairLog.create({
       repair_id: repair._id,
-      action,
+      action: normalizedAction,
       performed_by: req.user._id,
-      description: String(description || 'Cập nhật tiến độ xử lý kỹ thuật').trim(),
+      description: combinedDesc || 'Cập nhật tiến độ xử lý kỹ thuật',
       cost: numCost,
       images
     });

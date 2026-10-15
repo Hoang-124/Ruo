@@ -272,6 +272,7 @@ export const masterDataApi = {
   createRepairUnit: (data) => api.post('/master/repair-units', data),
   getRooms: (params) => api.get('/master/rooms', params),
   createRoom: (data) => api.post('/master/rooms', data),
+  updateRoom: (id, data) => api.put(`/facilities/rooms/${id}`, data),
   getRoomShortage: (id) => api.get(`/master/rooms/${id}/shortage`),
   getWarehouseStock: () => api.get('/master/warehouse/stock'),
   getAdminCategories: () => api.get('/admin/categories'),

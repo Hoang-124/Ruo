@@ -18,8 +18,8 @@ router.route('/sessions')
 router.route('/sessions/:id')
   .get(protect, getSessionById);
 
-// Scan QR code in room (Technician only)
-router.post('/sessions/:id/scan', protect, requireRole(USER_ROLES.TECHNICIAN), scanEquipmentInRoom);
+// Scan QR code in room (Technician, Facility Manager)
+router.post('/sessions/:id/scan', protect, requireRole(USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER), scanEquipmentInRoom);
 
 // Reconcile session (Facility Manager only)
 router.put('/sessions/:id/reconcile', protect, requireRole(USER_ROLES.FACILITY_MANAGER), reconcileSession);

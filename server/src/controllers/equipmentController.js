@@ -498,3 +498,35 @@ export const updateWarrantyInfo = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Delete equipment item (Admin, Facility Manager)
+// @route   DELETE /api/equipments/:id
+export const deleteEquipment = asyncHandler(async (req, res) => {
+  const equipment = await Equipment.findById(req.params.id);
+  if (!equipment) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị.' });
+  }
+
+  await equipment.deleteOne();
+
+  if (req.user) {
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'EQUIPMENT_DELETE',
+      target_table: 'equipments',
+      entity_id: equipment._id.toString(),
+      ip_address: req.ip,
+      old_value: {
+        code: equipment.code,
+        name: equipment.name
+      }
+    });
+  }
+
+  res.json({
+    success: true,
+    message: 'Đã xóa thiết bị thành công.'
+  });
+});
+
+

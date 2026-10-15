@@ -79,7 +79,10 @@ export const scanEquipmentInRoom = async (req, res) => {
     if (equipment_id) {
       targetEquipment = await Equipment.findById(equipment_id);
     } else if (qr_code) {
-      targetEquipment = await Equipment.findOne({ qr_code });
+      const cleanQr = String(qr_code).trim();
+      targetEquipment = await Equipment.findOne({
+        $or: [{ qr_code: cleanQr }, { code: cleanQr.toUpperCase() }]
+      });
     }
 
     if (!targetEquipment) {
@@ -130,6 +133,7 @@ export const scanEquipmentInRoom = async (req, res) => {
           ? 'Đã ghi nhận hỏng và tự động tạo phiếu sửa chữa kỹ thuật.'
           : 'Cảnh báo: Thiết bị lệch vị trí phòng quy định.',
       data: log,
+      log,
       autoRepair
     });
   } catch (error) {
