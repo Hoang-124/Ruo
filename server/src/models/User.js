@@ -45,6 +45,13 @@ const userSchema = new mongoose.Schema({
     type: String, 
     default: 'Khoa Công Nghệ Thông Tin' 
   },
+  repute_score: {
+    type: Number,
+    default: 100,
+    min: 0,
+    max: 100,
+    alias: 'reputeScore'
+  },
   role: { 
     type: String, 
     required: true, 
@@ -86,6 +93,23 @@ const userSchema = new mongoose.Schema({
     default: null, 
     index: true,
     alias: 'lockUntil'
+  },
+  lock_reason: {
+    type: String,
+    default: null,
+    trim: true,
+    alias: 'lockReason'
+  },
+  locked_at: {
+    type: Date,
+    default: null,
+    alias: 'lockedAt'
+  },
+  locked_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+    alias: 'lockedBy'
   },
   last_login_at: { 
     type: Date, 

@@ -97,15 +97,19 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState('view'); // 'view', 'edit', 'password'
 
   // Edit profile state (UC-1.6)
+  const [fullName, setFullName] = useState(currentUser?.name || currentUser?.fullName || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [avatar, setAvatar] = useState(currentUser?.avatar || 'TH');
   const [editStatus, setEditStatus] = useState({ loading: false, success: null, error: null });
 
   // Sync state with currentUser when loaded or updated
   useEffect(() => {
+    if (currentUser?.name || currentUser?.fullName) {
+      setFullName(currentUser.name || currentUser.fullName || '');
+    }
     if (currentUser?.phone !== undefined) setPhone(currentUser?.phone || '');
     if (currentUser?.avatar !== undefined) setAvatar(currentUser?.avatar || 'TH');
-  }, [currentUser?.phone, currentUser?.avatar]);
+  }, [currentUser?.name, currentUser?.fullName, currentUser?.phone, currentUser?.avatar]);
 
   // Change password state (UC-1.4)
   const [oldPassword, setOldPassword] = useState('');
@@ -161,12 +165,29 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setEditStatus({ loading: true, success: null, error: null });
-    const res = await updateProfile(phone, avatar);
+
+    const trimmedName = fullName.trim();
+    if (!trimmedName || trimmedName.length < 2) {
+      const msg = 'Họ và tên phải có độ dài từ 2 ký tự trở lên.';
+      setEditStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Họ Tên Không Hợp Lệ');
+      return;
+    }
+
+    const trimmedPhone = phone.replace(/\s+/g, '');
+    if (trimmedPhone && !/^(84|0)(3|5|7|8|9)[0-9]{8}$/.test(trimmedPhone)) {
+      const msg = 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số).';
+      setEditStatus({ loading: false, success: null, error: msg });
+      toast.error(msg, 'Số Điện Thoại Không Hợp Lệ');
+      return;
+    }
+
+    const res = await updateProfile({ fullName: trimmedName, phone: trimmedPhone, avatar: avatar.trim() });
     if (res.success) {
-      setEditStatus({ loading: false, success: res.message, error: null });
-      toast.success(res.message || 'Cập nhật số điện thoại và avatar thành công!', 'Hồ Sơ Cá Nhân');
+      setEditStatus({ loading: false, success: res.message || 'Cập nhật hồ sơ thành công!', error: null });
+      toast.success(res.message || 'Cập nhật họ tên, số điện thoại và avatar thành công!', 'Hồ Sơ Cá Nhân');
     } else {
-      setEditStatus({ loading: false, success: null, error: res.message });
+      setEditStatus({ loading: false, success: null, error: res.message || 'Không thể cập nhật hồ sơ.' });
       toast.error(res.message || 'Không thể cập nhật hồ sơ.');
     }
   };
@@ -476,7 +497,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                 </span>
               </div>
 
-              {/* Identity & Academic Info Table */}
+              {/* Identity & Academic Info Table (UC-1.5) */}
               <div
                 style={{
                   display: 'grid',
@@ -484,6 +505,16 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                   gap: '12px'
                 }}
               >
+                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                    <SvgIcons.User size={13} />
+                    <span>HỌ VÀ TÊN</span>
+                  </div>
+                  <strong style={{ fontSize: '14px', color: 'var(--ink-pure)' }}>
+                    {currentUser.name || currentUser.fullName || 'Chưa cập nhật'}
+                  </strong>
+                </div>
+
                 <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
                     <SvgIcons.User size={13} />
@@ -526,22 +557,73 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
 
                 <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
-                    <SvgIcons.User size={13} />
-                    <span>LỚP HỌC VỤ / BỘ MÔN</span>
-                  </div>
-                  <strong style={{ fontSize: '13px', color: 'var(--ink-pure)' }}>
-                    {currentUser.className || 'K67-CNTT-02'}
-                  </strong>
-                </div>
-
-                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
                     <SvgIcons.Shield size={13} />
                     <span>VAI TRÒ & PHÂN QUYỀN</span>
                   </div>
                   <strong style={{ fontSize: '13px', color: 'var(--laser-cyan)' }}>
-                    {currentUser.roleTitle || 'Sinh viên'}
+                    {currentUser.roleTitle || 'Thành viên'}
                   </strong>
+                </div>
+
+                {/* Card Điểm tín nhiệm Repute Score (UC-1.5) */}
+                <div
+                  style={{
+                    gridColumn: 'span 2',
+                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%)',
+                    padding: '16px 20px',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '16px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div
+                      style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '12px',
+                        background: 'rgba(16, 185, 129, 0.16)',
+                        color: '#10B981',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <SvgIcons.Award size={22} />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 700, letterSpacing: '0.04em' }}>
+                          ĐIỂM TÍN NHIỆM (REPUTE SCORE)
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: '#10B981',
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-full)'
+                          }}
+                        >
+                          {currentUser.reputeTier || 'Xuất Sắc'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--ink-muted)', marginTop: '3px' }}>
+                        Quyền hạn mượn phòng & thiết bị: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.bookingPrivilege || 'Toàn Quyền Tiêu Chuẩn'}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '24px', fontWeight: 900, color: '#10B981', fontFamily: 'var(--font-mono, monospace)', lineHeight: 1 }}>
+                      {currentUser.reputeScore ?? 100}<span style={{ fontSize: '13px', color: 'var(--ink-muted)', fontWeight: 500 }}>/100</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '4px' }}>Mức độ tín nhiệm cao</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -563,7 +645,28 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                 </div>
               )}
 
-              {/* Editable: Phone */}
+              {/* Editable: Full Name (UC-1.6) */}
+              <div className="form-group">
+                <label className="form-label">
+                  Họ và tên
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--ink-muted)' }}>
+                    <SvgIcons.User size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    className="form-control"
+                    style={{ paddingLeft: '38px' }}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Nhập họ và tên..."
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Editable: Phone (UC-1.6) */}
               <div className="form-group">
                 <label className="form-label">
                   Số điện thoại liên hệ (Di động Việt Nam)
@@ -579,11 +682,10 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="0912345678"
-                    required
                   />
                 </div>
                 <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '4px', display: 'block' }}>
-                  Dùng để nhận SMS/Zalo thông báo khẩn cấp khi hủy phòng hoặc thay đổi lịch đột xuất.
+                  Dùng để nhận thông báo cơ sở vật chất, xử lý sự cố thiết bị và phòng học.
                 </span>
               </div>
 
