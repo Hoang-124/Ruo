@@ -105,7 +105,7 @@ export const RoomStatusModal = ({ room, onClose, onDone }) => {
             </div>
 
             {error && <p style={errorStyle} role="alert">{error}</p>}
-            {blockers.length > 0 && <EquipmentBlockerList items={blockers} />}
+            {blockers.length > 0 && <EquipmentBlockerList items={blockers} room={room} />}
           </div>
 
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border-default)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
