@@ -41,6 +41,7 @@ const roomSchema = new mongoose.Schema({
   area: { type: Number, default: 60 },
   layout_image: { type: String, default: '' },
   department: { type: String, default: 'Khoa Công Nghệ Thông Tin' },
+  description: { type: String, default: '', trim: true, maxlength: 500 },
   required_equipment: [{
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
     quantity: { type: Number, default: 1, min: 1 }

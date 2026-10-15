@@ -85,7 +85,7 @@ const ALL_MODULES = [
     cat: 'QUẢN LÝ CSVC • ĐIỀU CHUYỂN',
     icon: Icons.RefreshCw,
     desc: 'Lập lệnh luân chuyển tài sản, chọn phòng nguồn/đích và theo dõi trạng thái di chuyển',
-    roles: ['facility_manager']
+    roles: ['facility_manager', 'admin']
   },
   {
     id: 'equipments',
