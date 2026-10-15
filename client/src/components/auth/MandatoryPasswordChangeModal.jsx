@@ -38,6 +38,22 @@ export const MandatoryPasswordChangeModal = () => {
     };
   }, [newPassword, oldPassword, confirmPassword]);
 
+  const strengthScore = useMemo(() => {
+    let score = 0;
+    if (criteria.minLength) score += 20;
+    if (criteria.hasUpper) score += 20;
+    if (criteria.hasLower) score += 20;
+    if (criteria.hasNumber) score += 20;
+    if (criteria.hasSpecial) score += 20;
+    return score;
+  }, [criteria]);
+
+  const strengthMeta = useMemo(() => {
+    if (strengthScore <= 40) return { label: 'Yếu', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' };
+    if (strengthScore <= 80) return { label: 'Trung bình', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' };
+    return { label: 'Rất mạnh (Đạt chuẩn)', color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' };
+  }, [strengthScore]);
+
   const isValid = criteria.minLength &&
     criteria.hasUpper &&
     criteria.hasLower &&
@@ -248,6 +264,27 @@ export const MandatoryPasswordChangeModal = () => {
                   {showNew ? <Icons.EyeOff size={15} /> : <Icons.Eye size={15} />}
                 </button>
               </div>
+
+              {/* Visual Password Strength Meter */}
+              {newPassword && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                    <span style={{ color: 'var(--ink-secondary)' }}>Độ phức tạp mật khẩu:</span>
+                    <span style={{ fontWeight: 700, color: strengthMeta.color }}>{strengthMeta.label} ({strengthScore}%)</span>
+                  </div>
+                  <div style={{ height: '5px', width: '100%', background: 'var(--hairline-medium)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${strengthScore}%`,
+                        background: strengthMeta.color,
+                        borderRadius: '3px',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Field 3: Confirm Password */}
