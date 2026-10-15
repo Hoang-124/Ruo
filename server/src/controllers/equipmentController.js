@@ -5,6 +5,9 @@ import { Category } from '../models/Category.js';
 import { Supplier } from '../models/Supplier.js';
 import { Room } from '../models/Room.js';
 import { AuditLog } from '../models/AuditLog.js';
+import { EquipmentMovement } from '../models/EquipmentMovement.js';
+import { Repair } from '../models/Repair.js';
+import { PreventiveMaintenance } from '../models/PreventiveMaintenance.js';
 import { EQUIPMENT_STATUSES } from '../config/constants.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -50,7 +53,13 @@ export const createEquipment = asyncHandler(async (req, res) => {
     images,
     imageUrl,
     qr_code,
-    qrCodeData
+    qrCodeData,
+    current_repair_unit_id,
+    currentRepairUnitId,
+    import_session_id,
+    importSessionId,
+    depreciation_rate,
+    depreciationRate
   } = req.body;
 
   const rawCode = code || assetCode;
@@ -192,13 +201,18 @@ export const createEquipment = asyncHandler(async (req, res) => {
       warranty_status: isExpired ? 'expired' : 'active',
       specs: specs || specifications || {},
       images: imageList,
+      depreciation_rate: depreciation_rate !== undefined ? Number(depreciation_rate) : (depreciationRate !== undefined ? Number(depreciationRate) : 20),
+      current_repair_unit_id: current_repair_unit_id || currentRepairUnitId || null,
+      import_session_id: import_session_id || importSessionId || null,
       status: finalStatus
     });
 
   const populated = await Equipment.findById(equipment._id)
     .populate('category_id')
     .populate('room_id')
-    .populate('supplier_id');
+    .populate('supplier_id')
+    .populate('current_repair_unit_id')
+    .populate('import_session_id');
 
   // Audit log
   if (req.user) {
@@ -225,23 +239,82 @@ export const createEquipment = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get all equipment items with search, filter, and pagination
+// @desc    Get all equipment items with search, filter, and pagination (UC-3.8)
 // @route   GET /api/equipments
 export const getEquipments = asyncHandler(async (req, res) => {
-  const { category_id, room_id, status, condition, search, page = 1, limit = 20 } = req.query;
+  const {
+    category_id,
+    category,
+    room_id,
+    room,
+    building,
+    status,
+    condition,
+    search,
+    q,
+    minPrice,
+    maxPrice,
+    page = 1,
+    limit = 20
+  } = req.query;
+
   const query = {};
 
-  if (category_id) query.category_id = category_id;
-  if (room_id) query.room_id = room_id;
-  if (status) query.status = status;
-  if (condition) query.condition = condition;
+  const targetCategory = category_id || category;
+  if (targetCategory && targetCategory !== 'ALL') {
+    if (mongoose.Types.ObjectId.isValid(targetCategory)) {
+      query.category_id = targetCategory;
+    } else {
+      const catDoc = await Category.findOne({
+        $or: [{ code: String(targetCategory).toUpperCase().trim() }, { name: String(targetCategory).trim() }]
+      });
+      if (catDoc) query.category_id = catDoc._id;
+    }
+  }
 
-  if (search) {
-    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const targetRoom = room_id || room;
+  if (targetRoom && targetRoom !== 'ALL') {
+    if (mongoose.Types.ObjectId.isValid(targetRoom)) {
+      query.room_id = targetRoom;
+    } else {
+      const roomDoc = await Room.findOne({ code: String(targetRoom).toUpperCase().trim() });
+      if (roomDoc) query.room_id = roomDoc._id;
+    }
+  }
+
+  if (building && building !== 'ALL') {
+    const roomsInBuilding = await Room.find({ building: String(building).trim() }).select('_id');
+    const roomIds = roomsInBuilding.map((r) => r._id);
+    query.room_id = { $in: roomIds };
+  }
+
+  if (status && status !== 'ALL') {
+    query.status = status;
+  }
+
+  if (condition && condition !== 'ALL') {
+    query.condition = condition;
+  }
+
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    query.price = {};
+    if (minPrice !== undefined && !isNaN(Number(minPrice))) {
+      query.price.$gte = Number(minPrice);
+    }
+    if (maxPrice !== undefined && !isNaN(Number(maxPrice))) {
+      query.price.$lte = Number(maxPrice);
+    }
+  }
+
+  const keyword = (q || search || '').trim();
+  if (keyword) {
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     query.$or = [
       { name: { $regex: escaped, $options: 'i' } },
       { code: { $regex: escaped, $options: 'i' } },
-      { serial_number: { $regex: escaped, $options: 'i' } }
+      { serial_number: { $regex: escaped, $options: 'i' } },
+      { brand: { $regex: escaped, $options: 'i' } },
+      { model: { $regex: escaped, $options: 'i' } }
     ];
   }
 
@@ -254,6 +327,8 @@ export const getEquipments = asyncHandler(async (req, res) => {
     .populate('category_id')
     .populate('room_id')
     .populate('supplier_id')
+    .populate('current_repair_unit_id')
+    .populate('import_session_id')
     .sort({ created_at: -1 })
     .skip(skip)
     .limit(l);
@@ -285,7 +360,9 @@ export const getEquipmentByQR = asyncHandler(async (req, res) => {
   })
     .populate('category_id')
     .populate('room_id')
-    .populate('supplier_id');
+    .populate('supplier_id')
+    .populate('current_repair_unit_id')
+    .populate('import_session_id');
 
   if (!equipment) {
     return res.status(404).json({
@@ -300,13 +377,16 @@ export const getEquipmentByQR = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get single equipment by ID
+// @desc    Get single equipment by ID with Aggregated Life-cycle Timeline & Depreciation (UC-3.9)
 // @route   GET /api/equipments/:id
 export const getEquipmentById = asyncHandler(async (req, res) => {
-  const equipment = await Equipment.findById(req.params.id)
+  const { id } = req.params;
+  const equipment = await Equipment.findById(id)
     .populate('category_id')
     .populate('room_id')
-    .populate('supplier_id');
+    .populate('supplier_id')
+    .populate('current_repair_unit_id')
+    .populate('import_session_id');
 
   if (!equipment) {
     return res.status(404).json({
@@ -315,9 +395,50 @@ export const getEquipmentById = asyncHandler(async (req, res) => {
     });
   }
 
+  // 1. Location movement timeline
+  const movements = await EquipmentMovement.find({ equipment_id: id })
+    .populate('from_room_id', 'code name building floor')
+    .populate('to_room_id', 'code name building floor')
+    .populate('ordered_by', 'code full_name email role')
+    .populate('performed_by', 'code full_name email role')
+    .sort({ created_at: -1 });
+
+  // 2. Incidents & repairs timeline
+  const repairs = await Repair.find({ equipment_id: id })
+    .populate('reported_by', 'code full_name email')
+    .populate('assigned_to', 'code full_name email')
+    .populate('repair_unit_id', 'code name specialty phone email')
+    .sort({ reported_at: -1 });
+
+  // 3. Preventive maintenance timeline
+  const maintenance = await PreventiveMaintenance.find({ equipment_id: id })
+    .populate('checked_by', 'code full_name email')
+    .sort({ check_date: -1 });
+
+  // 4. Financial straight-line depreciation schedule
+  const originalPrice = equipment.price || 0;
+  const depRate = equipment.depreciation_rate || 20; // % per year
+  const purchaseDate = equipment.purchase_date ? new Date(equipment.purchase_date) : new Date();
+  const yearsPassed = Math.max(0, (Date.now() - purchaseDate.getTime()) / (365.25 * 24 * 3600 * 1000));
+  const depreciationFactor = Math.min(1, Math.max(0, (yearsPassed * depRate) / 100));
+  const remainingValue = Math.round(originalPrice * (1 - depreciationFactor));
+  const depreciatedValue = Math.round(originalPrice - remainingValue);
+
   res.json({
     success: true,
-    equipment
+    equipment,
+    movements,
+    repairs,
+    maintenance,
+    depreciation: {
+      originalPrice,
+      depreciationRate: depRate,
+      purchaseDate,
+      yearsPassed: Number(yearsPassed.toFixed(2)),
+      remainingValue,
+      depreciatedValue,
+      depreciationPercent: Number((depreciationFactor * 100).toFixed(1))
+    }
   });
 });
 
