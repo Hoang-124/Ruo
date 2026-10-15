@@ -256,7 +256,41 @@ async function runTests() {
     console.log('  ✔ Test 6 ĐẠT: Bắt lỗi chính sách mật khẩu yếu chuẩn xác.');
   }
 
-  console.log('--- TOÀN BỘ 6/6 TEST CASES UC-10.6 ĐÃ VƯỢT QUA 100% ---');
+  // TEST 7: Bắt lỗi khi nhập sai mật khẩu tạm thời hiện tại lúc đổi mật khẩu bắt buộc
+  console.log('▶ Test 7: Bắt lỗi khi nhập sai mật khẩu tạm thời hiện tại');
+  {
+    const req = {
+      user: mockDb[1],
+      body: {
+        oldPassword: 'WrongOldPassword123',
+        newPassword: 'ValidNewPass@2026'
+      }
+    };
+    let responseData = null;
+    let statusCode = 200;
+    const res = {
+      status: (c) => { statusCode = c; return res; },
+      json: (d) => { responseData = d; }
+    };
+
+    await changePassword(req, res);
+    assert.strictEqual(statusCode, 400);
+    assert.strictEqual(responseData.success, false);
+    assert(responseData.message.includes('Mật khẩu hiện tại không chính xác'));
+    console.log('  ✔ Test 7 ĐẠT: Bắt lỗi mật khẩu cũ không chính xác chuẩn xác.');
+  }
+
+  // TEST 8: Kiểm tra chi tiết cấu trúc AuditLog ghi nhận mode cấp mật khẩu
+  console.log('▶ Test 8: Kiểm tra chi tiết cấu trúc AuditLog ghi nhận mode cấp mật khẩu');
+  {
+    const resetAudit = loggedAuditActions.find(a => a.action === 'ADMIN_RESET_PASSWORD');
+    assert(resetAudit, 'Phải có bản ghi kiểm toán ADMIN_RESET_PASSWORD');
+    assert.strictEqual(resetAudit.new_value.force_change_pw, true);
+    assert.strictEqual(resetAudit.new_value.mode, 'auto_generated_random');
+    console.log('  ✔ Test 8 ĐẠT: Bản ghi kiểm toán ghi nhận đầy đủ metadata (force_change_pw và mode).');
+  }
+
+  console.log('--- TOÀN BỘ 8/8 TEST CASES UC-10.6 ĐÃ VƯỢT QUA 100% ---');
 }
 
 runTests().catch(err => {
