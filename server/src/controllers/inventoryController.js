@@ -27,15 +27,34 @@ export const getSessions = async (req, res) => {
 // @route   POST /api/inventory/sessions
 export const createSession = async (req, res) => {
   try {
-    const { name, scope_type = 'room', scope_ids = [] } = req.body;
+    const { name, scope_type = 'building', scope_floor = null, scope_ids = [] } = req.body;
     if (!name) {
       return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tên đợt kiểm kê.' });
+    }
+
+    let resolvedScopeIds = Array.isArray(scope_ids) ? scope_ids : [];
+    let resolvedFloor = null;
+
+    if (scope_type === 'floor') {
+      const floorNum = Number(scope_floor);
+      if (!Number.isInteger(floorNum) || floorNum < 1 || floorNum > 5) {
+        return res.status(400).json({
+          success: false,
+          message: 'Tầng kiểm kê trong Tòa nhà A1 phải từ Tầng 1 đến Tầng 5.'
+        });
+      }
+      resolvedFloor = floorNum;
+      if (resolvedScopeIds.length === 0) {
+        const floorRooms = await Room.find({ building: 'A1', floor: floorNum }).select('_id');
+        resolvedScopeIds = floorRooms.map((r) => r._id);
+      }
     }
 
     const session = await InventorySession.create({
       name,
       scope_type,
-      scope_ids,
+      scope_floor: resolvedFloor,
+      scope_ids: resolvedScopeIds,
       created_by: req.user._id,
       date: new Date(),
       status: INVENTORY_STATUSES.IN_PROGRESS
@@ -51,7 +70,9 @@ export const createSession = async (req, res) => {
 // @route   GET /api/inventory/sessions/:id
 export const getSessionById = async (req, res) => {
   try {
-    const session = await InventorySession.findById(req.params.id).populate('created_by', 'full_name code');
+    const session = await InventorySession.findById(req.params.id)
+      .populate('created_by', 'full_name code')
+      .populate('scope_ids', 'code name floor');
     if (!session) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đợt kiểm kê.' });
     }
@@ -150,6 +171,59 @@ export const reconcileSession = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đợt kiểm kê.' });
     }
 
+    // Resolve all rooms in Building A1 covered by this session's scope
+    let roomIds = Array.isArray(session.scope_ids) && session.scope_ids.length > 0
+      ? session.scope_ids
+      : [];
+
+    if (roomIds.length === 0) {
+      const roomFilter = { building: 'A1' };
+      if (session.scope_type === 'floor' && session.scope_floor) {
+        roomFilter.floor = session.scope_floor;
+      }
+      const scopedRooms = await Room.find(roomFilter).select('_id');
+      roomIds = scopedRooms.map((r) => r._id);
+    }
+
+    // Find all active equipment stationed in the scoped rooms of Building A1
+    const expectedEquipments = roomIds.length > 0
+      ? await Equipment.find({
+          room_id: { $in: roomIds },
+          status: { $nin: [EQUIPMENT_STATUSES.DISPOSED, EQUIPMENT_STATUSES.LOST] }
+        }).select('_id room_id')
+      : [];
+
+    const existingLogs = await InventoryLog.find({ session_id: session._id });
+    const scannedEqIds = new Set(existingLogs.map((l) => l.equipment_id.toString()));
+
+    // Automatically log un-scanned equipment in scope as MISSING
+    const missingEquipments = expectedEquipments.filter(
+      (eq) => eq.room_id && !scannedEqIds.has(eq._id.toString())
+    );
+
+    for (const eq of missingEquipments) {
+      await InventoryLog.findOneAndUpdate(
+        { session_id: session._id, equipment_id: eq._id },
+        {
+          scanned_room_id: eq.room_id,
+          scanned_by: req.user._id,
+          scanned_at: new Date(),
+          status: INVENTORY_LOG_STATUSES.MISSING,
+          note: 'Chưa được quét QR khi chốt đối soát — đánh dấu vắng mặt/thất lạc'
+        },
+        { upsert: true, new: true }
+      );
+    }
+
+    const finalLogs = await InventoryLog.find({ session_id: session._id }).select('status');
+    const summary = {
+      matched: finalLogs.filter((l) => l.status === INVENTORY_LOG_STATUSES.MATCHED).length,
+      wrong_location: finalLogs.filter((l) => l.status === INVENTORY_LOG_STATUSES.WRONG_LOCATION).length,
+      damaged: finalLogs.filter((l) => l.status === INVENTORY_LOG_STATUSES.DAMAGED).length,
+      missing: finalLogs.filter((l) => l.status === INVENTORY_LOG_STATUSES.MISSING).length
+    };
+
+    session.summary = summary;
     session.status = INVENTORY_STATUSES.RECONCILED;
     session.completed_at = new Date();
     await session.save();
@@ -161,10 +235,15 @@ export const reconcileSession = async (req, res) => {
       target_table: 'inventory_sessions',
       entity_id: session._id.toString(),
       ip_address: req.ip || '127.0.0.1',
-      new_value: { status: 'reconciled', completed_at: session.completed_at }
+      new_value: { status: 'reconciled', completed_at: session.completed_at, summary }
     });
 
-    res.json({ success: true, message: 'Đối soát và chốt số liệu kiểm kê thành công.', data: session });
+    res.json({
+      success: true,
+      message: `Đối soát thành công: ${summary.matched} khớp, ${summary.wrong_location} lệch phòng, ${summary.damaged} hỏng, ${summary.missing} chưa quét/thất lạc.`,
+      data: session,
+      summary
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

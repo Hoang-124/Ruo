@@ -213,15 +213,21 @@ export const deleteAdminRepairUnit = async (req, res) => {
 };
 
 export const listAdminBuildings = async (req, res) => {
-  const buildings = await Building.find().sort({ code: 1 });
+  const buildings = await Building.find({ code: 'A1' }).sort({ code: 1 });
   res.json({ success: true, buildings });
 };
 
 export const createAdminBuilding = async (req, res, next) => {
   const { value, errors } = validateAdminMasterData(req.body, buildingCreateSchema);
   if (errors.length) return sendAdminValidationError(res, errors);
+  if (String(value.code).trim().toUpperCase() !== 'A1') {
+    return res.status(400).json({
+      success: false,
+      message: 'Hệ thống đang triển khai thí điểm tại duy nhất Tòa nhà A1 (5 tầng), không hỗ trợ thêm tòa nhà khác.'
+    });
+  }
   try {
-    const building = await Building.create(value);
+    const building = await Building.create({ ...value, code: 'A1', totalFloors: 5 });
     return res.status(201).json({ success: true, building });
   } catch (error) {
     return sendDuplicateError(res, error, next);
@@ -236,11 +242,17 @@ export const updateAdminBuilding = async (req, res, next) => {
   const { value: updates, errors } = validateAdminMasterData(req.body, buildingUpdateSchema, { requireAtLeastOne: true });
   if (errors.length) return sendAdminValidationError(res, errors);
   const { code, name, campusZone, totalFloors, description, isActive } = updates;
-  if (code !== undefined) {
-    if (code !== originalCode && await Room.exists({ building: originalCode })) {
-      return res.status(409).json({ success: false, message: 'Không thể đổi mã tòa nhà đang được phòng học tham chiếu.' });
-    }
-    building.code = code;
+  if (code !== undefined && String(code).trim().toUpperCase() !== originalCode) {
+    return res.status(409).json({
+      success: false,
+      message: 'Không thể đổi mã Tòa nhà A1 trong phạm vi thí điểm.'
+    });
+  }
+  if (isActive === false && originalCode === 'A1') {
+    return res.status(409).json({
+      success: false,
+      message: 'Không thể ngừng hoạt động Tòa nhà A1 (tòa nhà duy nhất trong phạm vi thí điểm).'
+    });
   }
   if (name !== undefined) {
     building.name = name;
@@ -249,6 +261,12 @@ export const updateAdminBuilding = async (req, res, next) => {
   if (description !== undefined) building.description = description;
   if (isActive !== undefined) building.isActive = isActive;
   if (totalFloors !== undefined) {
+    if (originalCode === 'A1' && Number(totalFloors) !== 5) {
+      return res.status(409).json({
+        success: false,
+        message: 'Tòa nhà thí điểm A1 có cấu trúc cố định 5 tầng.'
+      });
+    }
     const [maxRoomFloor, maxDeclaredFloor] = await Promise.all([
       Room.findOne({ building: originalCode }).sort({ floor: -1 }).select('floor'),
       Floor.findOne({ building: building._id }).sort({ floorNumber: -1 }).select('floorNumber')
@@ -271,6 +289,12 @@ export const deleteAdminBuilding = async (req, res) => {
   if (!isValidDocumentId(req.params.id)) return sendInvalidId(res);
   const building = await Building.findById(req.params.id);
   if (!building) return sendNotFound(res, 'tòa nhà');
+  if (building.code === 'A1') {
+    return res.status(409).json({
+      success: false,
+      message: 'Không thể xóa Tòa nhà A1 (tòa nhà duy nhất trong phạm vi thí điểm).'
+    });
+  }
   const [rooms, floors] = await Promise.all([
     Room.exists({ building: building.code }),
     Floor.exists({ building: building._id })

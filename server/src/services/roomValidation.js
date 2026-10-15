@@ -30,6 +30,18 @@ export const getFloorFromRoomCode = (code) => {
 
 export const isValidRoomCode = (code) => ROOM_RULES.CODE_PATTERN.test(normalizeRoomCode(code));
 
+/**
+ * Returns equivalent room code variants inside Building A1 ('P202' <-> 'A1-202')
+ * so UC-2.1 codes and CAD 2D floor-plan codes refer to the same physical room.
+ */
+export const getRoomCodeVariants = (code) => {
+  const clean = normalizeRoomCode(code);
+  if (!clean) return [];
+  if (/^P[1-5]0[1-8]$/.test(clean)) return [clean, `A1-${clean.slice(1)}`];
+  if (/^A1-[1-5]0[1-8]$/.test(clean)) return [clean, `P${clean.slice(3)}`];
+  return [clean];
+};
+
 const validateName = (raw, errors) => {
   const name = typeof raw === 'string' ? raw.trim() : '';
   if (!name) {

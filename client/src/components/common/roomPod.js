@@ -24,6 +24,26 @@ export const getPodStatus = (effectiveStatus) => POD_STATUS_STYLES[effectiveStat
 export const getShortRoomCode = (code) => String(code ?? '').replace(/^A1-/, '');
 
 /**
+ * Maps between Building A1's two room code notations ('A1-202' <-> 'P202')
+ * so rooms created via UC-2.1 (P101..P508) and CAD architectural rooms (A1-101..A1-508)
+ * resolve to the same physical room on the floor plan.
+ */
+export const getEquivalentRoomCode = (code) => {
+  const clean = String(code ?? '').trim().toUpperCase();
+  if (/^P[1-5]0[1-8]$/.test(clean)) return `A1-${clean.slice(1)}`;
+  if (/^A1-[1-5]0[1-8]$/.test(clean)) return `P${clean.slice(3)}`;
+  return clean;
+};
+
+/**
+ * Looks up a live pod by room code, matching both 'A1-202' and 'P202' in Building A1.
+ */
+export const getRoomPod = (roomPods = {}, code) => {
+  if (!code || !roomPods) return undefined;
+  return roomPods[code] || roomPods[getEquivalentRoomCode(code)];
+};
+
+/**
  * Indexes the GET /facilities/cad-canvas rooms by room code so a floor plan can look up the
  * live pod data for each architectural room in O(1).
  */

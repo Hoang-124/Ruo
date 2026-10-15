@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icons } from './SvgIcons';
 import { RoomPodCard } from './RoomPodCard';
+import { getRoomPod } from './roomPod';
 import { CAMPUS_FLOORS, ROOM_CATEGORIES } from '../../mock/campusBuildingData';
 
 /**
@@ -47,7 +48,7 @@ export const FloorPlan2D = ({
 
   // UC-2.7: live pod (equipment count / broken count / status) drawn over a room rectangle.
   const renderRoomPod = (room, x, y, w, h) => (
-    <RoomPodCard room={room} pod={roomPods[room?.code]} x={x} y={y} w={w} h={h} />
+    <RoomPodCard room={room} pod={getRoomPod(roomPods, room?.code)} x={x} y={y} w={w} h={h} />
   );
 
   // ==============================================================
