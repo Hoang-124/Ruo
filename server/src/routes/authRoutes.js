@@ -77,9 +77,11 @@ router.patch('/users/:id/role', protect, requireRole(USER_ROLES.ADMIN), updateUs
 router.put('/users/:id/toggle-status', protect, requireRole(USER_ROLES.ADMIN), toggleUserStatus);
 router.patch('/users/:id/toggle-status', protect, requireRole(USER_ROLES.ADMIN), toggleUserStatus);
 
-// UC-10.5: Soft Lock / Unlock & Force Password Reset
+// UC-10.5: Soft Lock / Unlock User Immediately
 router.patch('/users/:id/lock', protect, requireRole(USER_ROLES.ADMIN), toggleUserLock);
 router.put('/users/:id/lock', protect, requireRole(USER_ROLES.ADMIN), toggleUserLock);
+
+// UC-10.6: Reset Password & Enforce Next Login Change (POST /api/auth/users/:id/reset-password)
 router.post('/users/:id/reset-password', protect, requireRole(USER_ROLES.ADMIN), adminResetPassword);
 router.put('/users/:id/reset-password', protect, requireRole(USER_ROLES.ADMIN), adminResetPassword);
 
