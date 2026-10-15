@@ -215,6 +215,42 @@ export const getRoomStatusTargets = (current) => ROOM_STATUS_OPTIONS.filter((opt
 /** Builds the PUT /facilities/rooms/:id/status payload (reason is omitted when blank). */
 export const buildStatusPayload = (status, reason) => ({ status, ...buildDeactivatePayload(reason) });
 
+export const TRANSFER_REASON_MAX = 500;
+
+/**
+ * UC-2.5/2.6: rooms that equipment can be moved to while its room is being closed.
+ * Never the source room itself and never an inactive room; warehouses come first, then by code.
+ */
+export const getTransferDestinations = (rooms = [], sourceRoomId) =>
+  rooms
+    .filter((room) => room && room._id !== sourceRoomId && room.status !== 'inactive')
+    .sort((a, b) => {
+      const warehouseDiff = Number(b.room_type === 'warehouse') - Number(a.room_type === 'warehouse');
+      return warehouseDiff || String(a.code).localeCompare(String(b.code));
+    });
+
+/** Validates the transfer dialog; returns { destination?, reason? } error messages (empty when valid). */
+export const validateTransferForm = ({ destinationId, reason }) => {
+  const errors = {};
+  if (!destinationId) errors.destination = 'Vui lòng chọn phòng hoặc kho nhận thiết bị.';
+  if (String(reason ?? '').trim().length > TRANSFER_REASON_MAX) {
+    errors.reason = `Lý do tối đa ${TRANSFER_REASON_MAX} ký tự.`;
+  }
+  return errors;
+};
+
+/**
+ * Builds the POST /movements body. Sending equipment to a warehouse is a stock return
+ * ('to_stock'); anywhere else is a plain room transfer. A blank reason falls back to a default
+ * that mentions the room being closed.
+ */
+export const buildTransferPayload = ({ equipmentId, destination, reason, roomCode }) => ({
+  equipment_id: equipmentId,
+  to_room_id: destination._id,
+  type: destination.room_type === 'warehouse' ? 'to_stock' : 'transfer',
+  reason: String(reason ?? '').trim() || `Điều chuyển thiết bị ra khỏi phòng ${roomCode} để ngừng sử dụng`
+});
+
 export const ROOM_LIST_PAGE_SIZE = 10;
 
 export const EMPTY_ROOM_FILTERS = { q: '', floor: '', room_type: '', status: '' };

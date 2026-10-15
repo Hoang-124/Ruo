@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEACTIVATION_REASON_MAX,
+  TRANSFER_REASON_MAX,
   EMPTY_ROOM_FILTERS,
   buildCreateRoomPayload,
   buildDeactivatePayload,
+  buildTransferPayload,
   buildRoomListParams,
   buildStatusPayload,
   buildUpdateRoomPayload,
@@ -18,11 +20,13 @@ import {
   getRepairStatusLabel,
   getRoomStatusMeta,
   getRoomStatusTargets,
+  getTransferDestinations,
   getRoomTypeLabel,
   hasActiveRoomFilters,
   roomToForm,
   validateDeactivationReason,
-  validateRoomForm
+  validateRoomForm,
+  validateTransferForm
 } from './roomDomain';
 
 const validForm = () => ({
@@ -190,5 +194,47 @@ describe('room status helpers (UC-2.6)', () => {
   it('builds the status payload and drops a blank reason', () => {
     expect(buildStatusPayload('maintenance', '')).toEqual({ status: 'maintenance' });
     expect(buildStatusPayload('inactive', '  Cải tạo ')).toEqual({ status: 'inactive', reason: 'Cải tạo' });
+  });
+});
+
+describe('equipment transfer helpers (UC-2.5 / UC-2.6)', () => {
+  const rooms = [
+    { _id: 'r3', code: 'A1-103', status: 'available', room_type: 'lecture' },
+    { _id: 'r1', code: 'A1-101', status: 'available', room_type: 'lecture' },
+    { _id: 'w1', code: 'KHO-01', status: 'available', room_type: 'warehouse' },
+    { _id: 'r2', code: 'A1-102', status: 'inactive', room_type: 'lecture' },
+    { _id: 'r4', code: 'A1-104', status: 'maintenance', room_type: 'lab' }
+  ];
+
+  it('excludes the source room and inactive rooms, warehouses first then by code', () => {
+    expect(getTransferDestinations(rooms, 'r1').map((r) => r.code)).toEqual(['KHO-01', 'A1-103', 'A1-104']);
+  });
+
+  it('does not mutate the input list and tolerates empty input', () => {
+    const copy = [...rooms];
+    getTransferDestinations(rooms, 'r1');
+    expect(rooms).toEqual(copy);
+    expect(getTransferDestinations(undefined, 'r1')).toEqual([]);
+  });
+
+  it('requires a destination and limits the reason length', () => {
+    expect(validateTransferForm({ destinationId: '', reason: '' }).destination).toBeTruthy();
+    expect(validateTransferForm({ destinationId: 'w1', reason: '' })).toEqual({});
+    expect(validateTransferForm({ destinationId: 'w1', reason: 'x'.repeat(TRANSFER_REASON_MAX) })).toEqual({});
+    expect(validateTransferForm({ destinationId: 'w1', reason: 'x'.repeat(TRANSFER_REASON_MAX + 1) }).reason).toBeTruthy();
+  });
+
+  it('sends equipment to a warehouse as to_stock and to a room as transfer', () => {
+    const toWarehouse = buildTransferPayload({ equipmentId: 'e1', destination: rooms[2], reason: ' Thu hồi ', roomCode: 'A1-101' });
+    expect(toWarehouse).toEqual({ equipment_id: 'e1', to_room_id: 'w1', type: 'to_stock', reason: 'Thu hồi' });
+
+    const toRoom = buildTransferPayload({ equipmentId: 'e1', destination: rooms[0], reason: 'Cân đối', roomCode: 'A1-101' });
+    expect(toRoom.type).toBe('transfer');
+    expect(toRoom.to_room_id).toBe('r3');
+  });
+
+  it('falls back to a default reason that names the room being closed', () => {
+    const payload = buildTransferPayload({ equipmentId: 'e1', destination: rooms[0], reason: '   ', roomCode: 'A1-101' });
+    expect(payload.reason).toContain('A1-101');
   });
 });

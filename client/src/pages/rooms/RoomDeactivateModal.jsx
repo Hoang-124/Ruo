@@ -8,29 +8,70 @@ import {
   getEquipmentStatusLabel,
   validateDeactivationReason
 } from './roomDomain';
+import { EquipmentTransferModal } from './EquipmentTransferModal';
 
 const labelStyle = { display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px', color: 'var(--ink-secondary)' };
 const errorStyle = { margin: '6px 0 0', fontSize: '12px', color: 'var(--crimson-500)' };
 
-/** Equipment that must be transferred out before a room can become INACTIVE (HTTP 409 payload). */
-export const EquipmentBlockerList = ({ items }) => (
-  <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-    <div style={{ padding: '8px 12px', background: 'var(--surface-2)', fontSize: '11px', fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-      Thiết bị cần điều chuyển ({items.length})
+/**
+ * Equipment that must be transferred out before a room can become INACTIVE (HTTP 409 payload).
+ * When `room` is given each item can be ordered out directly from here (Admin can issue transfer orders).
+ */
+export const EquipmentBlockerList = ({ items, room = null }) => {
+  const [transferItem, setTransferItem] = useState(null);
+  const [orderedIds, setOrderedIds] = useState(() => new Set());
+
+  const markOrdered = (equipment) => setOrderedIds((prev) => new Set(prev).add(equipment._id));
+
+  return (
+    <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+      <div style={{ padding: '8px 12px', background: 'var(--surface-2)', fontSize: '11px', fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        Thiết bị cần điều chuyển ({items.length})
+      </div>
+      <ul id="room-deactivate-blockers" style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: '220px', overflowY: 'auto' }}>
+        {items.map((item) => {
+          const ordered = orderedIds.has(item._id);
+          return (
+            <li key={item._id || item.code} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', fontSize: '12.5px' }}>
+              <span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--blueprint-400)' }}>{item.code}</span>
+                {' '}<span style={{ color: 'var(--ink-primary)' }}>{item.name}</span>
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap' }}>
+                <span style={{ color: 'var(--ink-muted)' }}>{getEquipmentStatusLabel(item.status)}</span>
+                {room && (ordered ? (
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#E5A33B' }}>Chờ KTV</span>
+                ) : (
+                  <button
+                    type="button"
+                    id={`room-transfer-${item.code}`}
+                    className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+                    onClick={() => setTransferItem(item)}
+                  >
+                    <Icons.RefreshCw size={12} /> Điều chuyển
+                  </button>
+                ))}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {room && orderedIds.size > 0 && (
+        <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', background: 'var(--surface-2)', fontSize: '11.5px', color: 'var(--ink-muted)', lineHeight: 1.5 }}>
+          Thiết bị chỉ rời khỏi phòng sau khi Kỹ thuật viên xác nhận lệnh. Khi đã chuyển hết, hãy thực hiện lại thao tác này.
+        </div>
+      )}
+      {transferItem && (
+        <EquipmentTransferModal
+          equipment={transferItem}
+          room={room}
+          onClose={() => setTransferItem(null)}
+          onOrdered={markOrdered}
+        />
+      )}
     </div>
-    <ul id="room-deactivate-blockers" style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: '220px', overflowY: 'auto' }}>
-      {items.map((item) => (
-        <li key={item._id || item.code} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', fontSize: '12.5px' }}>
-          <span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--blueprint-400)' }}>{item.code}</span>
-            {' '}<span style={{ color: 'var(--ink-primary)' }}>{item.name}</span>
-          </span>
-          <span style={{ color: 'var(--ink-muted)', whiteSpace: 'nowrap' }}>{getEquipmentStatusLabel(item.status)}</span>
-        </li>
-      ))}
-    </ul>
-  </div>
-);
+  );
+};
 
 /**
  * UC-2.5 Deactivate Room — admin-only confirmation dialog.
@@ -105,7 +146,7 @@ export const RoomDeactivateModal = ({ room, onClose, onDone }) => {
 
             {error && <p style={errorStyle} role="alert">{error}</p>}
 
-            {blockers.length > 0 && <EquipmentBlockerList items={blockers} />}
+            {blockers.length > 0 && <EquipmentBlockerList items={blockers} room={room} />}
           </div>
 
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border-default)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
