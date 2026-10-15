@@ -1817,7 +1817,13 @@ export const adminResetPassword = async (req, res) => {
       target_table: 'users',
       entity_id: user._id.toString(),
       ip_address: ipAddress,
-      new_value: { force_change_pw: true, revoked_sessions: revokedSessions }
+      old_value: { force_change_pw: user.force_change_pw },
+      new_value: {
+        force_change_pw: true,
+        revoked_sessions: revokedSessions,
+        mode: inputPassword ? 'custom_provisioned' : 'auto_generated_random',
+        reset_by: req.user?.code || 'ADMIN'
+      }
     });
 
     res.json({
