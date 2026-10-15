@@ -1,71 +1,127 @@
-// ========================================
-// RUO - Facility Management System
-// 5 Actors: Guest · Lecturer · Facility Manager · Technician · Admin
-// 20 Collections · 68 Use Cases
-// ========================================
-// TIP: Bỏ các ref → users để tránh mạng nhện
-// Các trường *_by đều FK → users (ghi trong note)
-// ========================================
+// ============================================================
+// RUO - FACILITY MANAGEMENT SYSTEM
+// Cleaned / normalized DBML version
+//
+// Main actors:
+// Guest · Lecturer · Facility Manager · Technician · Admin
+//
+// Notes:
+// - users.role_id is the single source of truth for role.
+// - All *_by fields that represent users are explicit FKs.
+// - Arrays containing relational data are normalized into tables.
+// - Nullable FKs represent optional relationships.
+// - Polymorphic references in notifications/audit_logs remain
+//   application-level references because they can target multiple entities.
+// ============================================================
 
-// ─── 1. AUTH & USER ──────────────────────
+
+// ============================================================
+// 1. AUTHENTICATION & RBAC
+// ============================================================
 
 TableGroup auth_group {
   users
   roles
+  permissions
+  role_permissions
   refresh_tokens
   password_resets
 }
 
-Table users {
-  _id ObjectId [pk]
-  code String [unique, note: 'Mã NV / GV']
-  email String [unique]
-  password_hash String [note: 'BCrypt']
-  full_name String
-  phone String
-  avatar String
-  department String [note: 'Khoa / Phòng ban']
-  role String [note: 'lecturer | facility_manager | technician | admin']
-  status String [note: 'active | locked']
-  force_change_pw Boolean
-  failed_login_attempts Number [note: '5 lần sai → khoá 15 phút']
-  lock_until DateTime
-  last_login_at DateTime
-  created_at DateTime
-  updated_at DateTime
+Enum user_role_status {
+  active
+  locked
+}
+
+Enum system_role {
+  guest
+  lecturer
+  facility_manager
+  technician
+  admin
 }
 
 Table roles {
-  _id ObjectId [pk]
-  name String [unique, note: 'lecturer | facility_manager | technician | admin']
-  permissions Array [note: 'Mảng quyền']
+  id int [pk, increment]
+  name system_role [unique]
+  description varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table permissions {
+  id int [pk, increment]
+  code varchar [unique, note: 'Example: equipment.create']
+  module varchar
+  action varchar
+  description varchar
+}
+
+Table role_permissions {
+  role_id int [ref: > roles.id]
+  permission_id int [ref: > permissions.id]
+
+  indexes {
+    (role_id, permission_id) [pk]
+  }
+}
+
+Table users {
+  id int [pk, increment]
+  code varchar [unique, note: 'Mã NV / GV']
+  email varchar [unique]
+  password_hash varchar [note: 'BCrypt']
+  full_name varchar
+  phone varchar
+  avatar varchar
+
+  department_id int [ref: > departments.id, null]
+  role_id int [ref: > roles.id]
+
+  status user_role_status
+  force_change_pw boolean
+  failed_login_attempts int
+  lock_until timestamp [null]
+  last_login_at timestamp [null]
+
+  created_at timestamp
+  updated_at timestamp
 }
 
 Table refresh_tokens {
-  _id ObjectId [pk]
-  user_id ObjectId [ref: > users._id]
-  token_hash String
-  device_info String
-  ip_address String
-  expires_at DateTime [note: 'TTL 7 ngày']
-  is_revoked Boolean
-  created_at DateTime
+  id int [pk, increment]
+  user_id int [ref: > users.id]
+
+  token_hash varchar [unique]
+  device_info varchar
+  ip_address varchar
+  expires_at timestamp
+  is_revoked boolean
+
+  created_at timestamp
 }
 
 Table password_resets {
-  _id ObjectId [pk]
-  email String
-  otp_hash String [note: 'BCrypt OTP 6 số']
-  purpose String [note: 'register | reset_password']
-  attempts Number [note: 'Tối đa 3 lần nhập sai']
-  expires_at DateTime [note: 'TTL 15 phút']
-  is_used Boolean
-  created_at DateTime
+  id int [pk, increment]
+  user_id int [ref: > users.id, null]
+
+  email varchar
+  otp_hash varchar [note: 'BCrypt OTP']
+  purpose varchar [note: 'register | reset_password']
+  attempts int
+  expires_at timestamp
+  is_used boolean
+
+  created_at timestamp
 }
 
-// ─── 2. MASTER DATA ──────────────────────
+
+// ============================================================
+// 2. ORGANIZATION / MASTER DATA
+// ============================================================
 
 TableGroup master_data {
+  departments
   categories
   suppliers
   repair_units
@@ -73,61 +129,114 @@ TableGroup master_data {
   spare_parts
 }
 
+Table departments {
+  id int [pk, increment]
+  code varchar [unique]
+  name varchar
+  description varchar
+  status varchar [note: 'active | inactive']
+
+  created_at timestamp
+  updated_at timestamp
+}
+
 Table categories {
-  _id ObjectId [pk]
-  code String [unique]
-  name String
-  description String
+  id int [pk, increment]
+  code varchar [unique]
+  name varchar
+  description varchar
+
+  created_at timestamp
+  updated_at timestamp
 }
 
 Table suppliers {
-  _id ObjectId [pk]
-  code String [unique]
-  name String
-  phone String
-  email String
-  address String
-  contact String
+  id int [pk, increment]
+  code varchar [unique]
+  name varchar
+  phone varchar
+  email varchar
+  address varchar
+  contact varchar
+
+  created_at timestamp
+  updated_at timestamp
 }
 
 Table repair_units {
-  _id ObjectId [pk]
-  code String [unique]
-  name String
-  specialty String
-  phone String
-  address String
+  id int [pk, increment]
+  code varchar [unique]
+  name varchar
+  specialty varchar
+  phone varchar
+  email varchar
+  address varchar
+
+  created_at timestamp
+  updated_at timestamp
 }
 
 Table rooms {
-  _id ObjectId [pk]
-  code String [unique]
-  name String
-  building String
-  floor Number
-  room_type String [note: 'lecture | lab | office | warehouse']
-  capacity Number
-  area Number [note: 'm²']
-  layout_image String [note: 'Sơ đồ phòng']
-  department String
-  required_equipment Array [note: 'Định mức: [{ category_id, quantity }]']
-  status String [note: 'available | maintenance | inactive']
-  created_at DateTime
-  updated_at DateTime
+  id int [pk, increment]
+  code varchar [unique]
+  name varchar
+  building varchar
+  floor int
+  room_type varchar [note: 'lecture | lab | office | warehouse']
+  capacity int
+  area decimal
+  layout_image varchar
+
+  department_id int [ref: > departments.id, null]
+
+  status varchar [note: 'available | maintenance | inactive']
+
+  created_at timestamp
+  updated_at timestamp
 }
+
+
+// ============================================================
+// 3. ROOM REQUIRED EQUIPMENT
+// Replaces rooms.required_equipment Array
+// ============================================================
+
+Table room_required_equipment {
+  room_id int [ref: > rooms.id]
+  category_id int [ref: > categories.id]
+  quantity int
+
+  indexes {
+    (room_id, category_id) [pk]
+  }
+}
+
+
+// ============================================================
+// 4. SPARE PARTS
+// ============================================================
 
 Table spare_parts {
-  _id ObjectId [pk]
-  code String [unique]
-  name String
-  stock Number
-  min_stock Number [note: 'Ngưỡng cảnh báo']
-  price Number
-  unit String [note: 'Cái, bộ, hộp']
-  supplier_id ObjectId [ref: > suppliers._id]
+  id int [pk, increment]
+  code varchar [unique]
+  name varchar
+
+  stock int
+  min_stock int
+
+  price decimal
+  unit varchar [note: 'piece | set | box']
+
+  supplier_id int [ref: > suppliers.id, null]
+
+  created_at timestamp
+  updated_at timestamp
 }
 
-// ─── 3. EQUIPMENT, MOVEMENT & DISPOSAL ───
+
+// ============================================================
+// 5. EQUIPMENT / ASSETS
+// ============================================================
 
 TableGroup equipment_group {
   equipment
@@ -136,191 +245,408 @@ TableGroup equipment_group {
   import_sessions
 }
 
+Enum equipment_status {
+  in_use
+  in_stock
+  broken
+  repairing
+  pending_disposal
+  disposed
+  lost
+}
+
 Table equipment {
-  _id ObjectId [pk]
-  code String [unique, note: 'Mã tài sản']
-  qr_code String [unique]
-  serial_number String
-  name String
-  brand String
-  model String
-  category_id ObjectId [ref: > categories._id]
-  room_id ObjectId [ref: > rooms._id, note: 'Vị trí hiện tại (phòng hoặc kho). null = đang ở đơn vị sửa ngoài']
-  supplier_id ObjectId [ref: > suppliers._id]
-  price Number
-  purchase_date DateTime
-  warranty_expiry DateTime
-  warranty_status String [note: 'active | expired | extended']
-  images Array
-  depreciation_rate Number [note: '% / năm']
-  status String [note: 'in_use | in_stock | broken | repairing | pending_disposal | disposed | lost']
-  created_at DateTime
-  updated_at DateTime
+  id int [pk, increment]
+
+  code varchar [unique, note: 'Mã tài sản']
+  qr_code varchar [unique]
+  serial_number varchar
+
+  name varchar
+  brand varchar
+  model varchar
+
+  category_id int [ref: > categories.id]
+  room_id int [ref: > rooms.id, null]
+  current_repair_unit_id int [ref: > repair_units.id, null]
+  supplier_id int [ref: > suppliers.id, null]
+
+  price decimal
+  purchase_date date
+  warranty_expiry date
+  warranty_status varchar [note: 'active | expired | extended']
+
+  images json
+
+  depreciation_rate decimal
+
+  status equipment_status
+
+  import_session_id int [ref: > import_sessions.id, null]
+
+  created_at timestamp
+  updated_at timestamp
+}
+
+
+// ============================================================
+// 6. EQUIPMENT MOVEMENTS
+// ============================================================
+
+Enum movement_type {
+  transfer
+  replacement
+  repair_out
+  repair_return
+  to_stock
+}
+
+Enum movement_status {
+  pending
+  completed
+  cancelled
 }
 
 Table equipment_movements {
-  _id ObjectId [pk]
-  equipment_id ObjectId [ref: > equipment._id]
-  type String [note: 'transfer | replacement | repair_out | repair_return | to_stock']
-  from_room_id ObjectId [ref: > rooms._id, note: 'nullable']
-  to_room_id ObjectId [ref: > rooms._id, note: 'nullable (repair_out ra đơn vị ngoài)']
-  repair_id ObjectId [ref: > repairs._id, note: 'nullable, gắn khi di chuyển do sửa chữa']
-  ordered_by ObjectId [note: 'FK → users (Facility Manager)']
-  performed_by ObjectId [note: 'FK → users (Technician)']
-  reason String
-  status String [note: 'pending | completed | cancelled']
-  created_at DateTime
-  completed_at DateTime
+  id int [pk, increment]
+
+  equipment_id int [ref: > equipment.id]
+
+  type movement_type
+
+  from_room_id int [ref: > rooms.id, null]
+  to_room_id int [ref: > rooms.id, null]
+
+  repair_id int [ref: > repairs.id, null]
+
+  ordered_by int [ref: > users.id]
+  performed_by int [ref: > users.id, null]
+
+  reason varchar
+  status movement_status
+
+  created_at timestamp
+  completed_at timestamp [null]
 }
 
-Table disposals {
-  _id ObjectId [pk]
-  equipment_id ObjectId [ref: > equipment._id]
-  repair_id ObjectId [ref: > repairs._id, note: 'Phiếu sửa kết luận unrepairable']
-  proposed_by ObjectId [note: 'FK → users (Facility Manager)']
-  approved_by ObjectId [note: 'FK → users (Admin)']
-  reason String
-  reject_reason String
-  decision_number String [note: 'Số QĐ thanh lý']
-  recovery_value Number
-  status String [note: 'proposed | approved | rejected | completed']
-  proposed_at DateTime
-  approved_at DateTime
-  completed_at DateTime
+
+// ============================================================
+// 7. IMPORT SESSIONS
+// ============================================================
+
+Enum import_status {
+  validating
+  validated
+  importing
+  completed
+  failed
 }
 
 Table import_sessions {
-  _id ObjectId [pk]
-  uploaded_by ObjectId [note: 'FK → users (Facility Manager)']
-  file_name String
-  total_rows Number
-  success_count Number
-  error_count Number
-  errors Array [note: '[{ row, field, message }]']
-  status String [note: 'validating | validated | importing | completed | failed']
-  created_at DateTime
-  completed_at DateTime
+  id int [pk, increment]
+
+  uploaded_by int [ref: > users.id]
+
+  file_name varchar
+
+  total_rows int
+  success_count int
+  error_count int
+
+  errors json
+
+  status import_status
+
+  created_at timestamp
+  completed_at timestamp [null]
 }
 
-// ─── 4. REPAIR FLOW ──────────────────────
+
+// ============================================================
+// 8. REPAIR FLOW
+// ============================================================
 
 TableGroup repair_group {
   repairs
   repair_logs
   parts_requests
+  parts_request_items
+}
+
+Enum repair_status {
+  reported
+  assigned
+  in_progress
+  resolved
+  unrepairable
+  closed
 }
 
 Table repairs {
-  _id ObjectId [pk]
-  equipment_id ObjectId [ref: > equipment._id, note: 'Đồ hỏng']
-  source String [note: 'lecturer_report | inventory_check']
-  reported_by ObjectId [note: 'FK → users (Lecturer hoặc Technician khi kiểm kê)']
-  incident_description String [note: 'Mô tả sự cố gốc']
-  incident_images Array
-  reported_at DateTime
-  assigned_by ObjectId [note: 'FK → users (Facility Manager)']
-  assigned_to ObjectId [note: 'FK → users (Technician)']
-  replacement_equipment_id ObjectId [ref: > equipment._id, note: 'Đồ trong kho lấy ra thay, nullable']
-  repair_unit_id ObjectId [ref: > repair_units._id, note: 'nullable, khi gửi sửa ngoài']
-  damage_level String [note: 'minor | major | critical']
-  description String [note: 'Mô tả kỹ thuật']
-  total_cost Number
-  deadline DateTime
-  outcome String [note: 'repaired | unrepairable']
-  destination_room_id ObjectId [ref: > rooms._id, note: 'Sửa xong về đâu (phòng hoặc kho)']
-  status String [note: 'reported | assigned | in_progress | resolved | unrepairable | closed']
-  feedback_rating Number [note: '1-5 sao (Lecturer)']
-  feedback_comment String
-  feedback_at DateTime
-  created_at DateTime
-  updated_at DateTime
+  id int [pk, increment]
+
+  equipment_id int [ref: > equipment.id]
+
+  source varchar [note: 'lecturer_report | inventory_check']
+
+  reported_by int [ref: > users.id]
+
+  incident_description varchar
+  incident_images json
+  reported_at timestamp
+
+  assigned_by int [ref: > users.id, null]
+  assigned_to int [ref: > users.id, null]
+
+  replacement_equipment_id int [ref: > equipment.id, null]
+
+  repair_unit_id int [ref: > repair_units.id, null]
+
+  damage_level varchar [note: 'minor | major | critical']
+
+  description varchar
+
+  total_cost decimal
+
+  deadline timestamp [null]
+
+  outcome varchar [note: 'repaired | unrepairable', null]
+
+  destination_room_id int [ref: > rooms.id, null]
+
+  status repair_status
+
+  feedback_rating int [null]
+  feedback_comment varchar [null]
+  feedback_at timestamp [null]
+
+  created_at timestamp
+  updated_at timestamp
 }
 
+
+// ============================================================
+// 9. REPAIR LOGS
+// ============================================================
+
 Table repair_logs {
-  _id ObjectId [pk]
-  repair_id ObjectId [ref: > repairs._id]
-  action String [note: 'reported | assigned | in_progress | resolved | unrepairable | closed']
-  performed_by ObjectId [note: 'FK → users']
-  description String
-  cost Number
-  images Array
-  timestamp DateTime
+  id int [pk, increment]
+
+  repair_id int [ref: > repairs.id]
+
+  action varchar [note: 'reported | assigned | in_progress | resolved | unrepairable | closed']
+
+  performed_by int [ref: > users.id]
+
+  description varchar
+  cost decimal
+  images json
+
+  timestamp timestamp
+}
+
+
+// ============================================================
+// 10. PART REQUESTS
+// Replaces parts_requests.items Array
+// ============================================================
+
+Enum parts_request_status {
+  pending
+  approved
+  rejected
 }
 
 Table parts_requests {
-  _id ObjectId [pk]
-  repair_id ObjectId [ref: > repairs._id]
-  requested_by ObjectId [note: 'FK → users (Technician)']
-  approved_by ObjectId [note: 'FK → users (Facility Manager)']
-  items Array [note: '[{ part_id → spare_parts, qty, unit_price }]. Đã duyệt = đã xuất kho']
-  status String [note: 'pending | approved | rejected']
-  reject_reason String
-  created_at DateTime
-  approved_at DateTime
+  id int [pk, increment]
+
+  repair_id int [ref: > repairs.id]
+
+  requested_by int [ref: > users.id]
+  approved_by int [ref: > users.id, null]
+
+  status parts_request_status
+
+  reject_reason varchar [null]
+
+  created_at timestamp
+  approved_at timestamp [null]
 }
 
-// ─── 5. INVENTORY ────────────────────────
+Table parts_request_items {
+  id int [pk, increment]
+
+  parts_request_id int [ref: > parts_requests.id]
+  part_id int [ref: > spare_parts.id]
+
+  quantity int
+  unit_price decimal [note: 'Price at time of request/issue']
+
+  indexes {
+    (parts_request_id, part_id) [unique]
+  }
+}
+
+
+// ============================================================
+// 11. PREVENTIVE MAINTENANCE
+// ============================================================
+
+Table preventive_maintenance {
+  id int [pk, increment]
+
+  equipment_id int [ref: > equipment.id]
+  checked_by int [ref: > users.id]
+
+  check_date timestamp
+
+  status varchar [note: 'passed | failed']
+  notes varchar
+
+  created_at timestamp
+}
+
+
+// ============================================================
+// 12. DISPOSAL
+// ============================================================
+
+Enum disposal_status {
+  proposed
+  approved
+  rejected
+  completed
+}
+
+Table disposals {
+  id int [pk, increment]
+
+  equipment_id int [ref: > equipment.id]
+
+  repair_id int [ref: > repairs.id, null]
+
+  proposed_by int [ref: > users.id]
+  approved_by int [ref: > users.id, null]
+
+  reason varchar
+  reject_reason varchar [null]
+
+  decision_number varchar
+  recovery_value decimal
+
+  status disposal_status
+
+  proposed_at timestamp
+  approved_at timestamp [null]
+  completed_at timestamp [null]
+}
+
+
+// ============================================================
+// 13. INVENTORY
+// ============================================================
 
 TableGroup inventory_group {
   inventory_sessions
   inventory_logs
 }
 
+Enum inventory_status {
+  draft
+  in_progress
+  completed
+  reconciled
+}
+
 Table inventory_sessions {
-  _id ObjectId [pk]
-  name String
-  scope_type String [note: 'building | floor | room']
-  scope_ids Array
-  created_by ObjectId [note: 'FK → users (Facility Manager)']
-  date DateTime
-  status String [note: 'draft | in_progress | completed | reconciled']
-  completed_at DateTime
-  created_at DateTime
+  id int [pk, increment]
+
+  name varchar
+
+  scope_type varchar [note: 'building | floor | room']
+  scope_ids json
+
+  created_by int [ref: > users.id]
+
+  date date
+
+  status inventory_status
+
+  completed_at timestamp [null]
+  created_at timestamp
 }
 
 Table inventory_logs {
-  _id ObjectId [pk]
-  session_id ObjectId [ref: > inventory_sessions._id]
-  equipment_id ObjectId [ref: > equipment._id]
-  scanned_room_id ObjectId [ref: > rooms._id]
-  scanned_by ObjectId [note: 'FK → users (Technician)']
-  scanned_at DateTime
-  status String [note: 'matched | missing | damaged | wrong_location']
-  repair_id ObjectId [ref: > repairs._id, note: 'Phiếu sửa tự tạo khi damaged']
-  note String
+  id int [pk, increment]
+
+  session_id int [ref: > inventory_sessions.id]
+  equipment_id int [ref: > equipment.id]
+
+  scanned_room_id int [ref: > rooms.id]
+  scanned_by int [ref: > users.id]
+
+  scanned_at timestamp
+
+  status varchar [note: 'matched | missing | damaged | wrong_location']
+
+  repair_id int [ref: > repairs.id, null]
+
+  note varchar
+
+  indexes {
+    (session_id, equipment_id) [unique]
+  }
 }
 
-// ─── 6. NOTIFICATION & AUDIT ─────────────
 
-TableGroup system_group {
-  notifications
-  audit_logs
-}
+// ============================================================
+// 14. NOTIFICATIONS
+// ============================================================
 
 Table notifications {
-  _id ObjectId [pk]
-  user_id ObjectId [ref: > users._id]
-  type String [note: 'incident_reported | repair_assigned | repair_resolved | repair_unrepairable | replacement_needed | movement_ordered | parts_request | disposal_request | warranty_expiring | deadline_overdue']
-  title String
-  message String
-  reference_type String [note: 'repair | equipment_movement | disposal | equipment | parts_request']
-  reference_id ObjectId
-  is_read Boolean
-  created_at DateTime
+  id int [pk, increment]
+
+  user_id int [ref: > users.id]
+
+  type varchar [note: 'incident_reported | repair_assigned | repair_resolved | repair_unrepairable | replacement_needed | movement_ordered | parts_request | disposal_request | warranty_expiring | deadline_overdue']
+
+  title varchar
+  message varchar
+
+  reference_type varchar [note: 'repair | equipment_movement | disposal | equipment | parts_request']
+  reference_id int
+
+  is_read boolean
+
+  created_at timestamp
 }
 
+
+// ============================================================
+// 15. AUDIT LOG
+// ============================================================
+
 Table audit_logs {
-  _id ObjectId [pk]
-  action String [note: 'create | update | delete | approve | login_success | login_failed | logout | password_reset']
-  target_table String
-  entity_id ObjectId
-  user_id ObjectId [ref: > users._id, note: 'nullable (đăng nhập sai email)']
-  actor_email String
-  old_value JSON
-  new_value JSON
-  ip_address String
-  user_agent String
-  hash_sha256 String
-  previous_hash String [note: 'SHA-256 chain, không đặt TTL']
-  created_at DateTime
+  id int [pk, increment]
+
+  action varchar [note: 'create | update | delete | approve | login_success | login_failed | logout | password_reset']
+
+  target_table varchar
+  entity_id int
+
+  user_id int [ref: > users.id, null]
+
+  // Snapshot for failed-login / deleted-account cases
+  actor_email varchar
+
+  old_value json
+  new_value json
+
+  ip_address varchar
+  user_agent varchar
+
+  hash_sha256 varchar
+  previous_hash varchar
+
+  created_at timestamp
 }

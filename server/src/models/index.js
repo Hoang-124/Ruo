@@ -8,6 +8,7 @@ export { RefreshToken } from './RefreshToken.js';
 export { PasswordReset } from './PasswordReset.js';
 
 // Module 2: Master Data
+export { Department } from './Department.js';
 export { Category, EquipmentCategory } from './Category.js';
 export { Supplier } from './Supplier.js';
 export { RepairUnit } from './RepairUnit.js';
@@ -20,10 +21,11 @@ export { EquipmentMovement, Transfer } from './EquipmentMovement.js';
 export { Disposal } from './Disposal.js';
 export { ImportSession } from './ImportSession.js';
 
-// Module 4: Repair
+// Module 4: Repair & Maintenance
 export { Repair } from './Repair.js';
 export { RepairLog } from './RepairLog.js';
 export { PartsRequest } from './PartsRequest.js';
+export { PreventiveMaintenance } from './PreventiveMaintenance.js';
 
 // Module 5: Inventory
 export { InventorySession } from './InventorySession.js';
