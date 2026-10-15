@@ -23,6 +23,9 @@ export const EquipmentsPage = () => {
 
   // Modals & Drawers
   const [selectedEq, setSelectedEq] = useState(null);
+  const [detailData, setDetailData] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showWarrantyModal, setShowWarrantyModal] = useState(false);
@@ -100,7 +103,26 @@ export const EquipmentsPage = () => {
     fetchEquipments();
   };
 
-  // Open Modals
+  // Open Modals & Drawers
+  const openDetail = async (eq) => {
+    setSelectedEq(eq);
+    setActiveTab('overview');
+    setDetailLoading(true);
+    try {
+      const res = await equipmentApi.getById(eq._id);
+      if (res && res.success) {
+        setDetailData(res);
+      } else {
+        setDetailData({ equipment: eq, movements: [], repairs: [], maintenance: [], depreciation: null });
+      }
+    } catch (err) {
+      console.warn('Lỗi khi tải chi tiết vòng đời thiết bị:', err.message);
+      setDetailData({ equipment: eq, movements: [], repairs: [], maintenance: [], depreciation: null });
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const openCreate = () => {
     setFormData({
       code: `EQ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -280,7 +302,7 @@ export const EquipmentsPage = () => {
           <button
             onClick={() => setShowBatchModal(true)}
             className="laser-btn laser-btn-secondary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-pure)' }}
           >
             <Icons.Upload size={16} />
             <span>Nhập Hàng Loạt</span>
@@ -362,8 +384,8 @@ export const EquipmentsPage = () => {
 
             <button
               type="submit"
-              className="laser-btn laser-btn-secondary"
-              style={{ height: '38px', padding: '0 18px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
+              className="laser-btn laser-btn-primary"
+              style={{ height: '38px', padding: '0 20px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
             >
               Tìm Kiếm
             </button>
@@ -407,7 +429,7 @@ export const EquipmentsPage = () => {
                   <tr
                     key={eq._id}
                     style={{ borderBottom: '1px solid var(--hairline-soft)', cursor: 'pointer' }}
-                    onClick={() => setSelectedEq(eq)}
+                    onClick={() => openDetail(eq)}
                   >
                     <td style={{ padding: '12px 18px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--laser-cyan)' }}>
                       {eq.code}
@@ -443,7 +465,7 @@ export const EquipmentsPage = () => {
                         <button
                           onClick={() => openQr(eq)}
                           className="laser-btn laser-btn-secondary"
-                          style={{ padding: '5px 8px', borderRadius: '4px' }}
+                          style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: 'var(--laser-cyan)' }}
                           title="In nhãn QR Code"
                         >
                           <Icons.QrCode size={14} />
@@ -451,7 +473,7 @@ export const EquipmentsPage = () => {
                         <button
                           onClick={() => openWarranty(eq)}
                           className="laser-btn laser-btn-secondary"
-                          style={{ padding: '5px 8px', borderRadius: '4px' }}
+                          style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: '#10B981' }}
                           title="Cập nhật bảo hành"
                         >
                           <Icons.Shield size={14} />
@@ -459,7 +481,7 @@ export const EquipmentsPage = () => {
                         <button
                           onClick={() => openEdit(eq)}
                           className="laser-btn laser-btn-secondary"
-                          style={{ padding: '5px 8px', borderRadius: '4px' }}
+                          style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: '#A855F7' }}
                           title="Chỉnh sửa thông tin"
                         >
                           <Icons.Edit size={14} />
@@ -488,75 +510,302 @@ export const EquipmentsPage = () => {
               </button>
             </div>
 
-            <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-panel)', padding: '12px 16px', borderRadius: 'var(--radius-md)' }}>
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase' }}>Trạng Thái Vận Hành</div>
-                  <div style={{ marginTop: '4px' }}>{getStatusBadge(selectedEq.status)}</div>
-                </div>
-                <button
-                  onClick={() => openQr(selectedEq)}
-                  className="laser-btn laser-btn-secondary"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px' }}
-                >
-                  <Icons.QrCode size={14} />
-                  <span>In Nhãn QR</span>
-                </button>
-              </div>
+            {/* Tab Navigation */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--hairline-medium)', padding: '0 20px', gap: '4px', background: 'var(--surface-panel)' }}>
+              {[
+                { id: 'overview', label: 'Tổng Quan', icon: Icons.Equipment },
+                { id: 'movements', label: `Điều Chuyển (${detailData?.movements?.length || 0})`, icon: Icons.Activity },
+                { id: 'repairs', label: `Sự Cố & Sửa (${detailData?.repairs?.length || 0})`, icon: Icons.Wrench },
+                { id: 'depreciation', label: 'Bảo Trì & Khấu Hao', icon: Icons.Shield }
+              ].map((tab) => {
+                const IconComp = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '10px 12px',
+                      border: 'none',
+                      background: 'none',
+                      fontSize: '12px',
+                      fontWeight: isActive ? 700 : 500,
+                      color: isActive ? 'var(--laser-cyan)' : 'var(--ink-muted)',
+                      borderBottom: isActive ? '2px solid var(--laser-cyan)' : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <IconComp size={13} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', fontSize: '12.5px' }}>
-                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Vị Trí Hiện Tại:</div>
-                  <div style={{ fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
-                    {selectedEq.room_id ? `${selectedEq.room_id.code} - ${selectedEq.room_id.name}` : 'Kho dự phòng (null)'}
-                  </div>
+            <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px' }}>
+              {detailLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--ink-muted)' }}>
+                  <Icons.Clock size={28} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 10px' }} />
+                  <div style={{ fontSize: '13px' }}>Đang tải lịch sử vòng đời tài sản...</div>
                 </div>
+              ) : (
+                <>
+                  {/* TAB 1: OVERVIEW */}
+                  {activeTab === 'overview' && (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-panel)', padding: '12px 16px', borderRadius: 'var(--radius-md)' }}>
+                        <div>
+                          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase' }}>Trạng Thái Vận Hành</div>
+                          <div style={{ marginTop: '4px' }}>{getStatusBadge(selectedEq.status)}</div>
+                        </div>
+                        <button
+                          onClick={() => openQr(selectedEq)}
+                          className="laser-btn laser-btn-secondary"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '12px', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid var(--hairline-medium)', color: 'var(--laser-cyan)' }}
+                        >
+                          <Icons.QrCode size={14} />
+                          <span>In Nhãn QR</span>
+                        </button>
+                      </div>
 
-                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Chủng Loại:</div>
-                  <div style={{ fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
-                    {selectedEq.category_id?.name || 'Chung'}
-                  </div>
-                </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', fontSize: '12.5px' }}>
+                        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Vị Trí Hiện Tại:</div>
+                          <div style={{ fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
+                            {selectedEq.room_id ? `${selectedEq.room_id.code} - ${selectedEq.room_id.name}` : 'Kho dự phòng (null)'}
+                          </div>
+                        </div>
 
-                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Nguyên Giá Mua:</div>
-                  <div style={{ fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
-                    {(selectedEq.price || 0).toLocaleString('vi-VN')} đ
-                  </div>
-                </div>
+                        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Chủng Loại:</div>
+                          <div style={{ fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
+                            {selectedEq.category_id?.name || 'Chung'}
+                          </div>
+                        </div>
 
-                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                  <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Số Serial:</div>
-                  <div style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink-pure)', marginTop: '2px' }}>
-                    {selectedEq.serial_number || 'N/A'}
-                  </div>
-                </div>
-              </div>
+                        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Nguyên Giá Mua:</div>
+                          <div style={{ fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
+                            {(selectedEq.price || 0).toLocaleString('vi-VN')} đ
+                          </div>
+                        </div>
 
-              {selectedEq.warranty_expiry && (
-                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '12px 14px', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-pure)' }}>Thông Tin Bảo Hành</span>
-                    <button onClick={() => openWarranty(selectedEq)} style={{ background: 'none', border: 'none', color: 'var(--laser-cyan)', fontSize: '11.5px', cursor: 'pointer' }}>
-                      Cập nhật →
-                    </button>
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: 'var(--ink-secondary)', marginTop: '4px' }}>
-                    Hạn bảo hành đến ngày: <strong>{new Date(selectedEq.warranty_expiry).toLocaleDateString('vi-VN')}</strong> • Tình trạng: <strong>{selectedEq.warranty_status || 'active'}</strong>
-                  </div>
-                </div>
-              )}
+                        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Số Serial:</div>
+                          <div style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink-pure)', marginTop: '2px' }}>
+                            {selectedEq.serial_number || 'N/A'}
+                          </div>
+                        </div>
 
-              {selectedEq.specs && Object.keys(selectedEq.specs).length > 0 && (
-                <div>
-                  <div style={{ fontSize: '11.5px', textTransform: 'uppercase', color: 'var(--ink-muted)', fontWeight: 700, marginBottom: '6px' }}>
-                    Thông Số Kỹ Thuật (Specs)
-                  </div>
-                  <pre style={{ background: 'var(--surface-panel)', padding: '10px', borderRadius: 'var(--radius-sm)', fontSize: '11.5px', fontFamily: 'var(--font-mono)' }}>
-                    {JSON.stringify(selectedEq.specs, null, 2)}
-                  </pre>
-                </div>
+                        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Thương Hiệu / Model:</div>
+                          <div style={{ fontWeight: 600, color: 'var(--ink-pure)', marginTop: '2px' }}>
+                            {selectedEq.brand || 'N/A'} {selectedEq.model ? `• ${selectedEq.model}` : ''}
+                          </div>
+                        </div>
+
+                        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Đơn Vị Sửa Chữa Ngoài:</div>
+                          <div style={{ fontWeight: 600, color: selectedEq.current_repair_unit_id ? 'var(--laser-cyan)' : 'var(--ink-secondary)', marginTop: '2px' }}>
+                            {selectedEq.current_repair_unit_id?.name || 'Không'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {selectedEq.warranty_expiry && (
+                        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '12px 14px', borderRadius: 'var(--radius-md)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-pure)' }}>Thông Tin Bảo Hành</span>
+                            <button onClick={() => openWarranty(selectedEq)} style={{ background: 'none', border: 'none', color: 'var(--laser-cyan)', fontSize: '11.5px', cursor: 'pointer' }}>
+                              Cập nhật →
+                            </button>
+                          </div>
+                          <div style={{ fontSize: '12.5px', color: 'var(--ink-secondary)', marginTop: '4px' }}>
+                            Hạn bảo hành: <strong>{new Date(selectedEq.warranty_expiry).toLocaleDateString('vi-VN')}</strong> • Trạng thái: <strong>{selectedEq.warranty_status || 'active'}</strong>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedEq.specs && Object.keys(selectedEq.specs).length > 0 && (
+                        <div>
+                          <div style={{ fontSize: '11.5px', textTransform: 'uppercase', color: 'var(--ink-muted)', fontWeight: 700, marginBottom: '6px' }}>
+                            Thông Số Kỹ Thuật (Specs)
+                          </div>
+                          <pre style={{ background: 'var(--surface-panel)', padding: '10px', borderRadius: 'var(--radius-sm)', fontSize: '11.5px', fontFamily: 'var(--font-mono)' }}>
+                            {JSON.stringify(selectedEq.specs, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* TAB 2: MOVEMENTS TIMELINE */}
+                  {activeTab === 'movements' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {(!detailData?.movements || detailData.movements.length === 0) ? (
+                        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--ink-muted)', background: 'var(--surface-card)', border: '1px dashed var(--hairline-medium)', borderRadius: 'var(--radius-md)' }}>
+                          <Icons.Activity size={32} style={{ opacity: 0.5, margin: '0 auto 8px' }} />
+                          <div style={{ fontSize: '13.5px', fontWeight: 600 }}>Chưa có lượt điều chuyển nào</div>
+                          <div style={{ fontSize: '12px', marginTop: '2px' }}>Tài sản vẫn ở vị trí khởi tạo ban đầu.</div>
+                        </div>
+                      ) : (
+                        detailData.movements.map((m, idx) => (
+                          <div key={m._id || idx} style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '14px', position: 'relative' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                              <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)' }}>
+                                {new Date(m.created_at).toLocaleString('vi-VN')}
+                              </span>
+                              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, textTransform: 'uppercase', background: m.status === 'completed' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', color: m.status === 'completed' ? '#10B981' : '#F59E0B' }}>
+                                {m.status}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--ink-pure)', marginBottom: '6px' }}>
+                              <span>{m.from_room_id ? `${m.from_room_id.code}` : 'Kho'}</span>
+                              <span style={{ color: 'var(--laser-cyan)' }}>→</span>
+                              <span>{m.to_room_id ? `${m.to_room_id.code}` : 'Đơn vị ngoài'}</span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--ink-secondary)' }}>
+                              <div><strong>Lý do:</strong> {m.reason || 'Điều chuyển thường xuyên'}</div>
+                              <div style={{ marginTop: '2px', fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                                Người yêu cầu: {m.ordered_by?.full_name || 'N/A'} {m.performed_by ? `• Người thực hiện: ${m.performed_by.full_name}` : ''}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 3: REPAIRS & INCIDENTS */}
+                  {activeTab === 'repairs' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {(!detailData?.repairs || detailData.repairs.length === 0) ? (
+                        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--ink-muted)', background: 'var(--surface-card)', border: '1px dashed var(--hairline-medium)', borderRadius: 'var(--radius-md)' }}>
+                          <Icons.Wrench size={32} style={{ opacity: 0.5, margin: '0 auto 8px' }} />
+                          <div style={{ fontSize: '13.5px', fontWeight: 600 }}>Không có sự cố ghi nhận</div>
+                          <div style={{ fontSize: '12px', marginTop: '2px' }}>Thiết bị hoạt động ổn định và chưa từng bị báo hỏng.</div>
+                        </div>
+                      ) : (
+                        detailData.repairs.map((r, idx) => (
+                          <div key={r._id || idx} style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--laser-cyan)' }}>
+                                {r.ticket_code || 'REP-TICKET'}
+                              </span>
+                              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
+                                {r.damage_level?.toUpperCase() || 'MINOR'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '12.5px', color: 'var(--ink-pure)', fontWeight: 600, marginBottom: '4px' }}>
+                              {r.incident_description}
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginTop: '6px' }}>
+                              <div>Người báo: <strong>{r.reported_by?.full_name || 'N/A'}</strong></div>
+                              <div>Kỹ thuật viên: <strong>{r.assigned_to?.full_name || 'Chưa nhận'}</strong></div>
+                              <div>Chi phí: <strong>{(r.total_cost || 0).toLocaleString('vi-VN')} đ</strong></div>
+                              <div>Kết quả: <strong style={{ color: r.outcome === 'repaired' ? '#10B981' : '#F59E0B' }}>{r.outcome || 'Đang xử lý'}</strong></div>
+                            </div>
+                            {r.feedback_rating && (
+                              <div style={{ marginTop: '8px', padding: '6px 10px', background: 'var(--surface-panel)', borderRadius: '4px', fontSize: '11.5px', color: 'var(--ink-secondary)' }}>
+                                Đánh giá giảng viên: <strong>{r.feedback_rating} ★</strong> {r.feedback_comment && `— "${r.feedback_comment}"`}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 4: MAINTENANCE & DEPRECIATION */}
+                  {activeTab === 'depreciation' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {/* Financial straight-line depreciation */}
+                      <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)' }}>Khấu Hao Đường Thẳng (Linear)</span>
+                          <span style={{ fontSize: '11px', color: 'var(--laser-cyan)', fontWeight: 600 }}>
+                            {detailData?.depreciation?.depreciationRate || selectedEq.depreciation_rate || 20}% / năm
+                          </span>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div style={{ height: '8px', width: '100%', background: 'var(--surface-panel)', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
+                          <div
+                            style={{
+                              height: '100%',
+                              width: `${Math.min(100, detailData?.depreciation?.depreciationPercent || 0)}%`,
+                              background: 'linear-gradient(90deg, #10B981 0%, #F59E0B 70%, #EF4444 100%)',
+                              transition: 'width 0.3s ease'
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--ink-muted)', marginBottom: '14px' }}>
+                          <span>Đã khấu hao: <strong>{detailData?.depreciation?.depreciationPercent || 0}%</strong></span>
+                          <span>Đã sử dụng: <strong>{detailData?.depreciation?.yearsPassed || 0} năm</strong></span>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', textAlign: 'center' }}>
+                          <div style={{ background: 'var(--surface-panel)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
+                            <div style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>Nguyên Giá</div>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
+                              {(detailData?.depreciation?.originalPrice || selectedEq.price || 0).toLocaleString('vi-VN')} đ
+                            </div>
+                          </div>
+
+                          <div style={{ background: 'var(--surface-panel)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
+                            <div style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>Đã Khấu Hao</div>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#EF4444', marginTop: '2px' }}>
+                              {(detailData?.depreciation?.depreciatedValue || 0).toLocaleString('vi-VN')} đ
+                            </div>
+                          </div>
+
+                          <div style={{ background: 'var(--surface-panel)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
+                            <div style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>Giá Trị Còn Lại</div>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#10B981', marginTop: '2px' }}>
+                              {(detailData?.depreciation?.remainingValue || selectedEq.price || 0).toLocaleString('vi-VN')} đ
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Preventive Maintenance Log */}
+                      <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)', marginBottom: '10px' }}>
+                          Kiểm Định Bảo Trì Định Kỳ ({detailData?.maintenance?.length || 0})
+                        </div>
+
+                        {(!detailData?.maintenance || detailData.maintenance.length === 0) ? (
+                          <div style={{ textAlign: 'center', padding: '24px 10px', color: 'var(--ink-muted)', fontSize: '12px' }}>
+                            Chưa có biên bản bảo trì định kỳ nào được ghi nhận.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {detailData.maintenance.map((m, idx) => (
+                              <div key={m._id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--surface-panel)', borderRadius: 'var(--radius-sm)' }}>
+                                <div>
+                                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink-pure)' }}>
+                                    {new Date(m.check_date).toLocaleDateString('vi-VN')} • {m.checked_by?.full_name || 'KTV'}
+                                  </div>
+                                  <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
+                                    {m.notes || 'Không có ghi chú'}
+                                  </div>
+                                </div>
+                                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, background: m.status === 'passed' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: m.status === 'passed' ? '#10B981' : '#EF4444' }}>
+                                  {m.status === 'passed' ? 'ĐẠT' : 'KHÔNG ĐẠT'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

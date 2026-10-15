@@ -48,6 +48,12 @@ const equipmentSchema = new mongoose.Schema({
     default: null, 
     index: true 
   },
+  current_repair_unit_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RepairUnit',
+    default: null,
+    index: true
+  },
   supplier_id: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Supplier', 
@@ -84,6 +90,12 @@ const equipmentSchema = new mongoose.Schema({
     enum: Object.values(EQUIPMENT_STATUSES), 
     default: EQUIPMENT_STATUSES.IN_STOCK,
     index: true 
+  },
+  import_session_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ImportSession',
+    default: null,
+    index: true
   },
   specs: { 
     type: mongoose.Schema.Types.Mixed, 

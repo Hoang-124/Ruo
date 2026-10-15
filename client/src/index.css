@@ -209,6 +209,14 @@ button, input, select, textarea, optgroup, kbd, code, pre, table, th, td, svg, s
   color: inherit;
 }
 
+button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+}
+
 svg text, svg tspan {
   font-family: var(--font-sans) !important;
 }
@@ -984,6 +992,62 @@ code, pre, .font-mono {
   background: rgba(255, 255, 255, 0.06);
   color: var(--ink-pure);
   border-color: var(--laser-cyan);
+}
+
+/* Laser Unified Button System */
+.laser-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  border: 1px solid transparent;
+  outline: none;
+  background: transparent;
+}
+
+.laser-btn-primary {
+  background: linear-gradient(135deg, var(--laser-indigo, #6366F1), #4F46E5) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.35);
+}
+.laser-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4F46E5, #4338CA) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.5);
+  transform: translateY(-1px);
+}
+
+.laser-btn-secondary {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--ink-pure, #F1F5F9) !important;
+  border: 1px solid var(--hairline-medium, rgba(255, 255, 255, 0.14)) !important;
+}
+.laser-btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  transform: translateY(-1px);
+}
+.laser-btn-secondary svg {
+  color: var(--ink-secondary, #94A3B8);
+  transition: color var(--transition-fast);
+}
+.laser-btn-secondary:hover svg {
+  color: #FFFFFF;
+}
+
+.laser-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 /* Badges System */
