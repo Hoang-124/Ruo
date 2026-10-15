@@ -284,7 +284,7 @@ export const MovementsPage = () => {
                     >
                       {rooms.map(r => (
                         <option key={r._id} value={r._id}>
-                          {r.type === 'warehouse' ? `[KHO] ${r.code}` : `${r.code} - ${r.name}`}
+                          {(r.room_type || r.type) === 'warehouse' ? `[KHO] ${r.code}` : `${r.code} - ${r.name}`}
                         </option>
                       ))}
                     </select>

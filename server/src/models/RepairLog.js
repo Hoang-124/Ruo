@@ -5,7 +5,7 @@ const repairLogSchema = new mongoose.Schema({
   repair_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Repair', required: true, index: true },
   action: { 
     type: String, 
-    enum: ['reported', 'assigned', 'in_progress', 'resolved', 'closed', 'escalated'], 
+    enum: ['reported', 'assigned', 'in_progress', 'resolved', 'unrepairable', 'closed', 'escalated'], 
     required: true 
   },
   performed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

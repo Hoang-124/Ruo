@@ -53,6 +53,7 @@ router.post('/logout', protect, logout);
 
 // Token Refresh (Token rotation)
 router.post('/refresh-token', refreshToken);
+router.post('/refresh', refreshToken);
 
 // Guest: Recover password (gửi OTP 6 số, TTL 15m, rate limit 5 lần/giờ)
 router.post('/forgot-password', forgotLimiter, forgotPassword);
@@ -66,8 +67,8 @@ router.post('/change-password', protect, changePassword);
 router.get('/me', protect, getMe);
 router.put('/me', protect, updateProfile);
 
-// Admin Module: User Management (Admin Only)
-router.get('/users', protect, requireRole(USER_ROLES.ADMIN), getAllUsers);
+// Admin Module: User Management (Admin, plus Facility Manager for technician lookup)
+router.get('/users', protect, requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER), getAllUsers);
 router.post('/users', protect, requireRole(USER_ROLES.ADMIN), createUser);
 router.get('/users/:id', protect, requireRole(USER_ROLES.ADMIN), getUserById);
 router.put('/users/:id', protect, requireRole(USER_ROLES.ADMIN), adminUpdateUser);

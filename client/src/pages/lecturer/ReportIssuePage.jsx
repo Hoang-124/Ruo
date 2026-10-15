@@ -43,7 +43,7 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
     try {
       setLoading(true);
       const res = await masterDataApi.getRooms({ limit: 100 });
-      const availableRooms = (res?.rooms || []).filter(r => r.type !== 'warehouse');
+      const availableRooms = (res?.rooms || []).filter(r => (r.room_type || r.type) !== 'warehouse');
       setRooms(availableRooms);
       if (!formData.room_id && availableRooms.length > 0) {
         setFormData(prev => ({ ...prev, room_id: availableRooms[0]._id }));

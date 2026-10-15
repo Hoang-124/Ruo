@@ -970,6 +970,7 @@ export const EquipmentsPage = () => {
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Trạng Thái Bảo Hành</label>
                   <select value={warrantyData.warranty_status} onChange={(e) => setWarrantyData({ ...warrantyData, warranty_status: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }}>
                     <option value="active">Còn hiệu lực (Active)</option>
+                    <option value="extended">Gia hạn bảo hành (Extended)</option>
                     <option value="expired">Hết hạn (Expired)</option>
                     <option value="void">Từ chối bảo hành (Void)</option>
                   </select>
