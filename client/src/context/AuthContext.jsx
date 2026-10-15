@@ -271,10 +271,14 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Change Password
+  // Change Password (UC-10.6: Resolves mandatory password change flag)
   const changePassword = useCallback(async (passData) => {
     try {
-      return await authApi.changePassword(passData);
+      const res = await authApi.changePassword(passData);
+      if (res && res.success) {
+        setApiUser(prev => prev ? { ...prev, force_change_pw: false } : prev);
+      }
+      return res;
     } catch (err) {
       return { success: false, message: err.message || 'Đổi mật khẩu thất bại.' };
     }
@@ -383,6 +387,8 @@ export const AuthProvider = ({ children }) => {
       phone: apiUser.phone || '',
       avatar: apiUser.avatar || (apiUser.full_name ? apiUser.full_name.slice(0, 2).toUpperCase() : 'RU'),
       status: apiUser.status || 'active',
+      force_change_pw: Boolean(apiUser.force_change_pw),
+      forceChangePw: Boolean(apiUser.force_change_pw),
       reputeScore: repute,
       reputeTier: tier,
       bookingPrivilege: apiUser.bookingPrivilege || (repute >= 70 ? 'Toàn Quyền Tiêu Chuẩn' : 'Hạn Chế Đặt Trước')
