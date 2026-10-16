@@ -43,3 +43,7 @@ exports/
 ARCHITECTURE_DIAGRAM.mmd
 ARCHITECTURE_DOCUMENTATION.md
 CHANGELOG.md
+
+# Local database storage
+server/data/
+
