@@ -186,10 +186,14 @@ export const authApi = {
 export const equipmentApi = {
   list: (params) => api.get('/equipments', params),
   getById: (id) => api.get(`/equipments/${id}`),
+  getLifecycle: (id) => api.get(`/equipments/${id}/lifecycle`),
   getByCode: (code) => api.get(`/equipments/code/${code}`),
   getByQr: (qrCode) => api.get(`/equipments/qr/${qrCode}`),
   create: (data) => api.post('/equipments', data),
   update: (id, data) => api.put(`/equipments/${id}`, data),
+  validateBatch: (data) => api.post('/equipments/import/validate', data),
+  importBatch: (data) => api.post('/equipments/import', data),
+  dispose: (id, data) => api.put(`/equipments/${id}/dispose`, data),
   updateWarranty: (id, data) => api.put(`/equipments/${id}/warranty`, data),
   delete: (id) => api.delete(`/equipments/${id}`)
 };
@@ -256,11 +260,12 @@ export const disposalApi = {
 };
 
 export const inventoryApi = {
-  getSessions: () => api.get('/inventory/sessions'),
-  createSession: (data) => api.post('/inventory/sessions', data),
-  getSessionById: (id) => api.get(`/inventory/sessions/${id}`),
-  scanInRoom: (sessionId, data) => api.post(`/inventory/sessions/${sessionId}/scan`, data),
-  reconcile: (sessionId) => api.put(`/inventory/sessions/${sessionId}/reconcile`, {})
+  getSessions: () => api.get('/inventory-sessions'),
+  createSession: (data) => api.post('/inventory-sessions', data),
+  getSessionById: (id) => api.get(`/inventory-sessions/${id}`),
+  scanInRoom: (sessionId, data) => api.put(`/inventory-sessions/${sessionId}/scan`, data),
+  reconcile: (sessionId) => api.put(`/inventory-sessions/${sessionId}/reconcile`, {}),
+  exportReport: (sessionId) => api.get(`/inventory-sessions/${sessionId}/export`)
 };
 
 export const masterDataApi = {

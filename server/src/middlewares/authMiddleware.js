@@ -58,7 +58,7 @@ export const protect = async (req, res, next) => {
     let rolePermissions = DEFAULT_CANONICAL_ROLES[user.role]?.permissions || [];
     if (mongoose.connection.readyState === 1) {
       const dbRole = await Role.findOne({ name: user.role }).select('permissions');
-      if (dbRole && Array.isArray(dbRole.permissions) && dbRole.permissions.length > 0) {
+      if (dbRole && Array.isArray(dbRole.permissions)) {
         rolePermissions = dbRole.permissions;
       }
     }
