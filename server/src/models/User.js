@@ -79,6 +79,16 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  approval_note: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  rejection_reason: {
+    type: String,
+    default: null,
+    trim: true
+  },
   force_change_pw: { 
     type: Boolean, 
     default: false 
