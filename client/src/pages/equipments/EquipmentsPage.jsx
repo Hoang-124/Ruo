@@ -1,25 +1,87 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { equipmentApi, masterDataApi } from '../../lib/api';
+
+// Pure Native SVG 2D QR Matrix Generator (Deterministic from string seed, zero external libraries)
+const NativeQrMatrixSvg = ({ value = 'QR-EQ-2026-001', size = 148 }) => {
+  const gridSize = 21;
+  const cells = [];
+
+  // Deterministic hash function for non-finder cells
+  const seedStr = String(value || 'RUO-UEMS');
+  const isFinderPattern = (r, c) => {
+    const topLeft = r < 7 && c < 7;
+    const topRight = r < 7 && c >= gridSize - 7;
+    const bottomLeft = r >= gridSize - 7 && c < 7;
+    return topLeft || topRight || bottomLeft;
+  };
+
+  const getFinderBit = (r, c) => {
+    const lr = r >= gridSize - 7 ? r - (gridSize - 7) : r;
+    const lc = c >= gridSize - 7 ? c - (gridSize - 7) : c;
+    if (lr === 0 || lr === 6 || lc === 0 || lc === 6) return true;
+    if (lr >= 2 && lr <= 4 && lc >= 2 && lc <= 4) return true;
+    return false;
+  };
+
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      let filled = false;
+      if (isFinderPattern(r, c)) {
+        filled = getFinderBit(r, c);
+      } else if (r === 6 || c === 6) {
+        filled = (r + c) % 2 === 0;
+      } else {
+        const charIdx = (r * gridSize + c) % seedStr.length;
+        const code = seedStr.charCodeAt(charIdx);
+        filled = ((code * (r + 3) + c * 17 + charIdx * 31) % 7) < 3;
+      }
+      if (filled) {
+        cells.push(<rect key={`${r}-${c}`} x={c} y={r} width={1} height={1} fill="#000000" />);
+      }
+    }
+  }
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${gridSize} ${gridSize}`} shapeRendering="crispEdges" style={{ display: 'block' }}>
+      <rect width={gridSize} height={gridSize} fill="#ffffff" />
+      {cells}
+    </svg>
+  );
+};
 
 export const EquipmentsPage = () => {
   const { toast } = useToast();
+  const { currentUser } = useAuth();
+
+  const userRole = currentUser?.role || 'facility_manager';
+  const canCreateOrUpdate = ['admin', 'facility_manager', 'technician'].includes(userRole);
+  const canImportOrDispose = ['admin', 'facility_manager'].includes(userRole);
 
   const [loading, setLoading] = useState(true);
   const [equipments, setEquipments] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Master options
   const [categories, setCategories] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
 
-  // Filters
+  // Multi-dimensional Filters (UC-3.2: chủng loại, trạng thái, phòng học, tầm giá; tìm kiếm tên, mã QR)
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [roomFilter, setRoomFilter] = useState('ALL');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+
+  // Fast QR Lookup state
+  const [fastQrInput, setFastQrInput] = useState('');
+  const [qrLookupLoading, setQrLookupLoading] = useState(false);
 
   // Modals & Drawers
   const [selectedEq, setSelectedEq] = useState(null);
@@ -31,11 +93,13 @@ export const EquipmentsPage = () => {
   const [showWarrantyModal, setShowWarrantyModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [showDisposeModal, setShowDisposeModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Form states
+  // Form states (UC-3.1 & UC-3.4)
   const [formData, setFormData] = useState({
     code: '',
+    qr_code: '',
     name: '',
     category_id: '',
     room_id: '',
@@ -43,8 +107,11 @@ export const EquipmentsPage = () => {
     brand: '',
     model: '',
     serial_number: '',
-    price: 0,
-    warranty_expiry: ''
+    price: 15000000,
+    depreciation_rate: 20,
+    purchase_date: new Date().toISOString().split('T')[0],
+    warranty_expiry: '',
+    movement_reason: ''
   });
 
   const [warrantyData, setWarrantyData] = useState({
@@ -52,7 +119,19 @@ export const EquipmentsPage = () => {
     warranty_status: 'active'
   });
 
-  const [batchJson, setBatchJson] = useState('');
+  // Disposal Form state (UC-3.8)
+  const [disposeData, setDisposeData] = useState({
+    decision_number: '',
+    acceptance_report: '',
+    recovery_value: 0
+  });
+
+  // Batch Import & Validation states (UC-3.6 & UC-3.7)
+  const [batchRawText, setBatchRawText] = useState('');
+  const [batchFileName, setBatchFileName] = useState('danh_sach_thiet_bi_A1.csv');
+  const [parsedBatchItems, setParsedBatchItems] = useState([]);
+  const [validationResult, setValidationResult] = useState(null);
+  const [validatingBatch, setValidatingBatch] = useState(false);
 
   const fetchMasterData = async () => {
     try {
@@ -72,18 +151,22 @@ export const EquipmentsPage = () => {
   const fetchEquipments = async () => {
     try {
       setLoading(true);
-      const params = { page, limit: 50 };
-      if (search.trim()) params.search = search.trim();
-      if (statusFilter !== 'ALL') params.status = statusFilter;
-      if (categoryFilter !== 'ALL') params.category = categoryFilter;
-
+      const params = {
+        page,
+        limit: 50,
+        ...(search.trim() ? { q: search.trim() } : {}),
+        ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+        ...(categoryFilter !== 'ALL' ? { category_id: categoryFilter } : {}),
+        ...(roomFilter !== 'ALL' ? { room_id: roomFilter } : {}),
+        ...(minPrice !== '' ? { minPrice: Number(minPrice) } : {}),
+        ...(maxPrice !== '' ? { maxPrice: Number(maxPrice) } : {})
+      };
       const res = await equipmentApi.list(params);
-      if (res && res.success) {
-        setEquipments(res.equipments || []);
-        setTotalCount(res.total || 0);
-      }
+      setEquipments(res?.equipments || []);
+      setTotalCount(res?.total || (res?.equipments || []).length);
+      setTotalPages(res?.totalPages || 1);
     } catch (err) {
-      toast.error('Lỗi khi tải danh sách thiết bị: ' + err.message);
+      toast.error('Không thể tải danh sách thiết bị: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -95,7 +178,7 @@ export const EquipmentsPage = () => {
 
   useEffect(() => {
     fetchEquipments();
-  }, [page, statusFilter, categoryFilter]);
+  }, [page, statusFilter, categoryFilter, roomFilter]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -103,38 +186,54 @@ export const EquipmentsPage = () => {
     fetchEquipments();
   };
 
-  // Open Modals & Drawers
-  const openDetail = async (eq) => {
-    setSelectedEq(eq);
-    setActiveTab('overview');
-    setDetailLoading(true);
+  const handleResetFilters = () => {
+    setSearch('');
+    setStatusFilter('ALL');
+    setCategoryFilter('ALL');
+    setRoomFilter('ALL');
+    setMinPrice('');
+    setMaxPrice('');
+    setPage(1);
+    setTimeout(() => fetchEquipments(), 0);
+  };
+
+  // Fast QR Lookup handler (QR Code Generator & Scan UC)
+  const handleFastQrLookup = async (e) => {
+    e.preventDefault();
+    if (!fastQrInput.trim()) return;
     try {
-      const res = await equipmentApi.getById(eq._id);
-      if (res && res.success) {
-        setDetailData(res);
-      } else {
-        setDetailData({ equipment: eq, movements: [], repairs: [], maintenance: [], depreciation: null });
+      setQrLookupLoading(true);
+      const res = await equipmentApi.getByQr(fastQrInput.trim());
+      if (res?.success && res?.equipment) {
+        toast.success(`Đã tra cứu nhanh mã QR: [${res.equipment.code}] ${res.equipment.name}`);
+        setFastQrInput('');
+        openDetail(res.equipment);
       }
     } catch (err) {
-      console.warn('Lỗi khi tải chi tiết vòng đời thiết bị:', err.message);
-      setDetailData({ equipment: eq, movements: [], repairs: [], maintenance: [], depreciation: null });
+      toast.error('Không tìm thấy thiết bị với mã QR / Mã tài sản: ' + fastQrInput);
     } finally {
-      setDetailLoading(false);
+      setQrLookupLoading(false);
     }
   };
 
   const openCreate = () => {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const autoCode = `EQ-2026-${randomSuffix}`;
     setFormData({
-      code: `EQ-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      code: autoCode,
+      qr_code: `QR-${autoCode}`,
       name: '',
       category_id: categories[0]?._id || '',
-      room_id: rooms[0]?._id || '',
+      room_id: '',
       supplier_id: suppliers[0]?._id || '',
       brand: '',
       model: '',
       serial_number: '',
-      price: 0,
-      warranty_expiry: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10)
+      price: 15000000,
+      depreciation_rate: 20,
+      purchase_date: new Date().toISOString().split('T')[0],
+      warranty_expiry: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().split('T')[0],
+      movement_reason: ''
     });
     setShowCreateModal(true);
   };
@@ -142,8 +241,9 @@ export const EquipmentsPage = () => {
   const openEdit = (eq) => {
     setSelectedEq(eq);
     setFormData({
-      code: eq.code,
-      name: eq.name,
+      code: eq.code || '',
+      qr_code: eq.qr_code || `QR-${eq.code}`,
+      name: eq.name || '',
       category_id: eq.category_id?._id || eq.category_id || '',
       room_id: eq.room_id?._id || eq.room_id || '',
       supplier_id: eq.supplier_id?._id || eq.supplier_id || '',
@@ -151,7 +251,10 @@ export const EquipmentsPage = () => {
       model: eq.model || '',
       serial_number: eq.serial_number || '',
       price: eq.price || 0,
-      warranty_expiry: eq.warranty_expiry ? new Date(eq.warranty_expiry).toISOString().slice(0, 10) : ''
+      depreciation_rate: eq.depreciation_rate || 20,
+      purchase_date: eq.purchase_date ? new Date(eq.purchase_date).toISOString().split('T')[0] : '',
+      warranty_expiry: eq.warranty_expiry ? new Date(eq.warranty_expiry).toISOString().split('T')[0] : '',
+      movement_reason: 'Điều chuyển phòng khi cập nhật hồ sơ thiết bị (UC-3.4)'
     });
     setShowEditModal(true);
   };
@@ -159,7 +262,7 @@ export const EquipmentsPage = () => {
   const openWarranty = (eq) => {
     setSelectedEq(eq);
     setWarrantyData({
-      warranty_expiry: eq.warranty_expiry ? new Date(eq.warranty_expiry).toISOString().slice(0, 10) : '',
+      warranty_expiry: eq.warranty_expiry ? new Date(eq.warranty_expiry).toISOString().split('T')[0] : '',
       warranty_status: eq.warranty_status || 'active'
     });
     setShowWarrantyModal(true);
@@ -170,24 +273,62 @@ export const EquipmentsPage = () => {
     setShowQrModal(true);
   };
 
-  // Submissions
-  const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name.trim() || !formData.code.trim()) {
-      toast.error('Vui lòng điền đủ mã và tên thiết bị.');
-      return;
-    }
+  const openDispose = (eq) => {
+    setSelectedEq(eq);
+    setDisposeData({
+      decision_number: `QĐ-BGH-2026-${Math.floor(100 + Math.random() * 900)}`,
+      acceptance_report: `Biên bản nghiệm thu thanh lý tài sản [${eq.code}] ${eq.name} tại Tòa nhà A1 do hết khấu hao / hư hỏng nặng.`,
+      recovery_value: Math.round((eq.price || 0) * 0.05)
+    });
+    setShowDisposeModal(true);
+  };
 
+  const openDetail = async (eq) => {
+    setSelectedEq(eq);
+    setActiveTab('overview');
+    setDetailData(null);
+    setDetailLoading(true);
     try {
-      setSubmitting(true);
-      const res = await equipmentApi.create(formData);
+      const [res, lifeRes] = await Promise.all([
+        equipmentApi.getById(eq._id),
+        equipmentApi.getLifecycle(eq._id).catch(() => null)
+      ]);
       if (res && res.success) {
-        toast.success(`Đã đăng ký thiết bị mới: ${formData.code}!`);
-        setShowCreateModal(false);
-        await fetchEquipments();
+        setDetailData({
+          ...res,
+          lifecycle: lifeRes?.events ? lifeRes : res.lifecycle
+        });
+        if (res.equipment) {
+          setSelectedEq(res.equipment);
+        }
       }
     } catch (err) {
-      toast.error('Lỗi khi đăng ký thiết bị: ' + err.message);
+      toast.error('Không thể tải chi tiết vòng đời thiết bị: ' + err.message);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      const payload = {
+        ...formData,
+        qr_code: formData.qr_code || `QR-${formData.code.toUpperCase().trim()}`,
+        price: Number(formData.price) || 0,
+        depreciation_rate: Number(formData.depreciation_rate) || 20,
+        room_id: formData.room_id || null,
+        supplier_id: formData.supplier_id || null
+      };
+      const res = await equipmentApi.create(payload);
+      if (res && res.success) {
+        toast.success(`Đã đăng ký thiết bị mới [${res.equipment?.code}] thành công (UC-3.1)!`);
+        setShowCreateModal(false);
+        fetchEquipments();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tạo thiết bị: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -195,13 +336,30 @@ export const EquipmentsPage = () => {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedEq) return;
     try {
       setSubmitting(true);
-      const res = await equipmentApi.update(selectedEq._id, formData);
+      const res = await equipmentApi.update(selectedEq._id, {
+        name: formData.name,
+        brand: formData.brand,
+        model: formData.model,
+        serial_number: formData.serial_number,
+        category_id: formData.category_id,
+        room_id: formData.room_id || null,
+        supplier_id: formData.supplier_id || null,
+        price: Number(formData.price) || 0,
+        depreciation_rate: Number(formData.depreciation_rate) || 20,
+        purchase_date: formData.purchase_date || null,
+        warranty_expiry: formData.warranty_expiry || null,
+        movement_reason: formData.movement_reason
+      });
       if (res && res.success) {
-        toast.success('Đã cập nhật thông tin thiết bị thành công!');
+        toast.success(res.message || `Đã cập nhật thiết bị [${selectedEq.code}] thành công!`);
         setShowEditModal(false);
-        await fetchEquipments();
+        fetchEquipments();
+        if (detailData) {
+          openDetail(res.equipment || selectedEq);
+        }
       }
     } catch (err) {
       toast.error('Lỗi khi cập nhật thiết bị: ' + err.message);
@@ -212,13 +370,14 @@ export const EquipmentsPage = () => {
 
   const handleWarrantySubmit = async (e) => {
     e.preventDefault();
+    if (!selectedEq) return;
     try {
       setSubmitting(true);
       const res = await equipmentApi.updateWarranty(selectedEq._id, warrantyData);
       if (res && res.success) {
-        toast.success('Đã cập nhật thông tin bảo hành thành công!');
+        toast.success(`Đã cập nhật hạn bảo hành cho [${selectedEq.code}]!`);
         setShowWarrantyModal(false);
-        await fetchEquipments();
+        fetchEquipments();
       }
     } catch (err) {
       toast.error('Lỗi khi cập nhật bảo hành: ' + err.message);
@@ -227,154 +386,392 @@ export const EquipmentsPage = () => {
     }
   };
 
-  const handleBatchImport = async (e) => {
+  const handleDisposeSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedEq) return;
     try {
       setSubmitting(true);
-      const parsed = JSON.parse(batchJson);
-      if (!Array.isArray(parsed)) {
-        toast.error('Dữ liệu nhập hàng loạt phải là mảng JSON hợp lệ.');
-        return;
-      }
-
-      let count = 0;
-      for (const item of parsed) {
-        try {
-          await equipmentApi.create(item);
-          count++;
-        } catch (e) {
-          console.warn('Item import failed:', item.code, e.message);
+      const res = await equipmentApi.dispose(selectedEq._id, {
+        decision_number: disposeData.decision_number,
+        acceptance_report: disposeData.acceptance_report,
+        reason: disposeData.acceptance_report,
+        recovery_value: Number(disposeData.recovery_value) || 0
+      });
+      if (res && res.success) {
+        toast.success(res.message || `Đã thanh lý thiết bị [${selectedEq.code}] (DISPOSED)!`);
+        setShowDisposeModal(false);
+        fetchEquipments();
+        if (detailData) {
+          openDetail(res.equipment || selectedEq);
         }
       }
-
-      toast.success(`Đã nhập thành công ${count}/${parsed.length} thiết bị vào hệ thống!`);
-      setShowBatchModal(false);
-      setBatchJson('');
-      await fetchEquipments();
     } catch (err) {
-      toast.error('Định dạng JSON không hợp lệ: ' + err.message);
+      toast.error('Lỗi khi thanh lý thiết bị: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Parse CSV/TSV/JSON text into array of objects for UC-3.6 & UC-3.7
+  const parseBatchInputText = (rawText) => {
+    const trimmed = String(rawText || '').trim();
+    if (!trimmed) return [];
+
+    // If JSON array
+    if (trimmed.startsWith('[')) {
+      try {
+        const arr = JSON.parse(trimmed);
+        return Array.isArray(arr) ? arr : [];
+      } catch (_) {
+        // Fallback to CSV parser
+      }
+    }
+
+    const lines = trimmed.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    if (lines.length === 0) return [];
+
+    const delimiter = lines[0].includes('\t') ? '\t' : ',';
+    const splitRow = (line) =>
+      line.split(delimiter).map((cell) => cell.trim().replace(/^"|"$/g, ''));
+
+    const firstRow = splitRow(lines[0]);
+    const hasHeader =
+      firstRow.some((h) => ['code', 'mã tài sản', 'name', 'tên thiết bị', 'category', 'price'].includes(h.toLowerCase()));
+
+    const headers = hasHeader
+      ? firstRow.map((h) => {
+          const lower = h.toLowerCase();
+          if (lower.includes('code') || lower.includes('mã tài sản') || lower === 'ma_ts') return 'code';
+          if (lower.includes('name') || lower.includes('tên')) return 'name';
+          if (lower.includes('category') || lower.includes('loại')) return 'category';
+          if (lower.includes('room') || lower.includes('phòng')) return 'room';
+          if (lower.includes('price') || lower.includes('giá')) return 'price';
+          if (lower.includes('brand') || lower.includes('hãng')) return 'brand';
+          if (lower.includes('model')) return 'model';
+          if (lower.includes('serial')) return 'serial_number';
+          return lower;
+        })
+      : ['code', 'name', 'category', 'room', 'price', 'brand', 'model', 'serial_number'];
+
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+    return dataLines.map((line) => {
+      const cols = splitRow(line);
+      const obj = {};
+      headers.forEach((key, idx) => {
+        if (cols[idx] !== undefined) {
+          obj[key] = key === 'price' ? Number(String(cols[idx]).replace(/[^0-9.-]/g, '')) || 0 : cols[idx];
+        }
+      });
+      return obj;
+    });
+  };
+
+  const handleBatchTextChange = (text) => {
+    setBatchRawText(text);
+    const items = parseBatchInputText(text);
+    setParsedBatchItems(items);
+    setValidationResult(null);
+  };
+
+  const handleCsvFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBatchFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const content = evt.target?.result || '';
+      handleBatchTextChange(String(content));
+      toast.info(`Đã nạp tệp [${file.name}] vào lưới xem trước.`);
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  // Generate >100 sample records in 1 click for testing UC-3.6 (>100 records) & UC-3.7
+  const handleGenerate105SampleRows = (includeIntentionalErrors = false) => {
+    const defaultCat = categories[0]?.code || categories[0]?.name || categories[0]?._id || 'TB-TRINH-CHIEU';
+    const defaultRoom = rooms[0]?.code || 'A1-101';
+    const secondRoom = rooms[1]?.code || 'A1-201';
+    const baseSeed = Math.floor(100 + Math.random() * 800);
+
+    const rows = ['code,name,category,room,price,brand,model,serial_number'];
+    for (let i = 1; i <= 105; i++) {
+      const num = String(i).padStart(3, '0');
+      let code = `EQ-A1-${baseSeed}-${num}`;
+      let cat = defaultCat;
+      let room = i % 3 === 0 ? 'KHO' : i % 2 === 0 ? secondRoom : defaultRoom;
+      const price = 12000000 + (i % 10) * 1500000;
+
+      if (includeIntentionalErrors) {
+        if (i === 2) code = `EQ-A1-${baseSeed}-001`; // Duplicate code with row 1
+        if (i === 3) room = 'B2-999'; // Invalid room outside Building A1
+        if (i === 4) cat = 'LOAI-TB-SAI-999'; // Invalid category
+      }
+
+      rows.push(
+        `${code},Thiết Bị Giảng Đường Tòa A1 #${num},${cat},${room},${price},Panasonic,PT-VZ580,SN-A1-${baseSeed}-${num}`
+      );
+    }
+
+    const csvText = rows.join('\n');
+    setBatchFileName(includeIntentionalErrors ? 'mau_kiem_thu_loi_105_dong.csv' : 'lo_nhap_thiet_bi_A1_105_dong.csv');
+    handleBatchTextChange(csvText);
+    toast.success(
+      includeIntentionalErrors
+        ? 'Đã tạo 105 dòng dữ liệu mẫu (kèm 3 dòng lỗi cố ý: trùng mã, sai phòng, sai loại TB) để kiểm thử UC-3.7!'
+        : 'Đã tạo 105 bản ghi CSV chuẩn Tòa nhà A1 (>100 bản ghi) sẵn sàng kiểm tra và nhập kho!'
+    );
+  };
+
+  const handleDownloadSampleCsv = () => {
+    const defaultCat = categories[0]?.code || categories[0]?.name || 'TB-TRINH-CHIEU';
+    const defaultRoom = rooms[0]?.code || 'A1-101';
+    const csvContent = [
+      'code,name,category,room,price,brand,model,serial_number',
+      `EQ-2026-8001,Máy Chiếu Laser Tòa A1,${defaultCat},${defaultRoom},24500000,Sony,VPL-PHZ60,SN-8001`,
+      `EQ-2026-8002,Màn Hình Tương Tác Thông Minh 75 inch,${defaultCat},KHO,42000000,Maxhub,V6-75,SN-8002`
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mau_nhap_thiet_bi_A1.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // UC-3.7: Validate Batch on Backend
+  const handleValidateBatch = async () => {
+    const items = parsedBatchItems.length > 0 ? parsedBatchItems : parseBatchInputText(batchRawText);
+    if (!items || items.length === 0) {
+      toast.error('Vui lòng tải tệp CSV/Excel hoặc nhập dữ liệu trước khi kiểm tra.');
+      return;
+    }
+
+    try {
+      setValidatingBatch(true);
+      const res = await equipmentApi.validateBatch({
+        file_name: batchFileName,
+        items
+      });
+      setValidationResult(res);
+      if (res.valid) {
+        toast.success(res.message || `Kiểm tra hợp lệ 100% (${res.totalRows} bản ghi)!`);
+      } else {
+        toast.warning(res.message || `Phát hiện ${res.errorCount} lỗi dữ liệu trên các dòng.`);
+      }
+    } catch (err) {
+      toast.error('Lỗi khi kiểm tra dữ liệu: ' + err.message);
+    } finally {
+      setValidatingBatch(false);
+    }
+  };
+
+  // UC-3.6: Execute Batch Import on Backend
+  const handleBatchImport = async (e) => {
+    e.preventDefault();
+    const items = parsedBatchItems.length > 0 ? parsedBatchItems : parseBatchInputText(batchRawText);
+    if (!items || items.length === 0) {
+      toast.error('Không có dữ liệu thiết bị để nhập hàng loạt.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await equipmentApi.importBatch({
+        file_name: batchFileName,
+        items,
+        allowPartial: true
+      });
+      if (res && res.success) {
+        toast.success(res.message || `Đã nhập thành công ${res.importedCount} thiết bị vào kho!`);
+        setShowBatchModal(false);
+        setBatchRawText('');
+        setParsedBatchItems([]);
+        setValidationResult(null);
+        fetchEquipments();
+      }
+    } catch (err) {
+      if (err.data?.previewRows) {
+        setValidationResult(err.data);
+      }
+      toast.error('Lỗi khi nhập hàng loạt: ' + err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'in_use':
-        return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(16,185,129,0.15)', color: '#10B981' }}>Đang Sử Dụng</span>;
-      case 'in_stock':
-        return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(6,182,212,0.15)', color: 'var(--laser-cyan)' }}>Kho Dự Phòng</span>;
-      case 'broken':
-        return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}>Bị Hỏng</span>;
-      case 'repairing':
-        return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(245,158,11,0.15)', color: '#F59E0B' }}>Đang Sửa</span>;
-      case 'pending_disposal':
-        return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(168,85,247,0.15)', color: '#A855F7' }}>Chờ Thanh Lý</span>;
-      case 'disposed':
-        return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(100,116,139,0.2)', color: 'var(--ink-muted)' }}>Đã Thanh Lý</span>;
-      default:
-        return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(255,255,255,0.08)', color: 'var(--ink-muted)' }}>{status}</span>;
-    }
+    const map = {
+      in_use: { label: 'Đang sử dụng', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.3)' },
+      in_stock: { label: 'Kho dự phòng', color: 'var(--laser-cyan)', bg: 'rgba(6, 182, 212, 0.12)', border: 'rgba(6, 182, 212, 0.3)' },
+      broken: { label: 'Bị hỏng', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.3)' },
+      repairing: { label: 'Đang sửa chữa', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.3)' },
+      pending_disposal: { label: 'Chờ thanh lý', color: '#A855F7', bg: 'rgba(168, 85, 247, 0.12)', border: 'rgba(168, 85, 247, 0.3)' },
+      disposed: { label: 'Đã thanh lý (DISPOSED)', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.15)', border: 'rgba(148, 163, 184, 0.3)' }
+    };
+    const item = map[status] || { label: status, color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.3)' };
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '3px 10px',
+          borderRadius: '999px',
+          fontSize: '11.5px',
+          fontWeight: 700,
+          color: item.color,
+          background: item.bg,
+          border: `1px solid ${item.border}`
+        }}
+      >
+        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.color }} />
+        {item.label}
+      </span>
+    );
   };
 
-  const inUseCount = equipments.filter(e => e.status === 'in_use').length;
-  const inStockCount = equipments.filter(e => e.status === 'in_stock').length;
-  const brokenCount = equipments.filter(e => e.status === 'broken' || e.status === 'repairing').length;
+  // KPI Counters
+  const inUseCount = equipments.filter((e) => e.status === 'in_use').length;
+  const inStockCount = equipments.filter((e) => e.status === 'in_stock').length;
+  const brokenCount = equipments.filter((e) => e.status === 'broken' || e.status === 'repairing').length;
+  const disposedCount = equipments.filter((e) => e.status === 'disposed').length;
+
+  const isEditingRoomChanged =
+    showEditModal &&
+    selectedEq &&
+    String(selectedEq.room_id?._id || selectedEq.room_id || '') !== String(formData.room_id || '');
+
+  const previewRowsToDisplay = validationResult?.previewRows || parsedBatchItems.map((item, idx) => ({
+    row: idx + 1,
+    code: item.code || '(Trống)',
+    name: item.name || '(Trống)',
+    category_name: item.category || item.category_id || '(Trống)',
+    room_name: item.room || item.room_id || 'Kho dự phòng',
+    price: item.price || 0,
+    valid: null,
+    errors: []
+  }));
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+      {/* Header Banner */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--laser-cyan)', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>MODULE 03</span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>QUẢN LÝ TÀI SẢN & VÒNG ĐỜI THIẾT BỊ • TỔNG {totalCount} THIẾT BỊ</span>
+            <span style={{ fontSize: '11px', color: 'var(--laser-cyan)', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+              MODULE 03 • TÒA NHÀ ĐA NĂNG A1
+            </span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
+              UC-3.1 → UC-3.8 • QUẢN LÝ VÒNG ĐỜI, NHẬP LÔ EXCEL/CSV, TEM QR & THANH LÝ
+            </span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
-            Kho Thiết Bị & Danh Mục Tài Sản CSVC
+            Danh Mục Thiết Bị & Hồ Sơ Vòng Đời Tài Sản (Tòa A1)
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
-            Theo dõi phân bổ thiết bị tại các phòng, tồn kho dự phòng, trạng thái bảo hành và quản lý mã QR định danh.
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => setShowBatchModal(true)}
-            className="laser-btn laser-btn-secondary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-pure)' }}
-          >
-            <Icons.Upload size={16} />
-            <span>Nhập Hàng Loạt</span>
-          </button>
+          {/* Fast QR Lookup Input right in the header */}
+          <form onSubmit={handleFastQrLookup} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ position: 'relative' }}>
+              <Icons.QrCode size={14} style={{ position: 'absolute', left: '10px', top: '11px', color: 'var(--laser-cyan)' }} />
+              <input
+                type="text"
+                value={fastQrInput}
+                onChange={(e) => setFastQrInput(e.target.value)}
+                placeholder="Quét / nhập nhanh mã QR..."
+                className="ruo-portal-input"
+                style={{ paddingLeft: '30px', height: '36px', width: '200px', fontSize: '12px', fontFamily: 'var(--font-mono)' }}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={qrLookupLoading}
+              className="laser-btn laser-btn-secondary"
+              style={{ height: '36px', padding: '0 12px', fontSize: '12px', fontWeight: 700, color: 'var(--laser-cyan)', border: '1px solid rgba(6,182,212,0.35)' }}
+              title="Tra cứu dưới 1 giây bằng mã QR"
+            >
+              {qrLookupLoading ? '...' : 'Tra QR'}
+            </button>
+          </form>
 
-          <button
-            onClick={openCreate}
-            className="laser-btn laser-btn-primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
-          >
-            <Icons.Plus size={16} />
-            <span>Đăng Ký Thiết Bị Mới</span>
-          </button>
+          {canImportOrDispose && (
+            <button
+              onClick={() => {
+                setShowBatchModal(true);
+                if (parsedBatchItems.length === 0 && !batchRawText) {
+                  handleGenerate105SampleRows(false);
+                }
+              }}
+              className="laser-btn laser-btn-secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-pure)' }}
+            >
+              <Icons.Upload size={16} />
+              <span>Nhập Lô Excel/CSV (&gt;100 bản ghi)</span>
+            </button>
+          )}
+
+          {canCreateOrUpdate && (
+            <button
+              onClick={openCreate}
+              className="laser-btn laser-btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
+            >
+              <Icons.Plus size={16} />
+              <span>Đăng Ký Thiết Bị Mới</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* KPI Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '24px' }}>
-        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
-          <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Tổng thiết bị quản lý</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Tổng thiết bị truy vấn</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--ink-pure)', marginTop: '4px' }}>{totalCount}</div>
         </div>
-        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
-          <div style={{ fontSize: '12px', color: '#10B981', fontWeight: 600 }}>Đang hoạt động (In Use)</div>
+        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
+          <div style={{ fontSize: '12px', color: '#10B981', fontWeight: 600 }}>Đang sử dụng tại phòng (In Use)</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#10B981', marginTop: '4px' }}>{inUseCount}</div>
         </div>
-        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
+        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
           <div style={{ fontSize: '12px', color: 'var(--laser-cyan)', fontWeight: 600 }}>Kho dự phòng (In Stock)</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--laser-cyan)', marginTop: '4px' }}>{inStockCount}</div>
         </div>
-        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
-          <div style={{ fontSize: '12px', color: '#EF4444', fontWeight: 600 }}>Hỏng / Đang sửa</div>
+        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
+          <div style={{ fontSize: '12px', color: '#EF4444', fontWeight: 600 }}>Hỏng / Đang sửa chữa</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#EF4444', marginTop: '4px' }}>{brokenCount}</div>
+        </div>
+        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(148,163,184,0.3)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
+          <div style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 600 }}>Đã thanh lý (Disposed)</div>
+          <div style={{ fontSize: '22px', fontWeight: 800, color: '#94A3B8', marginTop: '4px' }}>{disposedCount}</div>
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
+      {/* Multi-dimensional Filter & Search Bar (UC-3.2) */}
       <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: '20px' }}>
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-            <Icons.Search size={16} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--ink-muted)' }} />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm theo mã tài sản, tên thiết bị, serial hoặc model..."
-              className="ruo-portal-input"
-              style={{ paddingLeft: '38px', width: '100%', height: '38px' }}
-            />
-          </div>
-
+        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <select
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="ruo-portal-input"
-              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px' }}
-            >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="in_use">Đang sử dụng (in_use)</option>
-              <option value="in_stock">Kho dự phòng (in_stock)</option>
-              <option value="broken">Bị hỏng (broken)</option>
-              <option value="repairing">Đang sửa (repairing)</option>
-              <option value="pending_disposal">Chờ thanh lý</option>
-              <option value="disposed">Đã thanh lý</option>
-            </select>
+            <div style={{ position: 'relative', flex: '1 1 260px' }}>
+              <Icons.Search size={16} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--ink-muted)' }} />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm theo tên thiết bị, mã tài sản, mã QR (QR-EQ-...), serial, model..."
+                className="ruo-portal-input"
+                style={{ paddingLeft: '38px', width: '100%', height: '38px' }}
+              />
+            </div>
 
+            {/* Filter 1: Chủng loại */}
             <select
               value={categoryFilter}
               onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }}
               className="ruo-portal-input"
-              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px' }}
+              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', minWidth: '175px' }}
             >
               <option value="ALL">Tất cả chủng loại</option>
               {categories.map((c) => (
@@ -382,13 +779,102 @@ export const EquipmentsPage = () => {
               ))}
             </select>
 
-            <button
-              type="submit"
-              className="laser-btn laser-btn-primary"
-              style={{ height: '38px', padding: '0 20px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
+            {/* Filter 2: Phòng học Tòa A1 */}
+            <select
+              value={roomFilter}
+              onChange={(e) => { setRoomFilter(e.target.value); setPage(1); }}
+              className="ruo-portal-input"
+              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', minWidth: '185px' }}
             >
-              Tìm Kiếm
-            </button>
+              <option value="ALL">Tất cả vị trí (Tòa A1)</option>
+              <option value="warehouse">Kho dự phòng (Chưa phân phòng)</option>
+              {rooms.map((r) => (
+                <option key={r._id} value={r._id}>{r.code} — {r.name} (Tầng {r.floor})</option>
+              ))}
+            </select>
+
+            {/* Filter 3: Trạng thái */}
+            <select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+              className="ruo-portal-input"
+              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', minWidth: '165px' }}
+            >
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="in_use">Đang sử dụng (in_use)</option>
+              <option value="in_stock">Kho dự phòng (in_stock)</option>
+              <option value="broken">Bị hỏng (broken)</option>
+              <option value="repairing">Đang sửa (repairing)</option>
+              <option value="pending_disposal">Chờ thanh lý</option>
+              <option value="disposed">Đã thanh lý (disposed)</option>
+            </select>
+          </div>
+
+          {/* Second Filter Row: Price Range (Tầm giá) + Action buttons */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', paddingTop: '8px', borderTop: '1px solid var(--hairline-soft)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 600 }}>Tầm nguyên giá (VNĐ):</span>
+              <input
+                type="number"
+                min="0"
+                step="1000000"
+                placeholder="Từ giá (VD: 5000000)"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+                className="ruo-portal-input"
+                style={{ width: '165px', height: '34px', fontSize: '12px' }}
+              />
+              <span style={{ color: 'var(--ink-muted)' }}>—</span>
+              <input
+                type="number"
+                min="0"
+                step="1000000"
+                placeholder="Đến giá (VD: 50000000)"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                className="ruo-portal-input"
+                style={{ width: '165px', height: '34px', fontSize: '12px' }}
+              />
+              <button
+                type="button"
+                onClick={() => { setMinPrice(''); setMaxPrice('15000000'); }}
+                style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-secondary)', cursor: 'pointer' }}
+              >
+                &lt; 15 triệu
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMinPrice('15000000'); setMaxPrice('40000000'); }}
+                style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-secondary)', cursor: 'pointer' }}
+              >
+                15 – 40 triệu
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMinPrice('40000000'); setMaxPrice(''); }}
+                style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-secondary)', cursor: 'pointer' }}
+              >
+                &gt; 40 triệu
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="laser-btn laser-btn-secondary"
+                style={{ height: '34px', padding: '0 14px', borderRadius: 'var(--radius-md)', fontSize: '12px' }}
+              >
+                Đặt Lại Bộ Lọc
+              </button>
+              <button
+                type="submit"
+                className="laser-btn laser-btn-primary"
+                style={{ height: '34px', padding: '0 18px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', fontWeight: 700 }}
+              >
+                Áp Dụng Tìm Kiếm
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -407,103 +893,153 @@ export const EquipmentsPage = () => {
             <div style={{ fontSize: '13px', marginTop: '4px' }}>Hãy thử điều chỉnh bộ lọc hoặc đăng ký tài sản mới.</div>
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--hairline-medium)' }}>
-                <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Mã Tài Sản</th>
-                <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Tên Thiết Bị / Model</th>
-                <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Chủng Loại</th>
-                <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Vị Trí (Phòng)</th>
-                <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Trạng Thái</th>
-                <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Bảo Hành</th>
-                <th style={{ padding: '12px 18px', textAlign: 'right', color: 'var(--ink-pure)', fontWeight: 700 }}>Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {equipments.map((eq) => {
-                const roomInfo = eq.room_id ? `${eq.room_id.code} (${eq.room_id.name})` : 'Kho dự phòng (null)';
-                const catInfo = eq.category_id?.name || 'Chung';
-                const isWarrantyActive = eq.warranty_expiry && new Date(eq.warranty_expiry) > new Date();
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--hairline-medium)' }}>
+                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Mã Tài Sản / QR</th>
+                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Tên Thiết Bị / Model</th>
+                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Chủng Loại</th>
+                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Vị Trí (Tòa A1)</th>
+                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Nguyên Giá</th>
+                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Trạng Thái</th>
+                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Bảo Hành</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--ink-pure)', fontWeight: 700 }}>Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {equipments.map((eq) => {
+                  const roomInfo = eq.room_id ? `${eq.room_id.code} (${eq.room_id.name})` : 'Kho dự phòng';
+                  const catInfo = eq.category_id?.name || 'Chung';
+                  const isWarrantyActive = eq.warranty_expiry && new Date(eq.warranty_expiry) > new Date();
 
-                return (
-                  <tr
-                    key={eq._id}
-                    style={{ borderBottom: '1px solid var(--hairline-soft)', cursor: 'pointer' }}
-                    onClick={() => openDetail(eq)}
-                  >
-                    <td style={{ padding: '12px 18px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--laser-cyan)' }}>
-                      {eq.code}
-                    </td>
-                    <td style={{ padding: '12px 18px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{eq.name}</div>
-                      <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-                        {eq.brand} {eq.model} {eq.serial_number && `• SN: ${eq.serial_number}`}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 18px', color: 'var(--ink-secondary)' }}>
-                      {catInfo}
-                    </td>
-                    <td style={{ padding: '12px 18px' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: eq.room_id ? 'var(--ink-pure)' : 'var(--laser-cyan)' }}>
-                        {roomInfo}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 18px' }}>
-                      {getStatusBadge(eq.status)}
-                    </td>
-                    <td style={{ padding: '12px 18px' }}>
-                      {eq.warranty_expiry ? (
-                        <div style={{ fontSize: '12px', color: isWarrantyActive ? '#10B981' : '#EF4444' }}>
-                          ● {isWarrantyActive ? 'Còn hạn' : 'Hết hạn'} ({new Date(eq.warranty_expiry).toLocaleDateString('vi-VN')})
+                  return (
+                    <tr
+                      key={eq._id}
+                      style={{ borderBottom: '1px solid var(--hairline-soft)', cursor: 'pointer' }}
+                      onClick={() => openDetail(eq)}
+                    >
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--laser-cyan)' }}>{eq.code}</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10.5px', color: 'var(--ink-muted)' }}>{eq.qr_code || `QR-${eq.code}`}</div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{eq.name}</div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                          {eq.brand} {eq.model} {eq.serial_number && `• SN: ${eq.serial_number}`}
                         </div>
-                      ) : (
-                        <span style={{ color: 'var(--ink-muted)', fontSize: '12px' }}>Không có</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px 18px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ display: 'inline-flex', gap: '6px' }}>
-                        <button
-                          onClick={() => openQr(eq)}
-                          className="laser-btn laser-btn-secondary"
-                          style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: 'var(--laser-cyan)' }}
-                          title="In nhãn QR Code"
-                        >
-                          <Icons.QrCode size={14} />
-                        </button>
-                        <button
-                          onClick={() => openWarranty(eq)}
-                          className="laser-btn laser-btn-secondary"
-                          style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: '#10B981' }}
-                          title="Cập nhật bảo hành"
-                        >
-                          <Icons.Shield size={14} />
-                        </button>
-                        <button
-                          onClick={() => openEdit(eq)}
-                          className="laser-btn laser-btn-secondary"
-                          style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: '#A855F7' }}
-                          title="Chỉnh sửa thông tin"
-                        >
-                          <Icons.Edit size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: 'var(--ink-secondary)' }}>
+                        {catInfo}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: eq.room_id ? 'var(--ink-pure)' : 'var(--laser-cyan)' }}>
+                          {roomInfo}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--ink-pure)' }}>
+                        {(eq.price || 0).toLocaleString('vi-VN')} đ
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {getStatusBadge(eq.status)}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {eq.warranty_expiry ? (
+                          <div style={{ fontSize: '12px', color: isWarrantyActive ? '#10B981' : '#EF4444' }}>
+                            ● {isWarrantyActive ? 'Còn hạn' : 'Hết hạn'} ({new Date(eq.warranty_expiry).toLocaleDateString('vi-VN')})
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--ink-muted)', fontSize: '12px' }}>Không có</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          <button
+                            onClick={() => openQr(eq)}
+                            className="laser-btn laser-btn-secondary"
+                            style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: 'var(--laser-cyan)' }}
+                            title="Tạo & In nhãn QR Code"
+                          >
+                            <Icons.QrCode size={14} />
+                          </button>
+                          {canCreateOrUpdate && (
+                            <>
+                              <button
+                                onClick={() => openWarranty(eq)}
+                                className="laser-btn laser-btn-secondary"
+                                style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: '#10B981' }}
+                                title="Cập nhật bảo hành"
+                              >
+                                <Icons.Shield size={14} />
+                              </button>
+                              <button
+                                onClick={() => openEdit(eq)}
+                                className="laser-btn laser-btn-secondary"
+                                style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: '#A855F7' }}
+                                title="Chỉnh sửa thông số & vị trí phòng (UC-3.4)"
+                              >
+                                <Icons.Edit size={14} />
+                              </button>
+                            </>
+                          )}
+                          {canImportOrDispose && eq.status !== 'disposed' && (
+                            <button
+                              onClick={() => openDispose(eq)}
+                              className="laser-btn laser-btn-secondary"
+                              style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', fontSize: '11px', fontWeight: 700 }}
+                              title="Thanh lý tài sản theo QĐ BGH (UC-3.8)"
+                            >
+                              Thanh lý
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination Footer */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', borderTop: '1px solid var(--hairline-medium)', background: 'var(--surface-panel)', fontSize: '12.5px' }}>
+            <span style={{ color: 'var(--ink-muted)' }}>
+              Trang <strong>{page}</strong> / <strong>{totalPages}</strong> (Tổng {totalCount} tài sản)
+            </span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="laser-btn laser-btn-secondary"
+                style={{ padding: '5px 12px', fontSize: '12px', opacity: page <= 1 ? 0.5 : 1 }}
+              >
+                ← Trước
+              </button>
+              <button
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="laser-btn laser-btn-secondary"
+                style={{ padding: '5px 12px', fontSize: '12px', opacity: page >= totalPages ? 0.5 : 1 }}
+              >
+                Sau →
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Detail Drawer */}
+      {/* Detail Drawer (UC-3.3 & UC-3.5 Lifecycle Timeline) */}
       {selectedEq && (
         <div className="ruo-drawer-backdrop" onClick={() => setSelectedEq(null)}>
-          <div className="ruo-drawer-panel" style={{ width: '560px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="ruo-drawer-panel" style={{ width: '640px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
                 <h2 className="ruo-drawer-title">{selectedEq.name}</h2>
-                <p className="ruo-drawer-subtitle">{selectedEq.code} • {selectedEq.brand} {selectedEq.model}</p>
+                <p className="ruo-drawer-subtitle">
+                  {selectedEq.code} • QR: {selectedEq.qr_code || `QR-${selectedEq.code}`} • {selectedEq.brand} {selectedEq.model}
+                </p>
               </div>
               <button onClick={() => setSelectedEq(null)} className="ruo-drawer-close-btn">
                 <Icons.X size={18} />
@@ -511,9 +1047,10 @@ export const EquipmentsPage = () => {
             </div>
 
             {/* Tab Navigation */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--hairline-medium)', padding: '0 20px', gap: '4px', background: 'var(--surface-panel)' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--hairline-medium)', padding: '0 20px', gap: '4px', background: 'var(--surface-panel)', overflowX: 'auto' }}>
               {[
-                { id: 'overview', label: 'Tổng Quan', icon: Icons.Equipment },
+                { id: 'overview', label: 'Tổng Quan (UC-3.3)', icon: Icons.Equipment },
+                { id: 'lifecycle', label: `Dòng Đời Timeline (${detailData?.lifecycle?.events?.length || 0})`, icon: Icons.Clock },
                 { id: 'movements', label: `Điều Chuyển (${detailData?.movements?.length || 0})`, icon: Icons.Activity },
                 { id: 'repairs', label: `Sự Cố & Sửa (${detailData?.repairs?.length || 0})`, icon: Icons.Wrench },
                 { id: 'depreciation', label: 'Bảo Trì & Khấu Hao', icon: Icons.Shield }
@@ -528,15 +1065,15 @@ export const EquipmentsPage = () => {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '6px',
-                      padding: '10px 12px',
+                      padding: '10px 11px',
                       border: 'none',
                       background: 'none',
                       fontSize: '12px',
+                      whiteSpace: 'nowrap',
                       fontWeight: isActive ? 700 : 500,
                       color: isActive ? 'var(--laser-cyan)' : 'var(--ink-muted)',
                       borderBottom: isActive ? '2px solid var(--laser-cyan)' : '2px solid transparent',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
+                      cursor: 'pointer'
                     }}
                   >
                     <IconComp size={13} />
@@ -554,7 +1091,35 @@ export const EquipmentsPage = () => {
                 </div>
               ) : (
                 <>
-                  {/* TAB 1: OVERVIEW */}
+                  {/* 5-Stage Lifecycle Pipeline Bar (UC-3.5: Tiếp nhận → Phân bổ → Báo hỏng → Sửa chữa → Thanh lý) */}
+                  {detailData?.lifecycle?.stages && (
+                    <div style={{ background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                        Chu Trình Vòng Đời Tài Sản (UC-3.5 Lifecycle Pipeline)
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                        {detailData.lifecycle.stages.map((st) => (
+                          <div
+                            key={st.key}
+                            style={{
+                              padding: '7px 6px',
+                              borderRadius: '6px',
+                              textAlign: 'center',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              background: st.reached ? 'rgba(6, 182, 212, 0.14)' : 'rgba(255, 255, 255, 0.03)',
+                              border: `1px solid ${st.reached ? 'var(--laser-cyan)' : 'var(--hairline-soft)'}`,
+                              color: st.reached ? 'var(--ink-pure)' : 'var(--ink-muted)'
+                            }}
+                          >
+                            {st.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 1: OVERVIEW (UC-3.3) */}
                   {activeTab === 'overview' && (
                     <>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-panel)', padding: '12px 16px', borderRadius: 'var(--radius-md)' }}>
@@ -562,21 +1127,31 @@ export const EquipmentsPage = () => {
                           <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase' }}>Trạng Thái Vận Hành</div>
                           <div style={{ marginTop: '4px' }}>{getStatusBadge(selectedEq.status)}</div>
                         </div>
-                        <button
-                          onClick={() => openQr(selectedEq)}
-                          className="laser-btn laser-btn-secondary"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '12px', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid var(--hairline-medium)', color: 'var(--laser-cyan)' }}
-                        >
-                          <Icons.QrCode size={14} />
-                          <span>In Nhãn QR</span>
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => openQr(selectedEq)}
+                            className="laser-btn laser-btn-secondary"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '12px', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid var(--hairline-medium)', color: 'var(--laser-cyan)' }}
+                          >
+                            <Icons.QrCode size={14} />
+                            <span>In Nhãn QR</span>
+                          </button>
+                          <button
+                            onClick={() => setActiveTab('lifecycle')}
+                            className="laser-btn laser-btn-secondary"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '12px' }}
+                          >
+                            <Icons.Clock size={14} />
+                            <span>Xem Timeline (UC-3.5)</span>
+                          </button>
+                        </div>
                       </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', fontSize: '12.5px' }}>
                         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Vị Trí Hiện Tại:</div>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Vị Trí Hiện Tại (Tòa A1):</div>
                           <div style={{ fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
-                            {selectedEq.room_id ? `${selectedEq.room_id.code} - ${selectedEq.room_id.name}` : 'Kho dự phòng (null)'}
+                            {selectedEq.room_id ? `${selectedEq.room_id.code} - ${selectedEq.room_id.name}` : 'Kho dự phòng (KHO-A1)'}
                           </div>
                         </div>
 
@@ -588,30 +1163,30 @@ export const EquipmentsPage = () => {
                         </div>
 
                         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Nguyên Giá Mua:</div>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Nguyên Giá Mua & Khấu Hao:</div>
                           <div style={{ fontWeight: 700, color: 'var(--ink-pure)', marginTop: '2px' }}>
-                            {(selectedEq.price || 0).toLocaleString('vi-VN')} đ
+                            {(selectedEq.price || 0).toLocaleString('vi-VN')} đ ({selectedEq.depreciation_rate || 20}%/năm)
                           </div>
                         </div>
 
                         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Số Serial:</div>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Số Serial & Ngày Mua:</div>
                           <div style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink-pure)', marginTop: '2px' }}>
-                            {selectedEq.serial_number || 'N/A'}
+                            {selectedEq.serial_number || 'N/A'} • {selectedEq.purchase_date ? new Date(selectedEq.purchase_date).toLocaleDateString('vi-VN') : 'N/A'}
                           </div>
                         </div>
 
                         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Thương Hiệu / Model:</div>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Nhà Sản Xuất / Model:</div>
                           <div style={{ fontWeight: 600, color: 'var(--ink-pure)', marginTop: '2px' }}>
                             {selectedEq.brand || 'N/A'} {selectedEq.model ? `• ${selectedEq.model}` : ''}
                           </div>
                         </div>
 
                         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Đơn Vị Sửa Chữa Ngoài:</div>
-                          <div style={{ fontWeight: 600, color: selectedEq.current_repair_unit_id ? 'var(--laser-cyan)' : 'var(--ink-secondary)', marginTop: '2px' }}>
-                            {selectedEq.current_repair_unit_id?.name || 'Không'}
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Nhà Cung Cấp:</div>
+                          <div style={{ fontWeight: 600, color: 'var(--ink-pure)', marginTop: '2px' }}>
+                            {selectedEq.supplier_id?.name || 'Kho Thiết Bị Trường'}
                           </div>
                         </div>
                       </div>
@@ -620,9 +1195,11 @@ export const EquipmentsPage = () => {
                         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '12px 14px', borderRadius: 'var(--radius-md)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-pure)' }}>Thông Tin Bảo Hành</span>
-                            <button onClick={() => openWarranty(selectedEq)} style={{ background: 'none', border: 'none', color: 'var(--laser-cyan)', fontSize: '11.5px', cursor: 'pointer' }}>
-                              Cập nhật →
-                            </button>
+                            {canCreateOrUpdate && (
+                              <button onClick={() => openWarranty(selectedEq)} style={{ background: 'none', border: 'none', color: 'var(--laser-cyan)', fontSize: '11.5px', cursor: 'pointer' }}>
+                                Cập nhật →
+                              </button>
+                            )}
                           </div>
                           <div style={{ fontSize: '12.5px', color: 'var(--ink-secondary)', marginTop: '4px' }}>
                             Hạn bảo hành: <strong>{new Date(selectedEq.warranty_expiry).toLocaleDateString('vi-VN')}</strong> • Trạng thái: <strong>{selectedEq.warranty_status || 'active'}</strong>
@@ -633,9 +1210,9 @@ export const EquipmentsPage = () => {
                       {selectedEq.specs && Object.keys(selectedEq.specs).length > 0 && (
                         <div>
                           <div style={{ fontSize: '11.5px', textTransform: 'uppercase', color: 'var(--ink-muted)', fontWeight: 700, marginBottom: '6px' }}>
-                            Thông Số Kỹ Thuật (Specs)
+                            Thông Số Kỹ Thuật & Hồ Sơ Lưu Trữ (Specs)
                           </div>
-                          <pre style={{ background: 'var(--surface-panel)', padding: '10px', borderRadius: 'var(--radius-sm)', fontSize: '11.5px', fontFamily: 'var(--font-mono)' }}>
+                          <pre style={{ background: 'var(--surface-panel)', padding: '10px', borderRadius: 'var(--radius-sm)', fontSize: '11.5px', fontFamily: 'var(--font-mono)', overflowX: 'auto' }}>
                             {JSON.stringify(selectedEq.specs, null, 2)}
                           </pre>
                         </div>
@@ -643,7 +1220,57 @@ export const EquipmentsPage = () => {
                     </>
                   )}
 
-                  {/* TAB 2: MOVEMENTS TIMELINE */}
+                  {/* TAB 2: UNIFIED LIFECYCLE TIMELINE (UC-3.5) */}
+                  {activeTab === 'lifecycle' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {(!detailData?.lifecycle?.events || detailData.lifecycle.events.length === 0) ? (
+                        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--ink-muted)' }}>
+                          Chưa có sự kiện dòng đời nào.
+                        </div>
+                      ) : (
+                        detailData.lifecycle.events.map((ev, idx) => (
+                          <div
+                            key={ev.id || idx}
+                            style={{
+                              background: 'var(--surface-card)',
+                              border: '1px solid var(--hairline-medium)',
+                              borderLeft: `4px solid ${ev.badge_color || 'var(--laser-cyan)'}`,
+                              borderRadius: 'var(--radius-md)',
+                              padding: '14px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <span
+                                style={{
+                                  fontSize: '10.5px',
+                                  fontWeight: 800,
+                                  textTransform: 'uppercase',
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  background: `${ev.badge_color || '#06B6D4'}20`,
+                                  color: ev.badge_color || '#06B6D4'
+                                }}
+                              >
+                                {ev.stage_label}
+                              </span>
+                              <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)' }}>
+                                {new Date(ev.timestamp).toLocaleString('vi-VN')}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink-pure)', marginBottom: '4px' }}>
+                              {ev.title}
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--ink-secondary)' }}>{ev.description}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '6px' }}>
+                              Thực hiện / Ghi nhận bởi: <strong>{ev.actor}</strong>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 3: MOVEMENTS TIMELINE */}
                   {activeTab === 'movements' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {(!detailData?.movements || detailData.movements.length === 0) ? (
@@ -654,7 +1281,7 @@ export const EquipmentsPage = () => {
                         </div>
                       ) : (
                         detailData.movements.map((m, idx) => (
-                          <div key={m._id || idx} style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '14px', position: 'relative' }}>
+                          <div key={m._id || idx} style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                               <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)' }}>
                                 {new Date(m.created_at).toLocaleString('vi-VN')}
@@ -664,14 +1291,14 @@ export const EquipmentsPage = () => {
                               </span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--ink-pure)', marginBottom: '6px' }}>
-                              <span>{m.from_room_id ? `${m.from_room_id.code}` : 'Kho'}</span>
+                              <span>{m.from_room_id ? `${m.from_room_id.code}` : 'Kho dự phòng'}</span>
                               <span style={{ color: 'var(--laser-cyan)' }}>→</span>
-                              <span>{m.to_room_id ? `${m.to_room_id.code}` : 'Đơn vị ngoài'}</span>
+                              <span>{m.to_room_id ? `${m.to_room_id.code}` : 'Kho dự phòng'}</span>
                             </div>
                             <div style={{ fontSize: '12px', color: 'var(--ink-secondary)' }}>
                               <div><strong>Lý do:</strong> {m.reason || 'Điều chuyển thường xuyên'}</div>
                               <div style={{ marginTop: '2px', fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-                                Người yêu cầu: {m.ordered_by?.full_name || 'N/A'} {m.performed_by ? `• Người thực hiện: ${m.performed_by.full_name}` : ''}
+                                Người yêu cầu: {m.ordered_by?.full_name || 'Hệ thống'} {m.performed_by ? `• Người thực hiện: ${m.performed_by.full_name}` : ''}
                               </div>
                             </div>
                           </div>
@@ -680,7 +1307,7 @@ export const EquipmentsPage = () => {
                     </div>
                   )}
 
-                  {/* TAB 3: REPAIRS & INCIDENTS */}
+                  {/* TAB 4: REPAIRS & INCIDENTS */}
                   {activeTab === 'repairs' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {(!detailData?.repairs || detailData.repairs.length === 0) ? (
@@ -709,21 +1336,15 @@ export const EquipmentsPage = () => {
                               <div>Chi phí: <strong>{(r.total_cost || 0).toLocaleString('vi-VN')} đ</strong></div>
                               <div>Kết quả: <strong style={{ color: r.outcome === 'repaired' ? '#10B981' : '#F59E0B' }}>{r.outcome || 'Đang xử lý'}</strong></div>
                             </div>
-                            {r.feedback_rating && (
-                              <div style={{ marginTop: '8px', padding: '6px 10px', background: 'var(--surface-panel)', borderRadius: '4px', fontSize: '11.5px', color: 'var(--ink-secondary)' }}>
-                                Đánh giá giảng viên: <strong>{r.feedback_rating} ★</strong> {r.feedback_comment && `— "${r.feedback_comment}"`}
-                              </div>
-                            )}
                           </div>
                         ))
                       )}
                     </div>
                   )}
 
-                  {/* TAB 4: MAINTENANCE & DEPRECIATION */}
+                  {/* TAB 5: MAINTENANCE & DEPRECIATION */}
                   {activeTab === 'depreciation' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {/* Financial straight-line depreciation */}
                       <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                           <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)' }}>Khấu Hao Đường Thẳng (Linear)</span>
@@ -732,7 +1353,6 @@ export const EquipmentsPage = () => {
                           </span>
                         </div>
 
-                        {/* Progress Bar */}
                         <div style={{ height: '8px', width: '100%', background: 'var(--surface-panel)', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
                           <div
                             style={{
@@ -772,60 +1392,47 @@ export const EquipmentsPage = () => {
                           </div>
                         </div>
                       </div>
-
-                      {/* Preventive Maintenance Log */}
-                      <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)', marginBottom: '10px' }}>
-                          Kiểm Định Bảo Trì Định Kỳ ({detailData?.maintenance?.length || 0})
-                        </div>
-
-                        {(!detailData?.maintenance || detailData.maintenance.length === 0) ? (
-                          <div style={{ textAlign: 'center', padding: '24px 10px', color: 'var(--ink-muted)', fontSize: '12px' }}>
-                            Chưa có biên bản bảo trì định kỳ nào được ghi nhận.
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {detailData.maintenance.map((m, idx) => (
-                              <div key={m._id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--surface-panel)', borderRadius: 'var(--radius-sm)' }}>
-                                <div>
-                                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink-pure)' }}>
-                                    {new Date(m.check_date).toLocaleDateString('vi-VN')} • {m.checked_by?.full_name || 'KTV'}
-                                  </div>
-                                  <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
-                                    {m.notes || 'Không có ghi chú'}
-                                  </div>
-                                </div>
-                                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, background: m.status === 'passed' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: m.status === 'passed' ? '#10B981' : '#EF4444' }}>
-                                  {m.status === 'passed' ? 'ĐẠT' : 'KHÔNG ĐẠT'}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
                     </div>
                   )}
                 </>
               )}
             </div>
 
-            <div className="ruo-drawer-footer">
-              <button onClick={() => openEdit(selectedEq)} className="laser-btn laser-btn-primary" style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)' }}>
-                Chỉnh Sửa Thiết Bị
-              </button>
+            <div className="ruo-drawer-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div>
+                {canImportOrDispose && selectedEq.status !== 'disposed' && (
+                  <button
+                    onClick={() => openDispose(selectedEq)}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '8px 14px', borderRadius: 'var(--radius-md)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.4)', fontWeight: 700 }}
+                  >
+                    Thanh Lý Tài Sản (UC-3.8)
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => setSelectedEq(null)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>
+                  Đóng
+                </button>
+                {canCreateOrUpdate && (
+                  <button onClick={() => openEdit(selectedEq)} className="laser-btn laser-btn-primary" style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', fontWeight: 700 }}>
+                    Chỉnh Sửa & Điều Chuyển Phòng (UC-3.4)
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Create Modal */}
+      {/* Create Modal (UC-3.1) */}
       {showCreateModal && (
         <div className="ruo-drawer-backdrop" onClick={() => setShowCreateModal(false)}>
-          <div className="ruo-drawer-panel" style={{ width: '560px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="ruo-drawer-panel" style={{ width: '580px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
-                <h2 className="ruo-drawer-title">Đăng Ký Tài Sản Thiết Bị Mới</h2>
-                <p className="ruo-drawer-subtitle">Nhập thông tin cơ bản để đưa tài sản vào hệ thống quản lý CSVC</p>
+                <h2 className="ruo-drawer-title">Đăng Ký Tài Sản Thiết Bị Mới (UC-3.1)</h2>
+                <p className="ruo-drawer-subtitle">Mã tài sản unique, mã QR chuẩn, serial, model, nguyên giá, ngày mua, hạn BH, phòng Tòa A1</p>
               </div>
               <button onClick={() => setShowCreateModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
             </div>
@@ -834,20 +1441,54 @@ export const EquipmentsPage = () => {
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Mã Tài Sản *</label>
-                    <input type="text" required value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Mã Tài Sản (Unique) *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.code}
+                      onChange={(e) => setFormData({ ...formData, code: e.target.value, qr_code: `QR-${e.target.value.toUpperCase().trim()}` })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', fontFamily: 'var(--font-mono)' }}
+                    />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Chủng Loại *</label>
-                    <select required value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }}>
-                      {categories.map((c) => (<option key={c._id} value={c._id}>{c.name}</option>))}
-                    </select>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Mã QR Định Danh Chuẩn *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.qr_code}
+                      onChange={(e) => setFormData({ ...formData, qr_code: e.target.value })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', fontFamily: 'var(--font-mono)', color: 'var(--laser-cyan)' }}
+                    />
                   </div>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Tên Thiết Bị *</label>
-                  <input type="text" required placeholder="VD: Máy Chiếu Laser Panasonic PT-MZ880" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Tên Thiết Bị *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: Máy Chiếu Laser Panasonic PT-MZ880"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Chủng Loại *</label>
+                    <select
+                      required
+                      value={formData.category_id}
+                      onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%' }}
+                    >
+                      {categories.map((c) => (<option key={c._id} value={c._id}>{c.name}</option>))}
+                    </select>
+                  </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
@@ -867,21 +1508,31 @@ export const EquipmentsPage = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Vị Trí Phân Bổ (Phòng)</label>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Phòng Học Phân Bổ (Tòa A1)</label>
                     <select value={formData.room_id} onChange={(e) => setFormData({ ...formData, room_id: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }}>
                       <option value="">Lưu vào Kho dự phòng (Chưa phân phòng)</option>
-                      {rooms.map((r) => (<option key={r._id} value={r._id}>{r.code} - {r.name}</option>))}
+                      {rooms.map((r) => (<option key={r._id} value={r._id}>{r.code} - {r.name} (Tầng {r.floor})</option>))}
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Nguyên Giá Mua (VNĐ)</label>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Nguyên Giá Mua (VNĐ) *</label>
                     <input type="number" min="0" step="50000" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
                   </div>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Hạn Bảo Hành</label>
-                  <input type="date" value={formData.warranty_expiry} onChange={(e) => setFormData({ ...formData, warranty_expiry: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Ngày Mua *</label>
+                    <input type="date" required value={formData.purchase_date} onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Hạn Bảo Hành</label>
+                    <input type="date" value={formData.warranty_expiry} onChange={(e) => setFormData({ ...formData, warranty_expiry: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Khấu Hao (%/năm)</label>
+                    <input type="number" min="0" max="100" value={formData.depreciation_rate} onChange={(e) => setFormData({ ...formData, depreciation_rate: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
                 </div>
               </div>
 
@@ -896,23 +1547,31 @@ export const EquipmentsPage = () => {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal with Automatic Movement Tracking (UC-3.4) */}
       {showEditModal && selectedEq && (
         <div className="ruo-drawer-backdrop" onClick={() => setShowEditModal(false)}>
-          <div className="ruo-drawer-panel" style={{ width: '560px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="ruo-drawer-panel" style={{ width: '580px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
-                <h2 className="ruo-drawer-title">Cập Nhật Thông Tin Thiết Bị</h2>
-                <p className="ruo-drawer-subtitle">{selectedEq.code}</p>
+                <h2 className="ruo-drawer-title">Cập Nhật Thông Tin & Vị Trí Thiết Bị (UC-3.4)</h2>
+                <p className="ruo-drawer-subtitle">{selectedEq.code} • Tự động ghi nhật ký điều chuyển nếu đổi phòng</p>
               </div>
               <button onClick={() => setShowEditModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
             </div>
 
             <form onSubmit={handleEditSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Tên Thiết Bị *</label>
-                  <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Tên Thiết Bị *</label>
+                    <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Chủng Loại</label>
+                    <select value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }}>
+                      {categories.map((c) => (<option key={c._id} value={c._id}>{c.name}</option>))}
+                    </select>
+                  </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
@@ -930,9 +1589,49 @@ export const EquipmentsPage = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Nguyên Giá Mua (VNĐ)</label>
-                  <input type="number" min="0" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Phòng Học Phân Bổ (Tòa A1)</label>
+                    <select value={formData.room_id} onChange={(e) => setFormData({ ...formData, room_id: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }}>
+                      <option value="">Kho dự phòng (Chưa phân phòng)</option>
+                      {rooms.map((r) => (<option key={r._id} value={r._id}>{r.code} - {r.name} (Tầng {r.floor})</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Nguyên Giá Mua (VNĐ)</label>
+                    <input type="number" min="0" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
+                </div>
+
+                {isEditingRoomChanged && (
+                  <div style={{ background: 'rgba(6, 182, 212, 0.1)', border: '1px solid var(--laser-cyan)', borderRadius: 'var(--radius-md)', padding: '10px 12px', fontSize: '12px' }}>
+                    <div style={{ fontWeight: 700, color: 'var(--laser-cyan)', marginBottom: '6px' }}>
+                      ⚡ Phát hiện thay đổi vị trí phòng học — Tự động ghi Nhật ký Điều chuyển (UC-3.4):
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Nhập lý do điều chuyển phòng..."
+                      value={formData.movement_reason}
+                      onChange={(e) => setFormData({ ...formData, movement_reason: e.target.value })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', height: '34px', fontSize: '12px' }}
+                    />
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Ngày Mua</label>
+                    <input type="date" value={formData.purchase_date} onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Hạn Bảo Hành</label>
+                    <input type="date" value={formData.warranty_expiry} onChange={(e) => setFormData({ ...formData, warranty_expiry: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Tỷ Lệ Hao Mòn (%/năm)</label>
+                    <input type="number" min="0" max="100" value={formData.depreciation_rate} onChange={(e) => setFormData({ ...formData, depreciation_rate: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
                 </div>
               </div>
 
@@ -940,6 +1639,93 @@ export const EquipmentsPage = () => {
                 <button type="button" onClick={() => setShowEditModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
                 <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
                   {submitting ? 'Đang Lưu...' : 'Cập Nhật Thiết Bị'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Asset Disposal Modal (UC-3.8: Chuyển trạng thái DISPOSED, số quyết định BGH, biên bản nghiệm thu thanh lý) */}
+      {showDisposeModal && selectedEq && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowDisposeModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <div>
+                <h2 className="ruo-drawer-title" style={{ color: '#EF4444' }}>Ghi Nhận Thanh Lý Tài Sản (UC-3.8)</h2>
+                <p className="ruo-drawer-subtitle">{selectedEq.name} ({selectedEq.code})</p>
+              </div>
+              <button onClick={() => setShowDisposeModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
+            </div>
+
+            <form onSubmit={handleDisposeSubmit}>
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '12px', color: 'var(--ink-secondary)' }}>
+                  Thao tác này sẽ chuyển trạng thái tài sản sang <strong>ĐÃ THANH LÝ (DISPOSED)</strong>, thu hồi khỏi phòng học Tòa A1 và lưu vết vào Sổ cái kiểm toán SHA-256.
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Số Quyết Định Thanh Lý Của Ban Giám Hiệu *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="VD: QĐ-BGH-2026-089"
+                    value={disposeData.decision_number}
+                    onChange={(e) => setDisposeData({ ...disposeData, decision_number: e.target.value })}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontWeight: 700 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Biên Bản Nghiệm Thu Thanh Lý & Lý Do *
+                  </label>
+                  <textarea
+                    required
+                    rows={4}
+                    placeholder="Nhập nội dung biên bản nghiệm thu thanh lý, hội đồng thẩm định..."
+                    value={disposeData.acceptance_report}
+                    onChange={(e) => setDisposeData({ ...disposeData, acceptance_report: e.target.value })}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', fontSize: '12.5px' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Giá Trị Thu Hồi Thanh Lý (VNĐ)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50000"
+                    value={disposeData.recovery_value}
+                    onChange={(e) => setDisposeData({ ...disposeData, recovery_value: e.target.value })}
+                    className="ruo-portal-input"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+
+              <div className="ruo-drawer-footer">
+                <button type="button" onClick={() => setShowDisposeModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={{
+                    background: '#EF4444',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '8px 20px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {submitting ? 'Đang Ghi Nhận...' : 'Xác Nhận Thanh Lý (DISPOSED)'}
                 </button>
               </div>
             </form>
@@ -991,34 +1777,34 @@ export const EquipmentsPage = () => {
       {/* QR Label Print Modal */}
       {showQrModal && selectedEq && (
         <div className="ruo-drawer-backdrop" onClick={() => setShowQrModal(false)}>
-          <div className="ruo-drawer-panel" style={{ width: '420px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+          <div className="ruo-drawer-panel" style={{ width: '440px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
-                <h2 className="ruo-drawer-title">Nhãn Mã QR Định Danh CSVC</h2>
-                <p className="ruo-drawer-subtitle">{selectedEq.code}</p>
+                <h2 className="ruo-drawer-title">Tem Nhãn Mã QR Định Danh CSVC</h2>
+                <p className="ruo-drawer-subtitle">{selectedEq.qr_code || `QR-${selectedEq.code}`}</p>
               </div>
               <button onClick={() => setShowQrModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
             </div>
 
             <div className="ruo-drawer-body">
-              <div id="printable-qr-label" style={{ background: '#fff', color: '#000', padding: '24px', borderRadius: '8px', border: '2px solid #000', margin: '0 auto', maxWidth: '320px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #000', paddingBottom: '6px', marginBottom: '12px' }}>
-                  ĐẠI HỌC QUỐC GIA • HỆ THỐNG RUO UEMS
+              <div id="printable-qr-label" style={{ background: '#fff', color: '#000', padding: '24px', borderRadius: '8px', border: '2px solid #000', margin: '0 auto', maxWidth: '330px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1.5px solid #000', paddingBottom: '6px', marginBottom: '12px' }}>
+                  TÒA NHÀ ĐA NĂNG A1 • HỆ THỐNG RUO UEMS
                 </div>
 
-                {/* Native SVG QR pattern */}
-                <div style={{ width: '160px', height: '160px', margin: '0 auto 12px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
-                  <Icons.QrCode size={130} color="#000" />
+                {/* Deterministic 2D QR SVG Matrix */}
+                <div style={{ width: '164px', height: '164px', margin: '0 auto 12px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px' }}>
+                  <NativeQrMatrixSvg value={selectedEq.qr_code || `QR-${selectedEq.code}`} size={148} />
                 </div>
 
-                <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '16px', letterSpacing: '0.05em' }}>
-                  {selectedEq.code}
+                <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '15px', letterSpacing: '0.05em' }}>
+                  {selectedEq.qr_code || `QR-${selectedEq.code}`}
                 </div>
-                <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, marginTop: '3px' }}>
                   {selectedEq.name}
                 </div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                  Phòng: {selectedEq.room_id?.code || 'Kho dự phòng'}
+                <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px' }}>
+                  Mã TS: {selectedEq.code} • Phòng: {selectedEq.room_id?.code || 'Kho dự phòng'}
                 </div>
               </div>
             </div>
@@ -1026,47 +1812,215 @@ export const EquipmentsPage = () => {
             <div className="ruo-drawer-footer" style={{ justifyContent: 'center' }}>
               <button onClick={() => window.print()} className="laser-btn laser-btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 24px', fontWeight: 700 }}>
                 <Icons.Check size={16} />
-                <span>In Nhãn QR Này</span>
+                <span>In Tem Nhãn QR Này</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Batch Import Modal */}
+      {/* Batch Import & Validation Wizard Modal (UC-3.6 & UC-3.7) */}
       {showBatchModal && (
         <div className="ruo-drawer-backdrop" onClick={() => setShowBatchModal(false)}>
-          <div className="ruo-drawer-panel" style={{ width: '600px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="ruo-drawer-panel" style={{ width: '880px', maxWidth: '96vw' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
-                <h2 className="ruo-drawer-title">Nhập Hàng Loạt Thiết Bị (Batch Import)</h2>
-                <p className="ruo-drawer-subtitle">Dán danh sách thiết bị dạng JSON để thêm đồng loạt</p>
+                <h2 className="ruo-drawer-title">Nhập Hàng Loạt Thiết Bị Excel/CSV &amp; Kiểm Tra Lỗi Dòng (UC-3.6 &amp; UC-3.7)</h2>
+                <p className="ruo-drawer-subtitle">
+                  Hỗ trợ tải tệp CSV/Excel &gt;100 bản ghi, lưới xem trước (Preview Grid) và bắt lỗi tự động từng dòng
+                </p>
               </div>
               <button onClick={() => setShowBatchModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
             </div>
 
             <form onSubmit={handleBatchImport}>
-              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ fontSize: '12.5px', color: 'var(--ink-muted)' }}>
-                  Định dạng yêu cầu: Mảng các đối tượng chứa ít nhất <code>code</code>, <code>name</code>, <code>category_id</code>, <code>price</code>.
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '75vh', overflowY: 'auto' }}>
+                {/* Upload & Sample Generator Toolbar */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', background: 'var(--surface-panel)', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-medium)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <label
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '7px 14px',
+                        borderRadius: '6px',
+                        background: 'var(--laser-cyan)',
+                        color: '#000',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Icons.Upload size={14} />
+                      <span>Chọn Tệp CSV / Excel (.csv, .txt)</span>
+                      <input type="file" accept=".csv,.txt,.tsv,.json" onChange={handleCsvFileUpload} style={{ display: 'none' }} />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => handleGenerate105SampleRows(false)}
+                      className="laser-btn laser-btn-secondary"
+                      style={{ padding: '7px 12px', fontSize: '12px', fontWeight: 700 }}
+                    >
+                      ⚡ Tạo 105 Bản Ghi Chuẩn (&gt;100 dòng)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleGenerate105SampleRows(true)}
+                      className="laser-btn laser-btn-secondary"
+                      style={{ padding: '7px 12px', fontSize: '12px', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.35)' }}
+                    >
+                      Kiểm Thử Bắt Lỗi (UC-3.7)
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadSampleCsv}
+                    style={{ background: 'none', border: 'none', color: 'var(--laser-cyan)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <Icons.Download size={14} />
+                    <span>Tải File Mẫu CSV</span>
+                  </button>
                 </div>
 
-                <textarea
-                  required
-                  rows={10}
-                  value={batchJson}
-                  onChange={(e) => setBatchJson(e.target.value)}
-                  placeholder={`[\n  {\n    "code": "EQ-2026-9001",\n    "name": "Màn Hình Máy Tính Dell UltraSharp 27",\n    "category_id": "${categories[0]?._id || ''}",\n    "price": 8500000,\n    "brand": "Dell",\n    "model": "U2723QE"\n  }\n]`}
-                  className="ruo-portal-input"
-                  style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px' }}
-                />
+                {/* Raw CSV / JSON Input */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700 }}>
+                      Dữ Liệu Nguồn CSV / JSON ({parsedBatchItems.length} bản ghi đang nạp):
+                    </label>
+                    <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
+                      Cột chuẩn: <code>code,name,category,room,price,brand,model,serial_number</code>
+                    </span>
+                  </div>
+                  <textarea
+                    rows={5}
+                    value={batchRawText}
+                    onChange={(e) => handleBatchTextChange(e.target.value)}
+                    placeholder="Dán dữ liệu từ Excel/CSV hoặc JSON vào đây..."
+                    className="ruo-portal-input"
+                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: '11.5px' }}
+                  />
+                </div>
+
+                {/* Validation Summary Banner (UC-3.7) */}
+                {validationResult && (
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: 'var(--radius-md)',
+                      background: validationResult.valid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                      border: `1px solid ${validationResult.valid ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '10px'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 800, color: validationResult.valid ? '#10B981' : '#EF4444' }}>
+                        {validationResult.valid
+                          ? `✔ KIỂM TRA HỢP LỆ 100%: Toàn bộ ${validationResult.totalRows} dòng dữ liệu đều đạt chuẩn!`
+                          : `✖ PHÁT HIỆN ${validationResult.errorCount} LỖI DỮ LIỆU TRÊN ${validationResult.invalidRowCount}/${validationResult.totalRows} DÒNG`}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', marginTop: '2px' }}>
+                        Hợp lệ: <strong>{validationResult.validCount}</strong> dòng • Lỗi: <strong>{validationResult.invalidRowCount}</strong> dòng
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Preview Grid (Lưới xem trước >100 bản ghi) */}
+                {previewRowsToDisplay.length > 0 && (
+                  <div style={{ border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 14px', background: 'var(--surface-panel)', borderBottom: '1px solid var(--hairline-medium)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--ink-pure)' }}>
+                        Lưới Xem Trước Dữ Liệu ({previewRowsToDisplay.length} dòng)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleValidateBatch}
+                        disabled={validatingBatch}
+                        className="laser-btn laser-btn-secondary"
+                        style={{ padding: '5px 14px', fontSize: '12px', fontWeight: 700, color: 'var(--laser-cyan)', border: '1px solid var(--laser-cyan)' }}
+                      >
+                        {validatingBatch ? 'Đang Kiểm Tra...' : 'Kiểm Tra Tính Hợp Lệ (UC-3.7 Validate)'}
+                      </button>
+                    </div>
+
+                    <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--surface-card)', borderBottom: '1px solid var(--hairline-medium)', position: 'sticky', top: 0 }}>
+                            <th style={{ padding: '8px 10px' }}>Dòng</th>
+                            <th style={{ padding: '8px 10px' }}>Mã Tài Sản</th>
+                            <th style={{ padding: '8px 10px' }}>Tên Thiết Bị</th>
+                            <th style={{ padding: '8px 10px' }}>Loại Thiết Bị</th>
+                            <th style={{ padding: '8px 10px' }}>Phòng (Tòa A1)</th>
+                            <th style={{ padding: '8px 10px' }}>Nguyên Giá</th>
+                            <th style={{ padding: '8px 10px' }}>Kết Quả Kiểm Tra (UC-3.7)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {previewRowsToDisplay.map((r) => {
+                            const hasErr = r.valid === false || (r.errors && r.errors.length > 0);
+                            return (
+                              <tr
+                                key={r.row}
+                                style={{
+                                  borderBottom: '1px solid var(--hairline-soft)',
+                                  background: hasErr ? 'rgba(239, 68, 68, 0.08)' : r.valid ? 'rgba(16, 185, 129, 0.04)' : 'transparent'
+                                }}
+                              >
+                                <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)' }}>#{r.row}</td>
+                                <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--laser-cyan)' }}>{r.code}</td>
+                                <td style={{ padding: '7px 10px', fontWeight: 600 }}>{r.name}</td>
+                                <td style={{ padding: '7px 10px' }}>{r.category_name}</td>
+                                <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)' }}>{r.room_name}</td>
+                                <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)' }}>{Number(r.price || 0).toLocaleString('vi-VN')} đ</td>
+                                <td style={{ padding: '7px 10px' }}>
+                                  {r.valid === null ? (
+                                    <span style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Chưa kiểm tra</span>
+                                  ) : hasErr ? (
+                                    <div style={{ color: '#EF4444', fontWeight: 700, fontSize: '11px' }}>
+                                      {r.errors.map((e, i) => (
+                                        <div key={i}>• {e.message}</div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: '#10B981', fontWeight: 700, fontSize: '11px' }}>✔ Hợp lệ</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="ruo-drawer-footer">
-                <button type="button" onClick={() => setShowBatchModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
-                <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
-                  {submitting ? 'Đang Nhập...' : 'Bắt Đầu Nhập'}
+              <div className="ruo-drawer-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  onClick={handleValidateBatch}
+                  disabled={validatingBatch}
+                  className="laser-btn laser-btn-secondary"
+                  style={{ padding: '8px 16px', fontWeight: 700, color: 'var(--laser-cyan)' }}
+                >
+                  {validatingBatch ? 'Đang Kiểm Tra...' : '1. Kiểm Tra Hợp Lệ (UC-3.7)'}
                 </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" onClick={() => setShowBatchModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                  <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                    {submitting ? 'Đang Nhập Kho...' : `2. Nhập Hàng Loạt Vào Kho (${validationResult ? validationResult.validCount : parsedBatchItems.length} TB)`}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

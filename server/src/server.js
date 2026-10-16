@@ -55,6 +55,7 @@ app.use('/api/repairs', repairRoutes);
 app.use('/api/movements', movementRoutes);
 app.use('/api/transfers', movementRoutes); // Backward compatibility
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/inventory-sessions', inventoryRoutes);
 app.use('/api/disposals', disposalRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/notifications', notificationRoutes);

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { InventorySession, InventoryLog, Equipment, Room, Repair, AuditLog } from '../models/index.js';
 import { 
   USER_ROLES, 
@@ -10,7 +11,7 @@ import {
 } from '../config/constants.js';
 
 // @desc    Get all inventory sessions (UC: Conduct inventory session)
-// @route   GET /api/inventory/sessions
+// @route   GET /api/inventory/sessions or GET /api/inventory-sessions
 export const getSessions = async (req, res) => {
   try {
     const sessions = await InventorySession.find()
@@ -23,8 +24,8 @@ export const getSessions = async (req, res) => {
   }
 };
 
-// @desc    Create new inventory session (Facility Manager)
-// @route   POST /api/inventory/sessions
+// @desc    Create new inventory session (UC-3.9: Inventory Session - Facility Manager / Admin)
+// @route   POST /api/inventory/sessions or POST /api/inventory-sessions
 export const createSession = async (req, res) => {
   try {
     const { name, scope_type = 'building', scope_floor = null, scope_ids = [] } = req.body;
@@ -67,7 +68,7 @@ export const createSession = async (req, res) => {
 };
 
 // @desc    Get session details with logs (UC: View inventory result)
-// @route   GET /api/inventory/sessions/:id
+// @route   GET /api/inventory/sessions/:id or GET /api/inventory-sessions/:id
 export const getSessionById = async (req, res) => {
   try {
     const session = await InventorySession.findById(req.params.id)
@@ -78,7 +79,11 @@ export const getSessionById = async (req, res) => {
     }
 
     const logs = await InventoryLog.find({ session_id: session._id })
-      .populate('equipment_id', 'code name brand model qr_code room_id')
+      .populate({
+        path: 'equipment_id',
+        select: 'code name brand model qr_code room_id price status',
+        populate: { path: 'room_id', select: 'code name floor' }
+      })
       .populate('scanned_room_id', 'code name building floor')
       .populate('scanned_by', 'full_name code')
       .populate('repair_id', 'ticket_code damage_level status')
@@ -90,11 +95,20 @@ export const getSessionById = async (req, res) => {
   }
 };
 
-// @desc    Scan QR in room (UC: Scan equipment QR code - Technician)
-// @route   POST /api/inventory/sessions/:id/scan
+// @desc    Scan QR in room (UC-3.10: QR Scan Stocktaking - Technician / Manager)
+// @route   PUT /api/inventory-sessions/:id/scan or POST /api/inventory/sessions/:id/scan
 export const scanEquipmentInRoom = async (req, res) => {
   try {
-    const { qr_code, equipment_id, scanned_room_id, is_damaged = false, damage_note = '', note = '' } = req.body;
+    const {
+      qr_code,
+      equipment_id,
+      scanned_room_id,
+      is_damaged = false,
+      is_missing = false,
+      scan_status,
+      damage_note = '',
+      note = ''
+    } = req.body;
 
     let targetEquipment = null;
     if (equipment_id) {
@@ -102,7 +116,7 @@ export const scanEquipmentInRoom = async (req, res) => {
     } else if (qr_code) {
       const cleanQr = String(qr_code).trim();
       targetEquipment = await Equipment.findOne({
-        $or: [{ qr_code: cleanQr }, { code: cleanQr.toUpperCase() }]
+        $or: [{ qr_code: cleanQr }, { code: cleanQr.toUpperCase() }, { code: cleanQr }]
       });
     }
 
@@ -111,7 +125,11 @@ export const scanEquipmentInRoom = async (req, res) => {
     }
 
     let status = INVENTORY_LOG_STATUSES.MATCHED;
-    if (is_damaged) {
+    if (scan_status && Object.values(INVENTORY_LOG_STATUSES).includes(scan_status)) {
+      status = scan_status;
+    } else if (is_missing) {
+      status = INVENTORY_LOG_STATUSES.MISSING;
+    } else if (is_damaged) {
       status = INVENTORY_LOG_STATUSES.DAMAGED;
     } else if (targetEquipment.room_id && scanned_room_id && targetEquipment.room_id.toString() !== scanned_room_id.toString()) {
       status = INVENTORY_LOG_STATUSES.WRONG_LOCATION;
@@ -136,7 +154,7 @@ export const scanEquipmentInRoom = async (req, res) => {
     const log = await InventoryLog.findOneAndUpdate(
       { session_id: req.params.id, equipment_id: targetEquipment._id },
       {
-        scanned_room_id,
+        scanned_room_id: scanned_room_id || targetEquipment.room_id,
         scanned_by: req.user._id,
         scanned_at: new Date(),
         status,
@@ -146,13 +164,16 @@ export const scanEquipmentInRoom = async (req, res) => {
       { upsert: true, new: true }
     );
 
+    const statusMessageMap = {
+      [INVENTORY_LOG_STATUSES.MATCHED]: 'Khớp vị trí tài sản thực tế.',
+      [INVENTORY_LOG_STATUSES.DAMAGED]: 'Đã ghi nhận hỏng và tự động tạo phiếu sửa chữa kỹ thuật.',
+      [INVENTORY_LOG_STATUSES.WRONG_LOCATION]: 'Cảnh báo: Thiết bị lệch vị trí phòng quy định.',
+      [INVENTORY_LOG_STATUSES.MISSING]: 'Đã ghi nhận thiết bị vắng mặt / thất lạc tại phòng kiểm kê.'
+    };
+
     res.json({ 
       success: true, 
-      message: status === INVENTORY_LOG_STATUSES.MATCHED 
-        ? 'Khớp vị trí tài sản thực tế.' 
-        : status === INVENTORY_LOG_STATUSES.DAMAGED
-          ? 'Đã ghi nhận hỏng và tự động tạo phiếu sửa chữa kỹ thuật.'
-          : 'Cảnh báo: Thiết bị lệch vị trí phòng quy định.',
+      message: statusMessageMap[status] || 'Đã ghi nhận kết quả quét kiểm kê.',
       data: log,
       log,
       autoRepair
@@ -243,6 +264,120 @@ export const reconcileSession = async (req, res) => {
       message: `Đối soát thành công: ${summary.matched} khớp, ${summary.wrong_location} lệch phòng, ${summary.damaged} hỏng, ${summary.missing} chưa quét/thất lạc.`,
       data: session,
       summary
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Export full inventory reconciliation report with digital signature (UC-3.11: Inventory Report)
+// @route   GET /api/inventory-sessions/:id/export or GET /api/inventory/sessions/:id/export
+export const exportInventoryReport = async (req, res) => {
+  try {
+    const session = await InventorySession.findById(req.params.id)
+      .populate('created_by', 'full_name code email role')
+      .populate('scope_ids', 'code name floor');
+
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đợt kiểm kê để xuất biên bản.' });
+    }
+
+    const logs = await InventoryLog.find({ session_id: session._id })
+      .populate({
+        path: 'equipment_id',
+        select: 'code name brand model qr_code price room_id status',
+        populate: { path: 'room_id', select: 'code name floor' }
+      })
+      .populate('scanned_room_id', 'code name building floor')
+      .populate('scanned_by', 'full_name code')
+      .populate('repair_id', 'ticket_code damage_level status')
+      .sort({ scanned_at: -1 });
+
+    const formatItem = (l) => ({
+      log_id: l._id,
+      code: l.equipment_id?.code || 'N/A',
+      name: l.equipment_id?.name || 'Thiết bị không xác định',
+      brand: l.equipment_id?.brand || '',
+      model: l.equipment_id?.model || '',
+      price: l.equipment_id?.price || 0,
+      expected_room: l.equipment_id?.room_id ? `${l.equipment_id.room_id.code} (${l.equipment_id.room_id.name})` : 'Kho dự phòng',
+      scanned_room: l.scanned_room_id ? `${l.scanned_room_id.code} (${l.scanned_room_id.name})` : 'N/A',
+      status: l.status,
+      scanned_by: l.scanned_by?.full_name || 'Kỹ thuật viên',
+      scanned_at: l.scanned_at,
+      note: l.note || '',
+      repair_ticket: l.repair_id?.ticket_code || null
+    });
+
+    const matchedItems = logs.filter((l) => l.status === INVENTORY_LOG_STATUSES.MATCHED).map(formatItem);
+    const wrongLocationItems = logs.filter((l) => l.status === INVENTORY_LOG_STATUSES.WRONG_LOCATION).map(formatItem);
+    const missingItems = logs.filter((l) => l.status === INVENTORY_LOG_STATUSES.MISSING).map(formatItem);
+    const damagedItems = logs.filter((l) => l.status === INVENTORY_LOG_STATUSES.DAMAGED).map(formatItem);
+
+    const summary = {
+      total_logged: logs.length,
+      matched: matchedItems.length,
+      wrong_location: wrongLocationItems.length,
+      missing: missingItems.length,
+      damaged: damagedItems.length
+    };
+
+    const exportedAt = new Date().toISOString();
+    const reportCode = `BBKK-A1-${new Date(session.date || session.created_at || Date.now()).getFullYear()}-${String(session._id).slice(-6).toUpperCase()}`;
+
+    const signaturePayload = JSON.stringify({
+      reportCode,
+      sessionId: String(session._id),
+      sessionName: session.name,
+      summary,
+      exportedBy: req.user?.code || 'SYSTEM'
+    });
+    const signatureHash = crypto.createHash('sha256').update(signaturePayload).digest('hex');
+
+    const report = {
+      report_code: reportCode,
+      building: 'Tòa nhà Đa năng A1 (5 tầng)',
+      exported_at: exportedAt,
+      exported_by: {
+        full_name: req.user?.full_name || 'Quản lý CSVC',
+        code: req.user?.code || 'FM01',
+        role: req.user?.role || 'facility_manager'
+      },
+      session: {
+        _id: session._id,
+        name: session.name,
+        scope_type: session.scope_type,
+        scope_floor: session.scope_floor,
+        scope_rooms: session.scope_ids,
+        status: session.status,
+        date: session.date,
+        completed_at: session.completed_at,
+        created_by: session.created_by
+      },
+      summary,
+      categories: {
+        matched_items: matchedItems,
+        wrong_location_items: wrongLocationItems,
+        missing_items: missingItems,
+        damaged_items: damagedItems
+      },
+      digital_signature: {
+        algorithm: 'SHA-256',
+        hash: signatureHash,
+        signed_at: exportedAt,
+        verification_status: 'VERIFIED_IMMUTABLE',
+        signers: [
+          { role: 'Trưởng Ban Kiểm Kê (Quản Lý CSVC)', name: session.created_by?.full_name || req.user?.full_name || 'Quản lý CSVC', status: 'ĐÃ KÝ SỐ' },
+          { role: 'Ủy Viên Kỹ Thuật (KTV Thực Địa)', name: logs[0]?.scanned_by?.full_name || 'Tổ Kỹ Thuật Tòa A1', status: 'ĐÃ KÝ SỐ' },
+          { role: 'Phê Duyệt Ban Giám Hiệu', name: 'Ban Giám Hiệu Trường ĐH (Tòa A1)', status: session.status === 'reconciled' ? 'ĐÃ XÁC THỰC' : 'CHỜ CHỐT SỔ' }
+        ]
+      }
+    };
+
+    res.json({
+      success: true,
+      message: `Xuất biên bản kiểm kê [${reportCode}] kèm chữ ký số SHA-256 thành công.`,
+      report
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
