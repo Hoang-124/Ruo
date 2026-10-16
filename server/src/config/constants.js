@@ -46,7 +46,10 @@ export const MOVEMENT_TYPES = {
 };
 
 export const MOVEMENT_STATUSES = {
+  AWAITING_APPROVAL: 'awaiting_approval',
   PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled'
 };

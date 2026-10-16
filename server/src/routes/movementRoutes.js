@@ -1,7 +1,11 @@
 import express from 'express';
 import {
   getMovements,
+  getPendingTransfers,
+  getEquipmentTransfers,
   createMovementOrder,
+  approveTransfer,
+  rejectTransfer,
   confirmMovement
 } from '../controllers/movementController.js';
 import { protect, requireRole } from '../middlewares/authMiddleware.js';
@@ -9,16 +13,20 @@ import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
 
-// View movement orders & history (Facility Manager, Technician, Admin)
-router.get('/', protect, getMovements);
+router.use(protect);
 
-// Order equipment transfer (Facility Manager only)
-router.post('/', protect, requireRole(USER_ROLES.FACILITY_MANAGER), createMovementOrder);
+// Transfer history is available to all authenticated operational roles.
+router.get('/', requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER), getMovements);
+router.get('/equipment/:id', requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER), getEquipmentTransfers);
+router.get('/pending', requireRole(USER_ROLES.FACILITY_MANAGER), getPendingTransfers);
 
-// Confirm equipment movement execution (Technician only)
-router.put('/:id/confirm', protect, requireRole(USER_ROLES.TECHNICIAN), confirmMovement);
+// Technicians and facility managers can request an equipment transfer.
+router.post('/', requireRole(USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER), createMovementOrder);
+router.put('/:id/approve', requireRole(USER_ROLES.FACILITY_MANAGER), approveTransfer);
+router.put('/:id/reject', requireRole(USER_ROLES.FACILITY_MANAGER), rejectTransfer);
 
-// Compatibility endpoint for complete
-router.put('/:id/complete', protect, requireRole(USER_ROLES.TECHNICIAN), confirmMovement);
+// Confirm equipment movement execution (Technician only).
+router.put('/:id/complete', requireRole(USER_ROLES.TECHNICIAN), confirmMovement);
+router.put('/:id/confirm', requireRole(USER_ROLES.TECHNICIAN), confirmMovement);
 
 export default router;
