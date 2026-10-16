@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { repairApi, authApi, equipmentApi, masterDataApi } from '../../lib/api';
+import { RepairStepper } from '../../components/repairs/RepairStepper';
 
 export const TicketKanbanPage = () => {
   const { toast } = useToast();
@@ -303,6 +304,8 @@ export const TicketKanbanPage = () => {
             </div>
 
             <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <RepairStepper status={selectedTicket.status} outcome={selectedTicket.outcome} />
+
               <div style={{ background: 'var(--surface-panel)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                 <div>Phòng học: <strong>{selectedTicket.room_id?.code}</strong></div>
                 <div>Trạng thái: <strong>{selectedTicket.status}</strong></div>

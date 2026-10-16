@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getRepairs,
   getRepairById,
+  getEquipmentRepairHistory,
   createRepairReport,
   assignRepairTask,
   acceptRepairTask,
@@ -15,23 +16,25 @@ import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
 
-// Read repairs
+// Read repairs & equipment repair history (UC-5.2, UC-5.8)
 router.get('/', protect, getRepairs);
+router.get('/equipment/:id', protect, getEquipmentRepairHistory);
 router.get('/:id', protect, getRepairById);
 
-// Report malfunction (Lecturer, Technician when doing inventory, FM, Admin)
+// Report malfunction (Lecturer, Technician when doing inventory, FM, Admin) (UC-5.1)
 router.post('/', protect, requireRole(USER_ROLES.LECTURER, USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), createRepairReport);
 
-// Assign repair task & replacement equipment (Facility Manager only)
+// Assign repair task & replacement equipment (Facility Manager only) (UC-5.3)
 router.put('/:id/assign', protect, requireRole(USER_ROLES.FACILITY_MANAGER), assignRepairTask);
 
-// Accept repair task (Technician only)
+// Accept repair task (Technician only) (UC-5.4)
 router.put('/:id/accept', protect, requireRole(USER_ROLES.TECHNICIAN), acceptRepairTask);
 
-// Update progress log (Technician only)
+// Update progress log & parts replacement (Technician only) (UC-5.5)
 router.post('/:id/logs', protect, requireRole(USER_ROLES.TECHNICIAN), addRepairLog);
+router.put('/:id/progress', protect, requireRole(USER_ROLES.TECHNICIAN), addRepairLog);
 
-// Report repair outcome (Technician only)
+// Report repair outcome & resolve ticket (Technician only) (UC-5.6)
 router.put('/:id/outcome', protect, requireRole(USER_ROLES.TECHNICIAN), reportRepairOutcome);
 router.put('/:id/resolve', protect, requireRole(USER_ROLES.TECHNICIAN), reportRepairOutcome);
 
@@ -42,3 +45,4 @@ router.put('/:id/close', protect, requireRole(USER_ROLES.FACILITY_MANAGER), clos
 router.post('/:id/evaluate', protect, requireRole(USER_ROLES.LECTURER), evaluateRepairQuality);
 
 export default router;
+
