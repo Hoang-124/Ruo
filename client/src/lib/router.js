@@ -62,7 +62,10 @@ export const useRouter = () => {
       return { tab: 'scan', params: { qr: segs[1] || '' } };
     }
     if (base === 'transfers') {
-      return { tab: 'transfers', params: {} };
+      return { tab: 'transfer_history', params: {} };
+    }
+    if (base === 'movements') {
+      return { tab: 'movements', params: {} };
     }
     if (base === 'repairs' || base === 'tickets') {
       return { tab: 'tickets_kanban', params: {} };
@@ -94,6 +97,8 @@ export const useRouter = () => {
       dashboard: '#/',
       equipments: '#/equipments',
       transfers: '#/transfers',
+      transfer_history: '#/transfers',
+      movements: '#/movements',
       tickets_kanban: '#/repairs',
       tickets: '#/repairs',
       maintenance: '#/maintenance',
