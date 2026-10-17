@@ -67,6 +67,12 @@ export const useRouter = () => {
     if (base === 'repairs' || base === 'tickets') {
       return { tab: 'tickets_kanban', params: {} };
     }
+    if (base === 'technician-tasks' || base === 'assigned-tasks' || base === 'assigned_tasks') {
+      return { tab: 'assigned_tasks', params: {} };
+    }
+    if (base === 'report-issue' || base === 'report_issue') {
+      return { tab: 'report_issue', params: {} };
+    }
     if (base === 'maintenance') {
       return { tab: 'maintenance', params: {} };
     }
