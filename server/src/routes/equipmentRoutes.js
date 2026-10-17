@@ -13,7 +13,7 @@ import {
   updateWarrantyInfo,
   deleteEquipment
 } from '../controllers/equipmentController.js';
-import { protect, requireRole } from '../middlewares/authMiddleware.js';
+import { protect, requireRole, requirePermission } from '../middlewares/authMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
@@ -30,8 +30,14 @@ router.get('/:id', getEquipmentById);
 router.post('/import/validate', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), validateBatchImport);
 router.post('/import', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), importEquipmentsBatch);
 
-// Register equipment (UC-3.1: Manager, Technician, Admin)
-router.post('/', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.ADMIN), createEquipment);
+// Register equipment (UC-3.1 & UC-12.1 Dynamic RBAC: Manager, Technician, Admin)
+router.post(
+  '/',
+  protect,
+  requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.ADMIN),
+  requirePermission('equipment:create', USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.ADMIN),
+  createEquipment
+);
 
 // Asset Disposal / Retirement (UC-3.8: Manager, Admin)
 router.put('/:id/dispose', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), disposeEquipment);
