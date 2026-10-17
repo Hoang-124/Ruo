@@ -4,7 +4,7 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 
 ---
 
-## 1. Danh Sách Bộ Kiểm Thử (72 Test Cases)
+## 1. Danh Sách Bộ Kiểm Thử (80 Test Cases)
 
 | Mã Use Case | Tên Chức Năng | File Kiểm Thử | Số Lượng Test | Trạng Thái |
 | :--- | :--- | :--- | :---: | :---: |
@@ -19,6 +19,7 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 | **UC-12.1** | Roles Matrix, Dynamic RBAC & Equipment Guards | `test_uc12_1.js` | 7 tests | ✅ PASS (100%) |
 | **UC-12.2** | Update Perms, Module Toggles & Equipment Pagination | `test_uc12_2.js` | 7 tests | ✅ PASS (100%) |
 | **UC-3.1** | Create Equipment & Initial Lifecycle | `test_uc3_1.js` | 8 tests | ✅ PASS (100%) |
+| **UC-3.2** | Equipment Directory & Movement Tracking | `test_uc3_2.js` | 8 tests | ✅ PASS (100%) |
 
 ---
 
@@ -92,16 +93,45 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 
 ---
 
-## 6. Cách Thức Chạy Kiểm Thử
+## 6. Đặc Tả Nghiệp Vụ UC-3.2 (Equipment Directory, Multi-dimensional Filters & Movement Tracking)
+
+1. **Tra cứu danh mục tài sản, Phân trang & Bộ lọc đa chiều**:
+   - Endpoint: `GET /api/equipments`.
+   - Phân trang chuẩn hóa: Trả về đầy đủ metadata phân trang (`total`, `page`, `limit`, `totalPages`, `hasPrevPage`, `hasNextPage`).
+   - Tìm kiếm từ khóa đa trường (`search` / `q`): Khớp linh hoạt theo tên thiết bị, mã tài sản, mã QR, số serial, hãng sản xuất (brand), model.
+   - Lọc theo mã QR định danh (`qr_code` / `qr`): Khớp chính xác hoặc một phần chuỗi QR.
+   - Bộ lọc đa chiều:
+     - Chủng loại (`category_id` / `category`).
+     - Trạng thái hoạt động (`status`: `in_use`, `in_stock`, `broken`, `repairing`, `pending_disposal`, `disposed`).
+     - Vị trí không gian (`room_id`, `floor`, `building`, hoặc `'warehouse'` / `null` cho kho dự phòng).
+     - Tầm giá nguyên giá (`min_price` / `minPrice` đến `max_price` / `maxPrice`).
+     - Sắp xếp linh hoạt (`sortBy`, `sortOrder`).
+   - Phân quyền mở rộng: Cả 4 vai trò chính thức (Admin, Quản lý CSVC, Kỹ thuật viên, Giảng viên) đều có quyền xem danh mục; bảo vệ bằng cờ dynamic RBAC `equipment:read`.
+
+2. **Cập nhật hồ sơ thiết bị & Tự động ghi vết điều chuyển (Movement Tracking)**:
+   - Endpoint: `PUT /api/equipments/:id`.
+   - Hỗ trợ định danh kép: Tra cứu thiết bị theo MongoDB ObjectId hoặc Mã tài sản (`code`).
+   - Tự động phát hiện thay đổi phòng và ghi nhận bản ghi `EquipmentMovement`:
+     - Bàn giao từ kho vào phòng: Ghi nhận loại hình `ALLOCATION`.
+     - Điều chuyển giữa hai phòng học: Ghi nhận loại hình `TRANSFER`.
+     - Thu hồi từ phòng về kho dự phòng: Ghi nhận loại hình `TO_STOCK`.
+   - Trạng thái điều chuyển mặc định `COMPLETED`, lưu vết người điều động, người thực hiện, lý do chuyển dịch và AuditLog.
+
+---
+
+## 7. Cách Thức Chạy Kiểm Thử
 
 ```bash
-# Chạy toàn bộ 72 test cases của hệ thống
+# Chạy toàn bộ 80 test cases của hệ thống
 npm test
+
+# Chạy riêng kiểm thử UC-3.2 (Equipment Directory & Movement Tracking)
+npm run test:uc3_2
+# hoặc
+node src/tests/test_uc3_2.js
 
 # Chạy riêng kiểm thử UC-3.1 (Create Equipment & Initial Lifecycle)
 npm run test:uc3_1
-# hoặc
-node src/tests/test_uc3_1.js
 
 # Chạy riêng kiểm thử UC-12.1 (Roles Matrix & Dynamic RBAC)
 npm run test:rbac
