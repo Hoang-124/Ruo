@@ -311,7 +311,7 @@ export const acceptRepairTask = async (req, res) => {
 // @route   POST /api/repairs/:id/logs
 export const addRepairLog = async (req, res) => {
   try {
-    const { action = 'in_progress', description, cost = 0, images = [] } = req.body;
+    const { action = 'in_progress', description, notes, cost = 0, images = [] } = req.body;
     const repair = await Repair.findById(req.params.id);
     if (!repair) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa.' });
@@ -323,12 +323,19 @@ export const addRepairLog = async (req, res) => {
     }
 
     const numCost = Number(cost) || 0;
+    const validActions = ['reported', 'assigned', 'in_progress', 'resolved', 'unrepairable', 'closed', 'escalated'];
+    const rawAction = String(action || '').trim();
+    const isEnumAction = validActions.includes(rawAction);
+    const normalizedAction = isEnumAction ? rawAction : 'in_progress';
+    const combinedDesc = description
+      ? String(description).trim()
+      : [(!isEnumAction ? rawAction : ''), String(notes || '').trim()].filter(Boolean).join(' — ');
 
     const log = await RepairLog.create({
       repair_id: repair._id,
-      action,
+      action: normalizedAction,
       performed_by: req.user._id,
-      description: String(description || 'Cập nhật tiến độ xử lý kỹ thuật').trim(),
+      description: combinedDesc || 'Cập nhật tiến độ xử lý kỹ thuật',
       cost: numCost,
       images
     });
@@ -440,17 +447,24 @@ export const closeRepairTicket = async (req, res) => {
       if (destination_room_id) {
         destinationRoom = await Room.findById(destination_room_id);
       }
-      
-      // If no destination specified, check if warehouses exist, default to warehouse
+
+      // Default to the equipment's current room in Building A1 if present, else warehouse KHO-01
+      if (!destinationRoom && equipment.room_id) {
+        destinationRoom = await Room.findById(equipment.room_id);
+      }
       if (!destinationRoom) {
         destinationRoom = await Room.findOne({ room_type: ROOM_TYPES.WAREHOUSE });
       }
 
       repair.destination_room_id = destinationRoom ? destinationRoom._id : null;
 
-      // Create return movement
       const isWarehouse = destinationRoom && destinationRoom.room_type === ROOM_TYPES.WAREHOUSE;
       const movementType = isWarehouse ? MOVEMENT_TYPES.TO_STOCK : MOVEMENT_TYPES.REPAIR_RETURN;
+      const sameRoom = Boolean(
+        equipment.room_id &&
+        destinationRoom &&
+        equipment.room_id.toString() === destinationRoom._id.toString()
+      );
 
       await EquipmentMovement.create({
         equipment_id: equipment._id,
@@ -459,17 +473,20 @@ export const closeRepairTicket = async (req, res) => {
         to_room_id: destinationRoom ? destinationRoom._id : null,
         repair_id: repair._id,
         ordered_by: req.user._id,
-        reason: isWarehouse ? 'Sửa xong nhập kho dự phòng' : 'Sửa xong chuyển trả phòng học',
-        status: MOVEMENT_STATUSES.PENDING
+        ...(sameRoom ? { performed_by: req.user._id, completed_at: new Date() } : {}),
+        reason: isWarehouse
+          ? 'Sửa xong nhập kho dự phòng KHO-01'
+          : sameRoom
+            ? 'Sửa xong bàn giao tại chỗ'
+            : `Sửa xong điều chuyển về phòng ${destinationRoom?.code || ''}`.trim(),
+        status: sameRoom ? MOVEMENT_STATUSES.COMPLETED : MOVEMENT_STATUSES.PENDING
       });
 
-      // Update equipment status accordingly
-      if (isWarehouse) {
-        equipment.status = EQUIPMENT_STATUSES.IN_STOCK;
-      } else {
-        equipment.status = EQUIPMENT_STATUSES.IN_USE;
+      // Equipment is now healthy; if moving to a different room, room_id updates when Technician confirms the movement
+      equipment.status = isWarehouse ? EQUIPMENT_STATUSES.IN_STOCK : EQUIPMENT_STATUSES.IN_USE;
+      if (sameRoom && destinationRoom) {
+        equipment.room_id = destinationRoom._id;
       }
-      if (destinationRoom) equipment.room_id = destinationRoom._id;
       await equipment.save();
     }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { roleApi } from '../../lib/api';
@@ -97,12 +97,13 @@ export const RBACMatrixPage = () => {
       name: 'Module 03: Vòng Đời Thiết Bị, Dán Nhãn QR & Điều Chuyển',
       shortName: 'Thiết Bị & Điều Chuyển',
       permissions: [
-        { code: 'equipment:read', label: 'Tra cứu kho thiết bị trường & lịch sử phòng', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
-        { code: 'equipment:create', label: 'Đăng ký tài sản mới vào hệ thống', defaultRoles: ['facility_manager'] },
-        { code: 'equipment:update', label: 'Cập nhật thông số kỹ thuật & phòng phân bổ', defaultRoles: ['facility_manager'] },
-        { code: 'equipment:import', label: 'Nhập hàng loạt danh sách thiết bị từ Excel/CSV', defaultRoles: ['facility_manager'] },
-        { code: 'equipment:qr:generate', label: 'Tạo & in nhãn mã QR chuẩn hóa cho thiết bị', defaultRoles: ['facility_manager'] },
-        { code: 'equipment:qr:scan', label: 'Quét mã QR camera tra cứu hồ sơ tài sản thực địa', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
+        { code: 'equipment:read', label: 'Tra cứu kho thiết bị trường & lịch sử dòng đời (UC-3.2, UC-3.3, UC-3.5)', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
+        { code: 'equipment:create', label: 'Đăng ký tài sản mới vào hệ thống (UC-3.1)', defaultRoles: ['technician', 'facility_manager', 'admin'] },
+        { code: 'equipment:update', label: 'Cập nhật thông số kỹ thuật & tự động ghi điều chuyển phòng (UC-3.4)', defaultRoles: ['technician', 'facility_manager', 'admin'] },
+        { code: 'equipment:import', label: 'Nhập hàng loạt & kiểm tra lỗi danh sách thiết bị từ Excel/CSV (UC-3.6, UC-3.7)', defaultRoles: ['facility_manager', 'admin'] },
+        { code: 'equipment:dispose', label: 'Ghi nhận thanh lý tài sản DISPOSED theo QĐ BGH (UC-3.8)', defaultRoles: ['facility_manager', 'admin'] },
+        { code: 'equipment:qr:generate', label: 'Tạo & in nhãn mã QR chuẩn hóa cho thiết bị', defaultRoles: ['facility_manager', 'admin'] },
+        { code: 'equipment:qr:scan', label: 'Quét mã QR camera tra cứu hồ sơ tài sản thực địa (<1s)', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
         { code: 'warranty:read', label: 'Tra cứu tình trạng & thời hạn bảo hành thiết bị', defaultRoles: ['technician', 'facility_manager'] },
         { code: 'warranty:update', label: 'Gia hạn bảo hành & cập nhật thông tin nhà cung cấp', defaultRoles: ['facility_manager'] },
         { code: 'movement:order', label: 'Ra quyết định điều chuyển thiết bị giữa các phòng', defaultRoles: ['facility_manager'] },
@@ -135,9 +136,10 @@ export const RBACMatrixPage = () => {
       name: 'Module 05: Kiểm Kê Tài Sản Thực Địa & Thẩm Định Thanh Lý',
       shortName: 'Kiểm Kê & Thanh Lý (RACI)',
       permissions: [
-        { code: 'inventory:create', label: 'Khởi tạo phiên kiểm kê định kỳ theo phòng/tầng', defaultRoles: ['facility_manager'] },
-        { code: 'inventory:scan', label: 'Quét mã QR kiểm kê & đối soát thực địa', defaultRoles: ['technician'] },
+        { code: 'inventory:create', label: 'Khởi tạo phiên kiểm kê định kỳ theo phòng/tầng Tòa A1 (UC-3.9)', defaultRoles: ['facility_manager'] },
+        { code: 'inventory:scan', label: 'Quét mã QR kiểm kê & đối soát thực địa (UC-3.10)', defaultRoles: ['technician'] },
         { code: 'inventory:reconcile', label: 'Chốt số liệu kiểm kê & đối soát chênh lệch tài sản', defaultRoles: ['facility_manager'] },
+        { code: 'inventory:export', label: 'Xuất biên bản kiểm kê đầy đủ & ký số SHA-256 (UC-3.11)', defaultRoles: ['facility_manager', 'admin'] },
         { code: 'disposal:propose', label: 'Lập hồ sơ đề xuất thanh lý khi chỉ số R >= 60%', defaultRoles: ['facility_manager'] },
         { code: 'disposal:approve', label: 'Phê duyệt quyết định thanh lý tài sản cuối cùng (BGH)', defaultRoles: ['admin'] }
       ]
@@ -212,6 +214,22 @@ export const RBACMatrixPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModule, setSelectedModule] = useState('ALL');
   const [focusedRole, setFocusedRole] = useState('ALL'); // 'ALL' or specific roleId
+  const knownPermissionCodes = new Set(permissionModules.flatMap(module => module.permissions.map(permission => permission.code)));
+  const additionalPermissions = [...new Set(dbRoles.flatMap(role => role.permissions || []))]
+    .filter(code => !knownPermissionCodes.has(code))
+    .map(code => ({
+      code,
+      label: code,
+      defaultRoles: dbRoles.filter(role => (role.permissions || []).includes(code)).map(role => role.name)
+    }));
+  const allPermissionModules = additionalPermissions.length
+    ? [...permissionModules, {
+      id: 'mod_custom',
+      name: 'Quyền bổ sung từ chính sách lưu trong hệ thống',
+      shortName: 'Quyền bổ sung',
+      permissions: additionalPermissions
+    }]
+    : permissionModules;
 
   useEffect(() => {
     loadRoles();
@@ -224,12 +242,26 @@ export const RBACMatrixPage = () => {
       const rolesList = res?.roles || [];
       setDbRoles(rolesList);
 
+      const knownCodes = new Set(permissionModules.flatMap(module => module.permissions.map(permission => permission.code)));
+      const extraCodes = [...new Set(rolesList.flatMap(role => role.permissions || []))]
+        .filter(code => !knownCodes.has(code));
+      const extraModule = extraCodes.length ? [{
+        id: 'mod_custom',
+        name: 'Quyền bổ sung từ chính sách lưu trong hệ thống',
+        shortName: 'Quyền bổ sung',
+        permissions: extraCodes.map(code => ({
+          code,
+          label: code,
+          defaultRoles: rolesList.filter(role => (role.permissions || []).includes(code)).map(role => role.name)
+        }))
+      }] : [];
+      const modules = [...permissionModules, ...extraModule];
       const state = {};
       canonicalRoles.forEach(r => {
         const found = rolesList.find(dbR => dbR.name === r.id);
         const perms = found ? (found.permissions || []) : [];
 
-        permissionModules.forEach(mod => {
+        modules.forEach(mod => {
           mod.permissions.forEach(p => {
             const key = `${r.id}:${p.code}`;
             if (found && perms.length > 0) {
@@ -265,9 +297,7 @@ export const RBACMatrixPage = () => {
     toast.info(`Đã ${enable ? 'bật' : 'tắt'} toàn bộ quyền của nhóm cho vai trò này.`);
   };
 
-  const activeSodViolations = useMemo(() => {
-    return SOD_RULES.filter(rule => rule.check(matrixState));
-  }, [matrixState]);
+  const activeSodViolations = SOD_RULES.filter(rule => rule.check(matrixState));
 
   const handleFixAllSod = () => {
     activeSodViolations.forEach(v => v.fix(setMatrixState));
@@ -301,10 +331,10 @@ export const RBACMatrixPage = () => {
     try {
       setSaving(true);
 
-      // Assemble payload for all 4 roles
+      // Persist each role through the live-policy endpoint.
       const payload = canonicalRoles.map(r => {
         const activePerms = [];
-        permissionModules.forEach(mod => {
+        allPermissionModules.forEach(mod => {
           mod.permissions.forEach(p => {
             if (matrixState[`${r.id}:${p.code}`]) {
               activePerms.push(p.code);
@@ -317,11 +347,9 @@ export const RBACMatrixPage = () => {
         };
       });
 
-      const res = await roleApi.batchUpdate(payload);
-      if (res && res.success) {
-        toast.success('Đã lưu cấu hình ma trận phân quyền RBAC thành công vào cơ sở dữ liệu MongoDB!');
-        await loadRoles();
-      }
+      await Promise.all(payload.map(role => roleApi.update(role.name, role.permissions)));
+      toast.success('Đã lưu cấu hình ma trận phân quyền RBAC thành công vào cơ sở dữ liệu MongoDB!');
+      await loadRoles();
     } catch (err) {
       toast.error('Lỗi khi lưu ma trận phân quyền: ' + err.message);
     } finally {
@@ -336,7 +364,7 @@ export const RBACMatrixPage = () => {
       exportedAt: new Date().toISOString(),
       roles: canonicalRoles.map(r => {
         const perms = [];
-        permissionModules.forEach(mod => {
+        allPermissionModules.forEach(mod => {
           mod.permissions.forEach(p => {
             if (matrixState[`${r.id}:${p.code}`]) {
               perms.push({ code: p.code, label: p.label, module: mod.name });
@@ -363,7 +391,7 @@ export const RBACMatrixPage = () => {
       toast.success('Đã xuất ma trận phân quyền dạng JSON.');
     } else {
       let csv = 'Module,Mã Quyền,Nội Dung Nghiệp Vụ,Giảng Viên,Kỹ Thuật Viên,Quản Lý CSVC,Quản Trị BGH\n';
-      permissionModules.forEach(mod => {
+      allPermissionModules.forEach(mod => {
         mod.permissions.forEach(p => {
           const l = matrixState[`lecturer:${p.code}`] ? 'CÓ' : 'KHÔNG';
           const t = matrixState[`technician:${p.code}`] ? 'CÓ' : 'KHÔNG';
@@ -384,30 +412,27 @@ export const RBACMatrixPage = () => {
   };
 
   // Filtered permission modules based on search and selectedModule
-  const filteredModules = useMemo(() => {
-    return permissionModules
-      .filter(mod => selectedModule === 'ALL' || mod.id === selectedModule)
-      .map(mod => {
-        const matchingPermissions = mod.permissions.filter(p => {
-          if (!searchTerm.trim()) return true;
-          const query = searchTerm.toLowerCase();
-          return p.code.toLowerCase().includes(query) || p.label.toLowerCase().includes(query);
-        });
-        return {
-          ...mod,
-          permissions: matchingPermissions
-        };
-      })
-      .filter(mod => mod.permissions.length > 0);
-  }, [selectedModule, searchTerm]);
+  const filteredModules = allPermissionModules
+    .filter(mod => selectedModule === 'ALL' || mod.id === selectedModule)
+    .map(mod => {
+      const matchingPermissions = mod.permissions.filter(p => {
+        if (!searchTerm.trim()) return true;
+        const query = searchTerm.toLowerCase();
+        return p.code.toLowerCase().includes(query) || p.label.toLowerCase().includes(query);
+      });
+      return {
+        ...mod,
+        permissions: matchingPermissions
+      };
+    })
+    .filter(mod => mod.permissions.length > 0);
 
   // Visible roles based on focusedRole
-  const visibleRoles = useMemo(() => {
-    if (focusedRole === 'ALL') return canonicalRoles;
-    return canonicalRoles.filter(r => r.id === focusedRole);
-  }, [focusedRole]);
+  const visibleRoles = focusedRole === 'ALL'
+    ? canonicalRoles
+    : canonicalRoles.filter(r => r.id === focusedRole);
 
-  const totalPermissionsCount = permissionModules.reduce((acc, m) => acc + m.permissions.length, 0);
+  const totalPermissionsCount = allPermissionModules.reduce((acc, m) => acc + m.permissions.length, 0);
 
   if (loading) {
     return (
@@ -666,7 +691,7 @@ export const RBACMatrixPage = () => {
             style={{ width: '220px' }}
           >
             <option value="ALL">Tất cả 6 Phân Hệ</option>
-            {permissionModules.map(m => (
+            {allPermissionModules.map(m => (
               <option key={m.id} value={m.id}>{m.shortName}</option>
             ))}
           </select>
@@ -729,51 +754,36 @@ export const RBACMatrixPage = () => {
                   <React.Fragment key={mod.id}>
                     {/* Module Header Bar */}
                     <tr style={{ background: 'var(--surface-header)', borderTop: '2px solid var(--border-default)', borderBottom: '1px solid var(--border-default)' }}>
-                      <td colSpan={visibleRoles.length + 1} style={{ padding: '10px 20px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                          <span style={{ fontWeight: 800, color: 'var(--blueprint-400)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                            {mod.name} ({mod.permissions.length} nghiệp vụ)
-                          </span>
-
-                          {/* Quick Module Controls if single role is focused */}
-                          {focusedRole !== 'ALL' && (
-                            <div style={{ display: 'inline-flex', gap: '6px' }}>
-                              <button
-                                type="button"
-                                onClick={() => setModulePermissionsForRole(mod.permissions, focusedRole, true)}
-                                style={{
-                                  fontSize: '11px',
-                                  padding: '3px 8px',
-                                  borderRadius: '4px',
-                                  border: '1px solid var(--border-default)',
-                                  background: 'var(--surface-card)',
-                                  color: 'var(--ink-primary)',
-                                  cursor: 'pointer',
-                                  fontWeight: 600
-                                }}
-                              >
-                                Bật tất cả
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setModulePermissionsForRole(mod.permissions, focusedRole, false)}
-                                style={{
-                                  fontSize: '11px',
-                                  padding: '3px 8px',
-                                  borderRadius: '4px',
-                                  border: '1px solid var(--border-default)',
-                                  background: 'var(--surface-card)',
-                                  color: '#EF4444',
-                                  cursor: 'pointer',
-                                  fontWeight: 600
-                                }}
-                              >
-                                Thu hồi tất cả
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                      <td style={{ padding: '10px 20px' }}>
+                        <span style={{ fontWeight: 800, color: 'var(--blueprint-400)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                          {mod.name} ({mod.permissions.length} nghiệp vụ)
+                        </span>
                       </td>
+                      {visibleRoles.map(r => {
+                        const allEnabled = mod.permissions.every(p => Boolean(matrixState[`${r.id}:${p.code}`]));
+                        const enabledInMod = mod.permissions.filter(p => Boolean(matrixState[`${r.id}:${p.code}`])).length;
+                        return (
+                          <td key={r.id} style={{ padding: '8px 10px', textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => setModulePermissionsForRole(mod.permissions, r.id, !allEnabled)}
+                              style={{
+                                fontSize: '10.5px',
+                                padding: '3px 8px',
+                                borderRadius: '4px',
+                                border: `1px solid ${allEnabled ? r.color : 'var(--border-default)'}`,
+                                background: allEnabled ? r.bg : 'var(--surface-card)',
+                                color: allEnabled ? r.color : 'var(--ink-secondary)',
+                                cursor: 'pointer',
+                                fontWeight: 700
+                              }}
+                              title={`Bật/tắt toàn bộ quyền ${mod.shortName} cho ${r.name}`}
+                            >
+                              {allEnabled ? 'Tắt module' : `Bật cả (${enabledInMod}/${mod.permissions.length})`}
+                            </button>
+                          </td>
+                        );
+                      })}
                     </tr>
 
                     {/* Permissions Rows in Module */}
@@ -850,7 +860,7 @@ export const RBACMatrixPage = () => {
       >
         <Icons.Info size={16} color="var(--blueprint-400)" style={{ flexShrink: 0 }} />
         <div>
-          <strong>Lưu ý nghiệp vụ kiểm toán:</strong> Mọi thao tác thay đổi phân quyền sau khi bấm <strong>"Lưu Cấu Hình Quyền"</strong> đều được hệ thống ghi nhận thành một bản ghi kiểm toán SHA-256 bất biến trong bảng <code>audit_logs</code> với hành động <code>BATCH_UPDATE_ROLE_PERMISSIONS</code>.
+          <strong>Lưu ý nghiệp vụ kiểm toán:</strong> Mỗi vai trò được cập nhật qua chính sách trực tiếp và ghi nhận thành bản ghi SHA-256 trong sổ kiểm toán với hành động <code>UPDATE_ROLE_PERMISSIONS</code>.
         </div>
       </div>
     </div>

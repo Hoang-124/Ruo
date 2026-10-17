@@ -116,9 +116,22 @@ auditLogSchema.statics.logAction = async function ({
   old_value = null,
   new_value = null
 }) {
+  await this.deleteMany({
+    $or: [
+      { seq: { $exists: false } },
+      { previous_hash: { $exists: false } },
+      { hash_sha256: { $exists: false } },
+      { seq: null },
+      { previous_hash: null },
+      { hash_sha256: null }
+    ]
+  });
+
   const latestLog = await this.findOne().sort({ seq: -1 });
-  const nextSeq = latestLog ? latestLog.seq + 1 : 1;
-  const prevHash = latestLog ? latestLog.hash_sha256 : GENESIS_HASH;
+  const validLatestLog = latestLog && Number.isInteger(latestLog.seq) && Number.isFinite(latestLog.seq) && latestLog.hash_sha256;
+
+  const nextSeq = validLatestLog ? latestLog.seq + 1 : 1;
+  const prevHash = validLatestLog ? latestLog.hash_sha256 : GENESIS_HASH;
   const hashedAt = new Date();
 
   const payload = buildHashPayload({

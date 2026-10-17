@@ -139,22 +139,27 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                   </div>
 
                   <div className="ruo-notif-scroll">
-                    {notifications.map((n) => (
-                      <div key={n.id} className={`ruo-notif-row ${n.read ? 'read' : 'unread'}`}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                          <span className={`ruo-dot ${n.read ? 'muted' : 'cyan'}`} />
-                          <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--ink-pure)' }}>
-                            {n.title}
+                    {notifications.map((n) => {
+                      const notifId = n._id || n.id;
+                      const isRead = Boolean(n.is_read ?? n.read);
+                      const timeText = n.time || (n.created_at ? new Date(n.created_at).toLocaleString('vi-VN') : '');
+                      return (
+                        <div key={notifId} className={`ruo-notif-row ${isRead ? 'read' : 'unread'}`}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                            <span className={`ruo-dot ${isRead ? 'muted' : 'cyan'}`} />
+                            <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--ink-pure)' }}>
+                              {n.title}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: '12px', color: 'var(--ink-secondary)', margin: '2px 0 4px 14px' }}>
+                            {n.message}
+                          </p>
+                          <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginLeft: '14px', fontFamily: 'var(--font-sans)' }}>
+                            {timeText}
                           </span>
                         </div>
-                        <p style={{ fontSize: '12px', color: 'var(--ink-secondary)', margin: '2px 0 4px 14px' }}>
-                          {n.message}
-                        </p>
-                        <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginLeft: '14px', fontFamily: 'var(--font-sans)' }}>
-                          {n.time}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

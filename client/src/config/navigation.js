@@ -62,6 +62,13 @@ export const ALL_NAV_ITEMS = {
     icon: Icons.Dashboard,
     roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
   },
+  rooms: {
+    id: 'rooms',
+    label: 'Danh Mục Phòng Học',
+    short: 'Phòng Học',
+    icon: Icons.Room,
+    roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
+  },
 
   // Lecturer Module
   report_issue: {
@@ -106,7 +113,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Quét Mã QR Thực Địa',
     short: 'Quét QR',
     icon: Icons.QrCode,
-    roles: [USER_ROLES.TECHNICIAN]
+    roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
   },
 
   // Facility Manager Module
@@ -129,21 +136,21 @@ export const ALL_NAV_ITEMS = {
     label: 'Điều Chuyển Thiết Bị',
     short: 'Điều Chuyển',
     icon: Icons.RefreshCw,
-    roles: [USER_ROLES.FACILITY_MANAGER]
+    roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN]
   },
   equipments: {
     id: 'equipments',
     label: 'Kho Thiết Bị Trường',
     short: 'Thiết Bị',
     icon: Icons.Equipment,
-    roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN]
+    roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
   },
   inventory: {
     id: 'inventory',
     label: 'Kiểm Kê CSVC',
     short: 'Kiểm Kê',
     icon: Icons.CheckCircle,
-    roles: [USER_ROLES.FACILITY_MANAGER]
+    roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.ADMIN]
   },
   disposal_propose: {
     id: 'disposal_propose',

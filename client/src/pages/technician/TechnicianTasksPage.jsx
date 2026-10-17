@@ -79,7 +79,8 @@ export const TechnicianTasksPage = () => {
     try {
       setSubmitting(true);
       const res = await repairApi.addLog(selectedTask._id, {
-        action: logData.action.trim(),
+        action: 'in_progress',
+        description: [logData.action.trim(), logData.notes.trim()].filter(Boolean).join(' — '),
         notes: logData.notes.trim(),
         cost: Number(logData.cost) || 0
       });

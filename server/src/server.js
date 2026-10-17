@@ -20,6 +20,7 @@ import partsRequestRoutes from './routes/partsRequestRoutes.js';
 import roleRoutes from './routes/roleRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import masterDataRoutes from './routes/masterDataRoutes.js';
+import adminMasterDataRoutes from './routes/adminMasterDataRoutes.js';
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ app.use('/api/repairs', repairRoutes);
 app.use('/api/movements', movementRoutes);
 app.use('/api/transfers', movementRoutes); // Backward compatibility
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/inventory-sessions', inventoryRoutes);
 app.use('/api/disposals', disposalRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -62,6 +64,7 @@ app.use('/api/parts', sparePartRoutes);
 app.use('/api/parts-requests', partsRequestRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/admin/roles', roleRoutes);
+app.use('/api/admin', adminMasterDataRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/master', masterDataRoutes);
 app.use('/api/master-data', masterDataRoutes);

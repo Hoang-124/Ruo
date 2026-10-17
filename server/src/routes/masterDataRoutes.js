@@ -41,7 +41,7 @@ router.put('/buildings/:id', protect, requireRole(USER_ROLES.ADMIN), updateBuild
 router.delete('/buildings/:id', protect, requireRole(USER_ROLES.ADMIN), deleteBuilding);
 
 // Rooms & Space (Module 02)
-router.get('/rooms', getAllRooms);
+router.get('/rooms', protect, getAllRooms);
 router.post('/rooms', protect, requireRole(USER_ROLES.ADMIN), createRoom);
 router.get('/rooms/:id/shortage', protect, getRoomShortage);
 router.get('/warehouse/stock', protect, getWarehouseStock);

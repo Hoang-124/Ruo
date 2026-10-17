@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { movementApi, equipmentApi, masterDataApi, authApi } from '../../lib/api';
 
 export const MovementsPage = () => {
   const { toast } = useToast();
+  const { currentUser } = useAuth();
+  const roleBadge = currentUser?.role === 'admin' ? 'ADMIN' : 'FACILITY MANAGER';
   const [loading, setLoading] = useState(true);
   const [movements, setMovements] = useState([]);
   const [equipments, setEquipments] = useState([]);
@@ -131,7 +134,7 @@ export const MovementsPage = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>FACILITY MANAGER</span>
+            <span style={{ fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>{roleBadge}</span>
             <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>MODULE 03 • LỆNH ĐIỀU CHUYỂN & LỊCH SỬ DI CHUYỂN TÀI SẢN</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
@@ -281,7 +284,7 @@ export const MovementsPage = () => {
                     >
                       {rooms.map(r => (
                         <option key={r._id} value={r._id}>
-                          {r.type === 'warehouse' ? `[KHO] ${r.code}` : `${r.code} - ${r.name}`}
+                          {(r.room_type || r.type) === 'warehouse' ? `[KHO] ${r.code}` : `${r.code} - ${r.name}`}
                         </option>
                       ))}
                     </select>

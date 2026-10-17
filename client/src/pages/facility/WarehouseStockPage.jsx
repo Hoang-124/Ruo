@@ -36,7 +36,7 @@ export const WarehouseStockPage = () => {
 
         // Calculate shortages across lecture/lab rooms
         const roomShortageList = [];
-        for (const rm of allRooms.filter(r => r.type !== 'warehouse')) {
+        for (const rm of allRooms.filter(r => (r.room_type || r.type) !== 'warehouse')) {
           if (rm.required_equipment && rm.required_equipment.length > 0) {
             try {
               const shortRes = await masterDataApi.getRoomShortage(rm._id);
