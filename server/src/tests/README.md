@@ -4,7 +4,7 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 
 ---
 
-## 1. Danh Sách Bộ Kiểm Thử (57 Test Cases)
+## 1. Danh Sách Bộ Kiểm Thử (64 Test Cases)
 
 | Mã Use Case | Tên Chức Năng | File Kiểm Thử | Số Lượng Test | Trạng Thái |
 | :--- | :--- | :--- | :---: | :---: |
@@ -17,6 +17,7 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 | **UC-10.6** | Reset Password & Mandatory Next Login Change | `test_uc10_6.js` | 8 tests | ✅ PASS (100%) |
 | **UC-10.7** | Role Approval, Appointment & Master Data | `test_uc10_7.js` | 7 tests | ✅ PASS (100%) |
 | **UC-12.1** | Roles Matrix, Dynamic RBAC & Equipment Guards | `test_uc12_1.js` | 7 tests | ✅ PASS (100%) |
+| **UC-12.2** | Update Perms, Module Toggles & Equipment Pagination | `test_uc12_2.js` | 7 tests | ✅ PASS (100%) |
 
 ---
 
@@ -57,14 +58,31 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 
 ---
 
-## 4. Cách Thức Chạy Kiểm Thử
+## 4. Đặc Tả Nghiệp Vụ UC-12.2 (Update Perms, Module Toggles & Equipment Pagination)
+
+1. **Điều chỉnh phân quyền động Live Policy**:
+   - Endpoint: `PUT /api/admin/roles/:id/permissions` (hoặc `PUT /api/roles/:id`).
+   - Hỗ trợ bật/tắt toàn bộ module (`action: 'ENABLE_MODULE' | 'DISABLE_MODULE' | 'TOGGLE_MODULE'`).
+   - Phản hồi tức thời với cờ `liveEnforced: true`, `policyVersion`, và thống kê diff chi tiết (`added`, `revoked`).
+   - Cơ chế bảo vệ **Admin Self-Lockout**: Không cho phép tước quyền `role:update` của chính Admin (`ADMIN_SELF_LOCKOUT_PREVENTED`).
+
+2. **Phân trang Pagination & Live RBAC Guard trên GET /api/equipments**:
+   - Trả về đầy đủ metadata: `page`, `limit`, `total`, `totalPages`, `hasPrevPage`, `hasNextPage`.
+   - Bảo vệ phân quyền động: Khi người dùng được xác thực bị thu hồi `equipment:read`, hệ thống lập tức trả về HTTP 403 Forbidden.
+
+---
+
+## 5. Cách Thức Chạy Kiểm Thử
 
 ```bash
-# Chạy toàn bộ 57 test cases của phân hệ
+# Chạy toàn bộ 64 test cases của phân hệ
 npm test
 
 # Chạy riêng kiểm thử UC-12.1 (Roles Matrix & Dynamic RBAC)
 npm run test:rbac
+
+# Chạy riêng kiểm thử UC-12.2 (Update Perms & Equipment Pagination)
+npm run test:rbac2
 # hoặc
-node src/tests/test_uc12_1.js
+node src/tests/test_uc12_2.js
 ```
