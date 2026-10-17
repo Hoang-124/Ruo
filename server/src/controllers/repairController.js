@@ -307,11 +307,21 @@ export const acceptRepairTask = async (req, res) => {
   }
 };
 
-// @desc    Log repair progress (Technician)
+// @desc    Log repair progress / parts replacement / cost (Technician) (UC-5.5)
 // @route   POST /api/repairs/:id/logs
+// @route   PUT /api/repairs/:id/progress
 export const addRepairLog = async (req, res) => {
   try {
-    const { action = 'in_progress', description, notes, cost = 0, images = [] } = req.body;
+    const { 
+      action = 'in_progress', 
+      description, 
+      notes, 
+      cost = 0, 
+      images = [], 
+      parts_used = [], 
+      replaced_parts = [] 
+    } = req.body;
+    
     const repair = await Repair.findById(req.params.id);
     if (!repair) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa.' });
@@ -327,15 +337,23 @@ export const addRepairLog = async (req, res) => {
     const rawAction = String(action || '').trim();
     const isEnumAction = validActions.includes(rawAction);
     const normalizedAction = isEnumAction ? rawAction : 'in_progress';
-    const combinedDesc = description
-      ? String(description).trim()
-      : [(!isEnumAction ? rawAction : ''), String(notes || '').trim()].filter(Boolean).join(' — ');
+    
+    // Combine parts replacement info if provided
+    const partsList = (parts_used.length > 0 ? parts_used : replaced_parts)
+      .map(p => typeof p === 'string' ? p : `${p.name || p.part_id} (x${p.qty || p.quantity || 1})`)
+      .join(', ');
+    const partsNote = partsList ? `Linh kiện thay thế: [${partsList}]` : '';
+
+    let combinedDesc = description ? String(description).trim() : [(!isEnumAction ? rawAction : ''), String(notes || '').trim()].filter(Boolean).join(' — ');
+    if (partsNote) {
+      combinedDesc = combinedDesc ? `${combinedDesc} | ${partsNote}` : partsNote;
+    }
 
     const log = await RepairLog.create({
       repair_id: repair._id,
       action: normalizedAction,
       performed_by: req.user._id,
-      description: combinedDesc || 'Cập nhật tiến độ xử lý kỹ thuật',
+      description: combinedDesc || 'Cập nhật tiến độ xử lý kỹ thuật (UC-5.5)',
       cost: numCost,
       images
     });
@@ -355,14 +373,17 @@ export const addRepairLog = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Cập nhật tiến độ sửa chữa thành công.',
-      data: log
+      message: 'Cập nhật tiến độ sửa chữa thành công (UC-5.5).',
+      data: log,
+      total_cost: repair.total_cost
     });
   } catch (error) {
     const status = error.statusCode || 500;
     res.status(status).json({ success: false, message: error.message });
   }
 };
+
+export const updateRepairProgress = addRepairLog;
 
 // @desc    Report repair outcome (Technician): repaired or unrepairable
 // @route   PUT /api/repairs/:id/outcome
@@ -557,6 +578,58 @@ export const evaluateRepairQuality = async (req, res) => {
   }
 };
 
+// @desc    Get complete repair history and accumulated costs per asset (UC-5.8)
+// @route   GET /api/repairs/equipment/:id
+export const getEquipmentRepairHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const equipment = await Equipment.findById(id)
+      .populate('room_id', 'code name building')
+      .populate('category_id', 'code name');
+    
+    if (!equipment) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị.' });
+    }
+
+    const repairs = await Repair.find({ equipment_id: id })
+      .populate('reported_by', 'full_name code email')
+      .populate('assigned_to', 'full_name code email')
+      .populate('replacement_equipment_id', 'code name')
+      .sort({ created_at: -1 });
+
+    const totalRepairCost = repairs.reduce((acc, r) => acc + (r.total_cost || 0), 0);
+
+    const repairIds = repairs.map(r => r._id);
+    const logs = await RepairLog.find({ repair_id: { $in: repairIds } })
+      .populate('performed_by', 'full_name code')
+      .sort({ created_at: -1 });
+
+    res.json({
+      success: true,
+      equipment: {
+        _id: equipment._id,
+        code: equipment.code,
+        name: equipment.name,
+        brand: equipment.brand,
+        model: equipment.model,
+        price: equipment.price,
+        remaining_value: equipment.remaining_value,
+        estimated_repair_cost: equipment.estimated_repair_cost,
+        repair_count: repairs.length,
+        total_accumulated_cost: totalRepairCost,
+        room: equipment.room_id
+      },
+      repairs,
+      logs,
+      totalCost: totalRepairCost,
+      repairCount: repairs.length
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Compatibility exports
 export const resolveRepair = reportRepairOutcome;
 export const closeRepair = closeRepairTicket;
+

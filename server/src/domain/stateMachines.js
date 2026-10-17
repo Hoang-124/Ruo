@@ -10,14 +10,23 @@ import {
 /**
  * State Transition Maps with Role-Based Authorizations
  * 4 Canonical Roles: Lecturer, Technician, Facility Manager, Admin.
- * Separation of Duties: Người làm không tự duyệt việc của mình.
+ * Self-approval rules are enforced per workflow in the relevant controllers.
  */
 export const STATE_TRANSITIONS = {
   MOVEMENT: {
+    [MOVEMENT_STATUSES.AWAITING_APPROVAL]: [
+      { to: MOVEMENT_STATUSES.APPROVED, allowedRoles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN] },
+      { to: MOVEMENT_STATUSES.REJECTED, allowedRoles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN] }
+    ],
     [MOVEMENT_STATUSES.PENDING]: [
       { to: MOVEMENT_STATUSES.COMPLETED, allowedRoles: [USER_ROLES.TECHNICIAN] },
-      { to: MOVEMENT_STATUSES.CANCELLED, allowedRoles: [USER_ROLES.FACILITY_MANAGER] }
+      { to: MOVEMENT_STATUSES.CANCELLED, allowedRoles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN] }
     ],
+    [MOVEMENT_STATUSES.APPROVED]: [
+      { to: MOVEMENT_STATUSES.COMPLETED, allowedRoles: [USER_ROLES.TECHNICIAN] },
+      { to: MOVEMENT_STATUSES.CANCELLED, allowedRoles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN] }
+    ],
+    [MOVEMENT_STATUSES.REJECTED]: [],
     [MOVEMENT_STATUSES.COMPLETED]: [],
     [MOVEMENT_STATUSES.CANCELLED]: []
   },
