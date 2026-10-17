@@ -56,15 +56,18 @@ export const protect = async (req, res, next) => {
     }
 
     let rolePermissions = DEFAULT_CANONICAL_ROLES[user.role]?.permissions || [];
+    let permissionsFromDb = false;
     if (mongoose.connection.readyState === 1) {
       const dbRole = await Role.findOne({ name: user.role }).select('permissions');
       if (dbRole && Array.isArray(dbRole.permissions)) {
         rolePermissions = dbRole.permissions;
+        permissionsFromDb = true;
       }
     }
 
     req.user = user;
     req.userPermissions = rolePermissions;
+    req.userPermissionsFromDb = permissionsFromDb;
     req.hasPermission = (code) => hasGrantedPermission(rolePermissions, code);
     req.token = token;
     next();
@@ -100,7 +103,9 @@ export const requireRole = (...allowedRoles) => {
 };
 
 /**
- * Dynamic permission authorization middleware backed by the Role matrix (UC-12.1).
+ * Dynamic permission authorization middleware backed by the Role matrix (UC-12.1 & UC-12.2).
+ * When req.userPermissions is explicitly provided (or loaded from DB Role), live permissions
+ * strictly govern access so toggling a permission in UC-12.2 takes effect immediately.
  */
 export const requirePermission = (permissionCode, ...fallbackRoles) => {
   return (req, res, next) => {
@@ -108,12 +113,25 @@ export const requirePermission = (permissionCode, ...fallbackRoles) => {
       return res.status(401).json({ success: false, message: 'Yêu cầu xác thực tài khoản.' });
     }
 
-    const perms = req.userPermissions || DEFAULT_CANONICAL_ROLES[req.user.role]?.permissions || [];
-    if (hasGrantedPermission(perms, permissionCode)) {
+    if (Array.isArray(req.userPermissions)) {
+      if (hasGrantedPermission(req.userPermissions, permissionCode)) {
+        return next();
+      }
+      if (!req.userPermissionsFromDb && fallbackRoles.length > 0 && fallbackRoles.includes(req.user.role)) {
+        return next();
+      }
+      return res.status(403).json({
+        success: false,
+        message: `Quyền truy cập bị từ chối. Nghiệp vụ yêu cầu quyền [${permissionCode}] trên Ma trận RBAC (Vai trò hiện tại: ${req.user.role}).`
+      });
+    }
+
+    const defaultPerms = DEFAULT_CANONICAL_ROLES[req.user.role]?.permissions || [];
+    if (hasGrantedPermission(defaultPerms, permissionCode)) {
       return next();
     }
 
-    if (fallbackRoles.length > 0 && !req.userPermissions && fallbackRoles.includes(req.user.role)) {
+    if (fallbackRoles.length > 0 && fallbackRoles.includes(req.user.role)) {
       return next();
     }
 

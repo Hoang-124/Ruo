@@ -31,36 +31,40 @@ export const RBACMatrixPage = () => {
       id: USER_ROLES.LECTURER,
       name: 'Giảng Viên',
       sub: 'Lecturer',
-      color: '#10B981',
-      bg: 'rgba(16, 185, 129, 0.12)',
-      border: 'rgba(16, 185, 129, 0.3)',
+      color: 'var(--status-active-color)',
+      solidBg: '#059669',
+      bg: 'var(--status-active-bg)',
+      border: '#059669',
       desc: 'Báo hỏng phòng học, theo dõi tiến độ ca sửa và đánh giá nghiệm thu.'
     },
     {
       id: USER_ROLES.TECHNICIAN,
       name: 'Kỹ Thuật Viên',
       sub: 'Technician',
-      color: '#0EA5E9',
-      bg: 'rgba(14, 165, 233, 0.12)',
-      border: 'rgba(14, 165, 233, 0.3)',
+      color: 'var(--status-transferring-color)',
+      solidBg: '#2563EB',
+      bg: 'var(--status-transferring-bg)',
+      border: '#2563EB',
       desc: 'Tiếp nhận ca sửa, xin linh kiện kho, xác nhận di dời và quét QR thực địa.'
     },
     {
       id: USER_ROLES.FACILITY_MANAGER,
       name: 'Quản Lý CSVC',
       sub: 'Facility Manager',
-      color: '#F59E0B',
-      bg: 'rgba(245, 158, 11, 0.12)',
-      border: 'rgba(245, 158, 11, 0.3)',
+      color: 'var(--status-repairing-color)',
+      solidBg: '#D97706',
+      bg: 'var(--status-repairing-bg)',
+      border: '#D97706',
       desc: 'Điều phối Kanban SLA, xuất kho linh kiện, ra lệnh chuyển phòng và lập đề xuất thanh lý R>=60%.'
     },
     {
       id: USER_ROLES.ADMIN,
       name: 'Quản Trị BGH',
       sub: 'System Admin',
-      color: '#EF4444',
-      bg: 'rgba(239, 68, 68, 0.12)',
-      border: 'rgba(239, 68, 68, 0.3)',
+      color: 'var(--status-overdue-color)',
+      solidBg: '#DC2626',
+      bg: 'var(--status-overdue-bg)',
+      border: '#DC2626',
       desc: 'Quản trị tài khoản, duyệt bổ nhiệm chức vụ, ma trận RBAC, duyệt thanh lý cuối và kiểm toán SHA-256.'
     }
   ];
@@ -211,6 +215,7 @@ export const RBACMatrixPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [matrixState, setMatrixState] = useState({});
+  const [savedMatrixState, setSavedMatrixState] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModule, setSelectedModule] = useState('ALL');
   const [focusedRole, setFocusedRole] = useState('ALL'); // 'ALL' or specific roleId
@@ -259,12 +264,16 @@ export const RBACMatrixPage = () => {
       const state = {};
       canonicalRoles.forEach(r => {
         const found = rolesList.find(dbR => dbR.name === r.id);
-        const perms = found ? (found.permissions || []) : [];
+        const hasPersistedPerms = Boolean(found && Array.isArray(found.permissions));
+        const perms = hasPersistedPerms ? found.permissions : [];
 
         modules.forEach(mod => {
           mod.permissions.forEach(p => {
             const key = `${r.id}:${p.code}`;
-            if (found && perms.length > 0) {
+            if (r.id === USER_ROLES.ADMIN && p.code === 'role:update') {
+              // Immutable anti-lockout rule
+              state[key] = true;
+            } else if (hasPersistedPerms) {
               state[key] = perms.includes(p.code) || perms.includes('*');
             } else {
               state[key] = p.defaultRoles.includes(r.id);
@@ -274,6 +283,7 @@ export const RBACMatrixPage = () => {
       });
 
       setMatrixState(state);
+      setSavedMatrixState(state);
     } catch (err) {
       toast.error('Không thể nạp ma trận phân quyền từ máy chủ: ' + err.message);
     } finally {
@@ -282,6 +292,10 @@ export const RBACMatrixPage = () => {
   };
 
   const togglePermission = (roleId, code) => {
+    if (roleId === USER_ROLES.ADMIN && code === 'role:update') {
+      toast.warning('Khóa an ninh: Không thể tự thu hồi quyền cấu hình RBAC (role:update) của Quản trị viên BGH để tránh khóa trắng hệ thống!');
+      return;
+    }
     const key = `${roleId}:${code}`;
     setMatrixState(prev => ({ ...prev, [key]: !prev[key] }));
   };
@@ -290,11 +304,28 @@ export const RBACMatrixPage = () => {
     setMatrixState(prev => {
       const next = { ...prev };
       modPermissions.forEach(p => {
+        if (roleId === USER_ROLES.ADMIN && p.code === 'role:update' && !enable) {
+          next[`${roleId}:${p.code}`] = true;
+          return;
+        }
         next[`${roleId}:${p.code}`] = enable;
       });
       return next;
     });
     toast.info(`Đã ${enable ? 'bật' : 'tắt'} toàn bộ quyền của nhóm cho vai trò này.`);
+  };
+
+  // Compute live diff between current matrixState and savedMatrixState
+  const diffEntries = Object.keys(matrixState).filter(
+    key => Boolean(matrixState[key]) !== Boolean(savedMatrixState[key])
+  );
+  const addedCount = diffEntries.filter(key => Boolean(matrixState[key]) && !savedMatrixState[key]).length;
+  const revokedCount = diffEntries.filter(key => !matrixState[key] && Boolean(savedMatrixState[key])).length;
+  const hasUnsavedChanges = diffEntries.length > 0;
+
+  const handleDiscardChanges = () => {
+    setMatrixState({ ...savedMatrixState });
+    toast.info('Đã hoàn tác các thay đổi chưa lưu về trạng thái gốc.');
   };
 
   const activeSodViolations = SOD_RULES.filter(rule => rule.check(matrixState));
@@ -312,6 +343,7 @@ export const RBACMatrixPage = () => {
       if (res && res.success) {
         toast.success(res.message || 'Đã khôi phục ma trận phân quyền chuẩn thành công!');
         await loadRoles();
+        window.dispatchEvent(new CustomEvent('ruo:rbac-updated'));
       }
     } catch (err) {
       toast.error('Lỗi khi khôi phục chuẩn mặc định: ' + err.message);
@@ -336,7 +368,9 @@ export const RBACMatrixPage = () => {
         const activePerms = [];
         allPermissionModules.forEach(mod => {
           mod.permissions.forEach(p => {
-            if (matrixState[`${r.id}:${p.code}`]) {
+            if (r.id === USER_ROLES.ADMIN && p.code === 'role:update') {
+              activePerms.push(p.code);
+            } else if (matrixState[`${r.id}:${p.code}`]) {
               activePerms.push(p.code);
             }
           });
@@ -350,6 +384,7 @@ export const RBACMatrixPage = () => {
       await Promise.all(payload.map(role => roleApi.update(role.name, role.permissions)));
       toast.success('Đã lưu cấu hình ma trận phân quyền RBAC thành công vào cơ sở dữ liệu MongoDB!');
       await loadRoles();
+      window.dispatchEvent(new CustomEvent('ruo:rbac-updated'));
     } catch (err) {
       toast.error('Lỗi khi lưu ma trận phân quyền: ' + err.message);
     } finally {
@@ -436,9 +471,9 @@ export const RBACMatrixPage = () => {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '70px 0', color: 'var(--ink-muted)' }}>
+      <div style={{ textAlign: 'center', padding: '70px 0', color: 'var(--ink-secondary)' }}>
         <Icons.RefreshCw size={32} className="spin" style={{ marginBottom: '14px', color: 'var(--blueprint-500)' }} />
-        <div style={{ fontSize: '15px', fontWeight: 600 }}>Đang nạp ma trận phân quyền từ MongoDB...</div>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ink-primary)' }}>Đang nạp ma trận phân quyền từ MongoDB...</div>
       </div>
     );
   }
@@ -446,22 +481,36 @@ export const RBACMatrixPage = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: '16px',
+          background: 'var(--surface-card)',
+          border: '1.5px solid var(--border-default)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '20px 24px',
+          boxShadow: 'var(--shadow-sm)'
+        }}
+      >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--blueprint-400)', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
-              UC-12.1 DYNAMIC RBAC
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', color: '#FFFFFF', background: '#1D4ED8', border: '1.5px solid #1E3A8A', padding: '3px 10px', borderRadius: '5px', fontWeight: 800, letterSpacing: '0.03em', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <span className="ruo-live-dot" style={{ width: '7px', height: '7px', color: '#6EE7B7' }} />
+              <span>UC-12.1 &amp; UC-12.2 LIVE RBAC</span>
             </span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-secondary)', fontWeight: 600 }}>
-              4 CANONICAL ACTORS • 6 PHÂN HỆ NGHIỆP VỤ • KIỂM SOÁT PHÂN TÁCH TRÁCH NHIỆM (SoD)
+            <span style={{ fontSize: '12px', color: 'var(--ink-primary)', fontWeight: 700 }}>
+              4 VAI TRÒ CHUẨN • 6 PHÂN HỆ NGHIỆP VỤ • KIỂM SOÁT PHÂN TÁCH TRÁCH NHIỆM (SoD)
             </span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Icons.Shield size={26} color="var(--blueprint-400)" />
             Ma Trận Phân Quyền Vai Trò (Roles Matrix)
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--ink-secondary)' }}>
-            Nguyên tắc bảo mật cốt lõi: <em>Người làm không tự phê duyệt việc của mình</em>. Cấu hình được ghi log vào Sổ cái kiểm toán SHA-256.
+          <p style={{ margin: '6px 0 0', fontSize: '13.5px', color: 'var(--ink-secondary)', fontWeight: 500 }}>
+            Nguyên tắc bảo mật cốt lõi: <strong>Người làm không tự phê duyệt việc của mình</strong>. Mọi thay đổi có hiệu lực tức thì trên API và ghi sổ cái SHA-256.
           </p>
         </div>
 
@@ -471,7 +520,7 @@ export const RBACMatrixPage = () => {
             onClick={handleResetDefaults}
             disabled={saving}
             className="ruo-btn ruo-btn-secondary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, border: '1.5px solid var(--border-strong)' }}
             title="Khôi phục ma trận về chuẩn mực ban đầu"
           >
             <Icons.RefreshCw size={14} />
@@ -481,7 +530,7 @@ export const RBACMatrixPage = () => {
           <button
             onClick={() => handleExport('csv')}
             className="ruo-btn ruo-btn-secondary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, border: '1.5px solid var(--border-strong)' }}
             title="Tải tệp CSV phân quyền"
           >
             <Icons.Download size={14} />
@@ -491,7 +540,7 @@ export const RBACMatrixPage = () => {
           <button
             onClick={() => handleExport('json')}
             className="ruo-btn ruo-btn-secondary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, border: '1.5px solid var(--border-strong)' }}
             title="Tải tệp JSON phân quyền"
           >
             <Icons.Download size={14} />
@@ -506,19 +555,76 @@ export const RBACMatrixPage = () => {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              fontWeight: 700,
+              fontWeight: 800,
               padding: '10px 20px',
-              opacity: saving ? 0.7 : 1
+              opacity: saving ? 0.7 : 1,
+              boxShadow: hasUnsavedChanges ? '0 0 0 3px rgba(59, 130, 246, 0.35), 0 6px 20px rgba(37, 99, 235, 0.4)' : undefined
             }}
           >
             {saving ? <Icons.RefreshCw size={16} className="spin" /> : <Icons.CheckCircle size={16} />}
-            <span>{saving ? 'Đang Lưu...' : 'Lưu Cấu Hình Quyền'}</span>
+            <span>
+              {saving ? 'Đang Lưu...' : hasUnsavedChanges ? `Lưu Cấu Hình Quyền (${diffEntries.length} thay đổi)` : 'Lưu Cấu Hình Quyền'}
+            </span>
           </button>
         </div>
       </div>
 
+      {/* Unsaved Changes Live Diff Banner */}
+      {hasUnsavedChanges && (
+        <div
+          className="ruo-view-enter"
+          style={{
+            background: 'var(--status-warning-bg)',
+            border: '2px solid var(--status-warning-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '12px 18px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <span style={{ color: 'var(--status-warning-color)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '13.5px' }}>
+              <Icons.AlertTriangle size={18} />
+              Đang có {diffEntries.length} thay đổi phân quyền chưa lưu:
+            </span>
+            {addedCount > 0 && (
+              <span style={{ background: 'var(--status-success-bg)', border: '1.5px solid var(--status-success-border)', color: 'var(--status-success-color)', padding: '2px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 800 }}>
+                +{addedCount} quyền cấp thêm
+              </span>
+            )}
+            {revokedCount > 0 && (
+              <span style={{ background: 'var(--status-danger-bg)', border: '1.5px solid var(--status-danger-border)', color: 'var(--status-danger-color)', padding: '2px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 800 }}>
+                -{revokedCount} quyền thu hồi
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={handleDiscardChanges}
+              className="ruo-btn ruo-btn-secondary"
+              style={{ padding: '6px 14px', fontSize: '12.5px', fontWeight: 700, border: '1.5px solid var(--border-strong)' }}
+            >
+              Hoàn Tác Thay Đổi
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="ruo-btn ruo-btn-primary"
+              style={{ padding: '6px 16px', fontSize: '12.5px', fontWeight: 800 }}
+            >
+              Áp Dụng Ngay
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Role Summary & Stat Cards (4 Canonical Roles) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+      <div className="ruo-stagger-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
         {canonicalRoles.map(r => {
           const activeCount = Object.keys(matrixState).filter(k => k.startsWith(`${r.id}:`) && matrixState[k]).length;
           const percentage = Math.round((activeCount / totalPermissionsCount) * 100);
@@ -528,30 +634,30 @@ export const RBACMatrixPage = () => {
             <div
               key={r.id}
               onClick={() => setFocusedRole(prev => prev === r.id ? 'ALL' : r.id)}
+              className="ruo-motion-card"
               style={{
                 background: isSelected ? r.bg : 'var(--surface-card)',
-                border: `1.5px solid ${isSelected ? r.color : 'var(--border-default)'}`,
+                border: `2px solid ${isSelected ? r.border : 'var(--border-default)'}`,
+                borderTop: `4px solid ${r.solidBg}`,
                 borderRadius: 'var(--radius-md)',
-                padding: '16px',
+                padding: '18px',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: isSelected ? `0 4px 20px ${r.color}25` : 'none'
+                boxShadow: isSelected ? 'var(--shadow-md)' : 'var(--shadow-sm)'
               }}
               title={`Nhấn để ${isSelected ? 'xem toàn bộ ma trận' : `tập trung cấu hình cho [${r.name}]`}`}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: r.color }} />
-                  <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--ink-primary)' }}>{r.name}</span>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: r.solidBg }} />
+                  <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--ink-primary)' }}>{r.name}</span>
                 </div>
                 <span
                   style={{
                     fontSize: '11px',
-                    fontWeight: 700,
-                    color: r.color,
-                    background: r.bg,
-                    border: `1px solid ${r.border}`,
-                    padding: '2px 7px',
+                    fontWeight: 800,
+                    color: '#FFFFFF',
+                    background: r.solidBg,
+                    padding: '2px 8px',
                     borderRadius: '6px'
                   }}
                 >
@@ -559,19 +665,19 @@ export const RBACMatrixPage = () => {
                 </span>
               </div>
 
-              <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', marginBottom: '10px', lineHeight: 1.4, minHeight: '34px' }}>
+              <div style={{ fontSize: '12.5px', color: 'var(--ink-secondary)', marginBottom: '12px', lineHeight: 1.45, minHeight: '36px', fontWeight: 500 }}>
                 {r.desc}
               </div>
 
               {/* Progress bar of granted permissions */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11.5px', marginBottom: '6px' }}>
-                <span style={{ color: 'var(--ink-muted)' }}>Quyền kích hoạt:</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginBottom: '6px' }}>
+                <span style={{ color: 'var(--ink-secondary)', fontWeight: 700 }}>Quyền kích hoạt:</span>
                 <span style={{ fontWeight: 800, color: r.color }}>
                   {activeCount} / {totalPermissionsCount} ({percentage}%)
                 </span>
               </div>
-              <div style={{ width: '100%', height: '5px', background: 'var(--surface-3)', borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{ width: `${percentage}%`, height: '100%', background: r.color, borderRadius: '3px', transition: 'width 0.3s ease' }} />
+              <div style={{ width: '100%', height: '8px', background: 'var(--surface-3)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                <div className="ruo-progress-bar-animated" style={{ width: `${percentage}%`, height: '100%', background: r.solidBg, borderRadius: '4px', transition: 'width 0.35s cubic-bezier(0.16, 1, 0.3, 1)' }} />
               </div>
             </div>
           );
@@ -582,10 +688,10 @@ export const RBACMatrixPage = () => {
       {activeSodViolations.length > 0 ? (
         <div
           style={{
-            background: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.35)',
+            background: 'var(--status-overdue-bg)',
+            border: '2px solid var(--status-overdue-border)',
             borderRadius: 'var(--radius-md)',
-            padding: '14px 18px',
+            padding: '16px 20px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -593,17 +699,17 @@ export const RBACMatrixPage = () => {
             gap: '12px'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-            <span style={{ marginTop: '2px', color: '#EF4444' }}>
-              <Icons.AlertTriangle size={20} />
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <span style={{ marginTop: '2px', color: 'var(--status-overdue-color)' }}>
+              <Icons.AlertTriangle size={22} />
             </span>
             <div>
-              <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#EF4444', marginBottom: '3px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--status-overdue-color)', marginBottom: '4px' }}>
                 Phát hiện {activeSodViolations.length} Xung Đột Nguyên Tắc Phân Tách Trách Nhiệm (SoD Conflict)
               </div>
-              <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: 'var(--ink-secondary)' }}>
+              <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12.5px', color: 'var(--ink-primary)', fontWeight: 600 }}>
                 {activeSodViolations.map(v => (
-                  <li key={v.id} style={{ marginBottom: '2px' }}>
+                  <li key={v.id} style={{ marginBottom: '3px' }}>
                     <strong>{v.title}:</strong> {v.desc}
                   </li>
                 ))}
@@ -614,38 +720,40 @@ export const RBACMatrixPage = () => {
           <button
             onClick={handleFixAllSod}
             style={{
-              background: '#EF4444',
+              background: '#DC2626',
               color: '#FFFFFF',
-              border: 'none',
+              border: '1.5px solid #991B1B',
               borderRadius: '8px',
-              padding: '8px 14px',
-              fontSize: '12px',
-              fontWeight: 700,
+              padding: '9px 16px',
+              fontSize: '12.5px',
+              fontWeight: 800,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
             }}
           >
-            <Icons.Check size={14} />
+            <Icons.Check size={15} />
             <span>Tự Động Khắc Phục SoD</span>
           </button>
         </div>
       ) : (
         <div
           style={{
-            background: 'rgba(16, 185, 129, 0.06)',
-            border: '1px solid rgba(16, 185, 129, 0.25)',
+            background: 'var(--status-active-bg)',
+            border: '1.5px solid var(--status-active-border)',
             borderRadius: 'var(--radius-md)',
-            padding: '10px 16px',
+            padding: '12px 18px',
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            fontSize: '12.5px',
-            color: '#10B981'
+            fontSize: '13px',
+            color: 'var(--status-active-color)',
+            fontWeight: 700
           }}
         >
-          <Icons.CheckCircle size={16} />
+          <Icons.CheckCircle size={18} />
           <span>
             <strong>Tuân thủ SoD hoàn hảo:</strong> Toàn bộ cấu hình quyền hiện tại đều thỏa mãn nguyên tắc phân tách trách nhiệm và đặc quyền tối thiểu.
           </span>
@@ -661,15 +769,16 @@ export const RBACMatrixPage = () => {
           gap: '14px',
           flexWrap: 'wrap',
           background: 'var(--surface-card)',
-          padding: '14px 18px',
+          padding: '16px 20px',
           borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border-default)'
+          border: '1.5px solid var(--border-default)',
+          boxShadow: 'var(--shadow-xs)'
         }}
       >
         {/* Search */}
         <div style={{ position: 'relative', flex: '1 1 280px' }}>
-          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-muted)' }}>
-            <Icons.Search size={15} />
+          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-secondary)' }}>
+            <Icons.Search size={16} />
           </span>
           <input
             type="text"
@@ -677,18 +786,18 @@ export const RBACMatrixPage = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="ruo-input"
-            style={{ paddingLeft: '36px', width: '100%' }}
+            style={{ paddingLeft: '38px', width: '100%', fontWeight: 600 }}
           />
         </div>
 
         {/* Module Selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12.5px', color: 'var(--ink-secondary)', fontWeight: 600 }}>Phân hệ:</span>
+          <span style={{ fontSize: '13px', color: 'var(--ink-primary)', fontWeight: 700 }}>Phân hệ:</span>
           <select
             className="ruo-select"
             value={selectedModule}
             onChange={(e) => setSelectedModule(e.target.value)}
-            style={{ width: '220px' }}
+            style={{ width: '230px', fontWeight: 600 }}
           >
             <option value="ALL">Tất cả 6 Phân Hệ</option>
             {allPermissionModules.map(m => (
@@ -699,12 +808,12 @@ export const RBACMatrixPage = () => {
 
         {/* Role Focus Selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12.5px', color: 'var(--ink-secondary)', fontWeight: 600 }}>Chế độ xem:</span>
+          <span style={{ fontSize: '13px', color: 'var(--ink-primary)', fontWeight: 700 }}>Chế độ xem:</span>
           <select
             className="ruo-select"
             value={focusedRole}
             onChange={(e) => setFocusedRole(e.target.value)}
-            style={{ width: '190px' }}
+            style={{ width: '200px', fontWeight: 600 }}
           >
             <option value="ALL">Toàn Bộ 4 Vai Trò</option>
             {canonicalRoles.map(r => (
@@ -715,28 +824,29 @@ export const RBACMatrixPage = () => {
       </div>
 
       {/* Permissions Matrix Table */}
-      <div className="ruo-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="ruo-card" style={{ padding: 0, overflow: 'hidden', border: '1.5px solid var(--border-strong)' }}>
         <div style={{ overflowX: 'auto' }}>
           <table className="ruo-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={{ background: 'var(--surface-header)', borderBottom: '1px solid var(--border-default)' }}>
-                <th style={{ padding: '14px 20px', fontSize: '12px', fontWeight: 800, color: 'var(--ink-muted)', width: '42%' }}>
+              <tr style={{ background: 'var(--surface-header)', borderBottom: '2px solid var(--border-strong)' }}>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 800, color: 'var(--ink-primary)', width: '42%' }}>
                   NGHIỆP VỤ & MÃ QUYỀN HẠN (PERMISSION SCOPE)
                 </th>
                 {visibleRoles.map(r => (
                   <th
                     key={r.id}
                     style={{
-                      padding: '14px 14px',
-                      fontSize: '12.5px',
+                      padding: '16px 14px',
+                      fontSize: '13px',
                       fontWeight: 800,
                       color: r.color,
                       textAlign: 'center',
-                      width: `${58 / visibleRoles.length}%`
+                      width: `${58 / visibleRoles.length}%`,
+                      borderLeft: '1px solid var(--border-default)'
                     }}
                   >
                     <div>{r.name}</div>
-                    <div style={{ fontSize: '10.5px', fontWeight: 600, opacity: 0.8 }}>({r.sub})</div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-secondary)', marginTop: '2px' }}>({r.sub})</div>
                   </th>
                 ))}
               </tr>
@@ -744,18 +854,18 @@ export const RBACMatrixPage = () => {
             <tbody>
               {filteredModules.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleRoles.length + 1} style={{ padding: '48px', textAlign: 'center', color: 'var(--ink-muted)' }}>
-                    <Icons.Shield size={32} style={{ opacity: 0.3, marginBottom: '8px' }} />
-                    <div>Không tìm thấy quyền hạn nào khớp với từ khóa tìm kiếm.</div>
+                  <td colSpan={visibleRoles.length + 1} style={{ padding: '48px', textAlign: 'center', color: 'var(--ink-secondary)' }}>
+                    <Icons.Shield size={32} style={{ opacity: 0.5, marginBottom: '8px' }} />
+                    <div style={{ fontWeight: 600 }}>Không tìm thấy quyền hạn nào khớp với từ khóa tìm kiếm.</div>
                   </td>
                 </tr>
               ) : (
                 filteredModules.map(mod => (
                   <React.Fragment key={mod.id}>
                     {/* Module Header Bar */}
-                    <tr style={{ background: 'var(--surface-header)', borderTop: '2px solid var(--border-default)', borderBottom: '1px solid var(--border-default)' }}>
-                      <td style={{ padding: '10px 20px' }}>
-                        <span style={{ fontWeight: 800, color: 'var(--blueprint-400)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    <tr style={{ background: 'var(--surface-3)', borderTop: '2px solid var(--border-strong)', borderBottom: '1.5px solid var(--border-default)' }}>
+                      <td style={{ padding: '12px 20px', borderLeft: '4px solid var(--laser-cyan)' }}>
+                        <span style={{ fontWeight: 800, color: 'var(--laser-cyan)', fontSize: '12.5px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                           {mod.name} ({mod.permissions.length} nghiệp vụ)
                         </span>
                       </td>
@@ -763,19 +873,19 @@ export const RBACMatrixPage = () => {
                         const allEnabled = mod.permissions.every(p => Boolean(matrixState[`${r.id}:${p.code}`]));
                         const enabledInMod = mod.permissions.filter(p => Boolean(matrixState[`${r.id}:${p.code}`])).length;
                         return (
-                          <td key={r.id} style={{ padding: '8px 10px', textAlign: 'center' }}>
+                          <td key={r.id} style={{ padding: '10px 10px', textAlign: 'center', borderLeft: '1px solid var(--border-default)' }}>
                             <button
                               type="button"
                               onClick={() => setModulePermissionsForRole(mod.permissions, r.id, !allEnabled)}
                               style={{
-                                fontSize: '10.5px',
-                                padding: '3px 8px',
-                                borderRadius: '4px',
-                                border: `1px solid ${allEnabled ? r.color : 'var(--border-default)'}`,
-                                background: allEnabled ? r.bg : 'var(--surface-card)',
-                                color: allEnabled ? r.color : 'var(--ink-secondary)',
+                                fontSize: '11px',
+                                padding: '5px 10px',
+                                borderRadius: '6px',
+                                border: `1.5px solid ${allEnabled ? r.border : 'var(--border-strong)'}`,
+                                background: allEnabled ? r.solidBg : 'var(--surface-card)',
+                                color: allEnabled ? '#FFFFFF' : 'var(--ink-primary)',
                                 cursor: 'pointer',
-                                fontWeight: 700
+                                fontWeight: 800
                               }}
                               title={`Bật/tắt toàn bộ quyền ${mod.shortName} cho ${r.name}`}
                             >
@@ -793,42 +903,79 @@ export const RBACMatrixPage = () => {
                         style={{ borderBottom: '1px solid var(--border-default)', transition: 'background 0.15s ease' }}
                         className="ruo-table-row"
                       >
-                        <td style={{ padding: '12px 20px' }}>
-                          <div style={{ fontWeight: 700, color: 'var(--ink-primary)', fontSize: '13px' }}>
-                            {p.label}
+                        <td style={{ padding: '13px 20px' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--ink-primary)', fontSize: '13.5px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span>{p.label}</span>
+                            {p.code === 'role:update' && (
+                              <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px', background: 'var(--status-overdue-bg)', color: 'var(--status-overdue-color)', border: '1px solid var(--status-overdue-border)' }}>
+                                BẢO VỆ CHỐNG KHÓA TRẮNG
+                              </span>
+                            )}
                           </div>
-                          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                          <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)', marginTop: '3px', fontWeight: 700 }}>
                             <code>{p.code}</code>
                           </div>
                         </td>
 
                         {visibleRoles.map(r => {
-                          const isAllowed = Boolean(matrixState[`${r.id}:${p.code}`]);
+                          const cellKey = `${r.id}:${p.code}`;
+                          const isAllowed = Boolean(matrixState[cellKey]);
+                          const isLockedImmutable = r.id === USER_ROLES.ADMIN && p.code === 'role:update';
+                          const isDirtyCell = Boolean(matrixState[cellKey]) !== Boolean(savedMatrixState[cellKey]);
+
                           return (
-                            <td key={r.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
+                            <td
+                              key={r.id}
+                              style={{
+                                padding: '12px 14px',
+                                textAlign: 'center',
+                                borderLeft: '1px solid var(--border-subtle)',
+                                background: isDirtyCell ? 'rgba(217, 119, 6, 0.14)' : undefined
+                              }}
+                            >
                               <button
                                 type="button"
                                 onClick={() => togglePermission(r.id, p.code)}
+                                className="ruo-rbac-toggle-pill"
                                 style={{
-                                  width: '32px',
-                                  height: '32px',
+                                  minWidth: '80px',
+                                  height: '34px',
+                                  padding: '0 12px',
                                   borderRadius: '8px',
-                                  border: isAllowed ? `1.5px solid ${r.color}` : '1px solid var(--border-default)',
-                                  background: isAllowed ? r.bg : 'transparent',
-                                  color: isAllowed ? r.color : 'var(--ink-muted)',
+                                  border: isAllowed
+                                    ? `2px solid ${r.border}`
+                                    : '1.5px dashed var(--border-default)',
+                                  background: isAllowed ? r.solidBg : 'var(--surface-2)',
+                                  color: isAllowed ? '#FFFFFF' : 'var(--ink-muted)',
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
-                                  boxShadow: isAllowed ? `0 2px 8px ${r.color}30` : 'none'
+                                  gap: '5px',
+                                  cursor: isLockedImmutable ? 'not-allowed' : 'pointer',
+                                  fontWeight: 800,
+                                  fontSize: '11.5px',
+                                  boxShadow: isDirtyCell
+                                    ? '0 0 0 2.5px #D97706'
+                                    : isAllowed
+                                      ? '0 2px 6px rgba(15, 23, 42, 0.18)'
+                                      : 'none'
                                 }}
-                                title={`Nhấn để ${isAllowed ? 'thu hồi' : 'cấp'} quyền [${p.code}] cho vai trò [${r.name}]`}
+                                title={
+                                  isLockedImmutable
+                                    ? 'Quyền cốt lõi của Quản trị BGH (Không thể thu hồi để tránh khóa trắng hệ thống)'
+                                    : `Nhấn để ${isAllowed ? 'thu hồi' : 'cấp'} quyền [${p.code}] cho vai trò [${r.name}]`
+                                }
                               >
                                 {isAllowed ? (
-                                  <Icons.Check size={16} strokeWidth={3} />
+                                  <>
+                                    <Icons.Check size={15} strokeWidth={3} />
+                                    <span>{isLockedImmutable ? 'CỐ ĐỊNH' : 'BẬT'}</span>
+                                  </>
                                 ) : (
-                                  <Icons.X size={14} style={{ opacity: 0.35 }} />
+                                  <>
+                                    <Icons.X size={13} strokeWidth={2.5} style={{ opacity: 0.85 }} />
+                                    <span>TẮT</span>
+                                  </>
                                 )}
                               </button>
                             </td>
@@ -848,19 +995,20 @@ export const RBACMatrixPage = () => {
       <div
         style={{
           background: 'var(--surface-card)',
-          border: '1px solid var(--border-default)',
+          border: '1.5px solid var(--border-default)',
           borderRadius: 'var(--radius-md)',
           padding: '14px 18px',
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          fontSize: '12px',
-          color: 'var(--ink-secondary)'
+          fontSize: '12.5px',
+          color: 'var(--ink-primary)',
+          fontWeight: 500
         }}
       >
-        <Icons.Info size={16} color="var(--blueprint-400)" style={{ flexShrink: 0 }} />
+        <Icons.Info size={18} color="var(--blueprint-400)" style={{ flexShrink: 0 }} />
         <div>
-          <strong>Lưu ý nghiệp vụ kiểm toán:</strong> Mỗi vai trò được cập nhật qua chính sách trực tiếp và ghi nhận thành bản ghi SHA-256 trong sổ kiểm toán với hành động <code>UPDATE_ROLE_PERMISSIONS</code>.
+          <strong>Lưu ý nghiệp vụ kiểm toán:</strong> Mỗi vai trò được cập nhật qua chính sách trực tiếp (<code>PUT /api/admin/roles/:id/permissions</code>) và ghi nhận thành bản ghi SHA-256 trong sổ kiểm toán với hành động <code>UPDATE_ROLE_PERMISSIONS</code> kèm danh sách quyền cấp thêm/thu hồi.
         </div>
       </div>
     </div>

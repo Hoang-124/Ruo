@@ -428,7 +428,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
           }
         >
           {selectedRoom ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div key={selectedRoom.code || selectedRoom.id} className="ruo-view-enter" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Room Top Specs Grid */}
               <div
                 style={{
