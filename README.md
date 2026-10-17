@@ -234,7 +234,7 @@ Hệ thống được chuẩn hóa chính xác **20 Collections** chia thành 6 
 - `POST /api/master-data/rooms` — Thêm phòng học mới
 - `GET /api/facilities/cad-canvas` — Mặt bằng CAD số hóa 2D Tòa A1
 
-### Phân Hệ 3: Thiết Bị & Điều Động (`/api/equipments`, `/api/movements`, `/api/disposals`)
+### Phân Hệ 3: Thiết Bị & Điều Động (`/api/equipments`, `/api/transfers`, `/api/disposals`)
 - `GET /api/equipments` — Danh sách thiết bị (hỗ trợ phân trang, lọc phòng, lọc trạng thái)
 - `POST /api/equipments` — Đăng ký thiết bị mới kèm sinh mã QR
 - `GET /api/equipments/:id` — Chi tiết thiết bị & lịch sử bảo hành
@@ -242,9 +242,14 @@ Hệ thống được chuẩn hóa chính xác **20 Collections** chia thành 6 
 - `PUT /api/equipments/:id/warranty` — Cập nhật thời hạn bảo hành
 - `GET /api/equipments/qr/:qrCode` — Tra cứu nhanh thông số thực địa qua mã QR
 - `POST /api/equipments/batch-import` — Import hàng loạt thiết bị từ dữ liệu JSON
-- `GET /api/movements` — Danh sách lệnh điều chuyển thiết bị
-- `POST /api/movements` — Tạo lệnh điều chuyển thiết bị giữa các phòng (Facility Manager)
-- `PUT /api/movements/:id/confirm` — Kỹ thuật viên xác nhận hoàn tất di chuyển thiết bị
+- `POST /api/transfers` — Kỹ thuật viên hoặc Quản lý CSVC tạo phiếu điều chuyển (chờ duyệt)
+- `GET /api/transfers/pending` — Hàng đợi phiếu chờ duyệt (Quản lý CSVC)
+- `PUT /api/transfers/:id/approve` — Quản lý CSVC phê duyệt phiếu
+- `PUT /api/transfers/:id/reject` — Quản lý CSVC từ chối phiếu, bắt buộc có lý do
+- `PUT /api/transfers/:id/complete` — Kỹ thuật viên xác nhận đã bàn giao; hệ thống cập nhật phòng của thiết bị
+- `GET /api/transfers/equipment/:id` — Lịch sử điều chuyển của một thiết bị (Admin, Quản lý CSVC, Kỹ thuật viên, Giảng viên)
+- `GET /api/transfers` — Tra cứu danh sách/lịch sử điều chuyển (các vai trò đã đăng nhập)
+- `/api/movements` — Alias tương thích ngược cho các client cũ
 - `GET /api/disposals` — Danh sách hồ sơ thanh lý thiết bị
 - `POST /api/disposals` — Lập hồ sơ đề xuất thanh lý thiết bị hao mòn R ≥ 60% (Facility Manager)
 - `PUT /api/disposals/:id/approve` — Ban Giám Hiệu phê duyệt thanh lý và ban hành QĐ-TL (Admin)
@@ -317,6 +322,7 @@ cd d:/Ruo/server
 npm install
 cp .env.example .env
 npm run seed        # Nạp 4 tài khoản chuẩn và dữ liệu kho KHO-01
+npm run seed:transfer-demo # Bổ sung dữ liệu demo điều chuyển, không xóa dữ liệu hiện có
 npm run dev         # Khởi động máy chủ backend tại Port 5000
 ```
 

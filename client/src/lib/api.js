@@ -212,9 +212,13 @@ export const facilityApi = {
 };
 
 export const movementApi = {
-  list: (params) => api.get('/movements', params),
-  order: (data) => api.post('/movements', data),
-  confirm: (id, notes) => api.put(`/movements/${id}/confirm`, { notes }),
+  list: (params) => api.get('/transfers', params),
+  pending: () => api.get('/transfers/pending'),
+  getEquipmentHistory: (id) => api.get(`/transfers/equipment/${id}`),
+  order: (data) => api.post('/transfers', data),
+  approve: (id) => api.put(`/transfers/${id}/approve`, {}),
+  reject: (id, reason) => api.put(`/transfers/${id}/reject`, { reason }),
+  confirm: (id, notes) => api.put(`/transfers/${id}/complete`, { notes }),
   cancel: (id, reason) => api.put(`/movements/${id}/cancel`, { reason }),
   getPendingCount: () => api.get('/movements/pending-count')
 };
