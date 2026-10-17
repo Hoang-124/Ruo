@@ -27,6 +27,14 @@ export const getEquipmentCategories = asyncHandler(async (req, res) => {
 // @route   POST /api/equipments
 // @access  Private (Staff, Admin)
 export const createEquipment = asyncHandler(async (req, res) => {
+  // Enforce dynamic RBAC permission check for equipment creation (UC-12.1)
+  if (req.user && typeof req.hasPermission === 'function' && !req.hasPermission('equipment:create')) {
+    return res.status(403).json({
+      success: false,
+      message: 'Quyền truy cập bị từ chối. Nghiệp vụ yêu cầu quyền [equipment:create] trên Ma trận RBAC.'
+    });
+  }
+
   const {
     code,
     assetCode,
