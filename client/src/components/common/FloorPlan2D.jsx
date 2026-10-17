@@ -3037,6 +3037,7 @@ export const FloorPlan2D = ({
               <button
                 key={fl}
                 type="button"
+                className="ruo-rbac-toggle-pill"
                 onClick={() => onChangeFloor && onChangeFloor(fl)}
                 style={{
                   padding: '3px 9px',
@@ -3046,8 +3047,7 @@ export const FloorPlan2D = ({
                   color: isActive ? '#38BDF8' : 'var(--ink-primary)',
                   fontSize: '11px',
                   fontWeight: isActive ? 700 : 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
+                  cursor: 'pointer'
                 }}
                 title={flData?.title}
               >
@@ -3062,6 +3062,8 @@ export const FloorPlan2D = ({
           2. ARCHITECTURAL 2D FLOOR PLAN
           ============================================================== */}
       <div
+        key={selectedFloor}
+        className="ruo-floor-transition"
         style={{
           width: '100%',
           overflowX: 'auto',

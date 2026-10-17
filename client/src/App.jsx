@@ -80,7 +80,7 @@ const MainAppContent = () => {
       >
         <button
           onClick={() => setActiveTab(currentRoleMeta?.defaultTab || 'dashboard')}
-          className="ruo-btn ruo-btn-ghost ruo-btn-sm"
+          className="ruo-btn ruo-btn-ghost ruo-btn-sm ruo-back-nav-btn"
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           title="Quay lại Trang Chủ Vận Hành"
         >
@@ -341,7 +341,7 @@ const MainAppContent = () => {
       {/* Main Subsystem Viewport */}
       <main className="ruo-main-viewport">
         <Suspense fallback={<LazyFallback />}>
-          <div key={activeTab}>
+          <div key={activeTab} className="ruo-view-enter">
             {renderActiveView()}
           </div>
         </Suspense>

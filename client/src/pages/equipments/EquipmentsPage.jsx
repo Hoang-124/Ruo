@@ -54,11 +54,15 @@ const NativeQrMatrixSvg = ({ value = 'QR-EQ-2026-001', size = 148 }) => {
 
 export const EquipmentsPage = () => {
   const { toast } = useToast();
-  const { currentUser } = useAuth();
+  const { currentUser, hasPermission } = useAuth();
 
   const userRole = currentUser?.role || 'facility_manager';
-  const canCreateOrUpdate = ['admin', 'facility_manager', 'technician'].includes(userRole);
-  const canImportOrDispose = ['admin', 'facility_manager'].includes(userRole);
+  const canCreateOrUpdate = typeof hasPermission === 'function'
+    ? (hasPermission('equipment:create') || hasPermission('equipment:update'))
+    : ['admin', 'facility_manager', 'technician'].includes(userRole);
+  const canImportOrDispose = typeof hasPermission === 'function'
+    ? (hasPermission('equipment:import') || hasPermission('equipment:dispose'))
+    : ['admin', 'facility_manager'].includes(userRole);
 
   const [loading, setLoading] = useState(true);
   const [equipments, setEquipments] = useState([]);
@@ -71,11 +75,13 @@ export const EquipmentsPage = () => {
   const [rooms, setRooms] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
 
-  // Multi-dimensional Filters (UC-3.2: chủng loại, trạng thái, phòng học, tầm giá; tìm kiếm tên, mã QR)
+  // Multi-dimensional Filters (UC-3.2: chủng loại, trạng thái, phòng học, tầng, bảo hành, tầm giá; tìm kiếm tên, mã QR)
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [roomFilter, setRoomFilter] = useState('ALL');
+  const [floorFilter, setFloorFilter] = useState('ALL');
+  const [warrantyFilter, setWarrantyFilter] = useState('ALL');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
 
@@ -158,6 +164,8 @@ export const EquipmentsPage = () => {
         ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
         ...(categoryFilter !== 'ALL' ? { category_id: categoryFilter } : {}),
         ...(roomFilter !== 'ALL' ? { room_id: roomFilter } : {}),
+        ...(floorFilter !== 'ALL' ? { floor: Number(floorFilter) } : {}),
+        ...(warrantyFilter !== 'ALL' ? { warranty_status: warrantyFilter } : {}),
         ...(minPrice !== '' ? { minPrice: Number(minPrice) } : {}),
         ...(maxPrice !== '' ? { maxPrice: Number(maxPrice) } : {})
       };
@@ -178,7 +186,7 @@ export const EquipmentsPage = () => {
 
   useEffect(() => {
     fetchEquipments();
-  }, [page, statusFilter, categoryFilter, roomFilter]);
+  }, [page, statusFilter, categoryFilter, roomFilter, floorFilter, warrantyFilter]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -191,6 +199,8 @@ export const EquipmentsPage = () => {
     setStatusFilter('ALL');
     setCategoryFilter('ALL');
     setRoomFilter('ALL');
+    setFloorFilter('ALL');
+    setWarrantyFilter('ALL');
     setMinPrice('');
     setMaxPrice('');
     setPage(1);
@@ -311,13 +321,25 @@ export const EquipmentsPage = () => {
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
+    if (formData.purchase_date && formData.warranty_expiry) {
+      if (new Date(formData.warranty_expiry) < new Date(formData.purchase_date)) {
+        toast.error('Lỗi logic thời gian: Hạn bảo hành không được nhỏ hơn Ngày mua thiết bị!');
+        return;
+      }
+    }
+    const depRate = Number(formData.depreciation_rate ?? 20);
+    if (Number.isNaN(depRate) || depRate < 0 || depRate > 100) {
+      toast.error('Tỷ lệ khấu hao (%/năm) phải nằm trong khoảng từ 0% đến 100%!');
+      return;
+    }
+
     try {
       setSubmitting(true);
       const payload = {
         ...formData,
         qr_code: formData.qr_code || `QR-${formData.code.toUpperCase().trim()}`,
         price: Number(formData.price) || 0,
-        depreciation_rate: Number(formData.depreciation_rate) || 20,
+        depreciation_rate: depRate,
         room_id: formData.room_id || null,
         supplier_id: formData.supplier_id || null
       };
@@ -337,6 +359,22 @@ export const EquipmentsPage = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!selectedEq) return;
+    if (formData.purchase_date && formData.warranty_expiry) {
+      if (new Date(formData.warranty_expiry) < new Date(formData.purchase_date)) {
+        toast.error('Lỗi logic thời gian: Hạn bảo hành không được nhỏ hơn Ngày mua thiết bị!');
+        return;
+      }
+    }
+    const depRate = Number(formData.depreciation_rate ?? 20);
+    if (Number.isNaN(depRate) || depRate < 0 || depRate > 100) {
+      toast.error('Tỷ lệ khấu hao (%/năm) phải nằm trong khoảng từ 0% đến 100%!');
+      return;
+    }
+    if (selectedEq.status === 'disposed' && formData.room_id) {
+      toast.error('Tài sản đã thanh lý (DISPOSED) không thể phân bổ lại vào phòng học đang vận hành!');
+      return;
+    }
+
     try {
       setSubmitting(true);
       const res = await equipmentApi.update(selectedEq._id, {
@@ -348,7 +386,7 @@ export const EquipmentsPage = () => {
         room_id: formData.room_id || null,
         supplier_id: formData.supplier_id || null,
         price: Number(formData.price) || 0,
-        depreciation_rate: Number(formData.depreciation_rate) || 20,
+        depreciation_rate: depRate,
         purchase_date: formData.purchase_date || null,
         warranty_expiry: formData.warranty_expiry || null,
         movement_reason: formData.movement_reason
@@ -412,31 +450,61 @@ export const EquipmentsPage = () => {
     }
   };
 
-  // Parse CSV/TSV/JSON text into array of objects for UC-3.6 & UC-3.7
+  // RFC-4180 Quote-Aware & Semicolon/Tab/Comma-Aware CSV Parser for UC-3.6 & UC-3.7
   const parseBatchInputText = (rawText) => {
-    const trimmed = String(rawText || '').trim();
-    if (!trimmed) return [];
+    const cleaned = String(rawText || '').replace(/^\uFEFF/, '').trim();
+    if (!cleaned) return [];
 
     // If JSON array
-    if (trimmed.startsWith('[')) {
+    if (cleaned.startsWith('[')) {
       try {
-        const arr = JSON.parse(trimmed);
+        const arr = JSON.parse(cleaned);
         return Array.isArray(arr) ? arr : [];
       } catch (_) {
         // Fallback to CSV parser
       }
     }
 
-    const lines = trimmed.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    const lines = cleaned.split(/\r?\n/).filter((l) => l.trim().length > 0);
     if (lines.length === 0) return [];
 
-    const delimiter = lines[0].includes('\t') ? '\t' : ',';
-    const splitRow = (line) =>
-      line.split(delimiter).map((cell) => cell.trim().replace(/^"|"$/g, ''));
+    // Detect delimiter from first line: Tab (\t), Semicolon (;) for Vietnamese Excel, or Comma (,)
+    const firstLineSample = lines[0];
+    const delimiter = firstLineSample.includes('\t')
+      ? '\t'
+      : firstLineSample.split(';').length > firstLineSample.split(',').length
+        ? ';'
+        : ',';
 
-    const firstRow = splitRow(lines[0]);
-    const hasHeader =
-      firstRow.some((h) => ['code', 'mã tài sản', 'name', 'tên thiết bị', 'category', 'price'].includes(h.toLowerCase()));
+    // RFC-4180 quote-aware line splitter (handles commas/semicolons inside "..." and escaped "")
+    const splitCsvRow = (line) => {
+      const cells = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === delimiter && !inQuotes) {
+          cells.push(current.trim());
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+      cells.push(current.trim());
+      return cells;
+    };
+
+    const firstRow = splitCsvRow(lines[0]);
+    const hasHeader = firstRow.some((h) =>
+      ['code', 'mã tài sản', 'ma_ts', 'name', 'tên thiết bị', 'category', 'loại', 'price', 'giá'].includes(h.toLowerCase())
+    );
 
     const headers = hasHeader
       ? firstRow.map((h) => {
@@ -455,7 +523,7 @@ export const EquipmentsPage = () => {
 
     const dataLines = hasHeader ? lines.slice(1) : lines;
     return dataLines.map((line) => {
-      const cols = splitRow(line);
+      const cols = splitCsvRow(line);
       const obj = {};
       headers.forEach((key, idx) => {
         if (cols[idx] !== undefined) {
@@ -466,6 +534,32 @@ export const EquipmentsPage = () => {
     });
   };
 
+  const serializeItemsToCsv = (items) => {
+    const header = 'code,name,category,room,price,brand,model,serial_number';
+    const escapeCell = (val) => {
+      const str = String(val ?? '');
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+    const rows = items.map((it) =>
+      [
+        it.code || '',
+        it.name || '',
+        it.category || it.category_id || '',
+        it.room || it.room_id || 'KHO',
+        it.price ?? 0,
+        it.brand || '',
+        it.model || '',
+        it.serial_number || ''
+      ]
+        .map(escapeCell)
+        .join(',')
+    );
+    return [header, ...rows].join('\n');
+  };
+
   const handleBatchTextChange = (text) => {
     setBatchRawText(text);
     const items = parseBatchInputText(text);
@@ -473,10 +567,184 @@ export const EquipmentsPage = () => {
     setValidationResult(null);
   };
 
-  const handleCsvFileUpload = (e) => {
+  // Inline cell editing directly inside the Preview Grid (UC-3.6 & UC-3.7)
+  const handleInlineBatchCellChange = (rowIdx, field, value) => {
+    setParsedBatchItems((prev) => {
+      const next = prev.map((it, idx) => {
+        if (idx !== rowIdx) return it;
+        return {
+          ...it,
+          [field]: field === 'price' ? Number(value) || 0 : value
+        };
+      });
+      setBatchRawText(serializeItemsToCsv(next));
+      return next;
+    });
+    setValidationResult(null);
+  };
+
+  const handleRemoveBatchRow = (rowIdx) => {
+    setParsedBatchItems((prev) => {
+      const next = prev.filter((_, idx) => idx !== rowIdx);
+      setBatchRawText(serializeItemsToCsv(next));
+      return next;
+    });
+    setValidationResult(null);
+  };
+
+  const handleRemoveAllInvalidBatchRows = () => {
+    if (!validationResult?.previewRows) return;
+    const validIndices = new Set(
+      validationResult.previewRows.filter((r) => r.valid).map((r) => r.row - 1)
+    );
+    const next = parsedBatchItems.filter((_, idx) => validIndices.has(idx));
+    setParsedBatchItems(next);
+    setBatchRawText(serializeItemsToCsv(next));
+    setValidationResult(null);
+    toast.success(`Đã loại bỏ các dòng lỗi. Còn lại ${next.length} dòng hợp lệ sẵn sàng kiểm tra & nhập kho!`);
+  };
+
+  // Native Zero-Dependency .xlsx (OpenXML ZIP) Parser using Web DecompressionStream + DOMParser
+  const parseXlsxArrayBufferToCsv = async (buffer) => {
+    const bytes = new Uint8Array(buffer);
+    const view = new DataView(buffer);
+    const decoder = new TextDecoder('utf-8');
+    const entries = new Map();
+
+    // Scan Central Directory headers (0x02014b50) for accurate compressed sizes
+    for (let i = 0; i < bytes.length - 46; i++) {
+      if (view.getUint32(i, true) === 0x02014b50) {
+        const compression = view.getUint16(i + 10, true);
+        const compSize = view.getUint32(i + 20, true);
+        const nameLen = view.getUint16(i + 28, true);
+        const extraLen = view.getUint16(i + 30, true);
+        const commentLen = view.getUint16(i + 32, true);
+        const localOffset = view.getUint32(i + 42, true);
+        const name = decoder.decode(bytes.subarray(i + 46, i + 46 + nameLen));
+        entries.set(name, { compression, compSize, localOffset });
+        i += 45 + nameLen + extraLen + commentLen;
+      }
+    }
+
+    const readZipEntryXml = async (entryName) => {
+      const meta = entries.get(entryName);
+      if (!meta) return null;
+      const loc = meta.localOffset;
+      if (view.getUint32(loc, true) !== 0x04034b50) return null;
+      const lNameLen = view.getUint16(loc + 26, true);
+      const lExtraLen = view.getUint16(loc + 28, true);
+      const dataStart = loc + 30 + lNameLen + lExtraLen;
+      const slice = bytes.subarray(dataStart, dataStart + meta.compSize);
+
+      if (meta.compression === 0) {
+        return decoder.decode(slice);
+      }
+      if (meta.compression === 8 && typeof DecompressionStream !== 'undefined') {
+        const ds = new DecompressionStream('deflate-raw');
+        const writer = ds.writable.getWriter();
+        writer.write(slice);
+        writer.close();
+        const decompressedBuf = await new Response(ds.readable).arrayBuffer();
+        return decoder.decode(decompressedBuf);
+      }
+      return null;
+    };
+
+    const sharedXml = await readZipEntryXml('xl/sharedStrings.xml');
+    const sharedStrings = [];
+    const domParser = new DOMParser();
+
+    if (sharedXml) {
+      const sDoc = domParser.parseFromString(sharedXml, 'application/xml');
+      const siNodes = sDoc.getElementsByTagName('si');
+      for (let i = 0; i < siNodes.length; i++) {
+        const tNodes = siNodes[i].getElementsByTagName('t');
+        let text = '';
+        for (let j = 0; j < tNodes.length; j++) {
+          text += tNodes[j].textContent || '';
+        }
+        sharedStrings.push(text);
+      }
+    }
+
+    const sheetEntryName =
+      Array.from(entries.keys()).find((k) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(k)) ||
+      'xl/worksheets/sheet1.xml';
+    const sheetXml = await readZipEntryXml(sheetEntryName);
+    if (!sheetXml) {
+      throw new Error('Không tìm thấy bảng tính hợp lệ bên trong tệp .xlsx.');
+    }
+
+    const sheetDoc = domParser.parseFromString(sheetXml, 'application/xml');
+    const rowNodes = sheetDoc.getElementsByTagName('row');
+    const matrix = [];
+
+    const colLettersToIndex = (ref) => {
+      const match = String(ref || '').match(/^[A-Z]+/i);
+      if (!match) return 0;
+      const letters = match[0].toUpperCase();
+      let idx = 0;
+      for (let i = 0; i < letters.length; i++) {
+        idx = idx * 26 + (letters.charCodeAt(i) - 64);
+      }
+      return Math.max(0, idx - 1);
+    };
+
+    for (let r = 0; r < rowNodes.length; r++) {
+      const cNodes = rowNodes[r].getElementsByTagName('c');
+      const rowValues = [];
+      for (let c = 0; c < cNodes.length; c++) {
+        const cell = cNodes[c];
+        const colIdx = colLettersToIndex(cell.getAttribute('r') || '');
+        const cellType = cell.getAttribute('t');
+        const vNode = cell.getElementsByTagName('v')[0];
+        const isNode = cell.getElementsByTagName('is')[0];
+        let val = '';
+        if (cellType === 's' && vNode) {
+          const sIdx = parseInt(vNode.textContent || '0', 10);
+          val = sharedStrings[sIdx] ?? '';
+        } else if (cellType === 'inlineStr' && isNode) {
+          val = isNode.textContent || '';
+        } else if (vNode) {
+          val = vNode.textContent || '';
+        }
+        rowValues[colIdx] = String(val).trim();
+      }
+      if (rowValues.some((v) => v && v.length > 0)) {
+        const filled = [];
+        for (let k = 0; k < rowValues.length; k++) {
+          const cellStr = String(rowValues[k] ?? '');
+          filled.push(
+            cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')
+              ? `"${cellStr.replace(/"/g, '""')}"`
+              : cellStr
+          );
+        }
+        matrix.push(filled.join(','));
+      }
+    }
+
+    return matrix.join('\n');
+  };
+
+  const handleCsvFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setBatchFileName(file.name);
+
+    const isXlsx = file.name.toLowerCase().endsWith('.xlsx');
+    if (isXlsx) {
+      try {
+        const arrayBuf = await file.arrayBuffer();
+        const csvConverted = await parseXlsxArrayBufferToCsv(arrayBuf);
+        handleBatchTextChange(csvConverted);
+        toast.success(`Đã giải mã trực tiếp tệp Excel [${file.name}] vào lưới xem trước!`);
+      } catch (err) {
+        toast.error('Không thể đọc tệp .xlsx: ' + err.message);
+      }
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       const content = evt.target?.result || '';
@@ -603,30 +871,30 @@ export const EquipmentsPage = () => {
 
   const getStatusBadge = (status) => {
     const map = {
-      in_use: { label: 'Đang sử dụng', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.3)' },
-      in_stock: { label: 'Kho dự phòng', color: 'var(--laser-cyan)', bg: 'rgba(6, 182, 212, 0.12)', border: 'rgba(6, 182, 212, 0.3)' },
-      broken: { label: 'Bị hỏng', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.3)' },
-      repairing: { label: 'Đang sửa chữa', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.3)' },
-      pending_disposal: { label: 'Chờ thanh lý', color: '#A855F7', bg: 'rgba(168, 85, 247, 0.12)', border: 'rgba(168, 85, 247, 0.3)' },
-      disposed: { label: 'Đã thanh lý (DISPOSED)', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.15)', border: 'rgba(148, 163, 184, 0.3)' }
+      in_use: { label: 'Đang sử dụng', color: 'var(--status-active-color)', bg: 'var(--status-active-bg)', border: 'var(--status-active-border)', dot: 'var(--status-active-solid)' },
+      in_stock: { label: 'Kho dự phòng', color: 'var(--status-transferring-color)', bg: 'var(--status-transferring-bg)', border: 'var(--status-transferring-border)', dot: 'var(--status-transferring-solid)' },
+      broken: { label: 'Bị hỏng', color: 'var(--status-overdue-color)', bg: 'var(--status-overdue-bg)', border: 'var(--status-overdue-border)', dot: 'var(--status-overdue-solid)' },
+      repairing: { label: 'Đang sửa chữa', color: 'var(--status-repairing-color)', bg: 'var(--status-repairing-bg)', border: 'var(--status-repairing-border)', dot: 'var(--status-repairing-solid)' },
+      pending_disposal: { label: 'Chờ thanh lý', color: 'var(--status-disposal-color)', bg: 'var(--status-disposal-bg)', border: 'var(--status-disposal-border)', dot: 'var(--status-disposal-solid)' },
+      disposed: { label: 'Đã thanh lý (DISPOSED)', color: 'var(--status-disposed-color)', bg: 'var(--status-disposed-bg)', border: 'var(--status-disposed-border)', dot: 'var(--status-disposed-solid)' }
     };
-    const item = map[status] || { label: status, color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.3)' };
+    const item = map[status] || { label: status, color: 'var(--status-disposed-color)', bg: 'var(--status-disposed-bg)', border: 'var(--status-disposed-border)', dot: 'var(--status-disposed-solid)' };
     return (
       <span
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: '6px',
-          padding: '3px 10px',
+          padding: '4px 10px',
           borderRadius: '999px',
           fontSize: '11.5px',
-          fontWeight: 700,
+          fontWeight: 800,
           color: item.color,
           background: item.bg,
-          border: `1px solid ${item.border}`
+          border: `1.5px solid ${item.border}`
         }}
       >
-        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.color }} />
+        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: item.dot }} />
         {item.label}
       </span>
     );
@@ -643,32 +911,40 @@ export const EquipmentsPage = () => {
     selectedEq &&
     String(selectedEq.room_id?._id || selectedEq.room_id || '') !== String(formData.room_id || '');
 
-  const previewRowsToDisplay = validationResult?.previewRows || parsedBatchItems.map((item, idx) => ({
-    row: idx + 1,
-    code: item.code || '(Trống)',
-    name: item.name || '(Trống)',
-    category_name: item.category || item.category_id || '(Trống)',
-    room_name: item.room || item.room_id || 'Kho dự phòng',
-    price: item.price || 0,
-    valid: null,
-    errors: []
-  }));
+  const previewRowsToDisplay = parsedBatchItems.map((item, idx) => {
+    const validatedRow = validationResult?.previewRows?.[idx];
+    return {
+      row: idx + 1,
+      rawCode: item.code || '',
+      rawName: item.name || '',
+      rawCategory: item.category || item.category_id || '',
+      rawRoom: item.room || item.room_id || 'KHO',
+      rawPrice: item.price ?? 0,
+      code: validatedRow?.code || item.code || '(Trống)',
+      name: validatedRow?.name || item.name || '(Trống)',
+      category_name: validatedRow?.category_name || item.category || item.category_id || '(Trống)',
+      room_name: validatedRow?.room_name || item.room || item.room_id || 'Kho dự phòng',
+      price: item.price || 0,
+      valid: validatedRow ? validatedRow.valid : null,
+      errors: validatedRow?.errors || []
+    };
+  });
 
   return (
     <div>
       {/* Header Banner */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px', background: 'var(--surface-card)', border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '18px 22px', boxShadow: 'var(--shadow-sm)' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--laser-cyan)', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', color: '#FFFFFF', background: '#1D4ED8', border: '1px solid #1E40AF', padding: '3px 9px', borderRadius: '5px', fontWeight: 800 }}>
               MODULE 03 • TÒA NHÀ ĐA NĂNG A1
             </span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
-              UC-3.1 → UC-3.8 • QUẢN LÝ VÒNG ĐỜI, NHẬP LÔ EXCEL/CSV, TEM QR & THANH LÝ
+            <span style={{ fontSize: '12px', color: 'var(--ink-secondary)', fontWeight: 700 }}>
+              UC-3.1 → UC-3.8 • QUẢN LÝ VÒNG ĐỜI, NHẬP LÔ EXCEL/CSV, TEM QR &amp; THANH LÝ
             </span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
-            Danh Mục Thiết Bị & Hồ Sơ Vòng Đời Tài Sản (Tòa A1)
+            Danh Mục Thiết Bị &amp; Hồ Sơ Vòng Đời Tài Sản (Tòa A1)
           </h1>
         </div>
 
@@ -683,14 +959,14 @@ export const EquipmentsPage = () => {
                 onChange={(e) => setFastQrInput(e.target.value)}
                 placeholder="Quét / nhập nhanh mã QR..."
                 className="ruo-portal-input"
-                style={{ paddingLeft: '30px', height: '36px', width: '200px', fontSize: '12px', fontFamily: 'var(--font-mono)' }}
+                style={{ paddingLeft: '32px', height: '38px', width: '210px', fontSize: '12.5px', fontFamily: 'var(--font-mono)', fontWeight: 700 }}
               />
             </div>
             <button
               type="submit"
               disabled={qrLookupLoading}
               className="laser-btn laser-btn-secondary"
-              style={{ height: '36px', padding: '0 12px', fontSize: '12px', fontWeight: 700, color: 'var(--laser-cyan)', border: '1px solid rgba(6,182,212,0.35)' }}
+              style={{ height: '38px', padding: '0 14px', fontSize: '12.5px', fontWeight: 800, color: 'var(--laser-cyan)', border: '1.5px solid var(--laser-cyan)' }}
               title="Tra cứu dưới 1 giây bằng mã QR"
             >
               {qrLookupLoading ? '...' : 'Tra QR'}
@@ -706,7 +982,7 @@ export const EquipmentsPage = () => {
                 }
               }}
               className="laser-btn laser-btn-secondary"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-pure)' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 800, border: '1.5px solid var(--border-strong)' }}
             >
               <Icons.Upload size={16} />
               <span>Nhập Lô Excel/CSV (&gt;100 bản ghi)</span>
@@ -717,7 +993,7 @@ export const EquipmentsPage = () => {
             <button
               onClick={openCreate}
               className="laser-btn laser-btn-primary"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 800 }}
             >
               <Icons.Plus size={16} />
               <span>Đăng Ký Thiết Bị Mới</span>
@@ -727,42 +1003,42 @@ export const EquipmentsPage = () => {
       </div>
 
       {/* KPI Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px', marginBottom: '20px' }}>
-        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
-          <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Tổng thiết bị truy vấn</div>
-          <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--ink-pure)', marginTop: '4px' }}>{totalCount}</div>
+      <div className="ruo-stagger-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+        <div className="ruo-motion-card" style={{ background: 'var(--surface-card)', border: '1.5px solid var(--border-default)', borderTop: '4px solid #1E3A8A', borderRadius: 'var(--radius-lg)', padding: '15px 18px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', fontWeight: 800 }}>Tổng thiết bị truy vấn</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: 'var(--ink-pure)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>{totalCount}</div>
         </div>
-        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
-          <div style={{ fontSize: '12px', color: '#10B981', fontWeight: 600 }}>Đang sử dụng tại phòng (In Use)</div>
-          <div style={{ fontSize: '22px', fontWeight: 800, color: '#10B981', marginTop: '4px' }}>{inUseCount}</div>
+        <div className="ruo-motion-card" style={{ background: 'var(--surface-card)', border: '1.5px solid var(--status-active-border)', borderTop: '4px solid var(--status-active-solid)', borderRadius: 'var(--radius-lg)', padding: '15px 18px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ fontSize: '12px', color: 'var(--status-active-color)', fontWeight: 800 }}>Đang sử dụng tại phòng (In Use)</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: 'var(--status-active-color)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>{inUseCount}</div>
         </div>
-        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
-          <div style={{ fontSize: '12px', color: 'var(--laser-cyan)', fontWeight: 600 }}>Kho dự phòng (In Stock)</div>
-          <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--laser-cyan)', marginTop: '4px' }}>{inStockCount}</div>
+        <div className="ruo-motion-card" style={{ background: 'var(--surface-card)', border: '1.5px solid var(--status-transferring-border)', borderTop: '4px solid var(--status-transferring-solid)', borderRadius: 'var(--radius-lg)', padding: '15px 18px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ fontSize: '12px', color: 'var(--status-transferring-color)', fontWeight: 800 }}>Kho dự phòng (In Stock)</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: 'var(--status-transferring-color)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>{inStockCount}</div>
         </div>
-        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
-          <div style={{ fontSize: '12px', color: '#EF4444', fontWeight: 600 }}>Hỏng / Đang sửa chữa</div>
-          <div style={{ fontSize: '22px', fontWeight: 800, color: '#EF4444', marginTop: '4px' }}>{brokenCount}</div>
+        <div className="ruo-motion-card" style={{ background: 'var(--surface-card)', border: '1.5px solid var(--status-overdue-border)', borderTop: '4px solid var(--status-overdue-solid)', borderRadius: 'var(--radius-lg)', padding: '15px 18px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ fontSize: '12px', color: 'var(--status-overdue-color)', fontWeight: 800 }}>Hỏng / Đang sửa chữa</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: 'var(--status-overdue-color)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>{brokenCount}</div>
         </div>
-        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(148,163,184,0.3)', borderRadius: 'var(--radius-lg)', padding: '14px 18px' }}>
-          <div style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 600 }}>Đã thanh lý (Disposed)</div>
-          <div style={{ fontSize: '22px', fontWeight: 800, color: '#94A3B8', marginTop: '4px' }}>{disposedCount}</div>
+        <div className="ruo-motion-card" style={{ background: 'var(--surface-card)', border: '1.5px solid var(--status-disposed-border)', borderTop: '4px solid var(--status-disposed-solid)', borderRadius: 'var(--radius-lg)', padding: '15px 18px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ fontSize: '12px', color: 'var(--status-disposed-color)', fontWeight: 800 }}>Đã thanh lý (Disposed)</div>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: 'var(--status-disposed-color)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>{disposedCount}</div>
         </div>
       </div>
 
       {/* Multi-dimensional Filter & Search Bar (UC-3.2) */}
-      <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: '20px' }}>
+      <div style={{ background: 'var(--surface-card)', border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '18px', marginBottom: '20px', boxShadow: 'var(--shadow-xs)' }}>
         <form onSubmit={handleSearchSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: '1 1 260px' }}>
-              <Icons.Search size={16} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--ink-muted)' }} />
+            <div style={{ position: 'relative', flex: '1 1 250px' }}>
+              <Icons.Search size={16} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--ink-secondary)' }} />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm theo tên thiết bị, mã tài sản, mã QR (QR-EQ-...), serial, model..."
                 className="ruo-portal-input"
-                style={{ paddingLeft: '38px', width: '100%', height: '38px' }}
+                style={{ paddingLeft: '38px', width: '100%', height: '38px', fontWeight: 600 }}
               />
             </div>
 
@@ -771,7 +1047,7 @@ export const EquipmentsPage = () => {
               value={categoryFilter}
               onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }}
               className="ruo-portal-input"
-              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', minWidth: '175px' }}
+              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', width: 'auto', minWidth: '165px', fontWeight: 600 }}
             >
               <option value="ALL">Tất cả chủng loại</option>
               {categories.map((c) => (
@@ -779,26 +1055,41 @@ export const EquipmentsPage = () => {
               ))}
             </select>
 
-            {/* Filter 2: Phòng học Tòa A1 */}
+            {/* Filter 2: Tầng Tòa A1 */}
+            <select
+              value={floorFilter}
+              onChange={(e) => { setFloorFilter(e.target.value); setPage(1); }}
+              className="ruo-portal-input"
+              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', width: 'auto', minWidth: '135px', fontWeight: 600 }}
+            >
+              <option value="ALL">Tất cả 7 tầng</option>
+              {[1, 2, 3, 4, 5, 6, 7].map((fl) => (
+                <option key={fl} value={String(fl)}>Tầng {fl} — Tòa A1</option>
+              ))}
+            </select>
+
+            {/* Filter 3: Phòng học Tòa A1 */}
             <select
               value={roomFilter}
               onChange={(e) => { setRoomFilter(e.target.value); setPage(1); }}
               className="ruo-portal-input"
-              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', minWidth: '185px' }}
+              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', width: 'auto', minWidth: '180px', fontWeight: 600 }}
             >
               <option value="ALL">Tất cả vị trí (Tòa A1)</option>
               <option value="warehouse">Kho dự phòng (Chưa phân phòng)</option>
-              {rooms.map((r) => (
-                <option key={r._id} value={r._id}>{r.code} — {r.name} (Tầng {r.floor})</option>
-              ))}
+              {rooms
+                .filter((r) => floorFilter === 'ALL' || Number(r.floor) === Number(floorFilter))
+                .map((r) => (
+                  <option key={r._id} value={r._id}>{r.code} — {r.name} (Tầng {r.floor})</option>
+                ))}
             </select>
 
-            {/* Filter 3: Trạng thái */}
+            {/* Filter 4: Trạng thái */}
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
               className="ruo-portal-input"
-              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', minWidth: '165px' }}
+              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', width: 'auto', minWidth: '160px', fontWeight: 600 }}
             >
               <option value="ALL">Tất cả trạng thái</option>
               <option value="in_use">Đang sử dụng (in_use)</option>
@@ -808,12 +1099,24 @@ export const EquipmentsPage = () => {
               <option value="pending_disposal">Chờ thanh lý</option>
               <option value="disposed">Đã thanh lý (disposed)</option>
             </select>
+
+            {/* Filter 5: Bảo hành */}
+            <select
+              value={warrantyFilter}
+              onChange={(e) => { setWarrantyFilter(e.target.value); setPage(1); }}
+              className="ruo-portal-input"
+              style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', width: 'auto', minWidth: '150px', fontWeight: 600 }}
+            >
+              <option value="ALL">Tất cả bảo hành</option>
+              <option value="active">Còn hạn bảo hành</option>
+              <option value="expired">Đã hết hạn BH</option>
+            </select>
           </div>
 
           {/* Second Filter Row: Price Range (Tầm giá) + Action buttons */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', paddingTop: '8px', borderTop: '1px solid var(--hairline-soft)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-default)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 600 }}>Tầm nguyên giá (VNĐ):</span>
+              <span style={{ fontSize: '12.5px', color: 'var(--ink-primary)', fontWeight: 700 }}>Tầm nguyên giá (VNĐ):</span>
               <input
                 type="number"
                 min="0"
@@ -824,7 +1127,7 @@ export const EquipmentsPage = () => {
                 className="ruo-portal-input"
                 style={{ width: '165px', height: '34px', fontSize: '12px' }}
               />
-              <span style={{ color: 'var(--ink-muted)' }}>—</span>
+              <span style={{ color: 'var(--ink-secondary)', fontWeight: 700 }}>—</span>
               <input
                 type="number"
                 min="0"
@@ -838,21 +1141,21 @@ export const EquipmentsPage = () => {
               <button
                 type="button"
                 onClick={() => { setMinPrice(''); setMaxPrice('15000000'); }}
-                style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-secondary)', cursor: 'pointer' }}
+                style={{ fontSize: '11.5px', fontWeight: 700, padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-2)', border: '1.5px solid var(--border-strong)', color: 'var(--ink-primary)', cursor: 'pointer' }}
               >
                 &lt; 15 triệu
               </button>
               <button
                 type="button"
                 onClick={() => { setMinPrice('15000000'); setMaxPrice('40000000'); }}
-                style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-secondary)', cursor: 'pointer' }}
+                style={{ fontSize: '11.5px', fontWeight: 700, padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-2)', border: '1.5px solid var(--border-strong)', color: 'var(--ink-primary)', cursor: 'pointer' }}
               >
                 15 – 40 triệu
               </button>
               <button
                 type="button"
                 onClick={() => { setMinPrice('40000000'); setMaxPrice(''); }}
-                style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', color: 'var(--ink-secondary)', cursor: 'pointer' }}
+                style={{ fontSize: '11.5px', fontWeight: 700, padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-2)', border: '1.5px solid var(--border-strong)', color: 'var(--ink-primary)', cursor: 'pointer' }}
               >
                 &gt; 40 triệu
               </button>
@@ -863,14 +1166,14 @@ export const EquipmentsPage = () => {
                 type="button"
                 onClick={handleResetFilters}
                 className="laser-btn laser-btn-secondary"
-                style={{ height: '34px', padding: '0 14px', borderRadius: 'var(--radius-md)', fontSize: '12px' }}
+                style={{ height: '34px', padding: '0 14px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 700 }}
               >
                 Đặt Lại Bộ Lọc
               </button>
               <button
                 type="submit"
                 className="laser-btn laser-btn-primary"
-                style={{ height: '34px', padding: '0 18px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', fontWeight: 700 }}
+                style={{ height: '34px', padding: '0 18px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', fontWeight: 800 }}
               >
                 Áp Dụng Tìm Kiếm
               </button>
@@ -880,31 +1183,31 @@ export const EquipmentsPage = () => {
       </div>
 
       {/* Equipment Table */}
-      <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--surface-card)', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--ink-muted)' }}>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--ink-secondary)' }}>
             <Icons.RefreshCw size={28} className="spin" style={{ marginBottom: '12px' }} />
-            <div>Đang tải danh sách thiết bị...</div>
+            <div style={{ fontWeight: 700 }}>Đang tải danh sách thiết bị...</div>
           </div>
         ) : equipments.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-muted)' }}>
-            <Icons.Equipment size={36} style={{ opacity: 0.5, marginBottom: '12px' }} />
-            <div style={{ fontSize: '15px', fontWeight: 600 }}>Không tìm thấy thiết bị nào phù hợp.</div>
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-secondary)' }}>
+            <Icons.Equipment size={36} style={{ opacity: 0.6, marginBottom: '12px' }} />
+            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ink-pure)' }}>Không tìm thấy thiết bị nào phù hợp.</div>
             <div style={{ fontSize: '13px', marginTop: '4px' }}>Hãy thử điều chỉnh bộ lọc hoặc đăng ký tài sản mới.</div>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+            <table className="ruo-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
-                <tr style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--hairline-medium)' }}>
-                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Mã Tài Sản / QR</th>
-                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Tên Thiết Bị / Model</th>
-                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Chủng Loại</th>
-                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Vị Trí (Tòa A1)</th>
-                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Nguyên Giá</th>
-                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Trạng Thái</th>
-                  <th style={{ padding: '12px 16px', color: 'var(--ink-pure)', fontWeight: 700 }}>Bảo Hành</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--ink-pure)', fontWeight: 700 }}>Thao Tác</th>
+                <tr style={{ background: 'var(--surface-header)', borderBottom: '2px solid var(--border-strong)' }}>
+                  <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Mã Tài Sản / QR</th>
+                  <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Tên Thiết Bị / Model</th>
+                  <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Chủng Loại</th>
+                  <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Vị Trí (Tòa A1)</th>
+                  <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Nguyên Giá</th>
+                  <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Trạng Thái</th>
+                  <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Bảo Hành</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--ink-pure)', fontWeight: 800 }}>Thao Tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -916,7 +1219,7 @@ export const EquipmentsPage = () => {
                   return (
                     <tr
                       key={eq._id}
-                      style={{ borderBottom: '1px solid var(--hairline-soft)', cursor: 'pointer' }}
+                      style={{ borderBottom: '1px solid var(--border-default)', cursor: 'pointer' }}
                       onClick={() => openDetail(eq)}
                     >
                       <td style={{ padding: '12px 16px' }}>
@@ -945,11 +1248,11 @@ export const EquipmentsPage = () => {
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         {eq.warranty_expiry ? (
-                          <div style={{ fontSize: '12px', color: isWarrantyActive ? '#10B981' : '#EF4444' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: isWarrantyActive ? 'var(--status-active-color)' : 'var(--status-overdue-color)' }}>
                             ● {isWarrantyActive ? 'Còn hạn' : 'Hết hạn'} ({new Date(eq.warranty_expiry).toLocaleDateString('vi-VN')})
                           </div>
                         ) : (
-                          <span style={{ color: 'var(--ink-muted)', fontSize: '12px' }}>Không có</span>
+                          <span style={{ color: 'var(--ink-muted)', fontSize: '12px', fontWeight: 600 }}>Không có</span>
                         )}
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
@@ -957,7 +1260,7 @@ export const EquipmentsPage = () => {
                           <button
                             onClick={() => openQr(eq)}
                             className="laser-btn laser-btn-secondary"
-                            style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: 'var(--laser-cyan)' }}
+                            style={{ padding: '6px 9px', borderRadius: '6px', background: 'var(--status-transferring-bg)', border: '1.5px solid var(--status-transferring-border)', color: 'var(--status-transferring-color)' }}
                             title="Tạo & In nhãn QR Code"
                           >
                             <Icons.QrCode size={14} />
@@ -967,7 +1270,7 @@ export const EquipmentsPage = () => {
                               <button
                                 onClick={() => openWarranty(eq)}
                                 className="laser-btn laser-btn-secondary"
-                                style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: '#10B981' }}
+                                style={{ padding: '6px 9px', borderRadius: '6px', background: 'var(--status-active-bg)', border: '1.5px solid var(--status-active-border)', color: 'var(--status-active-color)' }}
                                 title="Cập nhật bảo hành"
                               >
                                 <Icons.Shield size={14} />
@@ -975,7 +1278,7 @@ export const EquipmentsPage = () => {
                               <button
                                 onClick={() => openEdit(eq)}
                                 className="laser-btn laser-btn-secondary"
-                                style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--hairline-medium)', color: '#A855F7' }}
+                                style={{ padding: '6px 9px', borderRadius: '6px', background: 'var(--status-disposal-bg)', border: '1.5px solid var(--status-disposal-border)', color: 'var(--status-disposal-color)' }}
                                 title="Chỉnh sửa thông số & vị trí phòng (UC-3.4)"
                               >
                                 <Icons.Edit size={14} />
@@ -986,7 +1289,7 @@ export const EquipmentsPage = () => {
                             <button
                               onClick={() => openDispose(eq)}
                               className="laser-btn laser-btn-secondary"
-                              style={{ padding: '6px 9px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', fontSize: '11px', fontWeight: 700 }}
+                              style={{ padding: '6px 10px', borderRadius: '6px', background: 'var(--status-overdue-bg)', border: '1.5px solid var(--status-overdue-border)', color: 'var(--status-overdue-color)', fontSize: '11.5px', fontWeight: 800 }}
                               title="Thanh lý tài sản theo QĐ BGH (UC-3.8)"
                             >
                               Thanh lý
@@ -1070,9 +1373,9 @@ export const EquipmentsPage = () => {
                       background: 'none',
                       fontSize: '12px',
                       whiteSpace: 'nowrap',
-                      fontWeight: isActive ? 700 : 500,
+                      fontWeight: isActive ? 800 : 600,
                       color: isActive ? 'var(--laser-cyan)' : 'var(--ink-muted)',
-                      borderBottom: isActive ? '2px solid var(--laser-cyan)' : '2px solid transparent',
+                      borderBottom: isActive ? '2.5px solid var(--laser-cyan)' : '2.5px solid transparent',
                       cursor: 'pointer'
                     }}
                   >
@@ -1093,23 +1396,24 @@ export const EquipmentsPage = () => {
                 <>
                   {/* 5-Stage Lifecycle Pipeline Bar (UC-3.5: Tiếp nhận → Phân bổ → Báo hỏng → Sửa chữa → Thanh lý) */}
                   {detailData?.lifecycle?.stages && (
-                    <div style={{ background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                    <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
                         Chu Trình Vòng Đời Tài Sản (UC-3.5 Lifecycle Pipeline)
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
                         {detailData.lifecycle.stages.map((st) => (
                           <div
                             key={st.key}
+                            className={st.reached ? 'ruo-pipeline-stage-active' : undefined}
                             style={{
                               padding: '7px 6px',
                               borderRadius: '6px',
                               textAlign: 'center',
                               fontSize: '11px',
-                              fontWeight: 700,
-                              background: st.reached ? 'rgba(6, 182, 212, 0.14)' : 'rgba(255, 255, 255, 0.03)',
-                              border: `1px solid ${st.reached ? 'var(--laser-cyan)' : 'var(--hairline-soft)'}`,
-                              color: st.reached ? 'var(--ink-pure)' : 'var(--ink-muted)'
+                              fontWeight: 800,
+                              background: st.reached ? '#1D4ED8' : 'var(--surface-card)',
+                              border: `1.5px solid ${st.reached ? '#1E40AF' : 'var(--border-default)'}`,
+                              color: st.reached ? '#FFFFFF' : 'var(--ink-muted)'
                             }}
                           >
                             {st.label}
@@ -1122,16 +1426,16 @@ export const EquipmentsPage = () => {
                   {/* TAB 1: OVERVIEW (UC-3.3) */}
                   {activeTab === 'overview' && (
                     <>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-panel)', padding: '12px 16px', borderRadius: 'var(--radius-md)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-2)', border: '1px solid var(--border-default)', padding: '12px 16px', borderRadius: 'var(--radius-md)' }}>
                         <div>
-                          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', textTransform: 'uppercase' }}>Trạng Thái Vận Hành</div>
+                          <div style={{ fontSize: '11px', color: 'var(--ink-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Trạng Thái Vận Hành</div>
                           <div style={{ marginTop: '4px' }}>{getStatusBadge(selectedEq.status)}</div>
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button
                             onClick={() => openQr(selectedEq)}
                             className="laser-btn laser-btn-secondary"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '12px', background: 'rgba(255, 255, 255, 0.06)', border: '1px solid var(--hairline-medium)', color: 'var(--laser-cyan)' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '12px', fontWeight: 800, color: 'var(--laser-cyan)', border: '1.5px solid var(--laser-cyan)' }}
                           >
                             <Icons.QrCode size={14} />
                             <span>In Nhãn QR</span>
@@ -1231,7 +1535,9 @@ export const EquipmentsPage = () => {
                         detailData.lifecycle.events.map((ev, idx) => (
                           <div
                             key={ev.id || idx}
+                            className="ruo-timeline-item"
                             style={{
+                              animationDelay: `${idx * 0.05}s`,
                               background: 'var(--surface-card)',
                               border: '1px solid var(--hairline-medium)',
                               borderLeft: `4px solid ${ev.badge_color || 'var(--laser-cyan)'}`,
@@ -1281,7 +1587,7 @@ export const EquipmentsPage = () => {
                         </div>
                       ) : (
                         detailData.movements.map((m, idx) => (
-                          <div key={m._id || idx} style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
+                          <div key={m._id || idx} className="ruo-timeline-item" style={{ animationDelay: `${idx * 0.05}s`, background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                               <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)' }}>
                                 {new Date(m.created_at).toLocaleString('vi-VN')}
@@ -1318,7 +1624,7 @@ export const EquipmentsPage = () => {
                         </div>
                       ) : (
                         detailData.repairs.map((r, idx) => (
-                          <div key={r._id || idx} style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
+                          <div key={r._id || idx} className="ruo-timeline-item" style={{ animationDelay: `${idx * 0.05}s`, background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                               <span style={{ fontSize: '12px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--laser-cyan)' }}>
                                 {r.ticket_code || 'REP-TICKET'}
@@ -1355,11 +1661,12 @@ export const EquipmentsPage = () => {
 
                         <div style={{ height: '8px', width: '100%', background: 'var(--surface-panel)', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
                           <div
+                            className="ruo-progress-bar-animated"
                             style={{
                               height: '100%',
                               width: `${Math.min(100, detailData?.depreciation?.depreciationPercent || 0)}%`,
                               background: 'linear-gradient(90deg, #10B981 0%, #F59E0B 70%, #EF4444 100%)',
-                              transition: 'width 0.3s ease'
+                              transition: 'width 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
                             }}
                           />
                         </div>
@@ -1845,23 +2152,24 @@ export const EquipmentsPage = () => {
                         gap: '6px',
                         padding: '7px 14px',
                         borderRadius: '6px',
-                        background: 'var(--laser-cyan)',
-                        color: '#000',
-                        fontWeight: 700,
+                        background: '#1D4ED8',
+                        color: '#FFFFFF',
+                        border: '1.5px solid #1E3A8A',
+                        fontWeight: 800,
                         fontSize: '12px',
                         cursor: 'pointer'
                       }}
                     >
                       <Icons.Upload size={14} />
-                      <span>Chọn Tệp CSV / Excel (.csv, .txt)</span>
-                      <input type="file" accept=".csv,.txt,.tsv,.json" onChange={handleCsvFileUpload} style={{ display: 'none' }} />
+                      <span>Chọn Tệp Excel / CSV (.xlsx, .csv, .txt)</span>
+                      <input type="file" accept=".xlsx,.csv,.txt,.tsv,.json" onChange={handleCsvFileUpload} style={{ display: 'none' }} />
                     </label>
 
                     <button
                       type="button"
                       onClick={() => handleGenerate105SampleRows(false)}
                       className="laser-btn laser-btn-secondary"
-                      style={{ padding: '7px 12px', fontSize: '12px', fontWeight: 700 }}
+                      style={{ padding: '7px 12px', fontSize: '12px', fontWeight: 800 }}
                     >
                       ⚡ Tạo 105 Bản Ghi Chuẩn (&gt;100 dòng)
                     </button>
@@ -1870,7 +2178,7 @@ export const EquipmentsPage = () => {
                       type="button"
                       onClick={() => handleGenerate105SampleRows(true)}
                       className="laser-btn laser-btn-secondary"
-                      style={{ padding: '7px 12px', fontSize: '12px', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.35)' }}
+                      style={{ padding: '7px 12px', fontSize: '12px', fontWeight: 800, color: 'var(--status-warning-color)', background: 'var(--status-warning-bg)', border: '1.5px solid var(--status-warning-border)' }}
                     >
                       Kiểm Thử Bắt Lỗi (UC-3.7)
                     </button>
@@ -1879,7 +2187,7 @@ export const EquipmentsPage = () => {
                   <button
                     type="button"
                     onClick={handleDownloadSampleCsv}
-                    style={{ background: 'none', border: 'none', color: 'var(--laser-cyan)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--laser-cyan)', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
                     <Icons.Download size={14} />
                     <span>Tải File Mẫu CSV</span>
@@ -1889,10 +2197,10 @@ export const EquipmentsPage = () => {
                 {/* Raw CSV / JSON Input */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 700 }}>
+                    <label style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink-pure)' }}>
                       Dữ Liệu Nguồn CSV / JSON ({parsedBatchItems.length} bản ghi đang nạp):
                     </label>
-                    <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--ink-secondary)', fontWeight: 600 }}>
                       Cột chuẩn: <code>code,name,category,room,price,brand,model,serial_number</code>
                     </span>
                   </div>
@@ -1910,90 +2218,175 @@ export const EquipmentsPage = () => {
                 {validationResult && (
                   <div
                     style={{
-                      padding: '12px 16px',
+                      padding: '14px 18px',
                       borderRadius: 'var(--radius-md)',
-                      background: validationResult.valid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                      border: `1px solid ${validationResult.valid ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                      background: validationResult.valid ? 'var(--status-success-bg)' : 'var(--status-danger-bg)',
+                      border: `2px solid ${validationResult.valid ? 'var(--status-success-border)' : 'var(--status-danger-border)'}`,
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       flexWrap: 'wrap',
-                      gap: '10px'
+                      gap: '12px'
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: 800, color: validationResult.valid ? '#10B981' : '#EF4444' }}>
+                      <div style={{ fontSize: '13.5px', fontWeight: 800, color: validationResult.valid ? 'var(--status-success-color)' : 'var(--status-danger-color)' }}>
                         {validationResult.valid
                           ? `✔ KIỂM TRA HỢP LỆ 100%: Toàn bộ ${validationResult.totalRows} dòng dữ liệu đều đạt chuẩn!`
                           : `✖ PHÁT HIỆN ${validationResult.errorCount} LỖI DỮ LIỆU TRÊN ${validationResult.invalidRowCount}/${validationResult.totalRows} DÒNG`}
                       </div>
-                      <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', marginTop: '2px' }}>
-                        Hợp lệ: <strong>{validationResult.validCount}</strong> dòng • Lỗi: <strong>{validationResult.invalidRowCount}</strong> dòng
+                      <div style={{ fontSize: '12.5px', color: 'var(--ink-primary)', marginTop: '3px', fontWeight: 600 }}>
+                        Hợp lệ: <strong>{validationResult.validCount}</strong> dòng • Lỗi: <strong>{validationResult.invalidRowCount}</strong> dòng (Bạn có thể sửa trực tiếp trên lưới bên dưới rồi bấm Kiểm tra lại)
                       </div>
                     </div>
+
+                    {!validationResult.valid && validationResult.invalidRowCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveAllInvalidBatchRows}
+                        style={{
+                          background: '#DC2626',
+                          color: '#FFFFFF',
+                          border: '1.5px solid #991B1B',
+                          borderRadius: '6px',
+                          padding: '7px 14px',
+                          fontSize: '12px',
+                          fontWeight: 800,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Lọc Bỏ {validationResult.invalidRowCount} Dòng Lỗi
+                      </button>
+                    )}
                   </div>
                 )}
 
-                {/* Preview Grid (Lưới xem trước >100 bản ghi) */}
+                {/* Preview Grid (Lưới xem trước >100 bản ghi & Sửa trực tiếp từng ô) */}
                 {previewRowsToDisplay.length > 0 && (
-                  <div style={{ border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                    <div style={{ padding: '10px 14px', background: 'var(--surface-panel)', borderBottom: '1px solid var(--hairline-medium)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--ink-pure)' }}>
-                        Lưới Xem Trước Dữ Liệu ({previewRowsToDisplay.length} dòng)
-                      </span>
+                  <div style={{ border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 16px', background: 'var(--surface-header)', borderBottom: '1.5px solid var(--border-strong)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <div>
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--ink-pure)' }}>
+                          Lưới Xem Trước &amp; Chỉnh Sửa Trực Tiếp ({previewRowsToDisplay.length} dòng)
+                        </span>
+                        <span style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', marginLeft: '10px', fontWeight: 600 }}>
+                          • Nhấp vào bất kỳ ô nào để sửa nhanh mã tài sản, phòng hoặc loại TB
+                        </span>
+                      </div>
                       <button
                         type="button"
                         onClick={handleValidateBatch}
                         disabled={validatingBatch}
                         className="laser-btn laser-btn-secondary"
-                        style={{ padding: '5px 14px', fontSize: '12px', fontWeight: 700, color: 'var(--laser-cyan)', border: '1px solid var(--laser-cyan)' }}
+                        style={{ padding: '6px 14px', fontSize: '12px', fontWeight: 800, color: 'var(--status-info-color)', background: 'var(--status-info-bg)', border: '1.5px solid var(--status-info-border)' }}
                       >
                         {validatingBatch ? 'Đang Kiểm Tra...' : 'Kiểm Tra Tính Hợp Lệ (UC-3.7 Validate)'}
                       </button>
                     </div>
 
-                    <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                    <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
+                      <table className="ruo-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
                         <thead>
-                          <tr style={{ background: 'var(--surface-card)', borderBottom: '1px solid var(--hairline-medium)', position: 'sticky', top: 0 }}>
-                            <th style={{ padding: '8px 10px' }}>Dòng</th>
-                            <th style={{ padding: '8px 10px' }}>Mã Tài Sản</th>
-                            <th style={{ padding: '8px 10px' }}>Tên Thiết Bị</th>
-                            <th style={{ padding: '8px 10px' }}>Loại Thiết Bị</th>
-                            <th style={{ padding: '8px 10px' }}>Phòng (Tòa A1)</th>
-                            <th style={{ padding: '8px 10px' }}>Nguyên Giá</th>
-                            <th style={{ padding: '8px 10px' }}>Kết Quả Kiểm Tra (UC-3.7)</th>
+                          <tr style={{ background: 'var(--surface-header)', borderBottom: '2px solid var(--border-strong)', position: 'sticky', top: 0, zIndex: 2 }}>
+                            <th style={{ padding: '9px 10px' }}>Dòng</th>
+                            <th style={{ padding: '9px 10px' }}>Mã Tài Sản</th>
+                            <th style={{ padding: '9px 10px' }}>Tên Thiết Bị</th>
+                            <th style={{ padding: '9px 10px' }}>Loại Thiết Bị</th>
+                            <th style={{ padding: '9px 10px' }}>Phòng (Tòa A1)</th>
+                            <th style={{ padding: '9px 10px' }}>Nguyên Giá</th>
+                            <th style={{ padding: '9px 10px' }}>Kết Quả Kiểm Tra (UC-3.7)</th>
+                            <th style={{ padding: '9px 8px', textAlign: 'center' }}>Xóa</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {previewRowsToDisplay.map((r) => {
+                          {previewRowsToDisplay.map((r, rowIdx) => {
                             const hasErr = r.valid === false || (r.errors && r.errors.length > 0);
+                            const cellInputStyle = {
+                              width: '100%',
+                              padding: '4px 7px',
+                              fontSize: '11.5px',
+                              fontFamily: 'var(--font-mono)',
+                              fontWeight: 700,
+                              color: 'var(--ink-pure)',
+                              background: 'var(--surface-card)',
+                              border: `1.5px solid ${hasErr ? 'var(--status-danger-border)' : 'var(--border-default)'}`,
+                              borderRadius: '5px'
+                            };
                             return (
                               <tr
                                 key={r.row}
                                 style={{
-                                  borderBottom: '1px solid var(--hairline-soft)',
-                                  background: hasErr ? 'rgba(239, 68, 68, 0.08)' : r.valid ? 'rgba(16, 185, 129, 0.04)' : 'transparent'
+                                  borderBottom: '1px solid var(--border-default)',
+                                  background: hasErr ? 'var(--status-danger-bg)' : r.valid ? 'var(--status-success-bg)' : undefined
                                 }}
                               >
-                                <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)' }}>#{r.row}</td>
-                                <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--laser-cyan)' }}>{r.code}</td>
-                                <td style={{ padding: '7px 10px', fontWeight: 600 }}>{r.name}</td>
-                                <td style={{ padding: '7px 10px' }}>{r.category_name}</td>
-                                <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)' }}>{r.room_name}</td>
-                                <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)' }}>{Number(r.price || 0).toLocaleString('vi-VN')} đ</td>
-                                <td style={{ padding: '7px 10px' }}>
+                                <td style={{ padding: '6px 10px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--ink-secondary)' }}>#{r.row}</td>
+                                <td style={{ padding: '6px 8px' }}>
+                                  <input
+                                    type="text"
+                                    value={r.rawCode}
+                                    onChange={(e) => handleInlineBatchCellChange(rowIdx, 'code', e.target.value)}
+                                    style={{ ...cellInputStyle, color: 'var(--laser-cyan)', fontWeight: 800, minWidth: '125px' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '6px 8px' }}>
+                                  <input
+                                    type="text"
+                                    value={r.rawName}
+                                    onChange={(e) => handleInlineBatchCellChange(rowIdx, 'name', e.target.value)}
+                                    style={{ ...cellInputStyle, fontFamily: 'var(--font-sans)', minWidth: '150px' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '6px 8px' }}>
+                                  <input
+                                    type="text"
+                                    value={r.rawCategory}
+                                    onChange={(e) => handleInlineBatchCellChange(rowIdx, 'category', e.target.value)}
+                                    style={{ ...cellInputStyle, minWidth: '110px' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '6px 8px' }}>
+                                  <input
+                                    type="text"
+                                    value={r.rawRoom}
+                                    onChange={(e) => handleInlineBatchCellChange(rowIdx, 'room', e.target.value)}
+                                    style={{ ...cellInputStyle, width: '90px' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '6px 8px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--ink-pure)' }}>
+                                  {Number(r.price || 0).toLocaleString('vi-VN')} đ
+                                </td>
+                                <td style={{ padding: '6px 10px' }}>
                                   {r.valid === null ? (
-                                    <span style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Chưa kiểm tra</span>
+                                    <span style={{ color: 'var(--ink-secondary)', fontSize: '11px', fontWeight: 700 }}>Chưa kiểm tra</span>
                                   ) : hasErr ? (
-                                    <div style={{ color: '#EF4444', fontWeight: 700, fontSize: '11px' }}>
+                                    <div style={{ color: 'var(--status-danger-color)', fontWeight: 800, fontSize: '11px' }}>
                                       {r.errors.map((e, i) => (
                                         <div key={i}>• {e.message}</div>
                                       ))}
                                     </div>
                                   ) : (
-                                    <span style={{ color: '#10B981', fontWeight: 700, fontSize: '11px' }}>✔ Hợp lệ</span>
+                                    <span style={{ color: 'var(--status-success-color)', fontWeight: 800, fontSize: '11.5px' }}>✔ Hợp lệ ({r.room_name})</span>
                                   )}
+                                </td>
+                                <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveBatchRow(rowIdx)}
+                                    style={{
+                                      background: 'var(--status-danger-bg)',
+                                      border: '1.5px solid var(--status-danger-border)',
+                                      color: 'var(--status-danger-color)',
+                                      borderRadius: '4px',
+                                      padding: '3px 7px',
+                                      cursor: 'pointer',
+                                      fontWeight: 800,
+                                      fontSize: '11px'
+                                    }}
+                                    title="Xóa dòng này khỏi lô nhập"
+                                  >
+                                    ✕
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -2011,13 +2404,13 @@ export const EquipmentsPage = () => {
                   onClick={handleValidateBatch}
                   disabled={validatingBatch}
                   className="laser-btn laser-btn-secondary"
-                  style={{ padding: '8px 16px', fontWeight: 700, color: 'var(--laser-cyan)' }}
+                  style={{ padding: '8px 16px', fontWeight: 800, color: 'var(--laser-cyan)', border: '1.5px solid var(--laser-cyan)' }}
                 >
                   {validatingBatch ? 'Đang Kiểm Tra...' : '1. Kiểm Tra Hợp Lệ (UC-3.7)'}
                 </button>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={() => setShowBatchModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
-                  <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  <button type="button" onClick={() => setShowBatchModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px', fontWeight: 700 }}>Hủy Bỏ</button>
+                  <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 800 }}>
                     {submitting ? 'Đang Nhập Kho...' : `2. Nhập Hàng Loạt Vào Kho (${validationResult ? validationResult.validCount : parsedBatchItems.length} TB)`}
                   </button>
                 </div>

@@ -968,6 +968,7 @@ export const getMe = async (req, res) => {
         phone: user.phone || '',
         avatar: user.avatar || '',
         role: user.role,
+        permissions: Array.isArray(req.userPermissions) ? req.userPermissions : undefined,
         department: user.department,
         status: user.status,
         force_change_pw: user.force_change_pw,
