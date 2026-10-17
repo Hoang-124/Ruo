@@ -18,12 +18,15 @@ export const DEFAULT_CANONICAL_ROLES = {
   },
   [USER_ROLES.TECHNICIAN]: {
     title: 'Kỹ Thuật Viên Vận Hành & Sửa Chữa',
-    description: 'Tiếp nhận ca sửa, xin cấp phát linh kiện, xác nhận di chuyển thực địa và quét mã QR kiểm kê.',
+    description: 'Tiếp nhận ca sửa, cập nhật thiết bị, xin cấp phát linh kiện, xác nhận di chuyển thực địa và quét mã QR kiểm kê.',
     permissions: [
       'user:profile:read',
       'room:read',
       'equipment:read',
+      'equipment:create',
+      'equipment:update',
       'equipment:qr:scan',
+      'warranty:read',
       'movement:confirm',
       'repair:read_assigned',
       'repair:accept',
@@ -43,7 +46,9 @@ export const DEFAULT_CANONICAL_ROLES = {
       'equipment:create',
       'equipment:update',
       'equipment:import',
+      'equipment:dispose',
       'equipment:qr:generate',
+      'equipment:qr:scan',
       'warranty:read',
       'warranty:update',
       'movement:order',
@@ -55,8 +60,10 @@ export const DEFAULT_CANONICAL_ROLES = {
       'spare_part:update',
       'inventory:create',
       'inventory:reconcile',
+      'inventory:export',
       'disposal:propose',
-      'dashboard:read'
+      'dashboard:read',
+      'report:export'
     ]
   },
   [USER_ROLES.ADMIN]: {
@@ -76,6 +83,11 @@ export const DEFAULT_CANONICAL_ROLES = {
       'supplier:*',
       'repair_unit:*',
       'equipment:read',
+      'equipment:create',
+      'equipment:update',
+      'equipment:import',
+      'equipment:dispose',
+      'equipment:qr:scan',
       'disposal:approve',
       'dashboard:read',
       'report:export',

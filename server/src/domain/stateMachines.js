@@ -10,7 +10,7 @@ import {
 /**
  * State Transition Maps with Role-Based Authorizations
  * 4 Canonical Roles: Lecturer, Technician, Facility Manager, Admin.
- * Separation of Duties: Người làm không tự duyệt việc của mình.
+ * Self-approval rules are enforced per workflow in the relevant controllers.
  */
 export const STATE_TRANSITIONS = {
   MOVEMENT: {

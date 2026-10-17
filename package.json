@@ -13,6 +13,7 @@
     "build": "npm --prefix client run build",
     "seed": "npm --prefix server run seed",
     "test": "npm --prefix server test",
+    "test:uc10": "node server/src/tests/test_uc10_6.js",
     "client:install": "npm install --prefix client --legacy-peer-deps",
     "client:test": "npm test --prefix client"
   },

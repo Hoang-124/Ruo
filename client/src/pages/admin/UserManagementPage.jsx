@@ -500,7 +500,25 @@ export const UserManagementPage = () => {
                           <div>
                             <div style={{ fontWeight: 700, color: 'var(--ink-primary)', fontSize: '13.5px' }}>{u.full_name}</div>
                             {u.force_change_pw && (
-                              <span style={{ fontSize: '10.5px', color: '#F59E0B', fontWeight: 600 }}>Yêu cầu đổi mật khẩu</span>
+                              <span
+                                style={{
+                                  fontSize: '11px',
+                                  color: '#F59E0B',
+                                  fontWeight: 700,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  marginTop: '3px',
+                                  background: 'rgba(245, 158, 11, 0.12)',
+                                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px'
+                                }}
+                                title="Cán bộ phải đổi mật khẩu khi đăng nhập lần tới (UC-10.6)"
+                              >
+                                <Icons.Key size={10} color="#F59E0B" />
+                                <span>Chờ đổi mật khẩu</span>
+                              </span>
                             )}
                           </div>
                         </div>

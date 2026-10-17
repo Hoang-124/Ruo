@@ -8,6 +8,9 @@ import { useRouter } from './lib/router';
 
 // Code-Splitting: Lazy load UEMS core module pages
 
+// Room & Facility Module Pages (all roles)
+const RoomListPage = lazy(() => import('./pages/rooms/RoomListPage').then(m => ({ default: m.RoomListPage })));
+
 // Lecturer Module Pages
 const ReportIssuePage = lazy(() => import('./pages/lecturer/ReportIssuePage').then(m => ({ default: m.ReportIssuePage })));
 const LecturerTicketsPage = lazy(() => import('./pages/lecturer/LecturerTicketsPage').then(m => ({ default: m.LecturerTicketsPage })));
@@ -37,6 +40,7 @@ const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage').then(m => (
 // Auth & Modals
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const UserProfileModal = lazy(() => import('./components/ui/UserProfileModal').then(m => ({ default: m.UserProfileModal })));
+const MandatoryPasswordChangeModal = lazy(() => import('./components/auth/MandatoryPasswordChangeModal').then(m => ({ default: m.MandatoryPasswordChangeModal })));
 
 // Sleek native SVG loading spinner
 const LazyFallback = () => (
@@ -135,6 +139,14 @@ const MainAppContent = () => {
               }}
             />
           </div>
+        );
+
+      // Room & Facility Directory (UC-2.1 .. UC-2.4)
+      case 'rooms':
+        return renderSubPageWrapper(
+          'Danh Mục Phòng Học Tòa A1',
+          'MODULE 02 • PHÒNG HỌC & CƠ SỞ VẬT CHẤT',
+          <RoomListPage />
         );
 
       // 2. Lecturer Views
@@ -349,6 +361,13 @@ const MainAppContent = () => {
             isOpen={isProfileModalOpen}
             onClose={() => setIsProfileModalOpen(false)}
           />
+        )}
+      </Suspense>
+
+      {/* UC-10.6: Enforce Mandatory Password Change on First Login */}
+      <Suspense fallback={null}>
+        {currentUser?.force_change_pw && (
+          <MandatoryPasswordChangeModal />
         )}
       </Suspense>
     </div>

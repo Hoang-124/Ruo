@@ -883,6 +883,28 @@ export const LoginPage = ({ onLoginSuccess }) => {
                   </span>
                   <Icons.ArrowRight size={16} />
                 </button>
+
+                {/* UC-10.6 Temporary Password & Mandatory Change Notice */}
+                <div
+                  style={{
+                    marginTop: '14px',
+                    padding: '9px 12px',
+                    borderRadius: '8px',
+                    background: isLight ? '#F8FAFC' : 'rgba(255, 255, 255, 0.03)',
+                    border: `1px dashed ${isLight ? '#CBD5E1' : 'rgba(255, 255, 255, 0.12)'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '11.5px',
+                    color: 'var(--ink-muted)',
+                    lineHeight: 1.4
+                  }}
+                >
+                  <Icons.Key size={14} color="var(--blueprint-500)" style={{ flexShrink: 0 }} />
+                  <span>
+                    <strong>Chính sách bảo mật:</strong> Trường hợp tài khoản vừa được cấp mật khẩu tạm thời, hệ thống sẽ tự động kích hoạt hộp thoại đổi mật khẩu bắt buộc tại lần đăng nhập này.
+                  </span>
+                </div>
               </form>
 
               {/* Bottom Switch to Register */}

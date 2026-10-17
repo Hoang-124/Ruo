@@ -1,5 +1,7 @@
 import React from 'react';
 import { Icons } from './SvgIcons';
+import { RoomPodCard } from './RoomPodCard';
+import { getRoomPod } from './roomPod';
 import { CAMPUS_FLOORS, ROOM_CATEGORIES } from '../../mock/campusBuildingData';
 
 /**
@@ -19,6 +21,7 @@ export const FloorPlan2D = ({
   selectedRoom = null,
   onSelectRoom,
   getRoomSimulatedStatus,
+  roomPods = {},
   currentTimeString = '11:15'
 }) => {
   const currentFloorData = CAMPUS_FLOORS[selectedFloor] || CAMPUS_FLOORS[1];
@@ -42,6 +45,11 @@ export const FloorPlan2D = ({
       default: return 'Tiện ích';
     }
   };
+
+  // UC-2.7: live pod (equipment count / broken count / status) drawn over a room rectangle.
+  const renderRoomPod = (room, x, y, w, h) => (
+    <RoomPodCard room={room} pod={getRoomPod(roomPods, room?.code)} x={x} y={y} w={w} h={h} />
+  );
 
   // ==============================================================
   // RENDER DEDICATED ARCHITECTURAL FLOOR 1 COURTYARD PLAN
@@ -213,6 +221,7 @@ export const FloorPlan2D = ({
               </text>
             )}
           </g>
+          {renderRoomPod(room, x, y, w, h)}
         </g>
       );
     };
@@ -937,6 +946,7 @@ export const FloorPlan2D = ({
               </text>
             )}
           </g>
+          {renderRoomPod(room, x, y, w, h)}
         </g>
       );
     };
@@ -1859,6 +1869,7 @@ export const FloorPlan2D = ({
               </text>
             )}
           </g>
+          {renderRoomPod(room, x, y, w, h)}
         </g>
       );
     };
@@ -2932,6 +2943,7 @@ export const FloorPlan2D = ({
               <line x1={doorX} y1={ry + rh} x2={doorX} y2={ry + rh - 16} stroke={catColor} strokeWidth="1.5" />
               <path d={`M ${doorX} ${ry + rh - 16} A 16 16 0 0 1 ${doorX + 16} ${ry + rh}`} fill="none" stroke={catColor} strokeWidth="1.2" strokeDasharray="2 2" />
               {renderRoomLabels(room, rx, ry, rw, rh)}
+              {renderRoomPod(room, rx, ry, rw, rh)}
             </g>
           );
         })}
@@ -2971,6 +2983,7 @@ export const FloorPlan2D = ({
               <line x1={doorX} y1={ry} x2={doorX} y2={ry + 16} stroke={catColor} strokeWidth="1.5" />
               <path d={`M ${doorX} ${ry + 16} A 16 16 0 0 0 ${doorX + 16} ${ry}`} fill="none" stroke={catColor} strokeWidth="1.2" strokeDasharray="2 2" />
               {renderRoomLabels(room, rx, ry, rw, rh)}
+              {renderRoomPod(room, rx, ry, rw, rh)}
             </g>
           );
         })}

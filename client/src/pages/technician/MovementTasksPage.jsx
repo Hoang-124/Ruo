@@ -338,6 +338,7 @@ export const MovementTasksPage = () => {
                     className="ruo-portal-input"
                     style={{ height: 38 }}
                   >
+                    <option value="" disabled>{equipments.length ? 'Chọn thiết bị cần điều chuyển' : 'Chưa có thiết bị trong hệ thống'}</option>
                     {equipments.map(equipment => (
                       <option key={equipment._id} value={equipment._id}>
                         {equipment.code} — {equipment.name} ({equipment.room_id?.code || 'Kho dự phòng'})
@@ -354,6 +355,7 @@ export const MovementTasksPage = () => {
                     className="ruo-portal-input"
                     style={{ height: 38 }}
                   >
+                    <option value="" disabled>{rooms.length ? 'Chọn phòng đích' : 'Chưa có phòng trong hệ thống'}</option>
                     {rooms.map(room => (
                       <option key={room._id} value={room._id}>
                         {room.room_type === 'warehouse' ? '[KHO] ' : ''}{room.code} — {room.name}

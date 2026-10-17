@@ -7,6 +7,7 @@ import { movementApi, equipmentApi, masterDataApi, authApi } from '../../lib/api
 export const MovementsPage = () => {
   const { toast } = useToast();
   const { currentUser } = useAuth();
+  const roleBadge = currentUser?.role === 'admin' ? 'ADMIN' : 'FACILITY MANAGER';
   const [loading, setLoading] = useState(true);
   const [movements, setMovements] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
@@ -178,7 +179,7 @@ export const MovementsPage = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>FACILITY MANAGER</span>
+            <span style={{ fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>{roleBadge}</span>
             <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>MODULE 03 • LỆNH ĐIỀU CHUYỂN & LỊCH SỬ DI CHUYỂN TÀI SẢN</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
@@ -254,8 +255,8 @@ export const MovementsPage = () => {
                 const eq = m.equipment_id || {};
                 const fromRoom = m.from_room_id ? `${m.from_room_id.code} (${m.from_room_id.name})` : 'Kho dự phòng (null)';
                 const toRoom = m.to_room_id ? `${m.to_room_id.code} (${m.to_room_id.name})` : 'Kho dự phòng (null)';
-                const canApprove = m.status === 'awaiting_approval' && m.ordered_by?._id !== currentUser?._id;
-                const isOwnRequest = m.status === 'awaiting_approval' && m.ordered_by?._id === currentUser?._id;
+                const canApprove = m.status === 'awaiting_approval';
+                const canReject = m.status === 'awaiting_approval';
                 const statusLabels = {
                   awaiting_approval: 'Chờ Quản lý duyệt',
                   approved: 'Đã duyệt - chờ KTV',
@@ -305,26 +306,26 @@ export const MovementsPage = () => {
                       {new Date(m.created_at).toLocaleDateString('vi-VN')}
                     </td>
                     <td style={{ padding: '12px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {canApprove ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleApprove(m)}
-                            className="laser-btn laser-btn-primary"
-                            style={{ padding: '6px 10px', fontSize: 11, marginRight: 6 }}
-                          >
-                            Duyệt
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setRejectingMovement(m); setRejectReason(''); }}
-                            className="laser-btn laser-btn-secondary"
-                            style={{ padding: '6px 10px', fontSize: 11 }}
-                          >
-                            Từ chối
-                          </button>
-                        </>
-                      ) : isOwnRequest ? <span style={{ fontSize: 11, color: 'var(--ink-muted)' }}>Người tạo không tự duyệt</span> : '—'}
+                      {canApprove && (
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(m)}
+                          className="laser-btn laser-btn-primary"
+                          style={{ padding: '6px 10px', fontSize: 11, marginRight: 6 }}
+                        >
+                          Duyệt
+                        </button>
+                      )}
+                      {canReject ? (
+                        <button
+                          type="button"
+                          onClick={() => { setRejectingMovement(m); setRejectReason(''); }}
+                          className="laser-btn laser-btn-secondary"
+                          style={{ padding: '6px 10px', fontSize: 11 }}
+                        >
+                          Từ chối
+                        </button>
+                      ) : '—'}
                     </td>
                   </tr>
                 );
@@ -381,7 +382,7 @@ export const MovementsPage = () => {
                     >
                       {rooms.map(r => (
                         <option key={r._id} value={r._id}>
-                          {r.room_type === 'warehouse' ? `[KHO] ${r.code}` : `${r.code} - ${r.name}`}
+                          {(r.room_type || r.type) === 'warehouse' ? `[KHO] ${r.code}` : `${r.code} - ${r.name}`}
                         </option>
                       ))}
                     </select>
