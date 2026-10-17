@@ -233,3 +233,86 @@ export const getWarehouseStock = async (req, res) => {
     res.status(500).json({ success: false, message: 'Lỗi khi tải dữ liệu kho dự phòng.' });
   }
 };
+
+// @desc    Create Building (Admin Only - Master Data)
+// @route   POST /api/facilities/buildings hoặc POST /api/admin/buildings
+export const createBuilding = async (req, res) => {
+  try {
+    const { code, name, campusZone, totalFloors, description } = req.body;
+    if (!code || !name) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã và tên tòa nhà.' });
+    }
+
+    const existing = await Building.findOne({ code: code.toUpperCase().trim() });
+    if (existing) {
+      return res.status(400).json({ success: false, message: `Mã tòa nhà [${code.toUpperCase()}] đã tồn tại trong hệ thống.` });
+    }
+
+    const building = await Building.create({
+      code: code.toUpperCase().trim(),
+      name: name.trim(),
+      campusZone: campusZone || 'Khu A',
+      totalFloors: totalFloors ? Number(totalFloors) : 5,
+      description: description || '',
+      isActive: true
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Khởi tạo tòa nhà ${building.name} (${building.code}) thành công!`,
+      building
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi khi tạo tòa nhà: ' + error.message });
+  }
+};
+
+// @desc    Update Building (Admin Only - Master Data)
+// @route   PUT /api/facilities/buildings/:id hoặc PUT /api/admin/buildings/:id
+export const updateBuilding = async (req, res) => {
+  try {
+    const { name, campusZone, totalFloors, description, isActive } = req.body;
+    const building = await Building.findById(req.params.id);
+    if (!building) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tòa nhà.' });
+    }
+
+    if (name) building.name = name.trim();
+    if (campusZone) building.campusZone = campusZone.trim();
+    if (totalFloors !== undefined) building.totalFloors = Number(totalFloors);
+    if (description !== undefined) building.description = description;
+    if (isActive !== undefined) building.isActive = Boolean(isActive);
+
+    await building.save();
+
+    res.json({
+      success: true,
+      message: `Cập nhật thông tin tòa nhà ${building.name} (${building.code}) thành công!`,
+      building
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi khi cập nhật tòa nhà: ' + error.message });
+  }
+};
+
+// @desc    Delete / Deactivate Building (Admin Only - Master Data)
+// @route   DELETE /api/facilities/buildings/:id hoặc DELETE /api/admin/buildings/:id
+export const deleteBuilding = async (req, res) => {
+  try {
+    const building = await Building.findById(req.params.id);
+    if (!building) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tòa nhà.' });
+    }
+
+    // Soft delete: toggle isActive to false
+    building.isActive = false;
+    await building.save();
+
+    res.json({
+      success: true,
+      message: `Đã vô hiệu hóa tòa nhà ${building.name} (${building.code}) thành công!`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi khi xóa tòa nhà: ' + error.message });
+  }
+};
