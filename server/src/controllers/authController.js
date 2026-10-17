@@ -1348,9 +1348,18 @@ export const getAllUsers = async (req, res) => {
  */
 export const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password_hash');
+    let query = User.findById(req.params.id);
+    if (query && typeof query.select === 'function') {
+      query = query.select('-password_hash');
+    }
+    if (query && typeof query.populate === 'function') {
+      query = query.populate('approved_by', 'full_name code email');
+    }
+    const user = await query;
+
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+      if (res.status) return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+      return res.json({ success: false, message: 'Không tìm thấy người dùng.' });
     }
 
     // Lấy lịch sử hoạt động / AuditLog gần nhất của người dùng (UC-10.2 & UC-10.3 Activity)
@@ -1374,7 +1383,11 @@ export const getUserById = async (req, res) => {
       activities
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết người dùng: ' + error.message });
+    if (res.status) {
+      res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết người dùng: ' + error.message });
+    } else {
+      res.json({ success: false, message: 'Lỗi khi tải chi tiết người dùng: ' + error.message });
+    }
   }
 };
 
@@ -1840,38 +1853,52 @@ export const adminResetPassword = async (req, res) => {
 };
 
 /**
- * Approve or Reject User Registration Role (Admin Only)
+ * UC-10.7: Role Approval & Appointment (Admin Only)
+ * POST /api/auth/users/:id/approve hoặc POST /api/admin/users/:id/approve
+ * Body: { action: 'approve' | 'reject', role?: string, note?: string }
  */
 export const approveUser = async (req, res) => {
   try {
-    const { action, role } = req.body; // action: 'approve' | 'reject'
+    const { action, role, note } = req.body; // action: 'approve' | 'reject'
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
     }
 
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'] || '127.0.0.1';
+    const operatorDisplay = req.user ? `${req.user.full_name} (${req.user.code})` : 'Quản Trị Viên';
+
     if (action === 'reject') {
       const oldRequested = user.requested_role;
+      const oldRole = user.role;
       user.status = USER_STATUSES.ACTIVE;
       user.role = USER_ROLES.LECTURER;
       user.requested_role = null;
+      user.rejection_reason = note || 'Không đáp ứng tiêu chuẩn bổ nhiệm chức vụ';
+      user.approval_note = note || null;
       await user.save();
 
+      // Revoke any active sessions to enforce new role
+      await revokeUserSessions(user._id);
+
       await AuditLog.logAction({
-        user_id: req.user._id,
-        user_display: `${req.user.full_name} (${req.user.code})`,
+        user_id: req.user?._id || null,
+        user_display: operatorDisplay,
         action: 'REJECT_USER_ROLE',
         target_table: 'users',
         entity_id: user._id.toString(),
-        ip_address: req.ip || '127.0.0.1',
-        old_value: { requested_role: oldRequested },
-        new_value: { role: USER_ROLES.LECTURER, status: USER_STATUSES.ACTIVE }
+        ip_address: ipAddress,
+        old_value: { role: oldRole, requested_role: oldRequested },
+        new_value: { role: USER_ROLES.LECTURER, status: USER_STATUSES.ACTIVE, rejection_reason: user.rejection_reason }
       });
+
+      const sanitizedUser = user.toObject ? user.toObject() : { ...user };
+      delete sanitizedUser.password_hash;
 
       return res.json({
         success: true,
-        message: `Đã từ chối nguyện vọng chức vụ và kích hoạt tài khoản với vai trò Giảng Viên thường.`,
-        user
+        message: `Đã từ chối nguyện vọng chức vụ và kích hoạt tài khoản cán bộ ${user.full_name} với vai trò Giảng Viên thường.`,
+        user: sanitizedUser
       });
     }
 
@@ -1881,28 +1908,49 @@ export const approveUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Vai trò (role) phê duyệt không hợp lệ.' });
     }
 
+    const oldRole = user.role;
+    const oldRequested = user.requested_role;
+
     user.role = approvedRole;
     user.status = USER_STATUSES.ACTIVE;
-    user.approved_by = req.user._id;
+    user.requested_role = null;
+    user.approved_by = req.user?._id || null;
     user.approved_at = new Date();
+    user.approval_note = note || null;
+    user.rejection_reason = null;
     await user.save();
 
+    // Revoke previous sessions to apply new role privileges immediately
+    await revokeUserSessions(user._id);
+
     await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
+      user_id: req.user?._id || null,
+      user_display: operatorDisplay,
       action: 'APPROVE_USER_ROLE',
       target_table: 'users',
       entity_id: user._id.toString(),
-      ip_address: req.ip || '127.0.0.1',
-      new_value: { role: approvedRole, status: USER_STATUSES.ACTIVE, approved_by: req.user._id }
+      ip_address: ipAddress,
+      old_value: { role: oldRole, requested_role: oldRequested },
+      new_value: {
+        role: approvedRole,
+        status: USER_STATUSES.ACTIVE,
+        approved_by: req.user?._id || null,
+        approval_note: note || null
+      }
     });
 
-    const roleTitle = approvedRole === USER_ROLES.FACILITY_MANAGER ? 'Quản Lý CSVC' : approvedRole === USER_ROLES.TECHNICIAN ? 'Kỹ Thuật Viên' : 'Giảng Viên';
+    const roleTitle = approvedRole === USER_ROLES.FACILITY_MANAGER ? 'Quản Lý CSVC'
+      : approvedRole === USER_ROLES.TECHNICIAN ? 'Kỹ Thuật Viên'
+      : approvedRole === USER_ROLES.ADMIN ? 'Quản Trị Viên BGH'
+      : 'Giảng Viên';
+
+    const sanitizedUser = user.toObject ? user.toObject() : { ...user };
+    delete sanitizedUser.password_hash;
 
     res.json({
       success: true,
-      message: `Đã phê duyệt tài khoản ${user.full_name} vào chức vụ [${roleTitle}] thành công!`,
-      user
+      message: `Đã phê duyệt bổ nhiệm cán bộ ${user.full_name} (${user.code}) vào chức vụ [${roleTitle}] thành công!`,
+      user: sanitizedUser
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi khi xử lý phê duyệt tài khoản: ' + error.message });
