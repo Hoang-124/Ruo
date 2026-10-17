@@ -207,6 +207,39 @@ export const EquipmentsPage = () => {
     setTimeout(() => fetchEquipments(), 0);
   };
 
+  // Export filtered directory to CSV with Vietnamese UTF-8 BOM (UC-3.2)
+  const handleExportCsv = () => {
+    if (!equipments || equipments.length === 0) {
+      toast.error('Không có dữ liệu thiết bị phù hợp để xuất file!');
+      return;
+    }
+    const headers = ['Mã Tài Sản', 'Mã QR Định Danh', 'Tên Thiết Bị', 'Chủng Loại', 'Phòng Học', 'Tầng', 'Hãng / Model', 'Số Serial', 'Nguyên Giá (VNĐ)', 'Trạng Thái', 'Hạn Bảo Hành'];
+    const rows = equipments.map(eq => [
+      `"${eq.code || ''}"`,
+      `"${eq.qr_code || ''}"`,
+      `"${(eq.name || '').replace(/"/g, '""')}"`,
+      `"${eq.category_id?.name || 'Chung'}"`,
+      `"${eq.room_id?.code || 'Kho dự phòng'}"`,
+      `"${eq.room_id?.floor || '-'}"`,
+      `"${(eq.brand || '') + (eq.model ? ` / ${eq.model}` : '')}"`,
+      `"${eq.serial_number || ''}"`,
+      eq.price || 0,
+      `"${eq.status || ''}"`,
+      `"${eq.warranty_expiry ? new Date(eq.warranty_expiry).toISOString().split('T')[0] : ''}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `danh_muc_thiet_bi_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Đã xuất báo cáo CSV thành công (${equipments.length} bản ghi)!`);
+  };
+
   // Fast QR Lookup handler (QR Code Generator & Scan UC)
   const handleFastQrLookup = async (e) => {
     e.preventDefault();
@@ -1053,6 +1086,94 @@ export const EquipmentsPage = () => {
       {/* Multi-dimensional Filter & Search Bar (UC-3.2) */}
       <div style={{ background: 'var(--surface-card)', border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '18px', marginBottom: '20px', boxShadow: 'var(--shadow-xs)' }}>
         <form onSubmit={handleSearchSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          
+          {/* Quick Preset Filter Chips (UC-3.2) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', paddingBottom: '4px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Bộ lọc nhanh:
+            </span>
+            <button
+              type="button"
+              onClick={() => { handleResetFilters(); }}
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '16px',
+                background: (statusFilter === 'ALL' && roomFilter === 'ALL' && warrantyFilter === 'ALL') ? 'var(--laser-cyan)' : 'var(--surface-2)',
+                color: (statusFilter === 'ALL' && roomFilter === 'ALL' && warrantyFilter === 'ALL') ? '#041527' : 'var(--ink-primary)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer'
+              }}
+            >
+              Tất cả ({totalCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStatusFilter('in_use'); setRoomFilter('ALL'); setPage(1); }}
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '16px',
+                background: statusFilter === 'in_use' ? '#10b981' : 'var(--surface-2)',
+                color: statusFilter === 'in_use' ? '#ffffff' : 'var(--ink-primary)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer'
+              }}
+            >
+              Đang sử dụng tại A1
+            </button>
+            <button
+              type="button"
+              onClick={() => { setRoomFilter('warehouse'); setStatusFilter('in_stock'); setPage(1); }}
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '16px',
+                background: (roomFilter === 'warehouse' || statusFilter === 'in_stock') ? '#0ea5e9' : 'var(--surface-2)',
+                color: (roomFilter === 'warehouse' || statusFilter === 'in_stock') ? '#ffffff' : 'var(--ink-primary)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer'
+              }}
+            >
+              Tồn kho dự phòng
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStatusFilter('broken'); setPage(1); }}
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '16px',
+                background: statusFilter === 'broken' ? '#f59e0b' : 'var(--surface-2)',
+                color: statusFilter === 'broken' ? '#ffffff' : 'var(--ink-primary)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer'
+              }}
+            >
+              Hỏng &amp; Sửa chữa
+            </button>
+            <button
+              type="button"
+              onClick={() => { setWarrantyFilter('expired'); setPage(1); }}
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '16px',
+                background: warrantyFilter === 'expired' ? '#ec4899' : 'var(--surface-2)',
+                color: warrantyFilter === 'expired' ? '#ffffff' : 'var(--ink-primary)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer'
+              }}
+            >
+              Hết hạn BH
+            </button>
+          </div>
+
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: '1 1 250px' }}>
               <Icons.Search size={16} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--ink-secondary)' }} />
@@ -1211,6 +1332,20 @@ export const EquipmentsPage = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                className="laser-btn laser-btn-secondary"
+                style={{ height: '34px', padding: '0 14px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                title="Xuất danh mục đang lọc ra file Excel/CSV tiếng Việt"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>Xuất Báo Cáo CSV</span>
+              </button>
               <button
                 type="button"
                 onClick={handleResetFilters}
