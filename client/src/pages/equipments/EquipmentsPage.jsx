@@ -930,6 +930,30 @@ export const EquipmentsPage = () => {
     };
   });
 
+  const selectedCreateRoom = rooms.find((r) => String(r._id) === String(formData.room_id));
+  const createWarrantyCalc = (() => {
+    if (!formData.purchase_date || !formData.warranty_expiry) return null;
+    const pDate = new Date(formData.purchase_date);
+    const wDate = new Date(formData.warranty_expiry);
+    if (isNaN(pDate.getTime()) || isNaN(wDate.getTime())) return null;
+    if (wDate < pDate) {
+      return { isInvalid: true, message: 'Hạn bảo hành không thể trước ngày mua thiết bị!' };
+    }
+    const diffMs = wDate.getTime() - pDate.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const months = Math.round(diffDays / 30.4375);
+    const now = new Date();
+    const isExpired = wDate < now;
+    const remainingDays = Math.ceil((wDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return {
+      isInvalid: false,
+      durationText: `${months} tháng (~${(months / 12).toFixed(1)} năm, ${diffDays} ngày)`,
+      isExpired,
+      remainingDays: isExpired ? 0 : remainingDays,
+      statusLabel: isExpired ? 'Đã hết hạn bảo hành' : `Còn hiệu lực (${remainingDays} ngày)`
+    };
+  })();
+
   return (
     <div>
       {/* Header Banner */}
@@ -1735,7 +1759,7 @@ export const EquipmentsPage = () => {
       {/* Create Modal (UC-3.1) */}
       {showCreateModal && (
         <div className="ruo-drawer-backdrop" onClick={() => setShowCreateModal(false)}>
-          <div className="ruo-drawer-panel" style={{ width: '580px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="ruo-drawer-panel" style={{ width: '620px', maxWidth: '95vw' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
                 <h2 className="ruo-drawer-title">Đăng Ký Tài Sản Thiết Bị Mới (UC-3.1)</h2>
@@ -1746,14 +1770,88 @@ export const EquipmentsPage = () => {
 
             <form onSubmit={handleCreateSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                
+                {/* Dynamic Live QR Matrix Preview Card (100% Pure Native SVG) */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%)',
+                  border: '1px solid rgba(6, 182, 212, 0.25)',
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                }}>
+                  <div style={{
+                    background: '#ffffff',
+                    padding: '6px',
+                    borderRadius: '8px',
+                    boxShadow: '0 0 16px rgba(6, 182, 212, 0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <NativeQrMatrixSvg 
+                      value={formData.qr_code || (formData.code ? `QR-${formData.code.toUpperCase().trim()}` : 'QR-RUO-PREVIEW')} 
+                      size={84} 
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(6, 182, 212, 0.2)',
+                        color: 'var(--laser-cyan)',
+                        border: '1px solid rgba(6, 182, 212, 0.3)'
+                      }}>
+                        MÃ QR CHUẨN HÓA (2D MATRIX)
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {formData.code ? '✓ Mã hợp lệ' : 'Chờ nhập mã tài sản'}
+                      </span>
+                    </div>
+                    <div style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: '#ffffff',
+                      letterSpacing: '0.02em',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {formData.qr_code || (formData.code ? `QR-${formData.code.toUpperCase().trim()}` : 'QR-CHUA-DINH-DANH')}
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      {formData.name || 'Tên thiết bị mới'} • {formData.brand || 'Hãng'} {formData.model ? `(${formData.model})` : ''}
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--laser-cyan)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      {Number(formData.price || 0).toLocaleString('vi-VN')} ₫ • Khấu hao: {formData.depreciation_rate || 20}%/năm
+                    </div>
+                  </div>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Mã Tài Sản (Unique) *</label>
                     <input
                       type="text"
                       required
+                      placeholder="VD: EQ-2026-001"
                       value={formData.code}
-                      onChange={(e) => setFormData({ ...formData, code: e.target.value, qr_code: `QR-${e.target.value.toUpperCase().trim()}` })}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setFormData({ ...formData, code: val, qr_code: `QR-${val.trim()}` });
+                      }}
                       className="ruo-portal-input"
                       style={{ width: '100%', fontFamily: 'var(--font-mono)' }}
                     />
@@ -1763,6 +1861,7 @@ export const EquipmentsPage = () => {
                     <input
                       type="text"
                       required
+                      placeholder="QR-EQ-2026-001"
                       value={formData.qr_code}
                       onChange={(e) => setFormData({ ...formData, qr_code: e.target.value })}
                       className="ruo-portal-input"
@@ -1820,10 +1919,31 @@ export const EquipmentsPage = () => {
                       <option value="">Lưu vào Kho dự phòng (Chưa phân phòng)</option>
                       {rooms.map((r) => (<option key={r._id} value={r._id}>{r.code} - {r.name} (Tầng {r.floor})</option>))}
                     </select>
+                    {selectedCreateRoom ? (
+                      <div style={{ marginTop: '6px', fontSize: '11px', color: '#10b981', background: 'rgba(16, 185, 129, 0.08)', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                          <polyline points="9 22 9 12 15 12 15 22" />
+                        </svg>
+                        <div>
+                          <span><strong>{selectedCreateRoom.code}</strong> (Tầng {selectedCreateRoom.floor}) • Sức chứa: {selectedCreateRoom.capacity || 50} chỗ</span>
+                          <span style={{ display: 'block', color: 'var(--laser-cyan)', fontSize: '10px' }}>
+                            ⚡ Tự động ghi biên bản bàn giao ban đầu (INITIAL_ALLOCATION)
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Thiết bị sẽ được lưu vào kho đệm và gắn nhãn ONBOARDING.
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Nguyên Giá Mua (VNĐ) *</label>
                     <input type="number" min="0" step="50000" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                    <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                      Giá trị: {Number(formData.price || 0).toLocaleString('vi-VN')} VNĐ
+                    </div>
                   </div>
                 </div>
 
@@ -1841,12 +1961,35 @@ export const EquipmentsPage = () => {
                     <input type="number" min="0" max="100" value={formData.depreciation_rate} onChange={(e) => setFormData({ ...formData, depreciation_rate: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
                   </div>
                 </div>
+
+                {createWarrantyCalc && (
+                  createWarrantyCalc.isInvalid ? (
+                    <div style={{ fontSize: '12px', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.25)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <span>{createWarrantyCalc.message}</span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '11px', color: createWarrantyCalc.isExpired ? '#f59e0b' : '#10b981', background: createWarrantyCalc.isExpired ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)', padding: '6px 10px', borderRadius: '6px', border: `1px solid ${createWarrantyCalc.isExpired ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                      <span>
+                        Thời hạn bảo hành: <strong>{createWarrantyCalc.durationText}</strong> • Trạng thái: <strong>{createWarrantyCalc.statusLabel}</strong>
+                      </span>
+                    </div>
+                  )
+                )}
+
               </div>
 
               <div className="ruo-drawer-footer">
                 <button type="button" onClick={() => setShowCreateModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
                 <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
-                  {submitting ? 'Đang Đăng Ký...' : 'Lưu & Khởi Tạo QR'}
+                  {submitting ? 'Đang Đăng Ký...' : 'Lưu & Khởi Tạo QR (UC-3.1)'}
                 </button>
               </div>
             </form>
