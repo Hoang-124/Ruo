@@ -8,6 +8,10 @@ import {
   createRepairUnit
 } from '../controllers/masterDataController.js';
 import {
+  getBuildings,
+  createBuilding,
+  updateBuilding,
+  deleteBuilding,
   getAllRooms,
   createRoom,
   getRoomShortage,
@@ -29,6 +33,12 @@ router.post('/suppliers', protect, requireRole(USER_ROLES.ADMIN), createSupplier
 // Repair Units
 router.get('/repair-units', getRepairUnits);
 router.post('/repair-units', protect, requireRole(USER_ROLES.ADMIN), createRepairUnit);
+
+// Buildings (Master Data Spatial Navigation)
+router.get('/buildings', getBuildings);
+router.post('/buildings', protect, requireRole(USER_ROLES.ADMIN), createBuilding);
+router.put('/buildings/:id', protect, requireRole(USER_ROLES.ADMIN), updateBuilding);
+router.delete('/buildings/:id', protect, requireRole(USER_ROLES.ADMIN), deleteBuilding);
 
 // Rooms & Space (Module 02)
 router.get('/rooms', getAllRooms);
