@@ -207,7 +207,93 @@ async function runTests() {
     console.log(`  ✔ Test 5 ĐẠT: Đã thu hồi ${revokedTokensCount} phiên làm việc cũ để áp dụng quyền mới.`);
   }
 
-  console.log('--- TOÀN BỘ 5/5 TEST CASES UC-10.7 ĐÃ VƯỢT QUA 100% ---');
+  // TEST 6: CRUD /api/admin/buildings Master Data - Khởi tạo tòa nhà
+  console.log('▶ Test 6: CRUD /api/admin/buildings - Khởi tạo tòa nhà mới');
+  {
+    let mockBuildings = [];
+    Building.findOne = ({ code }) => Promise.resolve(mockBuildings.find(b => b.code === code) || null);
+    Building.create = (doc) => {
+      const b = { ...doc, _id: '67b000000000000000000001', save: async function() { return this; } };
+      mockBuildings.push(b);
+      return Promise.resolve(b);
+    };
+
+    const req = {
+      body: {
+        code: 'b2',
+        name: 'Tòa Nhà Kỹ Thuật B2',
+        campusZone: 'Khu B',
+        totalFloors: 6,
+        description: 'Tòa nhà thực hành kỹ thuật máy tính'
+      }
+    };
+
+    let responseData = null;
+    let statusCode = 200;
+    const res = {
+      status: (c) => { statusCode = c; return res; },
+      json: (d) => { responseData = d; }
+    };
+
+    await createBuilding(req, res);
+    assert.strictEqual(statusCode, 201);
+    assert.strictEqual(responseData.success, true);
+    assert.strictEqual(responseData.building.code, 'B2');
+    assert.strictEqual(responseData.building.totalFloors, 6);
+    console.log('  ✔ Test 6 ĐẠT: Khởi tạo tòa nhà Master Data mới thành công.');
+
+    // Bắt lỗi trùng mã tòa nhà
+    await createBuilding(req, res);
+    assert.strictEqual(statusCode, 400);
+    assert.strictEqual(responseData.success, false);
+    assert(responseData.message.includes('đã tồn tại'));
+    console.log('  ✔ Test 6.1 ĐẠT: Chặn trùng mã tòa nhà chuẩn xác.');
+  }
+
+  // TEST 7: CRUD /api/admin/buildings Master Data - Cập nhật & Vô hiệu hóa
+  console.log('▶ Test 7: CRUD /api/admin/buildings - Cập nhật và Vô hiệu hóa tòa nhà');
+  {
+    const mockB = {
+      _id: '67b000000000000000000001',
+      code: 'B2',
+      name: 'Tòa Nhà B2',
+      campusZone: 'Khu B',
+      totalFloors: 6,
+      isActive: true,
+      save: async function() { return this; }
+    };
+    Building.findById = (id) => Promise.resolve(id === mockB._id ? mockB : null);
+
+    const updateReq = {
+      params: { id: mockB._id },
+      body: { name: 'Tòa Nhà Công Nghệ B2 Đổi Tên', totalFloors: 7 }
+    };
+    let updateResData = null;
+    const updateRes = {
+      status: () => updateRes,
+      json: (d) => { updateResData = d; }
+    };
+
+    await updateBuilding(updateReq, updateRes);
+    assert.strictEqual(updateResData.success, true);
+    assert.strictEqual(mockB.name, 'Tòa Nhà Công Nghệ B2 Đổi Tên');
+    assert.strictEqual(mockB.totalFloors, 7);
+    console.log('  ✔ Test 7.1 ĐẠT: Cập nhật thông tin tòa nhà thành công.');
+
+    const deleteReq = { params: { id: mockB._id } };
+    let deleteResData = null;
+    const deleteRes = {
+      status: () => deleteRes,
+      json: (d) => { deleteResData = d; }
+    };
+
+    await deleteBuilding(deleteReq, deleteRes);
+    assert.strictEqual(deleteResData.success, true);
+    assert.strictEqual(mockB.isActive, false);
+    console.log('  ✔ Test 7.2 ĐẠT: Vô hiệu hóa (soft delete) tòa nhà thành công.');
+  }
+
+  console.log('--- TOÀN BỘ 7/7 TEST CASES UC-10.7 ĐÃ VƯỢT QUA 100% ---');
 }
 
 runTests().catch(err => {
