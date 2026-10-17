@@ -16,6 +16,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
     notifications,
     unreadCount,
     markAllNotificationsRead,
+    markNotificationRead,
     navItems,
     logout
   } = useAuth();
@@ -144,7 +145,16 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                       const isRead = Boolean(n.is_read ?? n.read);
                       const timeText = n.time || (n.created_at ? new Date(n.created_at).toLocaleString('vi-VN') : '');
                       return (
-                        <div key={notifId} className={`ruo-notif-row ${isRead ? 'read' : 'unread'}`}>
+                        <div
+                          key={notifId}
+                          className={`ruo-notif-row ${isRead ? 'read' : 'unread'}`}
+                          style={{ cursor: isRead ? 'default' : 'pointer' }}
+                          onClick={() => {
+                            if (!isRead && notifId) {
+                              markNotificationRead(notifId);
+                            }
+                          }}
+                        >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
                             <span className={`ruo-dot ${isRead ? 'muted' : 'cyan'}`} />
                             <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--ink-pure)' }}>

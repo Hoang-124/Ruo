@@ -14,10 +14,12 @@ router.use(protect);
 // View operation dashboard (Facility Manager & Admin)
 router.get('/dashboard', getDashboardMetrics);
 
-// View statistical report (Admin)
-router.get('/statistics', requireRole(USER_ROLES.ADMIN), getStatisticalReport);
+// View statistical report (Admin & Facility Manager)
+router.get('/statistics', getStatisticalReport);
+router.get('/equipment-health', getStatisticalReport);
+router.get('/repair-costs', getStatisticalReport);
 
-// Export statistical report (Admin)
-router.get('/export', requireRole(USER_ROLES.ADMIN), exportStatisticalReport);
+// Export statistical report (Admin & Facility Manager)
+router.get('/export', exportStatisticalReport);
 
 export default router;

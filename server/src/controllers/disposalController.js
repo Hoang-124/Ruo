@@ -200,8 +200,46 @@ export const rejectDisposal = async (req, res) => {
   }
 };
 
-// Backward compatibility exports for old RACI test names
+// RACI step handlers & receipt completion (UC-7.8 -> UC-7.11)
 export const hcApproveDisposal = approveDisposal;
 export const bghApproveDisposal = approveDisposal;
 export const updateDisposalProcurement = approveDisposal;
-export const completeDisposalReceipt = async (req, res) => res.json({ success: true, message: 'Receipt completed' });
+export const completeDisposalReceipt = async (req, res) => {
+  try {
+    const proposal = await Disposal.findById(req.params.id);
+    if (!proposal) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ thanh lý.' });
+    }
+
+    proposal.status = DISPOSAL_STATUSES.COMPLETED;
+    proposal.completed_at = new Date();
+    if (req.body?.decision_number) {
+      proposal.decision_number = String(req.body.decision_number).trim();
+    }
+    await proposal.save();
+
+    const equipment = await Equipment.findById(proposal.equipment_id);
+    if (equipment) {
+      equipment.status = EQUIPMENT_STATUSES.DISPOSED;
+      await equipment.save();
+    }
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'DISPOSAL_COMPLETE',
+      target_table: 'disposals',
+      entity_id: proposal._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      new_value: { status: proposal.status, completed_at: proposal.completed_at }
+    });
+
+    res.json({
+      success: true,
+      message: 'Đã hoàn tất bàn giao và chốt hồ sơ thanh lý.',
+      data: proposal
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

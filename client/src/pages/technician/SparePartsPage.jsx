@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { sparePartApi, repairApi } from '../../lib/api';
 
 export const SparePartsPage = () => {
   const { toast } = useToast();
+  const { currentUser, hasPermission } = useAuth();
+  const canApproveParts = Boolean(
+    hasPermission?.('parts:approve') ||
+    currentUser?.role === 'facility_manager' ||
+    currentUser?.role === 'admin'
+  );
   const [loading, setLoading] = useState(true);
   const [parts, setParts] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -275,6 +282,9 @@ export const SparePartsPage = () => {
                   <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Linh Kiện & Số Lượng</th>
                   <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Trạng Thái Duyệt</th>
                   <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Ngày Lập</th>
+                  {canApproveParts && (
+                    <th style={{ padding: '12px 18px', textAlign: 'right', color: 'var(--ink-pure)', fontWeight: 700 }}>Thao Tác Duyệt</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -296,7 +306,7 @@ export const SparePartsPage = () => {
                       <td style={{ padding: '12px 18px' }}>
                         {(r.items || []).map((it, idx) => (
                           <div key={idx} style={{ fontSize: '12.5px' }}>
-                            • <strong>{it.part_id?.name || 'Linh kiện'}</strong> x {it.qty}
+                            • <strong>{it.part_id?.name || 'Linh kiện'}</strong> x {it.qty || it.quantity}
                           </div>
                         ))}
                       </td>
@@ -317,6 +327,48 @@ export const SparePartsPage = () => {
                       <td style={{ padding: '12px 18px', color: 'var(--ink-muted)', fontSize: '12px' }}>
                         {new Date(r.created_at).toLocaleDateString('vi-VN')}
                       </td>
+                      {canApproveParts && (
+                        <td style={{ padding: '12px 18px', textAlign: 'right' }}>
+                          {isPending ? (
+                            <div style={{ display: 'inline-flex', gap: '6px' }}>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    await sparePartApi.approveRequest(r._id);
+                                    toast.success('Đã phê duyệt xuất kho linh kiện!');
+                                    fetchData();
+                                  } catch (err) {
+                                    toast.error('Lỗi duyệt linh kiện: ' + err.message);
+                                  }
+                                }}
+                                className="laser-btn laser-btn-primary"
+                                style={{ padding: '4px 10px', fontSize: '11.5px', fontWeight: 700 }}
+                              >
+                                Duyệt Xuất Kho
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    await sparePartApi.rejectRequest(r._id, 'Không đủ điều kiện cấp phát');
+                                    toast.info('Đã từ chối yêu cầu cấp linh kiện.');
+                                    fetchData();
+                                  } catch (err) {
+                                    toast.error('Lỗi từ chối: ' + err.message);
+                                  }
+                                }}
+                                className="laser-btn laser-btn-secondary"
+                                style={{ padding: '4px 10px', fontSize: '11.5px', color: '#EF4444' }}
+                              >
+                                Từ Chối
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>Đã xử lý</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

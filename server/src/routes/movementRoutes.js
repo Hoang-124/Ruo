@@ -47,6 +47,10 @@ router.get(
   requirePermission('movement:order', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN),
   getPendingTransfers
 );
+router.get(
+  '/pending-count',
+  getPendingTransfers
+);
 
 // Technicians, facility managers, and admins can request transfers (UC-4.1, UC-2.5/2.6)
 router.post('/', requireTransferRequestPermission, createMovementOrder);
@@ -59,6 +63,11 @@ router.put(
 );
 router.put(
   '/:id/reject',
+  requirePermission('movement:order', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN),
+  rejectTransfer
+);
+router.put(
+  '/:id/cancel',
   requirePermission('movement:order', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN),
   rejectTransfer
 );

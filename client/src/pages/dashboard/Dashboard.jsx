@@ -183,13 +183,15 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
         }
       } else if (isAdmin) {
         try {
-          const [eqRes, dispRes, audRes, chainRes] = await Promise.all([
+          const [eqRes, repRes, dispRes, audRes, chainRes] = await Promise.all([
             equipmentApi.list({ limit: 100 }),
+            repairApi.list(),
             disposalApi.list(),
             auditApi.getLogs({ limit: 6 }),
             auditApi.verifyChain()
           ]);
           const eqList = eqRes.items || eqRes.equipments || [];
+          const allRepairs = repRes.repairs || repRes.data || [];
           const allDisposals = dispRes.proposals || dispRes.data || [];
 
           setAdminDisposals(allDisposals.filter(d => d.status === 'proposed'));
@@ -198,11 +200,19 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
             setAuditChainValid(chainRes.verification.isValid);
           }
           const totalVal = eqList.reduce((acc, e) => acc + (Number(e.price) || 0), 0);
+          const overdueCount = allRepairs.filter(r =>
+            r.deadline_status === 'OVERDUE' ||
+            (!['closed', 'resolved'].includes(r.status) && r.deadline && new Date(r.deadline) < new Date())
+          ).length;
+          const computedSla = allRepairs.length > 0
+            ? `${(((allRepairs.length - overdueCount) / allRepairs.length) * 100).toFixed(1)}%`
+            : '100%';
+
           setAdminStats({
             activeCount: eqList.filter(e => e.status === 'in_use').length,
             totalValuation: totalVal,
             pendingDisposals: allDisposals.filter(d => d.status === 'proposed').length,
-            slaRate: '98.4%'
+            slaRate: computedSla
           });
         } catch (e) {
           console.warn('Admin data fetch error:', e.message);

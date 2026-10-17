@@ -20,8 +20,10 @@ const attachPendingMovements = async (equipments = []) => {
   if (!equipments.length) return [];
   const eqIds = equipments.map((e) => e._id).filter(Boolean);
   const pendingMoves = eqIds.length
-    ? await EquipmentMovement.find({ equipment_id: { $in: eqIds }, status: MOVEMENT_STATUSES.PENDING })
-        .populate('to_room_id', 'code name')
+    ? await EquipmentMovement.find({
+        equipment_id: { $in: eqIds },
+        status: { $in: [MOVEMENT_STATUSES.PENDING, MOVEMENT_STATUSES.AWAITING_APPROVAL, MOVEMENT_STATUSES.APPROVED] }
+      }).populate('to_room_id', 'code name')
     : [];
   const pendingByEqId = new Map(
     pendingMoves.map((m) => [

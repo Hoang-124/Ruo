@@ -107,13 +107,16 @@ export const ALL_NAV_ITEMS = {
     label: 'Kho Linh Kiện & Yêu Cầu',
     short: 'Linh Kiện',
     icon: Icons.Package,
-    roles: [USER_ROLES.TECHNICIAN]
+    permission: 'parts:request',
+    altPermission: 'parts:approve',
+    roles: [USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER]
   },
   movement_tasks: {
     id: 'movement_tasks',
     label: 'Lệnh Di Chuyển & Thay Thế',
     short: 'Lệnh Di Chuyển',
     icon: Icons.ArrowRight,
+    permission: 'movement:confirm',
     roles: [USER_ROLES.TECHNICIAN]
   },
   qr_scanner: {
@@ -121,6 +124,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Quét Mã QR Thực Địa',
     short: 'Quét QR',
     icon: Icons.QrCode,
+    permission: 'equipment:qr:scan',
     roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
   },
 
@@ -130,6 +134,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Phiếu Sửa Chữa (Kanban)',
     short: 'Sửa Chữa',
     icon: Icons.Wrench,
+    permission: 'repair:assign',
     roles: [USER_ROLES.FACILITY_MANAGER]
   },
   warehouse: {
@@ -137,6 +142,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Kho Dự Phòng & Định Mức',
     short: 'Kho Dự Phòng',
     icon: Icons.Layers,
+    permission: 'placement:decide',
     roles: [USER_ROLES.FACILITY_MANAGER]
   },
   movements: {
@@ -144,6 +150,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Điều Chuyển Thiết Bị',
     short: 'Điều Chuyển',
     icon: Icons.RefreshCw,
+    permission: 'movement:order',
     roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN]
   },
   equipments: {
@@ -151,6 +158,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Kho Thiết Bị Trường',
     short: 'Thiết Bị',
     icon: Icons.Equipment,
+    permission: 'equipment:read',
     roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
   },
   inventory: {
@@ -158,6 +166,8 @@ export const ALL_NAV_ITEMS = {
     label: 'Kiểm Kê CSVC',
     short: 'Kiểm Kê',
     icon: Icons.CheckCircle,
+    permission: 'inventory:scan',
+    altPermission: 'inventory:create',
     roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.ADMIN]
   },
   disposal_propose: {
@@ -165,7 +175,8 @@ export const ALL_NAV_ITEMS = {
     label: 'Đề Xuất Thanh Lý',
     short: 'Đề Xuất Thanh Lý',
     icon: Icons.Sliders,
-    roles: [USER_ROLES.FACILITY_MANAGER]
+    permission: 'disposal:propose',
+    roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN]
   },
 
   // Admin Module (conforming to Admin screenshot and master prompt)
@@ -174,6 +185,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Quản Lý Người Dùng',
     short: 'Người Dùng',
     icon: Icons.Users,
+    permission: 'user:update',
     roles: [USER_ROLES.ADMIN]
   },
   rbac: {
@@ -181,6 +193,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Phân Quyền Vai Trò (RBAC)',
     short: 'Phân Quyền',
     icon: Icons.Shield,
+    permission: 'role:update',
     roles: [USER_ROLES.ADMIN]
   },
   master_data: {
@@ -188,6 +201,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Danh Mục Hệ Thống',
     short: 'Danh Mục',
     icon: Icons.Settings,
+    permission: 'category:*',
     roles: [USER_ROLES.ADMIN]
   },
   disposal_approval: {
@@ -195,6 +209,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Phê Duyệt Thanh Lý (BGH)',
     short: 'Duyệt Thanh Lý',
     icon: Icons.CheckCircle,
+    permission: 'disposal:approve',
     roles: [USER_ROLES.ADMIN]
   },
   audit_log: {
@@ -202,16 +217,19 @@ export const ALL_NAV_ITEMS = {
     label: 'Sổ Cái Kiểm Toán SHA-256',
     short: 'Audit Log',
     icon: Icons.Audit,
+    permission: 'audit:read',
     roles: [USER_ROLES.ADMIN]
   }
 };
 
 /**
- * Returns navigation tabs specifically permitted for a given role
+ * Returns navigation tabs specifically permitted for a given role (and optional live permission checker)
  */
-export function getNavItemsForRole(role) {
+export function getNavItemsForRole(role, hasPermission) {
   const normalizedRole = String(role || '').toLowerCase();
-  return Object.values(ALL_NAV_ITEMS).filter((item) => item.roles.includes(normalizedRole));
+  return Object.values(ALL_NAV_ITEMS).filter((item) =>
+    isTabAllowedForRole(normalizedRole, item.id, hasPermission)
+  );
 }
 
 /**
@@ -225,10 +243,14 @@ export function getDefaultTabForRole(role) {
 /**
  * Validates if a role is allowed to view a specific tab
  */
-export function isTabAllowedForRole(role, tabId) {
+export function isTabAllowedForRole(role, tabId, hasPermission) {
   if (!tabId) return false;
   const normalizedRole = String(role || '').toLowerCase();
   const navItem = ALL_NAV_ITEMS[tabId];
   if (!navItem) return false;
+  if (typeof hasPermission === 'function' && (navItem.permission || navItem.altPermission)) {
+    if (navItem.permission && hasPermission(navItem.permission)) return true;
+    if (navItem.altPermission && hasPermission(navItem.altPermission)) return true;
+  }
   return navItem.roles.includes(normalizedRole);
 }

@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getRepairs,
+  getOverdueRepairs,
   getRepairById,
   getEquipmentRepairHistory,
   createRepairReport,
@@ -16,8 +17,9 @@ import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
 
-// Read repairs & equipment repair history (UC-5.2, UC-5.8)
+// Read repairs & equipment repair history (UC-5.2, UC-5.8, UC-5.9)
 router.get('/', protect, getRepairs);
+router.get('/overdue', protect, getOverdueRepairs);
 router.get('/equipment/:id', protect, getEquipmentRepairHistory);
 router.get('/:id', protect, getRepairById);
 

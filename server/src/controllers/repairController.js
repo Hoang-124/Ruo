@@ -53,7 +53,35 @@ export const getRepairs = async (req, res) => {
       return repObj;
     });
 
-    res.json({ success: true, count: enriched.length, data: enriched });
+    res.json({ success: true, count: enriched.length, data: enriched, repairs: enriched });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get overdue repairs (UC-5.9)
+// @route   GET /api/repairs/overdue
+export const getOverdueRepairs = async (req, res) => {
+  try {
+    const now = new Date();
+    const repairs = await Repair.find({
+      status: { $in: [REPAIR_STATUSES.REPORTED, REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] },
+      deadline: { $lt: now }
+    })
+      .populate('equipment_id', 'code name brand model qr_code room_id')
+      .populate('reported_by', 'full_name code email role')
+      .populate('assigned_to', 'full_name code email role')
+      .sort({ deadline: 1 });
+
+    const enriched = repairs.map(rep => {
+      const repObj = rep.toObject();
+      const sla = evaluateSlaStatus(rep.deadline);
+      repObj.deadline_status = sla.state;
+      repObj.remaining_minutes = sla.remainingMinutes;
+      return repObj;
+    });
+
+    res.json({ success: true, count: enriched.length, data: enriched, repairs: enriched });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -200,6 +228,8 @@ export const assignRepairTask = async (req, res) => {
   try {
     const { 
       assigned_to, 
+      technician_id,
+      technicianId,
       repair_unit_id, 
       deadline, 
       replacement_equipment_id,
@@ -214,7 +244,7 @@ export const assignRepairTask = async (req, res) => {
     assertTransition('REPAIR', repair.status, REPAIR_STATUSES.ASSIGNED, req.user.role);
 
     repair.assigned_by = req.user._id;
-    repair.assigned_to = assigned_to || null;
+    repair.assigned_to = assigned_to || technician_id || technicianId || null;
     if (repair_unit_id) repair.repair_unit_id = repair_unit_id;
     if (damage_level) repair.damage_level = damage_level;
     if (deadline) repair.deadline = new Date(deadline);

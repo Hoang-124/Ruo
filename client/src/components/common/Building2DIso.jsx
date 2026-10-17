@@ -110,8 +110,8 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
           style={{
             width: '100%',
             height: '100%',
-            maxHeight: '520px',
-            minHeight: '360px',
+            maxHeight: 'calc(100vh - 145px)',
+            minHeight: '260px',
             overflow: 'visible',
             userSelect: 'none'
           }}

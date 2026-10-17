@@ -5,6 +5,7 @@ import {
   getEquipmentLifecycle,
   getEquipmentByQR,
   getEquipmentCategories,
+  getWarrantyExpiringEquipments,
   createEquipment,
   updateEquipment,
   validateBatchImport,
@@ -18,9 +19,10 @@ import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
 
-// Directory, QR lookup & Lifecycle (UC-3.2, UC-3.3, UC-3.5, QR Lookup)
+// Directory, QR lookup & Lifecycle (UC-3.2, UC-3.3, UC-3.5, UC-6.2, QR Lookup)
 router.get('/', getEquipments);
 router.get('/categories', getEquipmentCategories);
+router.get('/warranty-expiring', getWarrantyExpiringEquipments);
 router.get('/qr/:qrCode', getEquipmentByQR);
 router.get('/code/:qrCode', getEquipmentByQR);
 router.get('/:id/lifecycle', getEquipmentLifecycle);

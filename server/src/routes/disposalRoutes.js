@@ -17,8 +17,8 @@ const router = express.Router();
 // View disposal requests (Admin, Facility Manager)
 router.get('/', protect, getDisposalList);
 
-// Propose disposal (Facility Manager only)
-router.post('/', protect, requirePermission('disposal:propose', USER_ROLES.FACILITY_MANAGER), createDisposalProposal);
+// Propose disposal (Technician, Facility Manager, Admin) (UC-7.7)
+router.post('/', protect, requirePermission('disposal:propose', USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), createDisposalProposal);
 
 // Approve disposal request (Admin only)
 router.put('/:id/approve', protect, requirePermission('disposal:approve', USER_ROLES.ADMIN), approveDisposal);
