@@ -8,7 +8,12 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node src/seeds/seedDatabase.js",
-    "test": "node src/tests/test_uc15_uc16.js && node src/tests/test_uc10_1.js && node src/tests/test_uc10_2.js && node src/tests/test_uc10_3.js && node src/tests/test_uc10_4.js && node src/tests/test_uc10_5.js"
+    "seed:transfer-demo": "node src/seeds/seedTransferDemo.js",
+    "test": "node src/tests/test_uc15_uc16.js && node src/tests/test_uc10_1.js && node src/tests/test_uc10_2.js && node src/tests/test_uc10_3.js && node src/tests/test_uc10_4.js && node src/tests/test_uc10_5.js && node src/tests/test_uc10_6.js",
+    "test:unit": "node --test test/",
+    "test:uc": "node src/tests/test_uc15_uc16.js && node src/tests/test_uc10_1.js && node src/tests/test_uc10_2.js && node src/tests/test_uc10_3.js && node src/tests/test_uc10_4.js && node src/tests/test_uc10_5.js && node src/tests/test_uc10_6.js",
+    "test:equipment": "node src/tests/test_equipment_phase2.js && node src/tests/test_crud_actions.js",
+    "test:verify": "node src/tests/backendVerification.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

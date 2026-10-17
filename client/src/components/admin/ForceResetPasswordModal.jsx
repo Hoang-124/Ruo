@@ -194,15 +194,21 @@ export const ForceResetPasswordModal = ({
                 <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-primary)', margin: 0 }}>
                   Mật khẩu mới cấp phát <span style={{ color: '#EF4444' }}>*</span>
                 </label>
-                <button
-                  type="button"
-                  className="ruo-btn ruo-btn-ghost ruo-btn-sm"
-                  onClick={() => setPassword(generateRandomPassword())}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11.5px', padding: '2px 8px' }}
-                >
-                  <Icons.Refresh size={12} />
-                  <span>Tạo Mật Khẩu Ngẫu Nhiên</span>
-                </button>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button
+                    type="button"
+                    className="ruo-btn ruo-btn-ghost ruo-btn-sm"
+                    onClick={() => {
+                      const newPw = generateRandomPassword();
+                      setPassword(newPw);
+                    }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', padding: '2px 8px' }}
+                    title="Tự sinh mật khẩu ngẫu nhiên định dạng Ruo@xxxxxx (UC-10.6)"
+                  >
+                    <Icons.Refresh size={12} />
+                    <span>Tự Sinh Mật Khẩu</span>
+                  </button>
+                </div>
               </div>
 
               <div style={{ position: 'relative' }}>

@@ -20,7 +20,7 @@ router.get('/', requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_
 router.get('/equipment/:id', requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER), getEquipmentTransfers);
 router.get('/pending', requireRole(USER_ROLES.FACILITY_MANAGER), getPendingTransfers);
 
-// Technicians and facility managers can request an equipment transfer.
+// Technicians and facility managers can request transfers for facility-manager approval.
 router.post('/', requireRole(USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER), createMovementOrder);
 router.put('/:id/approve', requireRole(USER_ROLES.FACILITY_MANAGER), approveTransfer);
 router.put('/:id/reject', requireRole(USER_ROLES.FACILITY_MANAGER), rejectTransfer);

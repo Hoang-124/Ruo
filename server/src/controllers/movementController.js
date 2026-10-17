@@ -92,7 +92,7 @@ export const getEquipmentTransfers = async (req, res) => {
   }
 };
 
-// @desc    Order equipment transfer (Facility Manager)
+// @desc    Order equipment transfer (Facility Manager, Admin)
 // @route   POST /api/movements
 export const createMovementOrder = async (req, res) => {
   try {
@@ -204,9 +204,6 @@ export const approveTransfer = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu điều chuyển.' });
     }
     assertTransition('TRANSFER', movement.status, MOVEMENT_STATUSES.APPROVED, req.user.role);
-    if (movement.ordered_by.toString() === req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Người tạo phiếu không được tự phê duyệt phiếu của mình.' });
-    }
 
     movement.status = MOVEMENT_STATUSES.APPROVED;
     movement.approved_by = req.user._id;
@@ -259,9 +256,6 @@ export const rejectTransfer = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu điều chuyển.' });
     }
     assertTransition('TRANSFER', movement.status, MOVEMENT_STATUSES.REJECTED, req.user.role);
-    if (movement.ordered_by.toString() === req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Người tạo phiếu không được tự từ chối phiếu của mình.' });
-    }
 
     movement.status = MOVEMENT_STATUSES.REJECTED;
     movement.approved_by = req.user._id;

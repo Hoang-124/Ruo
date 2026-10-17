@@ -111,7 +111,7 @@ Hệ thống được thiết kế theo chuẩn phân tách nhiệm vụ độc 
 | Họ và Tên | Vai trò (Role) | Email Đăng Nhập | Mã Định Danh | Mật Khẩu | Đặc Quyền Nghiệp Vụ Chính |
 | :--- | :--- | :--- | :---: | :---: | :--- |
 | **Ban Giám Hiệu / Quản Trị Hệ Thống** | `admin` | `admin@ruo.edu.vn` | `AD001` | `Ruo@2026` | Quản trị người dùng, phân quyền ma trận RBAC động, quản lý danh mục nền (Master Data), phê duyệt thanh lý cuối cùng (Ban hành QĐ-TL), tra cứu sổ cái kiểm toán SHA-256 |
-| **Cán Bộ Quản Lý Cơ Sở Vật Chất** | `facility_manager` | `facility_manager@ruo.edu.vn` | `QL001` | `Ruo@2026` | Điều phối sửa chữa (Kanban SLA), giao việc kỹ thuật viên, cấp thiết bị dự phòng từ KHO-01, duyệt linh kiện, ra lệnh điều chuyển, kiểm kê và lập hồ sơ đề xuất thanh lý (R ≥ 60%) |
+| **Cán Bộ Quản Lý Cơ Sở Vật Chất** | `facility_manager` | `manager@ruo.edu.vn` | `QL001` | `Ruo@2026` | Điều phối sửa chữa (Kanban SLA), giao việc kỹ thuật viên, cấp thiết bị dự phòng từ KHO-01, duyệt linh kiện, ra lệnh điều chuyển, kiểm kê và lập hồ sơ đề xuất thanh lý (R ≥ 60%) |
 | **Kỹ Thuật Viên Vận Hành** | `technician` | `technician@ruo.edu.vn` | `KT001` | `Ruo@2026` | Tiếp nhận nhiệm vụ, cập nhật nhật ký sửa chữa, đề xuất lĩnh linh kiện, xác nhận di chuyển thiết bị thực địa, quét QR tra cứu thông số kỹ thuật |
 | **Giảng Viên / Cán Bộ Sử Dụng** | `lecturer` | `lecturer@ruo.edu.vn` | `GV001` | `Ruo@2026` | Tra cứu thiết bị phòng học, tạo phiếu báo hỏng sự cố thực địa, theo dõi tiến độ khắc phục SLA và đánh giá chất lượng sửa chữa (1-5 sao) |
 | **Khách Vãng Lai** | `guest` | *(Không cần đăng nhập)* | — | — | Đăng nhập tài khoản trường, yêu cầu gửi mã OTP khôi phục mật khẩu |
@@ -322,6 +322,7 @@ cd d:/Ruo/server
 npm install
 cp .env.example .env
 npm run seed        # Nạp 4 tài khoản chuẩn và dữ liệu kho KHO-01
+npm run seed:transfer-demo # Bổ sung dữ liệu demo điều chuyển, không xóa dữ liệu hiện có
 npm run dev         # Khởi động máy chủ backend tại Port 5000
 ```
 

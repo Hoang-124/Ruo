@@ -97,12 +97,13 @@ export const RBACMatrixPage = () => {
       name: 'Module 03: Vòng Đời Thiết Bị, Dán Nhãn QR & Điều Chuyển',
       shortName: 'Thiết Bị & Điều Chuyển',
       permissions: [
-        { code: 'equipment:read', label: 'Tra cứu kho thiết bị trường & lịch sử phòng', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
-        { code: 'equipment:create', label: 'Đăng ký tài sản mới vào hệ thống', defaultRoles: ['facility_manager'] },
-        { code: 'equipment:update', label: 'Cập nhật thông số kỹ thuật & phòng phân bổ', defaultRoles: ['facility_manager'] },
-        { code: 'equipment:import', label: 'Nhập hàng loạt danh sách thiết bị từ Excel/CSV', defaultRoles: ['facility_manager'] },
-        { code: 'equipment:qr:generate', label: 'Tạo & in nhãn mã QR chuẩn hóa cho thiết bị', defaultRoles: ['facility_manager'] },
-        { code: 'equipment:qr:scan', label: 'Quét mã QR camera tra cứu hồ sơ tài sản thực địa', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
+        { code: 'equipment:read', label: 'Tra cứu kho thiết bị trường & lịch sử dòng đời (UC-3.2, UC-3.3, UC-3.5)', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
+        { code: 'equipment:create', label: 'Đăng ký tài sản mới vào hệ thống (UC-3.1)', defaultRoles: ['technician', 'facility_manager', 'admin'] },
+        { code: 'equipment:update', label: 'Cập nhật thông số kỹ thuật & tự động ghi điều chuyển phòng (UC-3.4)', defaultRoles: ['technician', 'facility_manager', 'admin'] },
+        { code: 'equipment:import', label: 'Nhập hàng loạt & kiểm tra lỗi danh sách thiết bị từ Excel/CSV (UC-3.6, UC-3.7)', defaultRoles: ['facility_manager', 'admin'] },
+        { code: 'equipment:dispose', label: 'Ghi nhận thanh lý tài sản DISPOSED theo QĐ BGH (UC-3.8)', defaultRoles: ['facility_manager', 'admin'] },
+        { code: 'equipment:qr:generate', label: 'Tạo & in nhãn mã QR chuẩn hóa cho thiết bị', defaultRoles: ['facility_manager', 'admin'] },
+        { code: 'equipment:qr:scan', label: 'Quét mã QR camera tra cứu hồ sơ tài sản thực địa (<1s)', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
         { code: 'warranty:read', label: 'Tra cứu tình trạng & thời hạn bảo hành thiết bị', defaultRoles: ['technician', 'facility_manager'] },
         { code: 'warranty:update', label: 'Gia hạn bảo hành & cập nhật thông tin nhà cung cấp', defaultRoles: ['facility_manager'] },
         { code: 'movement:order', label: 'Ra quyết định điều chuyển thiết bị giữa các phòng', defaultRoles: ['facility_manager'] },
@@ -135,9 +136,10 @@ export const RBACMatrixPage = () => {
       name: 'Module 05: Kiểm Kê Tài Sản Thực Địa & Thẩm Định Thanh Lý',
       shortName: 'Kiểm Kê & Thanh Lý (RACI)',
       permissions: [
-        { code: 'inventory:create', label: 'Khởi tạo phiên kiểm kê định kỳ theo phòng/tầng', defaultRoles: ['facility_manager'] },
-        { code: 'inventory:scan', label: 'Quét mã QR kiểm kê & đối soát thực địa', defaultRoles: ['technician'] },
+        { code: 'inventory:create', label: 'Khởi tạo phiên kiểm kê định kỳ theo phòng/tầng Tòa A1 (UC-3.9)', defaultRoles: ['facility_manager'] },
+        { code: 'inventory:scan', label: 'Quét mã QR kiểm kê & đối soát thực địa (UC-3.10)', defaultRoles: ['technician'] },
         { code: 'inventory:reconcile', label: 'Chốt số liệu kiểm kê & đối soát chênh lệch tài sản', defaultRoles: ['facility_manager'] },
+        { code: 'inventory:export', label: 'Xuất biên bản kiểm kê đầy đủ & ký số SHA-256 (UC-3.11)', defaultRoles: ['facility_manager', 'admin'] },
         { code: 'disposal:propose', label: 'Lập hồ sơ đề xuất thanh lý khi chỉ số R >= 60%', defaultRoles: ['facility_manager'] },
         { code: 'disposal:approve', label: 'Phê duyệt quyết định thanh lý tài sản cuối cùng (BGH)', defaultRoles: ['admin'] }
       ]
@@ -752,51 +754,36 @@ export const RBACMatrixPage = () => {
                   <React.Fragment key={mod.id}>
                     {/* Module Header Bar */}
                     <tr style={{ background: 'var(--surface-header)', borderTop: '2px solid var(--border-default)', borderBottom: '1px solid var(--border-default)' }}>
-                      <td colSpan={visibleRoles.length + 1} style={{ padding: '10px 20px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                          <span style={{ fontWeight: 800, color: 'var(--blueprint-400)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                            {mod.name} ({mod.permissions.length} nghiệp vụ)
-                          </span>
-
-                          {/* Quick Module Controls if single role is focused */}
-                          {focusedRole !== 'ALL' && (
-                            <div style={{ display: 'inline-flex', gap: '6px' }}>
-                              <button
-                                type="button"
-                                onClick={() => setModulePermissionsForRole(mod.permissions, focusedRole, true)}
-                                style={{
-                                  fontSize: '11px',
-                                  padding: '3px 8px',
-                                  borderRadius: '4px',
-                                  border: '1px solid var(--border-default)',
-                                  background: 'var(--surface-card)',
-                                  color: 'var(--ink-primary)',
-                                  cursor: 'pointer',
-                                  fontWeight: 600
-                                }}
-                              >
-                                Bật tất cả
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setModulePermissionsForRole(mod.permissions, focusedRole, false)}
-                                style={{
-                                  fontSize: '11px',
-                                  padding: '3px 8px',
-                                  borderRadius: '4px',
-                                  border: '1px solid var(--border-default)',
-                                  background: 'var(--surface-card)',
-                                  color: '#EF4444',
-                                  cursor: 'pointer',
-                                  fontWeight: 600
-                                }}
-                              >
-                                Thu hồi tất cả
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                      <td style={{ padding: '10px 20px' }}>
+                        <span style={{ fontWeight: 800, color: 'var(--blueprint-400)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                          {mod.name} ({mod.permissions.length} nghiệp vụ)
+                        </span>
                       </td>
+                      {visibleRoles.map(r => {
+                        const allEnabled = mod.permissions.every(p => Boolean(matrixState[`${r.id}:${p.code}`]));
+                        const enabledInMod = mod.permissions.filter(p => Boolean(matrixState[`${r.id}:${p.code}`])).length;
+                        return (
+                          <td key={r.id} style={{ padding: '8px 10px', textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => setModulePermissionsForRole(mod.permissions, r.id, !allEnabled)}
+                              style={{
+                                fontSize: '10.5px',
+                                padding: '3px 8px',
+                                borderRadius: '4px',
+                                border: `1px solid ${allEnabled ? r.color : 'var(--border-default)'}`,
+                                background: allEnabled ? r.bg : 'var(--surface-card)',
+                                color: allEnabled ? r.color : 'var(--ink-secondary)',
+                                cursor: 'pointer',
+                                fontWeight: 700
+                              }}
+                              title={`Bật/tắt toàn bộ quyền ${mod.shortName} cho ${r.name}`}
+                            >
+                              {allEnabled ? 'Tắt module' : `Bật cả (${enabledInMod}/${mod.permissions.length})`}
+                            </button>
+                          </td>
+                        );
+                      })}
                     </tr>
 
                     {/* Permissions Rows in Module */}
