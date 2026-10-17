@@ -4,7 +4,7 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 
 ---
 
-## 1. Danh Sách Bộ Kiểm Thử (43 Test Cases)
+## 1. Danh Sách Bộ Kiểm Thử (50 Test Cases)
 
 | Mã Use Case | Tên Chức Năng | File Kiểm Thử | Số Lượng Test | Trạng Thái |
 | :--- | :--- | :--- | :---: | :---: |
@@ -15,6 +15,7 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 | **UC-10.4** | Update User Role & Invalidate Sessions | `test_uc10_4.js` | 6 tests | ✅ PASS (100%) |
 | **UC-10.5** | Toggle Status & Force Reset Password | `test_uc10_5.js` | 6 tests | ✅ PASS (100%) |
 | **UC-10.6** | Reset Password & Mandatory Next Login Change | `test_uc10_6.js` | 8 tests | ✅ PASS (100%) |
+| **UC-10.7** | Role Approval, Appointment & Master Data | `test_uc10_7.js` | 7 tests | ✅ PASS (100%) |
 
 ---
 

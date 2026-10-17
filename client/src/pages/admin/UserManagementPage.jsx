@@ -7,6 +7,7 @@ import { UserDetailDrawer } from '../../components/admin/UserDetailDrawer';
 import { RoleChangeConfirmModal } from '../../components/admin/RoleChangeConfirmModal';
 import { UserLockModal } from '../../components/admin/UserLockModal';
 import { ForceResetPasswordModal } from '../../components/admin/ForceResetPasswordModal';
+import { RoleApprovalModal } from '../../components/admin/RoleApprovalModal';
 
 export const UserManagementPage = () => {
   const { toast } = useToast();
@@ -32,6 +33,10 @@ export const UserManagementPage = () => {
   // UC-10.4: Live RBAC Role Change & Confirmation Modal
   const [pendingRoleChange, setPendingRoleChange] = useState(null); // { user, targetRole }
   const [updatingRole, setUpdatingRole] = useState(false);
+
+  // UC-10.7: Role Approval & Appointment Modal
+  const [approvalCandidate, setApprovalCandidate] = useState(null); // { user, initialAction }
+  const [processingApproval, setProcessingApproval] = useState(false);
 
   // Create Form State (UC-10.1)
   const [createForm, setCreateForm] = useState({
@@ -261,31 +266,36 @@ export const UserManagementPage = () => {
     }
   };
 
-  const handleApproveUser = async (user, action, targetRole) => {
-    const roleLabel = (targetRole || user.requested_role) === USER_ROLES.FACILITY_MANAGER ? 'Quản Lý CSVC'
-      : (targetRole || user.requested_role) === USER_ROLES.TECHNICIAN ? 'Kỹ Thuật Viên' : 'Giảng Viên';
+  // UC-10.7: Open Role Approval & Appointment Modal
+  const handleOpenApprovalModal = (user, initialAction = 'approve') => {
+    setApprovalCandidate({ user, initialAction });
+  };
 
-    const confirmMsg = action === 'approve'
-      ? `Phê duyệt bổ nhiệm cán bộ ${user.full_name} (${user.code}) vào chức vụ [${roleLabel}]?`
-      : `Từ chối nguyện vọng chức vụ và kích hoạt tài khoản ${user.full_name} với vai trò Giảng Viên thường?`;
-
-    if (!window.confirm(confirmMsg)) return;
-
+  // UC-10.7: Submit Role Approval or Rejection
+  const handleApprovalSubmit = async ({ userId, action, role, note }) => {
+    setProcessingApproval(true);
     try {
-      const res = await authApi.approveUser(user._id, {
-        action,
-        role: targetRole || user.requested_role
-      });
-
+      const res = await authApi.approveUser(userId, { action, role, note });
       if (res.success) {
-        toast.success(res.message, action === 'approve' ? 'Phê Duyệt Thành Công' : 'Đã Từ Chối Bổ Nhiệm');
+        toast.success(res.message, action === 'approve' ? 'Phê Duyệt Bổ Nhiệm Thành Công' : 'Đã Từ Chối Bổ Nhiệm');
+        setApprovalCandidate(null);
         fetchUsers();
-        if (selectedUser && selectedUser._id === user._id) {
-          setSelectedUser(null);
+        if (selectedUser && selectedUser._id === userId) {
+          setSelectedUser(prev => ({
+            ...prev,
+            role: res.user?.role || role,
+            status: 'active',
+            requested_role: null,
+            approved_by: res.user?.approved_by,
+            approved_at: res.user?.approved_at,
+            approval_note: note || null
+          }));
         }
       }
     } catch (err) {
       toast.error('Lỗi xử lý phê duyệt: ' + err.message);
+    } finally {
+      setProcessingApproval(false);
     }
   };
 
@@ -619,7 +629,7 @@ export const UserManagementPage = () => {
                             <>
                               <button
                                 className="ruo-btn ruo-btn-sm"
-                                onClick={() => handleApproveUser(u, 'approve', u.requested_role)}
+                                onClick={() => handleOpenApprovalModal(u, 'approve')}
                                 style={{
                                   background: '#10B981',
                                   color: '#FFFFFF',
@@ -631,7 +641,7 @@ export const UserManagementPage = () => {
                                   gap: '4px',
                                   padding: '5px 9px'
                                 }}
-                                title="Phê duyệt bổ nhiệm chức vụ"
+                                title="Phê duyệt bổ nhiệm chức vụ (UC-10.7)"
                               >
                                 <Icons.Check size={12} strokeWidth={2.5} />
                                 <span>Duyệt</span>
@@ -639,7 +649,7 @@ export const UserManagementPage = () => {
 
                               <button
                                 className="ruo-btn ruo-btn-sm"
-                                onClick={() => handleApproveUser(u, 'reject')}
+                                onClick={() => handleOpenApprovalModal(u, 'reject')}
                                 style={{
                                   background: 'transparent',
                                   color: '#EF4444',
@@ -650,7 +660,7 @@ export const UserManagementPage = () => {
                                   gap: '4px',
                                   padding: '5px 8px'
                                 }}
-                                title="Từ chối nguyện vọng (kích hoạt vai trò Giảng Viên)"
+                                title="Từ chối nguyện vọng (kích hoạt vai trò Giảng Viên - UC-10.7)"
                               >
                                 <Icons.X size={12} strokeWidth={2.5} />
                                 <span>Từ Chối</span>
@@ -942,6 +952,9 @@ export const UserManagementPage = () => {
           setUserToReset(u);
           setIsResetPasswordModalOpen(true);
         }}
+        onOpenApprovalModal={(u, action) => {
+          handleOpenApprovalModal(u, action);
+        }}
         onToggleLock={(id, status) => {
           const target = users.find(u => u._id === id) || (selectedUser?._id === id ? selectedUser : { _id: id, status });
           handleOpenLockModal(target);
@@ -965,6 +978,16 @@ export const UserManagementPage = () => {
         onClose={() => setUserToLock(null)}
         onConfirm={handleConfirmLock}
         loading={lockingUser}
+      />
+
+      {/* UC-10.7: Role Approval & Appointment Modal */}
+      <RoleApprovalModal
+        user={approvalCandidate?.user}
+        initialAction={approvalCandidate?.initialAction}
+        isOpen={Boolean(approvalCandidate)}
+        onClose={() => setApprovalCandidate(null)}
+        onSubmit={handleApprovalSubmit}
+        loading={processingApproval}
       />
     </div>
   );

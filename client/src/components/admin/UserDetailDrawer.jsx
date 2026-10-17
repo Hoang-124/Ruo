@@ -16,7 +16,8 @@ export const UserDetailDrawer = ({
   onClose,
   onUserUpdated,
   onOpenResetPassword,
-  onToggleLock
+  onToggleLock,
+  onOpenApprovalModal
 }) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'rbac' | 'history'
@@ -615,6 +616,123 @@ export const UserDetailDrawer = ({
                       <div style={{ color: 'var(--ink-secondary)' }}>
                         Cán bộ này đã được cấp mật khẩu tạm. Hệ thống sẽ buộc cán bộ đổi mật khẩu ở lần đăng nhập tiếp theo trước khi cho phép thao tác hệ thống.
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* UC-10.7: Pending Role Approval & Appointment Banner */}
+                {isPending && (
+                  <div
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.08)',
+                      padding: '16px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid rgba(245, 158, 11, 0.35)',
+                      gridColumn: 'span 2',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <Icons.Shield size={20} color="#F59E0B" style={{ marginTop: '2px', flexShrink: 0 }} />
+                      <div style={{ flex: 1, fontSize: '12.5px', lineHeight: '1.5' }}>
+                        <div style={{ fontWeight: 800, color: '#F59E0B', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                          Yêu cầu bổ nhiệm chức vụ đang chờ duyệt (UC-10.7)
+                        </div>
+                        <div style={{ color: 'var(--ink-secondary)' }}>
+                          Cán bộ đăng ký nguyện vọng giữ chức vụ:{' '}
+                          <strong style={{ color: 'var(--blueprint-400)' }}>
+                            {userData.requested_role === USER_ROLES.FACILITY_MANAGER
+                              ? 'Quản Lý CSVC (Facility Manager)'
+                              : userData.requested_role === USER_ROLES.TECHNICIAN
+                              ? 'Kỹ Thuật Viên (Technician)'
+                              : 'Giảng Viên (Lecturer)'}
+                          </strong>
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '2px' }}>
+                          Tài khoản đang ở trạng thái chờ duyệt. Cần sự phê chuẩn của Ban Quản Trị trước khi được cấp quyền tương ứng.
+                        </div>
+                      </div>
+                    </div>
+
+                    {onOpenApprovalModal && (
+                      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', borderTop: '1px solid rgba(245, 158, 11, 0.2)', paddingTop: '10px' }}>
+                        <button
+                          type="button"
+                          onClick={() => onOpenApprovalModal(userData, 'reject')}
+                          className="ruo-btn ruo-btn-sm"
+                          style={{
+                            background: 'transparent',
+                            color: '#EF4444',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            fontSize: '12px'
+                          }}
+                        >
+                          <Icons.X size={13} strokeWidth={2.5} />
+                          <span>Từ Chối (Hạ về Giảng Viên)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onOpenApprovalModal(userData, 'approve')}
+                          className="ruo-btn ruo-btn-sm"
+                          style={{
+                            background: '#10B981',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 14px',
+                            fontSize: '12px',
+                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
+                          }}
+                        >
+                          <Icons.Check size={13} strokeWidth={2.5} />
+                          <span>Phê Duyệt Bổ Nhiệm</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* UC-10.7: Official Approval Audit Card */}
+                {userData.approved_at && (
+                  <div
+                    style={{
+                      background: 'rgba(16, 185, 129, 0.06)',
+                      padding: '14px 16px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      gridColumn: 'span 2',
+                      display: 'flex',
+                      gap: '12px',
+                      alignItems: 'flex-start'
+                    }}
+                  >
+                    <Icons.CheckCircle size={18} color="#10B981" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <div style={{ flex: 1, fontSize: '12.5px', lineHeight: '1.5' }}>
+                      <div style={{ fontWeight: 800, color: '#10B981', marginBottom: '2px' }}>
+                        HỒ SƠ BỔ NHIỆM CHỨC VỤ ĐÃ ĐƯỢC DUYỆT (UC-10.7)
+                      </div>
+                      <div style={{ color: 'var(--ink-secondary)' }}>
+                        Phê duyệt bởi:{' '}
+                        <strong style={{ color: 'var(--ink-primary)' }}>
+                          {userData.approved_by?.full_name ? `${userData.approved_by.full_name} (${userData.approved_by.code || 'BGH'})` : 'Ban Quản Trị Hệ Thống'}
+                        </strong>{' '}
+                        vào lúc {new Date(userData.approved_at).toLocaleString('vi-VN')}
+                      </div>
+                      {userData.approval_note && (
+                        <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '2px' }}>
+                          Ghi chú quyết định: <em>"{userData.approval_note}"</em>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

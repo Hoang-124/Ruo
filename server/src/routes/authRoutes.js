@@ -22,6 +22,12 @@ import {
   adminResetPassword,
   approveUser
 } from '../controllers/authController.js';
+import {
+  getBuildings,
+  createBuilding,
+  updateBuilding,
+  deleteBuilding
+} from '../controllers/facilityController.js';
 import { protect, requireRole } from '../middlewares/authMiddleware.js';
 import { createRateLimiter } from '../middlewares/securityMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
@@ -86,6 +92,13 @@ router.put('/users/:id/lock', protect, requireRole(USER_ROLES.ADMIN), toggleUser
 router.post('/users/:id/reset-password', protect, requireRole(USER_ROLES.ADMIN), adminResetPassword);
 router.put('/users/:id/reset-password', protect, requireRole(USER_ROLES.ADMIN), adminResetPassword);
 
+// UC-10.7: Role Approval & Appointment (POST /api/auth/users/:id/approve)
 router.post('/users/:id/approve', protect, requireRole(USER_ROLES.ADMIN), approveUser);
+
+// Master Data: Buildings CRUD (GET/POST/PUT/DELETE /api/admin/buildings)
+router.get('/buildings', getBuildings);
+router.post('/buildings', protect, requireRole(USER_ROLES.ADMIN), createBuilding);
+router.put('/buildings/:id', protect, requireRole(USER_ROLES.ADMIN), updateBuilding);
+router.delete('/buildings/:id', protect, requireRole(USER_ROLES.ADMIN), deleteBuilding);
 
 export default router;
