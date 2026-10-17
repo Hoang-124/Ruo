@@ -312,7 +312,7 @@ export const RBACMatrixPage = () => {
       });
       return next;
     });
-    toast.info(`Đã ${enable ? 'bật' : 'tắt'} toàn bộ quyền của nhóm cho vai trò này.`);
+    toast.info(`Đã ${enable ? 'bật' : 'tắt'} toàn bộ ${modPermissions.length} quyền của phân hệ cho vai trò này (Live Policy).`);
   };
 
   // Compute live diff between current matrixState and savedMatrixState
