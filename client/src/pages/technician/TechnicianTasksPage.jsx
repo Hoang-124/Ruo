@@ -3,6 +3,7 @@ import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { repairApi } from '../../lib/api';
+import { RepairStepper } from '../../components/repairs/RepairStepper';
 
 export const TechnicianTasksPage = () => {
   const { currentUser } = useAuth();
@@ -78,7 +79,7 @@ export const TechnicianTasksPage = () => {
 
     try {
       setSubmitting(true);
-      const res = await repairApi.addLog(selectedTask._id, {
+      const res = await repairApi.progress(selectedTask._id, {
         action: 'in_progress',
         description: [logData.action.trim(), logData.notes.trim()].filter(Boolean).join(' — '),
         notes: logData.notes.trim(),
@@ -288,6 +289,10 @@ export const TechnicianTasksPage = () => {
                     <div>Vị trí: <strong style={{ color: 'var(--ink-pure)' }}>{room.code} ({room.name})</strong></div>
                     <div>Hạn cam kết SLA: <strong style={{ color: isCritical ? '#EF4444' : 'var(--ink-pure)' }}>{t.deadline ? new Date(t.deadline).toLocaleString('vi-VN') : '—'}</strong></div>
                     <div>Người báo: <strong style={{ color: 'var(--ink-pure)' }}>{t.reported_by?.full_name || 'Giảng viên'}</strong></div>
+                  </div>
+
+                  <div style={{ margin: '10px 0' }}>
+                    <RepairStepper status={t.status} outcome={t.outcome} />
                   </div>
 
                   <div style={{ background: 'var(--surface-panel)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '13px', marginBottom: '10px' }}>
