@@ -300,6 +300,7 @@ export const masterDataApi = {
 export const roleApi = {
   list: () => api.get('/admin/roles'),
   update: (id, permissions) => api.put(`/admin/roles/${id}/permissions`, { permissions }),
+  toggleModule: (id, modulePermissions, action) => api.put(`/admin/roles/${id}/permissions`, { modulePermissions, action }),
   batchUpdate: (roles) => api.post('/admin/roles/batch-update', { roles }),
   resetDefaults: () => api.post('/admin/roles/reset-defaults', {})
 };

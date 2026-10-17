@@ -207,6 +207,39 @@ export const EquipmentsPage = () => {
     setTimeout(() => fetchEquipments(), 0);
   };
 
+  // Export filtered directory to CSV with Vietnamese UTF-8 BOM (UC-3.2)
+  const handleExportCsv = () => {
+    if (!equipments || equipments.length === 0) {
+      toast.error('Không có dữ liệu thiết bị phù hợp để xuất file!');
+      return;
+    }
+    const headers = ['Mã Tài Sản', 'Mã QR Định Danh', 'Tên Thiết Bị', 'Chủng Loại', 'Phòng Học', 'Tầng', 'Hãng / Model', 'Số Serial', 'Nguyên Giá (VNĐ)', 'Trạng Thái', 'Hạn Bảo Hành'];
+    const rows = equipments.map(eq => [
+      `"${eq.code || ''}"`,
+      `"${eq.qr_code || ''}"`,
+      `"${(eq.name || '').replace(/"/g, '""')}"`,
+      `"${eq.category_id?.name || 'Chung'}"`,
+      `"${eq.room_id?.code || 'Kho dự phòng'}"`,
+      `"${eq.room_id?.floor || '-'}"`,
+      `"${(eq.brand || '') + (eq.model ? ` / ${eq.model}` : '')}"`,
+      `"${eq.serial_number || ''}"`,
+      eq.price || 0,
+      `"${eq.status || ''}"`,
+      `"${eq.warranty_expiry ? new Date(eq.warranty_expiry).toISOString().split('T')[0] : ''}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `danh_muc_thiet_bi_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Đã xuất báo cáo CSV thành công (${equipments.length} bản ghi)!`);
+  };
+
   // Fast QR Lookup handler (QR Code Generator & Scan UC)
   const handleFastQrLookup = async (e) => {
     e.preventDefault();
@@ -930,6 +963,30 @@ export const EquipmentsPage = () => {
     };
   });
 
+  const selectedCreateRoom = rooms.find((r) => String(r._id) === String(formData.room_id));
+  const createWarrantyCalc = (() => {
+    if (!formData.purchase_date || !formData.warranty_expiry) return null;
+    const pDate = new Date(formData.purchase_date);
+    const wDate = new Date(formData.warranty_expiry);
+    if (isNaN(pDate.getTime()) || isNaN(wDate.getTime())) return null;
+    if (wDate < pDate) {
+      return { isInvalid: true, message: 'Hạn bảo hành không thể trước ngày mua thiết bị!' };
+    }
+    const diffMs = wDate.getTime() - pDate.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const months = Math.round(diffDays / 30.4375);
+    const now = new Date();
+    const isExpired = wDate < now;
+    const remainingDays = Math.ceil((wDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return {
+      isInvalid: false,
+      durationText: `${months} tháng (~${(months / 12).toFixed(1)} năm, ${diffDays} ngày)`,
+      isExpired,
+      remainingDays: isExpired ? 0 : remainingDays,
+      statusLabel: isExpired ? 'Đã hết hạn bảo hành' : `Còn hiệu lực (${remainingDays} ngày)`
+    };
+  })();
+
   return (
     <div>
       {/* Header Banner */}
@@ -1029,6 +1086,94 @@ export const EquipmentsPage = () => {
       {/* Multi-dimensional Filter & Search Bar (UC-3.2) */}
       <div style={{ background: 'var(--surface-card)', border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '18px', marginBottom: '20px', boxShadow: 'var(--shadow-xs)' }}>
         <form onSubmit={handleSearchSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          
+          {/* Quick Preset Filter Chips (UC-3.2) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', paddingBottom: '4px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Bộ lọc nhanh:
+            </span>
+            <button
+              type="button"
+              onClick={() => { handleResetFilters(); }}
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '16px',
+                background: (statusFilter === 'ALL' && roomFilter === 'ALL' && warrantyFilter === 'ALL') ? 'var(--laser-cyan)' : 'var(--surface-2)',
+                color: (statusFilter === 'ALL' && roomFilter === 'ALL' && warrantyFilter === 'ALL') ? '#041527' : 'var(--ink-primary)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer'
+              }}
+            >
+              Tất cả ({totalCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStatusFilter('in_use'); setRoomFilter('ALL'); setPage(1); }}
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '16px',
+                background: statusFilter === 'in_use' ? '#10b981' : 'var(--surface-2)',
+                color: statusFilter === 'in_use' ? '#ffffff' : 'var(--ink-primary)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer'
+              }}
+            >
+              Đang sử dụng tại A1
+            </button>
+            <button
+              type="button"
+              onClick={() => { setRoomFilter('warehouse'); setStatusFilter('in_stock'); setPage(1); }}
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '16px',
+                background: (roomFilter === 'warehouse' || statusFilter === 'in_stock') ? '#0ea5e9' : 'var(--surface-2)',
+                color: (roomFilter === 'warehouse' || statusFilter === 'in_stock') ? '#ffffff' : 'var(--ink-primary)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer'
+              }}
+            >
+              Tồn kho dự phòng
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStatusFilter('broken'); setPage(1); }}
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '16px',
+                background: statusFilter === 'broken' ? '#f59e0b' : 'var(--surface-2)',
+                color: statusFilter === 'broken' ? '#ffffff' : 'var(--ink-primary)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer'
+              }}
+            >
+              Hỏng &amp; Sửa chữa
+            </button>
+            <button
+              type="button"
+              onClick={() => { setWarrantyFilter('expired'); setPage(1); }}
+              style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '16px',
+                background: warrantyFilter === 'expired' ? '#ec4899' : 'var(--surface-2)',
+                color: warrantyFilter === 'expired' ? '#ffffff' : 'var(--ink-primary)',
+                border: '1px solid var(--border-default)',
+                cursor: 'pointer'
+              }}
+            >
+              Hết hạn BH
+            </button>
+          </div>
+
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: '1 1 250px' }}>
               <Icons.Search size={16} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--ink-secondary)' }} />
@@ -1038,8 +1183,33 @@ export const EquipmentsPage = () => {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm theo tên thiết bị, mã tài sản, mã QR (QR-EQ-...), serial, model..."
                 className="ruo-portal-input"
-                style={{ paddingLeft: '38px', width: '100%', height: '38px', fontWeight: 600 }}
+                style={{ paddingLeft: '38px', paddingRight: search.trim().toUpperCase().startsWith('QR-') ? '110px' : '14px', width: '100%', height: '38px', fontWeight: 600 }}
               />
+              {search.trim().toUpperCase().startsWith('QR-') && (
+                <span style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '8px',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  background: 'rgba(6, 182, 212, 0.2)',
+                  color: 'var(--laser-cyan)',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(6, 182, 212, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                  ĐỊNH DANH QR
+                </span>
+              )}
             </div>
 
             {/* Filter 1: Chủng loại */}
@@ -1164,6 +1334,20 @@ export const EquipmentsPage = () => {
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 type="button"
+                onClick={handleExportCsv}
+                className="laser-btn laser-btn-secondary"
+                style={{ height: '34px', padding: '0 14px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                title="Xuất danh mục đang lọc ra file Excel/CSV tiếng Việt"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>Xuất Báo Cáo CSV</span>
+              </button>
+              <button
+                type="button"
                 onClick={handleResetFilters}
                 className="laser-btn laser-btn-secondary"
                 style={{ height: '34px', padding: '0 14px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 700 }}
@@ -1179,6 +1363,106 @@ export const EquipmentsPage = () => {
               </button>
             </div>
           </div>
+
+          {/* Active Filter Badges Bar (UC-3.2) */}
+          {(search || categoryFilter !== 'ALL' || floorFilter !== 'ALL' || roomFilter !== 'ALL' || statusFilter !== 'ALL' || warrantyFilter !== 'ALL' || minPrice !== '' || maxPrice !== '') && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '8px',
+              paddingTop: '10px',
+              borderTop: '1px solid var(--border-default)',
+              fontSize: '12px'
+            }}>
+              <span style={{ color: 'var(--ink-secondary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+                Đang lọc ({totalCount} kết quả):
+              </span>
+
+              {search && (
+                <span className="ruo-badge" style={{ background: 'rgba(6, 182, 212, 0.15)', color: 'var(--laser-cyan)', border: '1px solid rgba(6, 182, 212, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Từ khóa: "{search}"</span>
+                  <button type="button" onClick={() => { setSearch(''); setTimeout(fetchEquipments, 0); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {categoryFilter !== 'ALL' && (
+                <span className="ruo-badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Loại: {categories.find(c => c._id === categoryFilter)?.name || categoryFilter}</span>
+                  <button type="button" onClick={() => { setCategoryFilter('ALL'); setPage(1); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {floorFilter !== 'ALL' && (
+                <span className="ruo-badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Tầng {floorFilter}</span>
+                  <button type="button" onClick={() => { setFloorFilter('ALL'); setPage(1); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {roomFilter !== 'ALL' && (
+                <span className="ruo-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Phòng: {roomFilter === 'warehouse' ? 'Kho dự phòng' : (rooms.find(r => r._id === roomFilter)?.code || roomFilter)}</span>
+                  <button type="button" onClick={() => { setRoomFilter('ALL'); setPage(1); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {statusFilter !== 'ALL' && (
+                <span className="ruo-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Trạng thái: {statusFilter}</span>
+                  <button type="button" onClick={() => { setStatusFilter('ALL'); setPage(1); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {warrantyFilter !== 'ALL' && (
+                <span className="ruo-badge" style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#f472b6', border: '1px solid rgba(236, 72, 153, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Bảo hành: {warrantyFilter === 'active' ? 'Còn hạn' : 'Hết hạn'}</span>
+                  <button type="button" onClick={() => { setWarrantyFilter('ALL'); setPage(1); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {(minPrice !== '' || maxPrice !== '') && (
+                <span className="ruo-badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Giá: {minPrice ? `${Number(minPrice).toLocaleString('vi-VN')} đ` : '0'} — {maxPrice ? `${Number(maxPrice).toLocaleString('vi-VN')} đ` : '∞'}</span>
+                  <button type="button" onClick={() => { setMinPrice(''); setMaxPrice(''); setTimeout(fetchEquipments, 0); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--laser-cyan)',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  fontSize: '11.5px',
+                  marginLeft: 'auto'
+                }}
+              >
+                Xóa tất cả bộ lọc
+              </button>
+            </div>
+          )}
         </form>
       </div>
 
@@ -1735,7 +2019,7 @@ export const EquipmentsPage = () => {
       {/* Create Modal (UC-3.1) */}
       {showCreateModal && (
         <div className="ruo-drawer-backdrop" onClick={() => setShowCreateModal(false)}>
-          <div className="ruo-drawer-panel" style={{ width: '580px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="ruo-drawer-panel" style={{ width: '620px', maxWidth: '95vw' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
                 <h2 className="ruo-drawer-title">Đăng Ký Tài Sản Thiết Bị Mới (UC-3.1)</h2>
@@ -1746,14 +2030,88 @@ export const EquipmentsPage = () => {
 
             <form onSubmit={handleCreateSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                
+                {/* Dynamic Live QR Matrix Preview Card (100% Pure Native SVG) */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%)',
+                  border: '1px solid rgba(6, 182, 212, 0.25)',
+                  borderRadius: '10px',
+                  padding: '12px 16px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                }}>
+                  <div style={{
+                    background: '#ffffff',
+                    padding: '6px',
+                    borderRadius: '8px',
+                    boxShadow: '0 0 16px rgba(6, 182, 212, 0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <NativeQrMatrixSvg 
+                      value={formData.qr_code || (formData.code ? `QR-${formData.code.toUpperCase().trim()}` : 'QR-RUO-PREVIEW')} 
+                      size={84} 
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(6, 182, 212, 0.2)',
+                        color: 'var(--laser-cyan)',
+                        border: '1px solid rgba(6, 182, 212, 0.3)'
+                      }}>
+                        MÃ QR CHUẨN HÓA (2D MATRIX)
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {formData.code ? '✓ Mã hợp lệ' : 'Chờ nhập mã tài sản'}
+                      </span>
+                    </div>
+                    <div style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: '#ffffff',
+                      letterSpacing: '0.02em',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {formData.qr_code || (formData.code ? `QR-${formData.code.toUpperCase().trim()}` : 'QR-CHUA-DINH-DANH')}
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      {formData.name || 'Tên thiết bị mới'} • {formData.brand || 'Hãng'} {formData.model ? `(${formData.model})` : ''}
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--laser-cyan)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      {Number(formData.price || 0).toLocaleString('vi-VN')} ₫ • Khấu hao: {formData.depreciation_rate || 20}%/năm
+                    </div>
+                  </div>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Mã Tài Sản (Unique) *</label>
                     <input
                       type="text"
                       required
+                      placeholder="VD: EQ-2026-001"
                       value={formData.code}
-                      onChange={(e) => setFormData({ ...formData, code: e.target.value, qr_code: `QR-${e.target.value.toUpperCase().trim()}` })}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setFormData({ ...formData, code: val, qr_code: `QR-${val.trim()}` });
+                      }}
                       className="ruo-portal-input"
                       style={{ width: '100%', fontFamily: 'var(--font-mono)' }}
                     />
@@ -1763,6 +2121,7 @@ export const EquipmentsPage = () => {
                     <input
                       type="text"
                       required
+                      placeholder="QR-EQ-2026-001"
                       value={formData.qr_code}
                       onChange={(e) => setFormData({ ...formData, qr_code: e.target.value })}
                       className="ruo-portal-input"
@@ -1820,10 +2179,31 @@ export const EquipmentsPage = () => {
                       <option value="">Lưu vào Kho dự phòng (Chưa phân phòng)</option>
                       {rooms.map((r) => (<option key={r._id} value={r._id}>{r.code} - {r.name} (Tầng {r.floor})</option>))}
                     </select>
+                    {selectedCreateRoom ? (
+                      <div style={{ marginTop: '6px', fontSize: '11px', color: '#10b981', background: 'rgba(16, 185, 129, 0.08)', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                          <polyline points="9 22 9 12 15 12 15 22" />
+                        </svg>
+                        <div>
+                          <span><strong>{selectedCreateRoom.code}</strong> (Tầng {selectedCreateRoom.floor}) • Sức chứa: {selectedCreateRoom.capacity || 50} chỗ</span>
+                          <span style={{ display: 'block', color: 'var(--laser-cyan)', fontSize: '10px' }}>
+                            ⚡ Tự động ghi biên bản bàn giao ban đầu (INITIAL_ALLOCATION)
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Thiết bị sẽ được lưu vào kho đệm và gắn nhãn ONBOARDING.
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Nguyên Giá Mua (VNĐ) *</label>
                     <input type="number" min="0" step="50000" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                    <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                      Giá trị: {Number(formData.price || 0).toLocaleString('vi-VN')} VNĐ
+                    </div>
                   </div>
                 </div>
 
@@ -1841,12 +2221,35 @@ export const EquipmentsPage = () => {
                     <input type="number" min="0" max="100" value={formData.depreciation_rate} onChange={(e) => setFormData({ ...formData, depreciation_rate: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
                   </div>
                 </div>
+
+                {createWarrantyCalc && (
+                  createWarrantyCalc.isInvalid ? (
+                    <div style={{ fontSize: '12px', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.25)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <span>{createWarrantyCalc.message}</span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '11px', color: createWarrantyCalc.isExpired ? '#f59e0b' : '#10b981', background: createWarrantyCalc.isExpired ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)', padding: '6px 10px', borderRadius: '6px', border: `1px solid ${createWarrantyCalc.isExpired ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                      <span>
+                        Thời hạn bảo hành: <strong>{createWarrantyCalc.durationText}</strong> • Trạng thái: <strong>{createWarrantyCalc.statusLabel}</strong>
+                      </span>
+                    </div>
+                  )
+                )}
+
               </div>
 
               <div className="ruo-drawer-footer">
                 <button type="button" onClick={() => setShowCreateModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
                 <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
-                  {submitting ? 'Đang Đăng Ký...' : 'Lưu & Khởi Tạo QR'}
+                  {submitting ? 'Đang Đăng Ký...' : 'Lưu & Khởi Tạo QR (UC-3.1)'}
                 </button>
               </div>
             </form>
@@ -1910,21 +2313,43 @@ export const EquipmentsPage = () => {
                   </div>
                 </div>
 
-                {isEditingRoomChanged && (
-                  <div style={{ background: 'rgba(6, 182, 212, 0.1)', border: '1px solid var(--laser-cyan)', borderRadius: 'var(--radius-md)', padding: '10px 12px', fontSize: '12px' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--laser-cyan)', marginBottom: '6px' }}>
-                      ⚡ Phát hiện thay đổi vị trí phòng học — Tự động ghi Nhật ký Điều chuyển (UC-3.4):
+                {isEditingRoomChanged && (() => {
+                  const oldRoomName = selectedEq.room_id ? (selectedEq.room_id.code ? `${selectedEq.room_id.code} - ${selectedEq.room_id.name}` : selectedEq.room_id) : 'Kho dự phòng';
+                  const newRoomObj = rooms.find((r) => String(r._id) === String(formData.room_id));
+                  const newRoomName = newRoomObj ? `${newRoomObj.code} - ${newRoomObj.name}` : 'Kho dự phòng';
+                  const movType = !selectedEq.room_id
+                    ? 'ALLOCATION (Bàn giao ban đầu vào phòng học)'
+                    : (!formData.room_id ? 'TO_STOCK (Thu hồi về kho dự phòng)' : 'TRANSFER (Điều chuyển giữa hai phòng học)');
+
+                  return (
+                    <div style={{ background: 'rgba(6, 182, 212, 0.08)', border: '1.5px solid var(--laser-cyan)', borderRadius: 'var(--radius-md)', padding: '12px 14px', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, color: 'var(--laser-cyan)', marginBottom: '6px' }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="17 1 21 5 17 9" />
+                          <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                          <polyline points="7 23 3 19 7 15" />
+                          <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                        </svg>
+                        <span>PHÁT HIỆN ĐIỀU CHUYỂN VỊ TRÍ (MOVEMENT TRACKING UC-3.2 / UC-3.4)</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', marginBottom: '8px', color: '#e2e8f0', flexWrap: 'wrap' }}>
+                        <span style={{ padding: '2px 6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px' }}>Từ: <strong>{oldRoomName}</strong></span>
+                        <span style={{ color: 'var(--laser-cyan)', fontWeight: 800 }}>➔</span>
+                        <span style={{ padding: '2px 6px', background: 'rgba(6, 182, 212, 0.2)', color: 'var(--laser-cyan)', borderRadius: '4px' }}>Đến: <strong>{newRoomName}</strong></span>
+                        <span style={{ marginLeft: 'auto', fontSize: '10.5px', color: '#10b981', fontWeight: 700 }}>• {movType}</span>
+                      </div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px' }}>Lý do điều chuyển thiết bị *</label>
+                      <input
+                        type="text"
+                        placeholder="VD: Điều động máy chiếu phục vụ phòng lab đa phương tiện tầng 2..."
+                        value={formData.movement_reason}
+                        onChange={(e) => setFormData({ ...formData, movement_reason: e.target.value })}
+                        className="ruo-portal-input"
+                        style={{ width: '100%', height: '34px', fontSize: '12px' }}
+                      />
                     </div>
-                    <input
-                      type="text"
-                      placeholder="Nhập lý do điều chuyển phòng..."
-                      value={formData.movement_reason}
-                      onChange={(e) => setFormData({ ...formData, movement_reason: e.target.value })}
-                      className="ruo-portal-input"
-                      style={{ width: '100%', height: '34px', fontSize: '12px' }}
-                    />
-                  </div>
-                )}
+                  );
+                })()}
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                   <div>
