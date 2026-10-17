@@ -37,6 +37,29 @@ export const getEquipmentCategories = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get equipments with warranty expiring within N days (default 30 days) (UC-6.2)
+// @route   GET /api/equipments/warranty-expiring
+export const getWarrantyExpiringEquipments = asyncHandler(async (req, res) => {
+  const days = Math.max(1, parseInt(req.query.days, 10) || 30);
+  const now = new Date();
+  const cutoff = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  const equipments = await Equipment.find({
+    warranty_expiry: { $gte: now, $lte: cutoff },
+    status: { $ne: EQUIPMENT_STATUSES.DISPOSED }
+  })
+    .populate('category_id', 'code name')
+    .populate('room_id', 'code name building floor')
+    .populate('supplier_id', 'code name phone email')
+    .sort({ warranty_expiry: 1 });
+
+  res.status(200).json({
+    success: true,
+    count: equipments.length,
+    equipments,
+    items: equipments
+  });
+});
+
 // @desc    Create new equipment item (UC-3.1 & UC-3.7)
 // @route   POST /api/equipments
 // @access  Private (Staff, Admin)

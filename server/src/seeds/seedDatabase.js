@@ -18,6 +18,7 @@ import {
   AuditLog 
 } from '../models/index.js';
 import { FLOOR_PLAN_ROOMS } from './floorPlanRooms.js';
+import { DEFAULT_CANONICAL_ROLES } from '../controllers/roleController.js';
 import { 
   USER_ROLES, 
   EQUIPMENT_STATUSES, 
@@ -50,29 +51,19 @@ const seed = async () => {
   const [roleLecturer, roleTech, roleFM, roleAdmin] = await Role.create([
     {
       name: USER_ROLES.LECTURER,
-      permissions: ['incident:create', 'incident:read_own', 'repair:rate', 'room:read', 'equipment:read']
+      permissions: DEFAULT_CANONICAL_ROLES[USER_ROLES.LECTURER].permissions
     },
     {
       name: USER_ROLES.TECHNICIAN,
-      permissions: ['repair:read_assigned', 'repair:accept', 'repair:log', 'repair:report_outcome', 'parts:request', 'movement:confirm', 'inventory:scan', 'equipment:read']
+      permissions: DEFAULT_CANONICAL_ROLES[USER_ROLES.TECHNICIAN].permissions
     },
     {
       name: USER_ROLES.FACILITY_MANAGER,
-      permissions: [
-        'equipment:create', 'equipment:update', 'equipment:import', 'equipment:qr',
-        'warranty:read', 'warranty:update', 'repair:read', 'repair:assign', 'repair:close',
-        'parts:approve', 'spare_part:update', 'movement:order', 'placement:decide',
-        'inventory:create', 'inventory:reconcile', 'disposal:propose', 'dashboard:read'
-      ]
+      permissions: DEFAULT_CANONICAL_ROLES[USER_ROLES.FACILITY_MANAGER].permissions
     },
     {
       name: USER_ROLES.ADMIN,
-      permissions: [
-        'user:create', 'user:update', 'user:lock', 'user:reset_password', 'role:update',
-        'category:*', 'supplier:*', 'repair_unit:*', 'room:*',
-        'disposal:approve', 'dashboard:read', 'report:export',
-        'audit:read', 'audit:verify', 'audit:export'
-      ]
+      permissions: DEFAULT_CANONICAL_ROLES[USER_ROLES.ADMIN].permissions
     }
   ]);
 

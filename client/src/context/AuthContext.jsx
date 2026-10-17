@@ -453,16 +453,16 @@ export const AuthProvider = ({ children }) => {
   }, [apiUser, activeRole, currentRoleMeta, userPermissions]);
 
   const navItems = useMemo(() => {
-    return getNavItemsForRole(activeRole);
-  }, [activeRole]);
+    return getNavItemsForRole(activeRole, hasPermission);
+  }, [activeRole, hasPermission]);
 
   const allowedTabs = useMemo(() => {
     return navItems.map(item => item.id);
   }, [navItems]);
 
   const isTabAllowed = useCallback((tabId) => {
-    return isTabAllowedForRole(activeRole, tabId);
-  }, [activeRole]);
+    return isTabAllowedForRole(activeRole, tabId, hasPermission);
+  }, [activeRole, hasPermission]);
 
   const defaultTab = useMemo(() => {
     return getDefaultTabForRole(activeRole);

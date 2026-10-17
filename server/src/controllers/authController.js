@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { User, PasswordReset } from '../models/User.js';
 import { RefreshToken } from '../models/RefreshToken.js';
 import { AuditLog } from '../models/AuditLog.js';
+import { Notification } from '../models/Notification.js';
 import { USER_STATUSES, USER_ROLES } from '../config/constants.js';
 import { sendPasswordResetEmail, generateSixDigitOtp } from '../utils/mailer.js';
 
@@ -361,6 +362,20 @@ export const register = async (req, res) => {
         ip_address: req.ip || '127.0.0.1',
         new_value: { requested_role: requestedRole, status: USER_STATUSES.PENDING_APPROVAL }
       });
+
+      const admins = await User.find({ role: USER_ROLES.ADMIN, status: USER_STATUSES.ACTIVE }).select('_id');
+      if (admins.length > 0) {
+        await Notification.insertMany(
+          admins.map((adm) => ({
+            user_id: adm._id,
+            type: 'role_approval_request',
+            title: 'Yêu cầu phê duyệt vai trò mới',
+            message: `${newUser.full_name} (${newUser.code}) đăng ký vai trò [${roleName}] đang chờ phê duyệt.`,
+            reference_type: 'user',
+            reference_id: newUser._id
+          }))
+        );
+      }
 
       return res.status(201).json({
         success: true,
