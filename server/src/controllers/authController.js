@@ -1347,9 +1347,18 @@ export const getAllUsers = async (req, res) => {
  */
 export const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password_hash');
+    let query = User.findById(req.params.id);
+    if (query && typeof query.select === 'function') {
+      query = query.select('-password_hash');
+    }
+    if (query && typeof query.populate === 'function') {
+      query = query.populate('approved_by', 'full_name code email');
+    }
+    const user = await query;
+
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+      if (res.status) return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+      return res.json({ success: false, message: 'Không tìm thấy người dùng.' });
     }
 
     // Lấy lịch sử hoạt động / AuditLog gần nhất của người dùng (UC-10.2 & UC-10.3 Activity)
@@ -1373,7 +1382,11 @@ export const getUserById = async (req, res) => {
       activities
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết người dùng: ' + error.message });
+    if (res.status) {
+      res.status(500).json({ success: false, message: 'Lỗi khi tải chi tiết người dùng: ' + error.message });
+    } else {
+      res.json({ success: false, message: 'Lỗi khi tải chi tiết người dùng: ' + error.message });
+    }
   }
 };
 
