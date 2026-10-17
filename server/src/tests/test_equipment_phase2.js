@@ -124,7 +124,10 @@ async function runTests() {
     let matched = mockDb;
     if (query?.code?.$in) {
       matched = mockDb.filter(e => query.code.$in.includes(e.code));
-    } else if (Array.isArray(query?.$or)) {
+    } else if (
+      Array.isArray(query?.$or) &&
+      query.$or.some(c => c.code?.$in || c.qr_code?.$in || c.serial_number?.$in)
+    ) {
       matched = mockDb.filter(e =>
         query.$or.some(clause =>
           (clause.code?.$in && clause.code.$in.includes(e.code)) ||
