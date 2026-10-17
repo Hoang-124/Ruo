@@ -62,6 +62,14 @@ export const ALL_NAV_ITEMS = {
     icon: Icons.Dashboard,
     roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
   },
+
+  transfer_history: {
+    id: 'transfer_history',
+    label: 'Lịch Sử Điều Chuyển',
+    short: 'Lịch Sử Điều Chuyển',
+    icon: Icons.ArrowRight,
+    roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
+  },
   rooms: {
     id: 'rooms',
     label: 'Danh Mục Phòng Học',

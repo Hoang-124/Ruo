@@ -158,14 +158,18 @@
    ========================================================================== */
 .ruo-card {
   background: var(--surface-card);
-  border: 1px solid var(--border-default);
+  border: 1.5px solid var(--border-default);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
   overflow: hidden;
-  transition: border-color var(--duration-fast) var(--ease-out);
+  transition:
+    transform 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.2s ease;
 }
 .ruo-card:hover {
   border-color: var(--border-strong);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .ruo-card-header {
@@ -215,15 +219,29 @@
    ========================================================================== */
 .ruo-kpi-card {
   background: var(--surface-card);
-  border: 1px solid var(--border-default);
+  border: 1.5px solid var(--border-default);
   border-radius: var(--radius-md);
   padding: var(--space-4) var(--space-5);
   box-shadow: var(--shadow-card);
-  transition: transform var(--duration-fast) var(--ease-out), border-color var(--duration-fast);
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.2s ease;
+  animation: ruoCardCascade 0.42s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
+.ruo-kpi-card:nth-child(1) { animation-delay: 0.02s; }
+.ruo-kpi-card:nth-child(2) { animation-delay: 0.07s; }
+.ruo-kpi-card:nth-child(3) { animation-delay: 0.12s; }
+.ruo-kpi-card:nth-child(4) { animation-delay: 0.17s; }
+.ruo-kpi-card:nth-child(5) { animation-delay: 0.22s; }
+.ruo-kpi-card:nth-child(6) { animation-delay: 0.27s; }
+
 .ruo-kpi-card:hover {
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
+  border-color: var(--laser-cyan);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .ruo-kpi-top {
@@ -235,7 +253,7 @@
 
 .ruo-kpi-label {
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--ink-muted);
@@ -249,6 +267,11 @@
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
   margin-bottom: var(--space-2);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ruo-kpi-card:hover .ruo-kpi-value {
+  transform: scale(1.03);
+  transform-origin: left center;
 }
 
 .ruo-kpi-footer {
@@ -264,20 +287,20 @@
 
 .ruo-kpi-trend.positive {
   color: var(--emerald-500);
-  font-weight: 600;
+  font-weight: 700;
 }
 .ruo-kpi-trend.negative {
   color: var(--crimson-500);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* ==========================================================================
-   DATA TABLE
+   DATA TABLE (HIGH-CONTRAST OPERATIONAL LEDGER)
    ========================================================================== */
 .ruo-table-wrapper {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid var(--border-default);
+  border: 1.5px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--surface-card);
   box-shadow: var(--shadow-card);
@@ -291,22 +314,23 @@
 }
 
 .ruo-table th {
-  padding: 10px 14px;
-  background: var(--surface-2);
-  color: var(--ink-muted);
+  padding: 12px 14px;
+  background: var(--surface-header);
+  color: var(--ink-pure);
   font-size: var(--text-xs);
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--border-default);
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--border-strong);
   white-space: nowrap;
 }
 
 .ruo-table td {
-  padding: 11px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border-subtle);
-  color: var(--ink-secondary);
+  color: var(--ink-primary);
   font-variant-numeric: tabular-nums;
+  transition: background-color 0.16s ease;
 }
 
 .ruo-table tr:last-child td {
@@ -314,18 +338,50 @@
 }
 
 .ruo-table tbody tr {
-  transition: background-color var(--duration-fast);
+  transition:
+    background-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+  animation: ruoRowReveal 0.32s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.ruo-table tbody tr:nth-child(1) { animation-delay: 0.02s; }
+.ruo-table tbody tr:nth-child(2) { animation-delay: 0.04s; }
+.ruo-table tbody tr:nth-child(3) { animation-delay: 0.06s; }
+.ruo-table tbody tr:nth-child(4) { animation-delay: 0.08s; }
+.ruo-table tbody tr:nth-child(5) { animation-delay: 0.10s; }
+.ruo-table tbody tr:nth-child(6) { animation-delay: 0.12s; }
+.ruo-table tbody tr:nth-child(7) { animation-delay: 0.14s; }
+.ruo-table tbody tr:nth-child(8) { animation-delay: 0.16s; }
+.ruo-table tbody tr:nth-child(9) { animation-delay: 0.18s; }
+.ruo-table tbody tr:nth-child(10) { animation-delay: 0.20s; }
+
+.ruo-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+[data-theme='light'] .ruo-table tbody tr:nth-child(even) {
+  background: rgba(15, 23, 42, 0.022);
 }
 
 .ruo-table tbody tr:hover {
-  background: var(--surface-2);
+  background: rgba(29, 78, 216, 0.08) !important;
+  box-shadow: inset 4px 0 0 0 var(--laser-cyan);
+}
+
+[data-theme='dark'] .ruo-table tbody tr:hover {
+  background: rgba(59, 130, 246, 0.14) !important;
+  box-shadow: inset 4px 0 0 0 var(--laser-cyan);
 }
 
 .ruo-table .code-cell {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--blueprint-400);
-  font-weight: 600;
+  font-weight: 800;
+}
+
+[data-theme='light'] .ruo-table .code-cell {
+  color: var(--blueprint-700);
 }
 
 /* ==========================================================================
@@ -334,27 +390,28 @@
 .ruo-drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(6px);
   z-index: 1000;
   display: flex;
   justify-content: flex-end;
-  animation: fadeIn var(--duration-fast) var(--ease-out);
+  animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .ruo-drawer-panel {
   height: 100%;
   background: var(--surface-1);
-  border-left: 1px solid var(--border-default);
+  border-left: 2px solid var(--border-strong);
   box-shadow: var(--shadow-drawer);
   display: flex;
   flex-direction: column;
-  animation: slideLeft var(--duration-normal) var(--ease-out);
+  animation: slideLeft 0.34s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .ruo-drawer-header {
   padding: var(--space-5);
-  border-bottom: 1px solid var(--border-default);
+  border-bottom: 1.5px solid var(--border-default);
+  background: var(--surface-header);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -363,33 +420,54 @@
 .ruo-drawer-title {
   margin: 0;
   font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--ink-primary);
+  font-weight: 800;
+  color: var(--ink-pure);
 }
 
 .ruo-drawer-subtitle {
-  margin: 2px 0 0 0;
+  margin: 4px 0 0 0;
   font-size: var(--text-xs);
-  color: var(--ink-muted);
+  color: var(--ink-secondary);
+  font-weight: 600;
 }
 
 .ruo-drawer-close-btn {
-  background: transparent;
-  border: none;
-  color: var(--ink-muted);
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-strong);
+  color: var(--ink-primary);
   cursor: pointer;
   padding: 6px;
   border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
 }
 .ruo-drawer-close-btn:hover {
-  background: var(--surface-2);
-  color: var(--ink-primary);
+  background: #DC2626;
+  border-color: #991B1B;
+  color: #FFFFFF;
+  transform: rotate(90deg) scale(1.06);
 }
 
 .ruo-drawer-body {
   padding: var(--space-5);
   overflow-y: auto;
   flex: 1;
+}
+
+.ruo-drawer-footer {
+  padding: 16px 20px;
+  border-top: 1.5px solid var(--border-default);
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 /* ==========================================================================
@@ -402,29 +480,31 @@
   justify-content: center;
   padding: 48px 24px;
   text-align: center;
+  animation: fadeIn 0.35s ease;
 }
 .ruo-empty-state.compact {
   padding: 24px 12px;
 }
 
 .ruo-empty-icon {
-  color: var(--ink-muted);
+  color: var(--ink-secondary);
   margin-bottom: var(--space-3);
-  opacity: 0.6;
+  opacity: 0.85;
+  animation: ruoFloatSlow 3.5s ease-in-out infinite;
 }
 
 .ruo-empty-title {
   margin: 0 0 var(--space-1) 0;
   font-size: var(--text-md);
-  font-weight: 700;
+  font-weight: 800;
   color: var(--ink-primary);
 }
 
 .ruo-empty-desc {
   margin: 0;
   font-size: var(--text-sm);
-  color: var(--ink-muted);
-  max-width: 360px;
+  color: var(--ink-secondary);
+  max-width: 380px;
   line-height: 1.5;
 }
 
@@ -445,40 +525,91 @@
 }
 
 @keyframes slideLeft {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    opacity: 0.4;
+    transform: translate3d(100%, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes ruoCardCascade {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes ruoRowReveal {
+  from {
+    opacity: 0;
+    transform: translate3d(-6px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes ruoFloatSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 }
 
 /* ==========================================================================
-   INPUTS & FORM CONTROLS
+   INPUTS, SELECTS & FORM CONTROLS (HIGH-CONTRAST)
    ========================================================================== */
 .ruo-input,
+.ruo-select,
 .ruo-portal-input {
   width: 100%;
   box-sizing: border-box;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
+  font-weight: 500;
   color: var(--ink-primary);
   background: var(--surface-2);
-  border: 1px solid var(--border-default);
+  border: 1.5px solid var(--border-default);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   outline: none;
-  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast), background-color var(--duration-fast);
+}
+
+.ruo-input:hover:not(:disabled),
+.ruo-select:hover:not(:disabled),
+.ruo-portal-input:hover:not(:disabled) {
+  border-color: var(--border-strong);
 }
 
 .ruo-input:focus,
+.ruo-select:focus,
 .ruo-portal-input:focus {
   border-color: var(--blueprint-500);
-  box-shadow: 0 0 0 3px rgba(62, 123, 250, 0.16);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.ruo-select option,
+select.ruo-portal-input option {
+  background: var(--surface-1);
+  color: var(--ink-primary);
+  padding: 8px;
 }
 
 .ruo-input::placeholder,
 .ruo-portal-input::placeholder {
   color: var(--ink-muted);
+  opacity: 0.9;
 }
 
 .ruo-input:disabled,
+.ruo-select:disabled,
 .ruo-portal-input:disabled {
   opacity: 0.6;
   cursor: not-allowed;

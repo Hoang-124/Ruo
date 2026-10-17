@@ -121,9 +121,21 @@ async function runTests() {
   Equipment.countDocuments = async () => mockDb.length;
 
   Equipment.find = (query) => {
-    const matched = query?.code?.$in
-      ? mockDb.filter(e => query.code.$in.includes(e.code))
-      : mockDb;
+    let matched = mockDb;
+    if (query?.code?.$in) {
+      matched = mockDb.filter(e => query.code.$in.includes(e.code));
+    } else if (
+      Array.isArray(query?.$or) &&
+      query.$or.some(c => c.code?.$in || c.qr_code?.$in || c.serial_number?.$in)
+    ) {
+      matched = mockDb.filter(e =>
+        query.$or.some(clause =>
+          (clause.code?.$in && clause.code.$in.includes(e.code)) ||
+          (clause.qr_code?.$in && clause.qr_code.$in.includes(e.qr_code)) ||
+          (clause.serial_number?.$in && clause.serial_number.$in.includes(e.serial_number))
+        )
+      );
+    }
     return {
       populate: function () { return this; },
       sort: function () { return this; },
@@ -292,11 +304,25 @@ async function runTests() {
     assert.strictEqual(jsonResult.success, true);
     assert.strictEqual(jsonResult.movementLogged, true, 'Phải tự động ghi nhận nhật ký điều chuyển khi đổi phòng');
     assert.ok(jsonResult.movement, 'Phải trả về bản ghi EquipmentMovement');
-    console.log('  ✔ Test 4 ĐẠT: Tự động ghi nhận nhật ký điều chuyển khi đổi phòng học Tòa A1.');
+    assert.strictEqual(jsonResult.movement.type, 'transfer', 'EquipmentMovement phải có trường type="transfer" chuẩn Mongoose schema');
+
+    // Validate against real Mongoose EquipmentMovement schema!
+    const movInstance = new EquipmentMovement({
+      equipment_id: new mongoose.Types.ObjectId(),
+      type: jsonResult.movement.type,
+      from_room_id: new mongoose.Types.ObjectId(roomId),
+      to_room_id: new mongoose.Types.ObjectId(room2Id),
+      ordered_by: new mongoose.Types.ObjectId(),
+      reason: jsonResult.movement.reason,
+      status: jsonResult.movement.status
+    });
+    const movValErr = movInstance.validateSync();
+    assert.strictEqual(movValErr, undefined, `EquipmentMovement schema validation failed: ${movValErr?.message}`);
+    console.log('  ✔ Test 4 ĐẠT: Tự động ghi nhận nhật ký điều chuyển khi đổi phòng học Tòa A1 (Đạt chuẩn Mongoose Schema).');
   }
 
   // TEST 5: POST /api/equipments/import/validate & POST /api/equipments/import (UC-3.6 & UC-3.7)
-  console.log('▶ Test 5 (UC-3.6 & UC-3.7): Kiểm tra lỗi từng dòng (trùng mã, sai phòng, sai loại TB) và Nhập hàng loạt');
+  console.log('▶ Test 5 (UC-3.6 & UC-3.7): Kiểm tra lỗi từng dòng (trùng mã, sai phòng, sai loại TB, nghịch lý ngày BH) và Nhập hàng loạt');
   {
     let valResult = null;
     const reqVal = {
@@ -307,7 +333,24 @@ async function runTests() {
           { code: 'EQ-BATCH-001', name: 'Máy Chiếu Tòa A1 #1', category: 'CAT-PROJ', room: 'A1-201', price: 18000000 },
           { code: 'EQ-BATCH-001', name: 'Bản Ghi Trùng Mã', category: 'CAT-PROJ', room: 'A1-201', price: 18000000 },
           { code: 'EQ-BATCH-002', name: 'Bản Ghi Sai Phòng', category: 'CAT-PROJ', room: 'B9-999', price: 15000000 },
-          { code: 'EQ-BATCH-003', name: 'Bản Ghi Sai Loại TB', category: 'INVALID-CAT', room: 'A1-201', price: 15000000 }
+          { code: 'EQ-BATCH-003', name: 'Bản Ghi Sai Loại TB', category: 'INVALID-CAT', room: 'A1-201', price: 15000000 },
+          {
+            code: 'EQ-BATCH-004',
+            name: 'Bản Ghi Nghịch Lý Ngày BH',
+            category: 'CAT-PROJ',
+            room: 'A1-201',
+            price: 15000000,
+            purchase_date: '2026-06-01',
+            warranty_expiry: '2025-01-01'
+          },
+          {
+            code: 'EQ-BATCH-005',
+            name: 'Bản Ghi Mã Mới Nhưng Trùng Serial Trong DB',
+            category: 'CAT-PROJ',
+            room: 'A1-201',
+            price: 15000000,
+            serial_number: 'SN-SONY-9981'
+          }
         ]
       }
     };
@@ -317,7 +360,12 @@ async function runTests() {
     assert.strictEqual(valResult.success, true);
     assert.strictEqual(valResult.valid, false, 'Phải phát hiện lỗi dữ liệu');
     assert.strictEqual(valResult.validCount, 1, 'Chỉ có dòng 1 hợp lệ');
-    assert.strictEqual(valResult.errorCount, 3, 'Phải bắt đúng 3 lỗi: trùng mã, sai phòng, sai loại TB');
+    assert.strictEqual(valResult.errorCount, 5, 'Phải bắt đúng 5 lỗi: trùng mã, sai phòng, sai loại TB, hạn BH < ngày mua, và trùng Serial trong DB');
+
+    // Verify validDocs[0] passes real Mongoose Equipment.validateSync() (especially warranty_status enum!)
+    const eqInstance = new Equipment(valResult.validDocs[0]);
+    const eqValErr = eqInstance.validateSync();
+    assert.strictEqual(eqValErr, undefined, `Equipment schema validation failed: ${eqValErr?.message}`);
 
     let impResult = null;
     let impStatus = 200;
@@ -325,11 +373,11 @@ async function runTests() {
     await importEquipmentsBatch(reqVal, resImp);
     assert.strictEqual(impStatus, 201);
     assert.strictEqual(impResult.importedCount, 1);
-    console.log('  ✔ Test 5 ĐẠT: Bắt lỗi chi tiết từng dòng (UC-3.7) và nhập lô hàng loạt (UC-3.6) thành công.');
+    console.log('  ✔ Test 5 ĐẠT: Bắt lỗi chi tiết từng dòng (UC-3.7), kiểm chứng Mongoose Schema và nhập lô hàng loạt (UC-3.6) thành công.');
   }
 
-  // TEST 6: PUT /api/equipments/:id/dispose (UC-3.8)
-  console.log('▶ Test 6 (UC-3.8): Thanh lý tài sản DISPOSED kèm Số quyết định BGH & Biên bản nghiệm thu');
+  // TEST 6: PUT /api/equipments/:id/dispose (UC-3.8) + Chặn điều chuyển tài sản đã thanh lý
+  console.log('▶ Test 6 (UC-3.8): Thanh lý tài sản DISPOSED kèm Số quyết định BGH & chặn điều chuyển tài sản đã thanh lý');
   {
     let dispResult = null;
     const reqDisp = {
@@ -347,7 +395,23 @@ async function runTests() {
     assert.strictEqual(dispResult.success, true);
     assert.strictEqual(dispResult.equipment.status, EQUIPMENT_STATUSES.DISPOSED);
     assert.strictEqual(dispResult.equipment.specs.disposal_decision, 'QĐ-BGH-2026-108');
-    console.log('  ✔ Test 6 ĐẠT: Thiết bị đã chuyển sang trạng thái DISPOSED kèm Số quyết định BGH.');
+
+    // Edge case: Attempting to move a DISPOSED equipment back into a room must fail with 400
+    let moveDisposedStatus = 200;
+    let moveDisposedBody = null;
+    const reqMoveDisposed = {
+      params: { id: '67b000000000000000000001' },
+      user: { _id: 'admin-id', full_name: 'Admin BGH', code: 'AD01' },
+      body: { room_id: roomId }
+    };
+    const resMoveDisposed = {
+      status: (c) => { moveDisposedStatus = c; return resMoveDisposed; },
+      json: (d) => { moveDisposedBody = d; }
+    };
+    await updateEquipment(reqMoveDisposed, resMoveDisposed);
+    assert.strictEqual(moveDisposedStatus, 400, 'Phải chặn điều chuyển thiết bị đã DISPOSED vào phòng học');
+    assert.strictEqual(moveDisposedBody.success, false);
+    console.log('  ✔ Test 6 ĐẠT: Thiết bị đã chuyển sang trạng thái DISPOSED và chặn điều chuyển trái phép.');
   }
 
   // TEST 7: GET /api/equipments/qr/:qrCode
@@ -365,7 +429,177 @@ async function runTests() {
     console.log('  ✔ Test 7 ĐẠT: Tra cứu bằng mã QR hoàn tất kèm lịch sử sửa chữa & điều chuyển.');
   }
 
-  console.log('--- TOÀN BỘ 7/7 TEST CASES EQUIPMENT PHASE 2 ĐÃ VƯỢT QUA 100% ---');
+  // TEST 8: Live RBAC Permission Enforcement & Admin Self-Lockout Protection (UC-12.1 & UC-12.2)
+  console.log('▶ Test 8 (UC-12.1 & UC-12.2): Thực thi Ma trận RBAC động (Live Policy) & Chống tự khóa quyền Admin');
+  {
+    const { requirePermission } = await import('../middlewares/authMiddleware.js');
+    const { updateRolePermissions } = await import('../controllers/roleController.js');
+    const { Role } = await import('../models/Role.js');
+
+    // 8a. Live permission enforcement when permission is revoked from DB role
+    const middleware = requirePermission('equipment:create', 'technician');
+    let nextCalled = false;
+    let blockedStatus = null;
+    const reqRevoked = {
+      user: { _id: 'tech-1', role: 'technician' },
+      userPermissions: ['equipment:read', 'equipment:qr:scan'], // 'equipment:create' was revoked live in UC-12.2!
+      userPermissionsFromDb: true
+    };
+    const resRevoked = {
+      status: (c) => { blockedStatus = c; return resRevoked; },
+      json: () => {}
+    };
+    middleware(reqRevoked, resRevoked, () => { nextCalled = true; });
+    assert.strictEqual(nextCalled, false, 'Phải chặn truy cập ngay lập tức khi quyền bị thu hồi trên Ma trận RBAC');
+    assert.strictEqual(blockedStatus, 403, 'Phải trả về HTTP 403 Forbidden');
+
+    // 8b. Admin Self-Lockout Protection
+    Role.findOne = async ({ name }) => (name === 'admin' ? {
+      _id: new mongoose.Types.ObjectId(),
+      name: 'admin',
+      permissions: ['role:update', 'user:profile:read'],
+      save: async function () { return this; }
+    } : null);
+
+    let lockoutStatus = 200;
+    let lockoutBody = null;
+    const reqLockout = {
+      params: { id: 'admin' },
+      user: { _id: 'admin-1', full_name: 'Admin', code: 'AD01', role: 'admin' },
+      body: { permissions: ['user:profile:read', 'equipment:read'] } // Missing role:update!
+    };
+    const resLockout = {
+      status: (c) => { lockoutStatus = c; return resLockout; },
+      json: (d) => { lockoutBody = d; }
+    };
+    await updateRolePermissions(reqLockout, resLockout);
+    assert.strictEqual(lockoutStatus, 400, 'Phải chặn Admin tự tước quyền role:update');
+    assert.strictEqual(lockoutBody.code, 'ADMIN_SELF_LOCKOUT_PREVENTED');
+    console.log('  ✔ Test 8 ĐẠT: Live RBAC chặn tức thì quyền bị thu hồi & bảo vệ chống tự khóa quyền Admin.');
+  }
+
+  // TEST 9: Inventory Session, QR Stocktaking Edge Cases & Signed Report (UC-3.9, UC-3.10, UC-3.11)
+  console.log('▶ Test 9 (UC-3.9, UC-3.10, UC-3.11): Kiểm kê Tòa A1, phát hiện tài sản Zombie đã thanh lý, khóa sổ & ký số SHA-256');
+  {
+    const {
+      createSession,
+      scanEquipmentInRoom,
+      reconcileSession,
+      exportInventoryReport
+    } = await import('../controllers/inventoryController.js');
+    const { InventorySession } = await import('../models/InventorySession.js');
+    const { InventoryLog } = await import('../models/InventoryLog.js');
+
+    const sessionId = new mongoose.Types.ObjectId().toString();
+    const mockSessions = [];
+    const mockLogs = [];
+
+    InventorySession.create = async (doc) => {
+      const s = {
+        _id: sessionId,
+        ...doc,
+        summary: { matched: 0, wrong_location: 0, damaged: 0, missing: 0 },
+        save: async function () { return this; },
+        toJSON: function () { return this; }
+      };
+      mockSessions.push(s);
+      return s;
+    };
+
+    InventorySession.findById = (id) => {
+      const found = mockSessions.find((s) => String(s._id) === String(id)) || null;
+      return {
+        populate: function () { return this; },
+        then: function (resolve) { resolve(found); }
+      };
+    };
+
+    InventoryLog.findOneAndUpdate = async (filter, update) => {
+      let existing = mockLogs.find(
+        (l) => String(l.session_id) === String(filter.session_id) && String(l.equipment_id) === String(filter.equipment_id)
+      );
+      if (existing) {
+        Object.assign(existing, update);
+      } else {
+        existing = { _id: `log-${mockLogs.length + 1}`, ...filter, ...update };
+        mockLogs.push(existing);
+      }
+      return existing;
+    };
+
+    InventoryLog.find = () => ({
+      populate: function () { return this; },
+      sort: async function () { return mockLogs; },
+      select: async function () { return mockLogs; },
+      then: function (resolve) { resolve(mockLogs); }
+    });
+
+    // 9a. Create Inventory Session (UC-3.9)
+    let createStatus = 200;
+    let createBody = null;
+    await createSession(
+      {
+        user: { _id: 'fm-01', full_name: 'Quản lý CSVC', code: 'FM01' },
+        body: { name: 'Kiểm kê Học kỳ I Tòa A1', scope_type: 'floor', scope_floor: 2 }
+      },
+      { status: (c) => { createStatus = c; return { json: (d) => { createBody = d; } }; }, json: (d) => { createBody = d; } }
+    );
+    assert.strictEqual(createStatus, 201);
+    assert.strictEqual(createBody.success, true);
+
+    // 9b. Scan a DISPOSED equipment ("Zombie Asset") in Room -> Must flag WRONG_LOCATION + audit warning (UC-3.10)
+    let scanZombieBody = null;
+    await scanEquipmentInRoom(
+      {
+        params: { id: sessionId },
+        user: { _id: 'tech-01', full_name: 'KTV Hoàng', code: 'TECH01' },
+        body: { qr_code: 'QR-EQ-2026-001', scanned_room_id: roomId }
+      },
+      { status: () => ({ json: (d) => { scanZombieBody = d; } }), json: (d) => { scanZombieBody = d; } }
+    );
+    assert.strictEqual(scanZombieBody.success, true);
+    assert.strictEqual(scanZombieBody.log.status, 'wrong_location', 'Tài sản đã thanh lý xuất hiện tại phòng phải bị gắn cờ wrong_location');
+    assert.ok(scanZombieBody.log.note.includes('ĐÃ THANH LÝ'), 'Phải có cảnh báo kiểm toán tài sản đã thanh lý');
+
+    // 9c. Reconcile Session & verify scanning is locked afterwards
+    let recBody = null;
+    await reconcileSession(
+      {
+        params: { id: sessionId },
+        user: { _id: 'fm-01', full_name: 'Quản lý CSVC', code: 'FM01' },
+        body: {}
+      },
+      { status: () => ({ json: (d) => { recBody = d; } }), json: (d) => { recBody = d; } }
+    );
+    assert.strictEqual(recBody.success, true);
+
+    let lockedScanStatus = 200;
+    await scanEquipmentInRoom(
+      {
+        params: { id: sessionId },
+        user: { _id: 'tech-01', full_name: 'KTV Hoàng', code: 'TECH01' },
+        body: { qr_code: 'QR-EQ-2026-001', scanned_room_id: roomId }
+      },
+      { status: (c) => { lockedScanStatus = c; return { json: () => {} }; }, json: () => {} }
+    );
+    assert.strictEqual(lockedScanStatus, 400, 'Phải chặn quét thêm mã QR sau khi phiên kiểm kê đã chốt sổ RECONCILED');
+
+    // 9d. Export Digitally Signed SHA-256 Report (UC-3.11)
+    let exportBody = null;
+    await exportInventoryReport(
+      {
+        params: { id: sessionId },
+        user: { _id: 'fm-01', full_name: 'Quản lý CSVC', code: 'FM01', role: 'facility_manager' }
+      },
+      { status: () => ({ json: (d) => { exportBody = d; } }), json: (d) => { exportBody = d; } }
+    );
+    assert.strictEqual(exportBody.success, true);
+    assert.strictEqual(exportBody.report.digital_signature.algorithm, 'SHA-256');
+    assert.strictEqual(exportBody.report.digital_signature.hash.length, 64);
+    console.log('  ✔ Test 9 ĐẠT: Khởi tạo kiểm kê, phát hiện tài sản Zombie, khóa sổ sau đối soát & ký số SHA-256 hoàn tất.');
+  }
+
+  console.log('--- TOÀN BỘ 9/9 TEST SUITES (14 USE CASES + EDGE CASES + MONGOOSE SCHEMA) ĐÃ VƯỢT QUA 100% ---');
 }
 
 runTests().catch(err => {

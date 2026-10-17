@@ -132,10 +132,13 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
         try {
           const [repRes, movRes] = await Promise.all([
             repairApi.list(),
-            movementApi.list({ status: 'pending' })
+            movementApi.list()
           ]);
           const allRepairs = repRes.repairs || repRes.data || [];
-          const allMovs = movRes.movements || movRes.data || [];
+          const allMovs = (movRes.movements || movRes.data || []).filter(movement =>
+            ['approved', 'pending'].includes(movement.status) &&
+            (!movement.assigned_to || movement.assigned_to._id === currentUser?._id || movement.assigned_to.code === currentUser?.code)
+          );
 
           const assigned = allRepairs.filter(r =>
             r.assigned_to?._id === currentUser?._id ||
@@ -428,7 +431,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
           }
         >
           {selectedRoom ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div key={selectedRoom.code || selectedRoom.id} className="ruo-view-enter" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Room Top Specs Grid */}
               <div
                 style={{

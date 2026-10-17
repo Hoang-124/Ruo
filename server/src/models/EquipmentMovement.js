@@ -39,6 +39,16 @@ const equipmentMovementSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  assigned_to: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  approved_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   performed_by: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -47,6 +57,19 @@ const equipmentMovementSchema = new mongoose.Schema({
   reason: {
     type: String,
     default: ''
+  },
+  reject_reason: {
+    type: String,
+    default: ''
+  },
+  completion_notes: {
+    type: String,
+    default: '',
+    maxlength: 500
+  },
+  approved_at: {
+    type: Date,
+    default: null
   },
   status: {
     type: String,

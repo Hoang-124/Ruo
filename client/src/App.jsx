@@ -25,6 +25,7 @@ const QRScannerPage = lazy(() => import('./pages/technician/QRScannerPage').then
 const TicketKanbanPage = lazy(() => import('./pages/incidents/TicketKanbanPage').then(m => ({ default: m.TicketKanbanPage })));
 const WarehouseStockPage = lazy(() => import('./pages/facility/WarehouseStockPage').then(m => ({ default: m.WarehouseStockPage })));
 const MovementsPage = lazy(() => import('./pages/facility/MovementsPage').then(m => ({ default: m.MovementsPage })));
+const TransferHistoryPage = lazy(() => import('./pages/transfers/TransferHistoryPage').then(m => ({ default: m.TransferHistoryPage })));
 const EquipmentsPage = lazy(() => import('./pages/equipments/EquipmentsPage').then(m => ({ default: m.EquipmentsPage })));
 const InventoryPage = lazy(() => import('./pages/inventory/InventoryPage').then(m => ({ default: m.InventoryPage })));
 const DisposalProposePage = lazy(() => import('./pages/equipments/DisposalProposePage').then(m => ({ default: m.DisposalProposePage })));
@@ -80,7 +81,7 @@ const MainAppContent = () => {
       >
         <button
           onClick={() => setActiveTab(currentRoleMeta?.defaultTab || 'dashboard')}
-          className="ruo-btn ruo-btn-ghost ruo-btn-sm"
+          className="ruo-btn ruo-btn-ghost ruo-btn-sm ruo-back-nav-btn"
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           title="Quay lại Trang Chủ Vận Hành"
         >
@@ -204,6 +205,13 @@ const MainAppContent = () => {
           <MovementTasksPage />
         );
 
+      case 'transfer_history':
+        return renderSubPageWrapper(
+          'Lịch Sử Điều Chuyển Thiết Bị',
+          'MODULE 03 • TRA CỨU LỊCH SỬ',
+          <TransferHistoryPage />
+        );
+
       case 'qr_scanner':
         return renderSubPageWrapper(
           'Quét Mã QR & Tra Cứu Thông Số Kỹ Thuật',
@@ -230,7 +238,6 @@ const MainAppContent = () => {
         );
 
       case 'movements':
-      case 'transfers': // Legacy alias routed to movements
         return renderSubPageWrapper(
           'Điều Chuyển Trang Thiết Bị Giữa Các Phòng',
           'MODULE 03 • ĐIỀU CHUYỂN TÀI SẢN',
@@ -341,7 +348,7 @@ const MainAppContent = () => {
       {/* Main Subsystem Viewport */}
       <main className="ruo-main-viewport">
         <Suspense fallback={<LazyFallback />}>
-          <div key={activeTab}>
+          <div key={activeTab} className="ruo-view-enter">
             {renderActiveView()}
           </div>
         </Suspense>

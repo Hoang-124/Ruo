@@ -89,9 +89,9 @@ export const AuthProvider = ({ children }) => {
   // Live profile details from Backend
   const [apiUser, setApiUser] = useState(null);
 
-  // Dark/Light Theme (Default: dark command center)
+  // Dark/Light Theme (Default: High-Contrast Academic Daylight 'light')
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('ruo_theme') || 'dark';
+    return localStorage.getItem('ruo_theme_v2') || 'light';
   });
 
   // Real Notifications from Backend API
@@ -314,6 +314,7 @@ export const AuthProvider = ({ children }) => {
     setTheme(prev => {
       const next = prev === 'light' ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('ruo_theme_v2', next);
       localStorage.setItem('ruo_theme', next);
       unlock();
       return next;
@@ -349,6 +350,61 @@ export const AuthProvider = ({ children }) => {
     return USER_ROLES.LECTURER;
   }, [apiUser]);
 
+  // Canonical fallback permissions per role (synchronized with backend DEFAULT_CANONICAL_ROLES)
+  const userPermissions = useMemo(() => {
+    if (Array.isArray(apiUser?.permissions)) {
+      return apiUser.permissions;
+    }
+    const defaults = {
+      [USER_ROLES.LECTURER]: [
+        'user:profile:read', 'room:read', 'equipment:read', 'equipment:qr:scan',
+        'incident:create', 'incident:read_own', 'repair:rate'
+      ],
+      [USER_ROLES.TECHNICIAN]: [
+        'user:profile:read', 'room:read', 'equipment:read', 'equipment:create',
+        'equipment:update', 'equipment:qr:scan', 'warranty:read', 'warranty:update',
+        'movement:confirm', 'incident:create', 'repair:read_assigned', 'repair:accept',
+        'repair:log', 'repair:report_outcome', 'parts:request', 'inventory:scan', 'inventory:export'
+      ],
+      [USER_ROLES.FACILITY_MANAGER]: [
+        'user:profile:read', 'room:read', 'equipment:read', 'equipment:create',
+        'equipment:update', 'equipment:import', 'equipment:dispose', 'equipment:qr:generate',
+        'equipment:qr:scan', 'warranty:read', 'warranty:update', 'movement:order',
+        'placement:decide', 'incident:create', 'repair:read', 'repair:assign',
+        'repair:close', 'parts:approve', 'spare_part:update', 'inventory:create',
+        'inventory:scan', 'inventory:reconcile', 'inventory:export', 'disposal:propose',
+        'dashboard:read', 'report:export'
+      ],
+      [USER_ROLES.ADMIN]: [
+        'user:profile:read', 'user:create', 'user:update', 'user:lock',
+        'user:reset_password', 'user:approve', 'role:update', 'room:read', 'room:*',
+        'category:*', 'supplier:*', 'repair_unit:*', 'equipment:read', 'equipment:create',
+        'equipment:update', 'equipment:import', 'equipment:dispose', 'equipment:qr:generate',
+        'equipment:qr:scan', 'warranty:read', 'warranty:update', 'movement:order',
+        'incident:create', 'inventory:create', 'inventory:reconcile', 'inventory:export',
+        'disposal:approve', 'dashboard:read', 'report:export', 'audit:read',
+        'audit:verify', 'audit:export', 'system:health'
+      ]
+    };
+    return defaults[activeRole] || defaults[USER_ROLES.LECTURER];
+  }, [apiUser, activeRole]);
+
+  const hasPermission = useCallback((permissionCode) => {
+    if (!permissionCode) return false;
+    if (userPermissions.includes('*') || userPermissions.includes(permissionCode)) return true;
+    const prefix = String(permissionCode).split(':')[0];
+    return Boolean(prefix && userPermissions.includes(`${prefix}:*`));
+  }, [userPermissions]);
+
+  // Live-sync userPermissions when Admin updates RBAC Matrix in UC-12.2
+  useEffect(() => {
+    const handleRbacUpdated = () => {
+      fetchProfile();
+    };
+    window.addEventListener('ruo:rbac-updated', handleRbacUpdated);
+    return () => window.removeEventListener('ruo:rbac-updated', handleRbacUpdated);
+  }, [fetchProfile]);
+
   const currentRoleMeta = useMemo(() => {
     return ROLE_METADATA[activeRole] || ROLE_METADATA[USER_ROLES.LECTURER];
   }, [activeRole]);
@@ -382,6 +438,7 @@ export const AuthProvider = ({ children }) => {
       code: apiUser.code || apiUser.employeeCode || '',
       email: apiUser.email || '',
       role: activeRole,
+      permissions: userPermissions,
       roleTitle: currentRoleMeta.label,
       department: typeof apiUser.department === 'string' ? apiUser.department : (apiUser.department?.name || 'Đại Học Ruo'),
       phone: apiUser.phone || '',
@@ -393,7 +450,7 @@ export const AuthProvider = ({ children }) => {
       reputeTier: tier,
       bookingPrivilege: apiUser.bookingPrivilege || (repute >= 70 ? 'Toàn Quyền Tiêu Chuẩn' : 'Hạn Chế Đặt Trước')
     };
-  }, [apiUser, activeRole, currentRoleMeta]);
+  }, [apiUser, activeRole, currentRoleMeta, userPermissions]);
 
   const navItems = useMemo(() => {
     return getNavItemsForRole(activeRole);
@@ -419,6 +476,8 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     currentRoleKey: activeRole,
     currentRoleMeta,
+    userPermissions,
+    hasPermission,
     navItems,
     allowedTabs,
     defaultTab,
@@ -448,6 +507,8 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     activeRole,
     currentRoleMeta,
+    userPermissions,
+    hasPermission,
     navItems,
     allowedTabs,
     defaultTab,
