@@ -99,7 +99,7 @@ export const DEFAULT_CANONICAL_ROLES = {
   }
 };
 
-// @desc    Get all roles and permissions (UC-12.1: View role permissions)
+// @desc    Get all roles and permissions matrix (UC-12.1: View role permissions matrix)
 // @route   GET /api/roles or GET /api/admin/roles
 export const getRoles = async (req, res) => {
   try {
@@ -124,9 +124,17 @@ export const getRoles = async (req, res) => {
       roles = await Role.find();
     }
 
+    // Filter by role name if specified
+    if (req.query?.name) {
+      roles = roles.filter(r => r.name.toLowerCase() === String(req.query.name).toLowerCase());
+    }
+
     res.json({
       success: true,
-      roles
+      total: roles.length,
+      roles,
+      canonicalRolesCount: Object.keys(DEFAULT_CANONICAL_ROLES).length,
+      defaultCanonicalRoles: DEFAULT_CANONICAL_ROLES
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
