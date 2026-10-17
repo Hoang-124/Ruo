@@ -4,7 +4,7 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 
 ---
 
-## 1. Danh Sách Bộ Kiểm Thử (50 Test Cases)
+## 1. Danh Sách Bộ Kiểm Thử (57 Test Cases)
 
 | Mã Use Case | Tên Chức Năng | File Kiểm Thử | Số Lượng Test | Trạng Thái |
 | :--- | :--- | :--- | :---: | :---: |
@@ -16,6 +16,7 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 | **UC-10.5** | Toggle Status & Force Reset Password | `test_uc10_5.js` | 6 tests | ✅ PASS (100%) |
 | **UC-10.6** | Reset Password & Mandatory Next Login Change | `test_uc10_6.js` | 8 tests | ✅ PASS (100%) |
 | **UC-10.7** | Role Approval, Appointment & Master Data | `test_uc10_7.js` | 7 tests | ✅ PASS (100%) |
+| **UC-12.1** | Roles Matrix, Dynamic RBAC & Equipment Guards | `test_uc12_1.js` | 7 tests | ✅ PASS (100%) |
 
 ---
 
@@ -42,12 +43,28 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 
 ---
 
-## 3. Cách Thức Chạy Kiểm Thử
+## 3. Đặc Tả Nghiệp Vụ UC-12.1 (Roles Matrix & Dynamic RBAC)
+
+1. **Ma trận quyền hạn 4 vai trò chuẩn**:
+   - Endpoint: `GET /api/admin/roles` (hoặc `GET /api/roles`).
+   - Tự động đồng bộ và seed 4 vai trò chính thức: Admin (`admin`), Quản lý CSVC (`facility_manager`), Kỹ thuật viên (`technician`), Giảng viên (`lecturer`).
+   - Hỗ trợ lọc theo vai trò qua query parameter (ví dụ `?name=lecturer`).
+
+2. **Ràng buộc phân quyền động trên Collection Equipments**:
+   - Endpoint: `POST /api/equipments`.
+   - Kết hợp bảo vệ 2 tầng: `requireRole` (Admin, Quản lý, KTV) và `requirePermission('equipment:create')`.
+   - Chặn lập tức các yêu cầu từ Giảng viên hoặc vai trò bị thu hồi quyền tạo thiết bị với mã lỗi HTTP 403.
+
+---
+
+## 4. Cách Thức Chạy Kiểm Thử
 
 ```bash
-# Chạy toàn bộ 43 test cases của phân hệ
+# Chạy toàn bộ 57 test cases của phân hệ
 npm test
 
-# Chạy riêng kiểm thử UC-10.6
-node server/src/tests/test_uc10_6.js
+# Chạy riêng kiểm thử UC-12.1 (Roles Matrix & Dynamic RBAC)
+npm run test:rbac
+# hoặc
+node src/tests/test_uc12_1.js
 ```
