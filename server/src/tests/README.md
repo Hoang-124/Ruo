@@ -4,7 +4,7 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 
 ---
 
-## 1. Danh Sách Bộ Kiểm Thử (64 Test Cases)
+## 1. Danh Sách Bộ Kiểm Thử (72 Test Cases)
 
 | Mã Use Case | Tên Chức Năng | File Kiểm Thử | Số Lượng Test | Trạng Thái |
 | :--- | :--- | :--- | :---: | :---: |
@@ -18,6 +18,7 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 | **UC-10.7** | Role Approval, Appointment & Master Data | `test_uc10_7.js` | 7 tests | ✅ PASS (100%) |
 | **UC-12.1** | Roles Matrix, Dynamic RBAC & Equipment Guards | `test_uc12_1.js` | 7 tests | ✅ PASS (100%) |
 | **UC-12.2** | Update Perms, Module Toggles & Equipment Pagination | `test_uc12_2.js` | 7 tests | ✅ PASS (100%) |
+| **UC-3.1** | Create Equipment & Initial Lifecycle | `test_uc3_1.js` | 8 tests | ✅ PASS (100%) |
 
 ---
 
@@ -72,17 +73,39 @@ Tài liệu đặc tả và tổng hợp các bộ kiểm thử tự động (Au
 
 ---
 
-## 5. Cách Thức Chạy Kiểm Thử
+## 5. Đặc Tả Nghiệp Vụ UC-3.1 (Create Equipment & Lifecycle Onboarding)
+
+1. **Khởi tạo tài sản mới với ràng buộc toàn vẹn chuẩn**:
+   - Endpoint: `POST /api/equipments`.
+   - Mã tài sản (`code`): Tự động chuẩn hóa viết hoa, kiểm tra tính duy nhất (trả về HTTP 409 nếu trùng).
+   - Mã QR chuẩn hóa (`qr_code`): Nếu để trống, tự động gán fallback định dạng chuẩn `QR-${cleanCode}`; kiểm tra tính duy nhất.
+   - Ràng buộc thời hạn bảo hành: `warranty_expiry >= purchase_date` (trả về HTTP 400 nếu ngày hết hạn bảo hành trước ngày mua).
+   - Tự động ghi nhận chuyển dịch ban đầu: Khi gắn tài sản vào phòng (`room_id`), tự động tạo bản ghi `EquipmentMovement` dạng `INITIAL_ALLOCATION` kèm ghi chú nhập kho ban đầu.
+   - Khởi tạo vòng đời: Tự động đính kèm giai đoạn `ONBOARDING` vào lịch sử vòng đời của thiết bị.
+   - Phân quyền nghiêm ngặt: Chỉ cho phép Admin, Quản lý CSVC và Kỹ thuật viên (chặn Giảng viên với mã lỗi HTTP 403).
+
+2. **Truy vấn chi tiết thiết bị & Dòng thời gian vòng đời 5 giai đoạn**:
+   - Endpoint: `GET /api/equipments/:id`.
+   - Hỗ trợ tra cứu linh hoạt kép: Bằng MongoDB ObjectId hoặc bằng Mã tài sản viết hoa.
+   - Dòng thời gian vòng đời hoàn chỉnh 5 giai đoạn: `ONBOARDING` (Nhập kho), `ALLOCATION` (Bàn giao/Chuyển phòng), `INCIDENT` (Báo cáo sự cố), `REPAIR` (Sửa chữa bảo dưỡng), `DISPOSAL` (Thanh lý tài sản).
+   - Tính toán chỉ số bảo hành & Khấu hao: Bổ sung `warrantyInfo` (ngày còn lại, trạng thái hết hạn) và `depreciation` (tỷ lệ khấu hao đường thẳng, giá trị còn lại).
+
+---
+
+## 6. Cách Thức Chạy Kiểm Thử
 
 ```bash
-# Chạy toàn bộ 64 test cases của phân hệ
+# Chạy toàn bộ 72 test cases của hệ thống
 npm test
+
+# Chạy riêng kiểm thử UC-3.1 (Create Equipment & Initial Lifecycle)
+npm run test:uc3_1
+# hoặc
+node src/tests/test_uc3_1.js
 
 # Chạy riêng kiểm thử UC-12.1 (Roles Matrix & Dynamic RBAC)
 npm run test:rbac
 
 # Chạy riêng kiểm thử UC-12.2 (Update Perms & Equipment Pagination)
 npm run test:rbac2
-# hoặc
-node src/tests/test_uc12_2.js
 ```
