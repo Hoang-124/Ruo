@@ -166,16 +166,46 @@ export const getRoles = async (req, res) => {
   }
 };
 
-// @desc    Configure single role permissions (UC-12.2: Configure role permissions - Admin Only)
+// @desc    Configure single role permissions & live policy toggle (UC-12.2: Configure role permissions - Admin Only)
 // @route   PUT /api/roles/:id or PUT /api/admin/roles/:id/permissions
 export const updateRolePermissions = async (req, res) => {
   try {
-    const { permissions } = req.body;
-    if (!Array.isArray(permissions)) {
-      return res.status(400).json({ success: false, message: 'Danh sách quyền phải là một mảng chuỗi.' });
+    const { permissions, modulePermissions, action } = req.body;
+
+    let targetPermissions = null;
+
+    if (Array.isArray(permissions)) {
+      targetPermissions = permissions;
+    } else if (action && Array.isArray(modulePermissions)) {
+      // Find current role to apply module delta
+      let existingRole = null;
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        existingRole = await Role.findById(req.params.id);
+      }
+      if (!existingRole) {
+        existingRole = await Role.findOne({ name: req.params.id });
+      }
+      const currentList = existingRole?.permissions || DEFAULT_CANONICAL_ROLES[req.params.id]?.permissions || [];
+      if (action === 'ENABLE_MODULE') {
+        targetPermissions = [...new Set([...currentList, ...modulePermissions])];
+      } else if (action === 'DISABLE_MODULE') {
+        targetPermissions = currentList.filter(p => !modulePermissions.includes(p));
+      } else if (action === 'TOGGLE_MODULE') {
+        const hasAll = modulePermissions.every(p => currentList.includes(p));
+        targetPermissions = hasAll
+          ? currentList.filter(p => !modulePermissions.includes(p))
+          : [...new Set([...currentList, ...modulePermissions])];
+      }
     }
 
-    const sanitizedPermissions = sanitizePermissionsList(permissions);
+    if (!Array.isArray(targetPermissions)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Dữ liệu không hợp lệ. Vui lòng cung cấp danh sách quyền (permissions) hoặc modulePermissions kèm action.'
+      });
+    }
+
+    const sanitizedPermissions = sanitizePermissionsList(targetPermissions);
 
     let role = null;
     if (mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -218,8 +248,8 @@ export const updateRolePermissions = async (req, res) => {
     await role.save();
 
     await AuditLog.logAction({
-      user_id: req.user._id,
-      user_display: `${req.user.full_name} (${req.user.code})`,
+      user_id: req.user?._id,
+      user_display: req.user ? `${req.user.full_name} (${req.user.code})` : 'System Admin',
       action: 'UPDATE_ROLE_PERMISSIONS',
       target_table: 'roles',
       entity_id: role._id.toString(),
@@ -228,7 +258,8 @@ export const updateRolePermissions = async (req, res) => {
       new_value: {
         permissions: role.permissions,
         added: addedPermissions,
-        revoked: revokedPermissions
+        revoked: revokedPermissions,
+        action: action || 'DIRECT_UPDATE'
       }
     });
 
@@ -236,6 +267,8 @@ export const updateRolePermissions = async (req, res) => {
       success: true,
       message: `Cập nhật ma trận phân quyền cho vai trò [${role.name}] thành công (+${addedPermissions.length} cấp mới, -${revokedPermissions.length} thu hồi).`,
       role,
+      liveEnforced: true,
+      policyVersion: Date.now(),
       diff: {
         added: addedPermissions,
         revoked: revokedPermissions

@@ -300,9 +300,17 @@ export const createEquipment = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get all equipment items with search, filter, and pagination (UC-3.2)
+// @desc    Get all equipment items with search, filter, and pagination (UC-3.2 & UC-12.2)
 // @route   GET /api/equipments
 export const getEquipments = asyncHandler(async (req, res) => {
+  // Enforce dynamic RBAC permission check for equipment reading (UC-12.2 / UC-3.2)
+  if (req.user && typeof req.hasPermission === 'function' && !req.hasPermission('equipment:read')) {
+    return res.status(403).json({
+      success: false,
+      message: 'Quyền truy cập bị từ chối. Nghiệp vụ yêu cầu quyền [equipment:read] trên Ma trận RBAC.'
+    });
+  }
+
   const {
     category_id,
     category,
@@ -420,12 +428,15 @@ export const getEquipments = asyncHandler(async (req, res) => {
     .skip(skip)
     .limit(l);
 
+  const totalPages = Math.ceil(total / l);
   res.json({
     success: true,
     total,
     page: p,
     limit: l,
-    totalPages: Math.ceil(total / l),
+    totalPages,
+    hasPrevPage: p > 1,
+    hasNextPage: p < totalPages,
     equipments
   });
 });
