@@ -13,6 +13,7 @@ router.get('/', getRoles);
 // Configure role permissions (Admin Only)
 router.post('/batch-update', requireRole(USER_ROLES.ADMIN), batchUpdateRoles);
 router.post('/reset-defaults', requireRole(USER_ROLES.ADMIN), resetDefaultRoles);
+router.put('/:id/permissions', requireRole(USER_ROLES.ADMIN), updateRolePermissions);
 router.put('/:id', requireRole(USER_ROLES.ADMIN), updateRolePermissions);
 
 export default router;

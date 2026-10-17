@@ -1,348 +1,453 @@
 # DATABASE SCHEMA — RUO
 
-> MongoDB · Mongoose ODM · **20 collections** · **68 Use Cases**
-> Actors: **Guest** · **Lecturer** · **Facility Manager** · **Technician** · **Admin**
+> Normalized Database Architecture · **26 Tables / Entities** · **95 Use Cases**
+> Main Actors: **Guest** · **Lecturer** · **Facility Manager** · **Technician** · **Admin**
 >
-> ⚙️ File này được **sinh tự động** từ [dbdiagram.dbml](file:///d:/Ruo/dbdiagram.dbml). Muốn sửa schema thì sửa DBML rồi chạy `node scripts/docs/gen_schema_md.mjs`.
-> Giải thích nghiệp vụ, vòng đời thiết bị và kịch bản mẫu: [DB_MODULES_EXPLAINED.md](file:///d:/Ruo/DB_MODULES_EXPLAINED.md).
+> ⚙️ File này được **sinh tự động** từ [dbdiagram.dbml](file:///c:/Users/Dang/Documents/wdp/Ruo/dbdiagram.dbml). Khi điều chỉnh schema, cập nhật DBML rồi chạy `node scripts/docs/gen_schema_md.mjs`.
 
 ## Mục lục
 
-- **1. AUTH & USER**: [`users`](#users) · [`roles`](#roles) · [`refresh_tokens`](#refresh_tokens) · [`password_resets`](#password_resets)
-- **2. MASTER DATA**: [`categories`](#categories) · [`suppliers`](#suppliers) · [`repair_units`](#repair_units) · [`rooms`](#rooms) · [`spare_parts`](#spare_parts)
-- **3. EQUIPMENT, MOVEMENT & DISPOSAL**: [`equipment`](#equipment) · [`equipment_movements`](#equipment_movements) · [`disposals`](#disposals) · [`import_sessions`](#import_sessions)
-- **4. REPAIR FLOW**: [`repairs`](#repairs) · [`repair_logs`](#repair_logs) · [`parts_requests`](#parts_requests)
-- **5. INVENTORY**: [`inventory_sessions`](#inventory_sessions) · [`inventory_logs`](#inventory_logs)
-- **6. NOTIFICATION & AUDIT**: [`notifications`](#notifications) · [`audit_logs`](#audit_logs)
+- **1. AUTHENTICATION & RBAC**: [`roles`](#roles) · [`permissions`](#permissions) · [`role_permissions`](#role_permissions) · [`users`](#users) · [`refresh_tokens`](#refresh_tokens) · [`password_resets`](#password_resets)
+- **2. ORGANIZATION / MASTER DATA**: [`departments`](#departments) · [`categories`](#categories) · [`suppliers`](#suppliers) · [`repair_units`](#repair_units) · [`rooms`](#rooms) · [`room_required_equipment`](#room_required_equipment)
+- **4. SPARE PARTS**: [`spare_parts`](#spare_parts)
+- **5. EQUIPMENT / ASSETS**: [`equipment`](#equipment)
+- **6. EQUIPMENT MOVEMENTS**: [`equipment_movements`](#equipment_movements)
+- **7. IMPORT SESSIONS**: [`import_sessions`](#import_sessions)
+- **8. REPAIR FLOW**: [`repairs`](#repairs)
+- **9. REPAIR LOGS**: [`repair_logs`](#repair_logs) · [`parts_requests`](#parts_requests) · [`parts_request_items`](#parts_request_items)
+- **11. PREVENTIVE MAINTENANCE**: [`preventive_maintenance`](#preventive_maintenance)
+- **12. DISPOSAL**: [`disposals`](#disposals)
+- **13. INVENTORY**: [`inventory_sessions`](#inventory_sessions) · [`inventory_logs`](#inventory_logs)
+- **14. NOTIFICATIONS**: [`notifications`](#notifications)
+- **15. AUDIT LOG**: [`audit_logs`](#audit_logs)
 
 ---
 
-## 1. AUTH & USER
-
-### users
-
-| Field | Type | Khoá | Ghi chú |
-|:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| code | String | Unique | Mã NV / GV |
-| email | String | Unique |  |
-| password_hash | String |  | BCrypt |
-| full_name | String |  |  |
-| phone | String |  |  |
-| avatar | String |  |  |
-| department | String |  | Khoa / Phòng ban |
-| role | String |  | `lecturer` · `facility_manager` · `technician` · `admin` |
-| status | String |  | `active` · `locked` |
-| force_change_pw | Boolean |  |  |
-| failed_login_attempts | Number |  | 5 lần sai → khoá 15 phút |
-| lock_until | DateTime |  |  |
-| last_login_at | DateTime |  |  |
-| created_at | DateTime |  |  |
-| updated_at | DateTime |  |  |
+## 1. AUTHENTICATION & RBAC
 
 ### roles
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| name | String | Unique | `lecturer` · `facility_manager` · `technician` · `admin` |
-| permissions | Array |  | Mảng quyền |
+| id | int | PK |  |
+| name | system_role | Unique |  |
+| description | varchar | - |  |
+| created_at | timestamp | - |  |
+| updated_at | timestamp | - |  |
+
+### permissions
+
+| Field | Type | Khoá | Ghi chú |
+|:---|:---|:---|:---|
+| id | int | PK |  |
+| code | varchar | Unique | Example: equipment.create |
+| module | varchar | - |  |
+| action | varchar | - |  |
+| description | varchar | - |  |
+
+### role_permissions
+
+| Field | Type | Khoá | Ghi chú |
+|:---|:---|:---|:---|
+| role_id | int | FK → `roles` |  |
+| permission_id | int | FK → `permissions` |  |
+
+### users
+
+| Field | Type | Khoá | Ghi chú |
+|:---|:---|:---|:---|
+| id | int | PK |  |
+| code | varchar | Unique | Mã NV / GV |
+| email | varchar | Unique |  |
+| password_hash | varchar | - | BCrypt |
+| full_name | varchar | - |  |
+| phone | varchar | - |  |
+| avatar | varchar | - |  |
+| department_id | int | FK → `departments` |  |
+| role_id | int | FK → `roles` |  |
+| status | user_role_status | - |  |
+| force_change_pw | boolean | - |  |
+| failed_login_attempts | int | - |  |
+| lock_until | timestamp | - |  |
+| last_login_at | timestamp | - |  |
+| created_at | timestamp | - |  |
+| updated_at | timestamp | - |  |
 
 ### refresh_tokens
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| user_id | ObjectId | FK → `users` |  |
-| token_hash | String |  |  |
-| device_info | String |  |  |
-| ip_address | String |  |  |
-| expires_at | DateTime |  | TTL 7 ngày |
-| is_revoked | Boolean |  |  |
-| created_at | DateTime |  |  |
+| id | int | PK |  |
+| user_id | int | FK → `users` |  |
+| token_hash | varchar | Unique |  |
+| device_info | varchar | - |  |
+| ip_address | varchar | - |  |
+| expires_at | timestamp | - |  |
+| is_revoked | boolean | - |  |
+| created_at | timestamp | - |  |
 
 ### password_resets
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| email | String |  |  |
-| otp_hash | String |  | BCrypt OTP 6 số |
-| purpose | String |  | `register` · `reset_password` |
-| attempts | Number |  | Tối đa 3 lần nhập sai |
-| expires_at | DateTime |  | TTL 15 phút |
-| is_used | Boolean |  |  |
-| created_at | DateTime |  |  |
+| id | int | PK |  |
+| user_id | int | FK → `users` |  |
+| email | varchar | - |  |
+| otp_hash | varchar | - | BCrypt OTP |
+| purpose | varchar | - | `register` · `reset_password` |
+| attempts | int | - |  |
+| expires_at | timestamp | - |  |
+| is_used | boolean | - |  |
+| created_at | timestamp | - |  |
 
 ---
 
-## 2. MASTER DATA
+## 2. ORGANIZATION / MASTER DATA
+
+### departments
+
+| Field | Type | Khoá | Ghi chú |
+|:---|:---|:---|:---|
+| id | int | PK |  |
+| code | varchar | Unique |  |
+| name | varchar | - |  |
+| description | varchar | - |  |
+| status | varchar | - | `active` · `inactive` |
+| created_at | timestamp | - |  |
+| updated_at | timestamp | - |  |
 
 ### categories
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| code | String | Unique |  |
-| name | String |  |  |
-| description | String |  |  |
+| id | int | PK |  |
+| code | varchar | Unique |  |
+| name | varchar | - |  |
+| description | varchar | - |  |
+| created_at | timestamp | - |  |
+| updated_at | timestamp | - |  |
 
 ### suppliers
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| code | String | Unique |  |
-| name | String |  |  |
-| phone | String |  |  |
-| email | String |  |  |
-| address | String |  |  |
-| contact | String |  |  |
+| id | int | PK |  |
+| code | varchar | Unique |  |
+| name | varchar | - |  |
+| phone | varchar | - |  |
+| email | varchar | - |  |
+| address | varchar | - |  |
+| contact | varchar | - |  |
+| created_at | timestamp | - |  |
+| updated_at | timestamp | - |  |
 
 ### repair_units
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| code | String | Unique |  |
-| name | String |  |  |
-| specialty | String |  |  |
-| phone | String |  |  |
-| address | String |  |  |
+| id | int | PK |  |
+| code | varchar | Unique |  |
+| name | varchar | - |  |
+| specialty | varchar | - |  |
+| phone | varchar | - |  |
+| email | varchar | - |  |
+| address | varchar | - |  |
+| created_at | timestamp | - |  |
+| updated_at | timestamp | - |  |
 
 ### rooms
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| code | String | Unique |  |
-| name | String |  |  |
-| building | String |  |  |
-| floor | Number |  |  |
-| room_type | String |  | `lecture` · `lab` · `office` · `warehouse` |
-| capacity | Number |  |  |
-| area | Number |  | m² |
-| layout_image | String |  | Sơ đồ phòng |
-| department | String |  |  |
-| required_equipment | Array |  | Định mức: [{ category_id, quantity }] |
-| status | String |  | `available` · `maintenance` · `inactive` |
-| created_at | DateTime |  |  |
-| updated_at | DateTime |  |  |
+| id | int | PK |  |
+| code | varchar | Unique |  |
+| name | varchar | - |  |
+| building | varchar | - |  |
+| floor | int | - |  |
+| room_type | varchar | - | `lecture` · `lab` · `office` · `warehouse` |
+| capacity | int | - |  |
+| area | decimal | - |  |
+| layout_image | varchar | - |  |
+| department_id | int | FK → `departments` |  |
+| status | varchar | - | `available` · `maintenance` · `inactive` |
+| created_at | timestamp | - |  |
+| updated_at | timestamp | - |  |
+
+### room_required_equipment
+
+| Field | Type | Khoá | Ghi chú |
+|:---|:---|:---|:---|
+| room_id | int | FK → `rooms` |  |
+| category_id | int | FK → `categories` |  |
+| quantity | int | - |  |
+
+---
+
+## 4. SPARE PARTS
 
 ### spare_parts
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| code | String | Unique |  |
-| name | String |  |  |
-| stock | Number |  |  |
-| min_stock | Number |  | Ngưỡng cảnh báo |
-| price | Number |  |  |
-| unit | String |  | Cái, bộ, hộp |
-| supplier_id | ObjectId | FK → `suppliers` |  |
+| id | int | PK |  |
+| code | varchar | Unique |  |
+| name | varchar | - |  |
+| stock | int | - |  |
+| min_stock | int | - |  |
+| price | decimal | - |  |
+| unit | varchar | - | `piece` · `set` · `box` |
+| supplier_id | int | FK → `suppliers` |  |
+| created_at | timestamp | - |  |
+| updated_at | timestamp | - |  |
 
 ---
 
-## 3. EQUIPMENT, MOVEMENT & DISPOSAL
+## 5. EQUIPMENT / ASSETS
 
 ### equipment
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| code | String | Unique | Mã tài sản |
-| qr_code | String | Unique |  |
-| serial_number | String |  |  |
-| name | String |  |  |
-| brand | String |  |  |
-| model | String |  |  |
-| category_id | ObjectId | FK → `categories` |  |
-| room_id | ObjectId | FK → `rooms` | Vị trí hiện tại (phòng hoặc kho). null = đang ở đơn vị sửa ngoài |
-| supplier_id | ObjectId | FK → `suppliers` |  |
-| price | Number |  |  |
-| purchase_date | DateTime |  |  |
-| warranty_expiry | DateTime |  |  |
-| warranty_status | String |  | `active` · `expired` · `extended` |
-| images | Array |  |  |
-| depreciation_rate | Number |  | % / năm |
-| status | String |  | `in_use` · `in_stock` · `broken` · `repairing` · `pending_disposal` · `disposed` · `lost` |
-| created_at | DateTime |  |  |
-| updated_at | DateTime |  |  |
+| id | int | PK |  |
+| code | varchar | Unique | Mã tài sản |
+| qr_code | varchar | Unique |  |
+| serial_number | varchar | - |  |
+| name | varchar | - |  |
+| brand | varchar | - |  |
+| model | varchar | - |  |
+| category_id | int | FK → `categories` |  |
+| room_id | int | FK → `rooms` |  |
+| current_repair_unit_id | int | FK → `repair_units` |  |
+| supplier_id | int | FK → `suppliers` |  |
+| price | decimal | - |  |
+| purchase_date | date | - |  |
+| warranty_expiry | date | - |  |
+| warranty_status | varchar | - | `active` · `expired` · `extended` |
+| images | json | - |  |
+| depreciation_rate | decimal | - |  |
+| status | equipment_status | - |  |
+| import_session_id | int | FK → `import_sessions` |  |
+| created_at | timestamp | - |  |
+| updated_at | timestamp | - |  |
+
+---
+
+## 6. EQUIPMENT MOVEMENTS
 
 ### equipment_movements
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| equipment_id | ObjectId | FK → `equipment` |  |
-| type | String |  | `transfer` · `replacement` · `repair_out` · `repair_return` · `to_stock` |
-| from_room_id | ObjectId | FK → `rooms` | nullable |
-| to_room_id | ObjectId | FK → `rooms` | nullable (repair_out ra đơn vị ngoài) |
-| repair_id | ObjectId | FK → `repairs` | nullable, gắn khi di chuyển do sửa chữa |
-| ordered_by | ObjectId | FK → `users` | Facility Manager |
-| performed_by | ObjectId | FK → `users` | Technician |
-| reason | String |  |  |
-| status | String |  | `pending` · `completed` · `cancelled` |
-| created_at | DateTime |  |  |
-| completed_at | DateTime |  |  |
+| id | int | PK |  |
+| equipment_id | int | FK → `equipment` |  |
+| type | movement_type | - |  |
+| from_room_id | int | FK → `rooms` |  |
+| to_room_id | int | FK → `rooms` |  |
+| repair_id | int | FK → `repairs` |  |
+| ordered_by | int | FK → `users` |  |
+| performed_by | int | FK → `users` |  |
+| reason | varchar | - |  |
+| status | movement_status | - |  |
+| created_at | timestamp | - |  |
+| completed_at | timestamp | - |  |
 
-### disposals
+---
 
-| Field | Type | Khoá | Ghi chú |
-|:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| equipment_id | ObjectId | FK → `equipment` |  |
-| repair_id | ObjectId | FK → `repairs` | Phiếu sửa kết luận unrepairable |
-| proposed_by | ObjectId | FK → `users` | Facility Manager |
-| approved_by | ObjectId | FK → `users` | Admin |
-| reason | String |  |  |
-| reject_reason | String |  |  |
-| decision_number | String |  | Số QĐ thanh lý |
-| recovery_value | Number |  |  |
-| status | String |  | `proposed` · `approved` · `rejected` · `completed` |
-| proposed_at | DateTime |  |  |
-| approved_at | DateTime |  |  |
-| completed_at | DateTime |  |  |
+## 7. IMPORT SESSIONS
 
 ### import_sessions
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| uploaded_by | ObjectId | FK → `users` | Facility Manager |
-| file_name | String |  |  |
-| total_rows | Number |  |  |
-| success_count | Number |  |  |
-| error_count | Number |  |  |
-| errors | Array |  | [{ row, field, message }] |
-| status | String |  | `validating` · `validated` · `importing` · `completed` · `failed` |
-| created_at | DateTime |  |  |
-| completed_at | DateTime |  |  |
+| id | int | PK |  |
+| uploaded_by | int | FK → `users` |  |
+| file_name | varchar | - |  |
+| total_rows | int | - |  |
+| success_count | int | - |  |
+| error_count | int | - |  |
+| errors | json | - |  |
+| status | import_status | - |  |
+| created_at | timestamp | - |  |
+| completed_at | timestamp | - |  |
 
 ---
 
-## 4. REPAIR FLOW
+## 8. REPAIR FLOW
 
 ### repairs
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| equipment_id | ObjectId | FK → `equipment` | Đồ hỏng |
-| source | String |  | `lecturer_report` · `inventory_check` |
-| reported_by | ObjectId | FK → `users` | Lecturer hoặc Technician khi kiểm kê |
-| incident_description | String |  | Mô tả sự cố gốc |
-| incident_images | Array |  |  |
-| reported_at | DateTime |  |  |
-| assigned_by | ObjectId | FK → `users` | Facility Manager |
-| assigned_to | ObjectId | FK → `users` | Technician |
-| replacement_equipment_id | ObjectId | FK → `equipment` | Đồ trong kho lấy ra thay, nullable |
-| repair_unit_id | ObjectId | FK → `repair_units` | nullable, khi gửi sửa ngoài |
-| damage_level | String |  | `minor` · `major` · `critical` |
-| description | String |  | Mô tả kỹ thuật |
-| total_cost | Number |  |  |
-| deadline | DateTime |  |  |
-| outcome | String |  | `repaired` · `unrepairable` |
-| destination_room_id | ObjectId | FK → `rooms` | Sửa xong về đâu (phòng hoặc kho) |
-| status | String |  | `reported` · `assigned` · `in_progress` · `resolved` · `unrepairable` · `closed` |
-| feedback_rating | Number |  | 1-5 sao (Lecturer) |
-| feedback_comment | String |  |  |
-| feedback_at | DateTime |  |  |
-| created_at | DateTime |  |  |
-| updated_at | DateTime |  |  |
+| id | int | PK |  |
+| equipment_id | int | FK → `equipment` |  |
+| source | varchar | - | `lecturer_report` · `inventory_check` |
+| reported_by | int | FK → `users` |  |
+| incident_description | varchar | - |  |
+| incident_images | json | - |  |
+| reported_at | timestamp | - |  |
+| assigned_by | int | FK → `users` |  |
+| assigned_to | int | FK → `users` |  |
+| replacement_equipment_id | int | FK → `equipment` |  |
+| repair_unit_id | int | FK → `repair_units` |  |
+| damage_level | varchar | - | `minor` · `major` · `critical` |
+| description | varchar | - |  |
+| total_cost | decimal | - |  |
+| deadline | timestamp | - |  |
+| outcome | varchar | - | `repaired` · `unrepairable` |
+| destination_room_id | int | FK → `rooms` |  |
+| status | repair_status | - |  |
+| feedback_rating | int | - |  |
+| feedback_comment | varchar | - |  |
+| feedback_at | timestamp | - |  |
+| created_at | timestamp | - |  |
+| updated_at | timestamp | - |  |
+
+---
+
+## 9. REPAIR LOGS
 
 ### repair_logs
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| repair_id | ObjectId | FK → `repairs` |  |
-| action | String |  | `reported` · `assigned` · `in_progress` · `resolved` · `unrepairable` · `closed` |
-| performed_by | ObjectId | FK → `users` |  |
-| description | String |  |  |
-| cost | Number |  |  |
-| images | Array |  |  |
-| timestamp | DateTime |  |  |
+| id | int | PK |  |
+| repair_id | int | FK → `repairs` |  |
+| action | varchar | - | `reported` · `assigned` · `in_progress` · `resolved` · `unrepairable` · `closed` |
+| performed_by | int | FK → `users` |  |
+| description | varchar | - |  |
+| cost | decimal | - |  |
+| images | json | - |  |
+| timestamp | timestamp | - |  |
 
 ### parts_requests
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| repair_id | ObjectId | FK → `repairs` |  |
-| requested_by | ObjectId | FK → `users` | Technician |
-| approved_by | ObjectId | FK → `users` | Facility Manager |
-| items | Array |  | [{ part_id → spare_parts, qty, unit_price }]. Đã duyệt = đã xuất kho |
-| status | String |  | `pending` · `approved` · `rejected` |
-| reject_reason | String |  |  |
-| created_at | DateTime |  |  |
-| approved_at | DateTime |  |  |
+| id | int | PK |  |
+| repair_id | int | FK → `repairs` |  |
+| requested_by | int | FK → `users` |  |
+| approved_by | int | FK → `users` |  |
+| status | parts_request_status | - |  |
+| reject_reason | varchar | - |  |
+| created_at | timestamp | - |  |
+| approved_at | timestamp | - |  |
+
+### parts_request_items
+
+| Field | Type | Khoá | Ghi chú |
+|:---|:---|:---|:---|
+| id | int | PK |  |
+| parts_request_id | int | FK → `parts_requests` |  |
+| part_id | int | FK → `spare_parts` |  |
+| quantity | int | - |  |
+| unit_price | decimal | - | Price at time of request/issue |
 
 ---
 
-## 5. INVENTORY
+## 11. PREVENTIVE MAINTENANCE
+
+### preventive_maintenance
+
+| Field | Type | Khoá | Ghi chú |
+|:---|:---|:---|:---|
+| id | int | PK |  |
+| equipment_id | int | FK → `equipment` |  |
+| checked_by | int | FK → `users` |  |
+| check_date | timestamp | - |  |
+| status | varchar | - | `passed` · `failed` |
+| notes | varchar | - |  |
+| created_at | timestamp | - |  |
+
+---
+
+## 12. DISPOSAL
+
+### disposals
+
+| Field | Type | Khoá | Ghi chú |
+|:---|:---|:---|:---|
+| id | int | PK |  |
+| equipment_id | int | FK → `equipment` |  |
+| repair_id | int | FK → `repairs` |  |
+| proposed_by | int | FK → `users` |  |
+| approved_by | int | FK → `users` |  |
+| reason | varchar | - |  |
+| reject_reason | varchar | - |  |
+| decision_number | varchar | - |  |
+| recovery_value | decimal | - |  |
+| status | disposal_status | - |  |
+| proposed_at | timestamp | - |  |
+| approved_at | timestamp | - |  |
+| completed_at | timestamp | - |  |
+
+---
+
+## 13. INVENTORY
 
 ### inventory_sessions
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| name | String |  |  |
-| scope_type | String |  | `building` · `floor` · `room` |
-| scope_ids | Array |  |  |
-| created_by | ObjectId | FK → `users` | Facility Manager |
-| date | DateTime |  |  |
-| status | String |  | `draft` · `in_progress` · `completed` · `reconciled` |
-| completed_at | DateTime |  |  |
-| created_at | DateTime |  |  |
+| id | int | PK |  |
+| name | varchar | - |  |
+| scope_type | varchar | - | `building` · `floor` · `room` |
+| scope_ids | json | - |  |
+| created_by | int | FK → `users` |  |
+| date | date | - |  |
+| status | inventory_status | - |  |
+| completed_at | timestamp | - |  |
+| created_at | timestamp | - |  |
 
 ### inventory_logs
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| session_id | ObjectId | FK → `inventory_sessions` |  |
-| equipment_id | ObjectId | FK → `equipment` |  |
-| scanned_room_id | ObjectId | FK → `rooms` |  |
-| scanned_by | ObjectId | FK → `users` | Technician |
-| scanned_at | DateTime |  |  |
-| status | String |  | `matched` · `missing` · `damaged` · `wrong_location` |
-| repair_id | ObjectId | FK → `repairs` | Phiếu sửa tự tạo khi damaged |
-| note | String |  |  |
+| id | int | PK |  |
+| session_id | int | FK → `inventory_sessions` |  |
+| equipment_id | int | FK → `equipment` |  |
+| scanned_room_id | int | FK → `rooms` |  |
+| scanned_by | int | FK → `users` |  |
+| scanned_at | timestamp | - |  |
+| status | varchar | - | `matched` · `missing` · `damaged` · `wrong_location` |
+| repair_id | int | FK → `repairs` |  |
+| note | varchar | - |  |
 
 ---
 
-## 6. NOTIFICATION & AUDIT
+## 14. NOTIFICATIONS
 
 ### notifications
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| user_id | ObjectId | FK → `users` |  |
-| type | String |  | `incident_reported` · `repair_assigned` · `repair_resolved` · `repair_unrepairable` · `replacement_needed` · `movement_ordered` · `parts_request` · `disposal_request` · `warranty_expiring` · `deadline_overdue` |
-| title | String |  |  |
-| message | String |  |  |
-| reference_type | String |  | `repair` · `equipment_movement` · `disposal` · `equipment` · `parts_request` |
-| reference_id | ObjectId |  |  |
-| is_read | Boolean |  |  |
-| created_at | DateTime |  |  |
+| id | int | PK |  |
+| user_id | int | FK → `users` |  |
+| type | varchar | - | `incident_reported` · `repair_assigned` · `repair_resolved` · `repair_unrepairable` · `replacement_needed` · `movement_ordered` · `parts_request` · `disposal_request` · `warranty_expiring` · `deadline_overdue` |
+| title | varchar | - |  |
+| message | varchar | - |  |
+| reference_type | varchar | - | `repair` · `equipment_movement` · `disposal` · `equipment` · `parts_request` |
+| reference_id | int | - |  |
+| is_read | boolean | - |  |
+| created_at | timestamp | - |  |
+
+---
+
+## 15. AUDIT LOG
 
 ### audit_logs
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| _id | ObjectId | PK |  |
-| action | String |  | `create` · `update` · `delete` · `approve` · `login_success` · `login_failed` · `logout` · `password_reset` |
-| target_table | String |  |  |
-| entity_id | ObjectId |  |  |
-| user_id | ObjectId | FK → `users` | nullable (đăng nhập sai email) |
-| actor_email | String |  |  |
-| old_value | JSON |  |  |
-| new_value | JSON |  |  |
-| ip_address | String |  |  |
-| user_agent | String |  |  |
-| hash_sha256 | String |  |  |
-| previous_hash | String |  | SHA-256 chain, không đặt TTL |
-| created_at | DateTime |  |  |
+| id | int | PK |  |
+| action | varchar | - | `create` · `update` · `delete` · `approve` · `login_success` · `login_failed` · `logout` · `password_reset` |
+| target_table | varchar | - |  |
+| entity_id | int | - |  |
+| user_id | int | FK → `users` |  |
+| actor_email | varchar | - |  |
+| old_value | json | - |  |
+| new_value | json | - |  |
+| ip_address | varchar | - |  |
+| user_agent | varchar | - |  |
+| hash_sha256 | varchar | - |  |
+| previous_hash | varchar | - |  |
+| created_at | timestamp | - |  |

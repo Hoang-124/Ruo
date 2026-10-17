@@ -42,7 +42,7 @@ export const getMovements = async (req, res) => {
   }
 };
 
-// @desc    Order equipment transfer (Facility Manager)
+// @desc    Order equipment transfer (Facility Manager, Admin)
 // @route   POST /api/movements
 export const createMovementOrder = async (req, res) => {
   try {

@@ -186,10 +186,14 @@ export const authApi = {
 export const equipmentApi = {
   list: (params) => api.get('/equipments', params),
   getById: (id) => api.get(`/equipments/${id}`),
+  getLifecycle: (id) => api.get(`/equipments/${id}/lifecycle`),
   getByCode: (code) => api.get(`/equipments/code/${code}`),
   getByQr: (qrCode) => api.get(`/equipments/qr/${qrCode}`),
   create: (data) => api.post('/equipments', data),
   update: (id, data) => api.put(`/equipments/${id}`, data),
+  validateBatch: (data) => api.post('/equipments/import/validate', data),
+  importBatch: (data) => api.post('/equipments/import', data),
+  dispose: (id, data) => api.put(`/equipments/${id}/dispose`, data),
   updateWarranty: (id, data) => api.put(`/equipments/${id}/warranty`, data),
   delete: (id) => api.delete(`/equipments/${id}`)
 };
@@ -199,6 +203,10 @@ export const facilityApi = {
   getCadCanvas: (buildingCode, floorNumber) => api.get('/facilities/cad-canvas', { buildingCode, floorNumber }),
   getRoomByCode: (code) => api.get(`/facilities/rooms/${code}`),
   getAllRooms: (params) => api.get('/facilities/rooms', params),
+  createRoom: (data) => api.post('/facilities/rooms', data),
+  updateRoom: (id, data) => api.put(`/facilities/rooms/${id}`, data),
+  deactivateRoom: (id, data = {}) => api.put(`/facilities/rooms/${id}/deactivate`, data),
+  updateRoomStatus: (id, data) => api.put(`/facilities/rooms/${id}/status`, data),
   getRoomShortage: (id) => api.get(`/facilities/rooms/${id}/shortage`),
   getWarehouseStock: () => api.get('/facilities/warehouse/stock')
 };
@@ -252,11 +260,12 @@ export const disposalApi = {
 };
 
 export const inventoryApi = {
-  getSessions: () => api.get('/inventory/sessions'),
-  createSession: (data) => api.post('/inventory/sessions', data),
-  getSessionById: (id) => api.get(`/inventory/sessions/${id}`),
-  scanInRoom: (sessionId, data) => api.post(`/inventory/sessions/${sessionId}/scan`, data),
-  reconcile: (sessionId) => api.put(`/inventory/sessions/${sessionId}/reconcile`, {})
+  getSessions: () => api.get('/inventory-sessions'),
+  createSession: (data) => api.post('/inventory-sessions', data),
+  getSessionById: (id) => api.get(`/inventory-sessions/${id}`),
+  scanInRoom: (sessionId, data) => api.put(`/inventory-sessions/${sessionId}/scan`, data),
+  reconcile: (sessionId) => api.put(`/inventory-sessions/${sessionId}/reconcile`, {}),
+  exportReport: (sessionId) => api.get(`/inventory-sessions/${sessionId}/export`)
 };
 
 export const masterDataApi = {
@@ -268,15 +277,23 @@ export const masterDataApi = {
   createRepairUnit: (data) => api.post('/master/repair-units', data),
   getRooms: (params) => api.get('/master/rooms', params),
   createRoom: (data) => api.post('/master/rooms', data),
+  updateRoom: (id, data) => api.put(`/facilities/rooms/${id}`, data),
   getRoomShortage: (id) => api.get(`/master/rooms/${id}/shortage`),
-  getWarehouseStock: () => api.get('/master/warehouse/stock')
+  getWarehouseStock: () => api.get('/master/warehouse/stock'),
+  getAdminCategories: () => api.get('/admin/categories'),
+  getAdminSuppliers: () => api.get('/admin/suppliers'),
+  getAdminRepairUnits: () => api.get('/admin/repair-units'),
+  getBuildings: () => api.get('/admin/buildings'),
+  create: (type, data) => api.post(`/admin/${type === 'repair_units' ? 'repair-units' : type}`, data),
+  update: (type, id, data) => api.put(`/admin/${type === 'repair_units' ? 'repair-units' : type}/${id}`, data),
+  remove: (type, id) => api.delete(`/admin/${type === 'repair_units' ? 'repair-units' : type}/${id}`)
 };
 
 export const roleApi = {
-  list: () => api.get('/roles'),
-  update: (name, permissions) => api.put(`/roles/${name}`, { permissions }),
-  batchUpdate: (roles) => api.post('/roles/batch-update', { roles }),
-  resetDefaults: () => api.post('/roles/reset-defaults', {})
+  list: () => api.get('/admin/roles'),
+  update: (id, permissions) => api.put(`/admin/roles/${id}/permissions`, { permissions }),
+  batchUpdate: (roles) => api.post('/admin/roles/batch-update', { roles }),
+  resetDefaults: () => api.post('/admin/roles/reset-defaults', {})
 };
 
 export const reportApi = {
