@@ -668,26 +668,40 @@ export const getEquipmentByQR = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get single equipment by ID with Aggregated Life-cycle Timeline & Depreciation (UC-3.3 & UC-3.5)
+// @desc    Get single equipment by ID or Asset Code with Aggregated Life-cycle Timeline & Depreciation (UC-3.1, UC-3.3 & UC-3.5)
 // @route   GET /api/equipments/:id
 export const getEquipmentById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const equipment = await Equipment.findById(id)
-    .populate('category_id')
-    .populate('room_id')
-    .populate('supplier_id')
-    .populate('current_repair_unit_id')
-    .populate('import_session_id');
+  let equipment = null;
+
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    equipment = await Equipment.findById(id)
+      .populate('category_id')
+      .populate('room_id')
+      .populate('supplier_id')
+      .populate('current_repair_unit_id')
+      .populate('import_session_id');
+  }
+  if (!equipment) {
+    equipment = await Equipment.findOne({ code: String(id).toUpperCase().trim() })
+      .populate('category_id')
+      .populate('room_id')
+      .populate('supplier_id')
+      .populate('current_repair_unit_id')
+      .populate('import_session_id');
+  }
 
   if (!equipment) {
     return res.status(404).json({
       success: false,
-      message: 'Không tìm thấy thiết bị.'
+      message: 'Không tìm thấy thiết bị trong hệ thống.'
     });
   }
 
+  const targetEquipId = equipment._id;
+
   // 1. Location movement timeline
-  const movements = await EquipmentMovement.find({ equipment_id: id })
+  const movements = await EquipmentMovement.find({ equipment_id: targetEquipId })
     .populate('from_room_id', 'code name building floor')
     .populate('to_room_id', 'code name building floor')
     .populate('ordered_by', 'code full_name email role')
@@ -695,14 +709,14 @@ export const getEquipmentById = asyncHandler(async (req, res) => {
     .sort({ created_at: -1 });
 
   // 2. Incidents & repairs timeline
-  const repairs = await Repair.find({ equipment_id: id })
+  const repairs = await Repair.find({ equipment_id: targetEquipId })
     .populate('reported_by', 'code full_name email')
     .populate('assigned_to', 'code full_name email')
     .populate('repair_unit_id', 'code name specialty phone email')
     .sort({ reported_at: -1 });
 
   // 3. Preventive maintenance timeline
-  const maintenance = await PreventiveMaintenance.find({ equipment_id: id })
+  const maintenance = await PreventiveMaintenance.find({ equipment_id: targetEquipId })
     .populate('checked_by', 'code full_name email')
     .sort({ check_date: -1 });
 
@@ -710,7 +724,7 @@ export const getEquipmentById = asyncHandler(async (req, res) => {
   let disposals = [];
   try {
     if (canCallModel(Disposal, 'find')) {
-      disposals = await Disposal.find({ equipment_id: id })
+      disposals = await Disposal.find({ equipment_id: targetEquipId })
         .populate('proposed_by', 'code full_name')
         .populate('approved_by', 'code full_name')
         .sort({ proposed_at: -1 });
@@ -730,6 +744,21 @@ export const getEquipmentById = asyncHandler(async (req, res) => {
 
   const lifecycle = buildLifecycleTimeline(equipment, movements, repairs, maintenance, disposals);
 
+  // 6. Warranty metrics
+  const now = Date.now();
+  const warrantyExpiryDate = equipment.warranty_expiry ? new Date(equipment.warranty_expiry) : null;
+  const isWarrantyExpired = warrantyExpiryDate ? warrantyExpiryDate.getTime() < now : false;
+  const warrantyDaysRemaining = warrantyExpiryDate && !isWarrantyExpired
+    ? Math.ceil((warrantyExpiryDate.getTime() - now) / (1000 * 3600 * 24))
+    : 0;
+
+  const warrantyInfo = {
+    expiryDate: warrantyExpiryDate,
+    status: isWarrantyExpired ? 'expired' : (equipment.warranty_status || 'active'),
+    daysRemaining: warrantyDaysRemaining,
+    isExpired: isWarrantyExpired
+  };
+
   res.json({
     success: true,
     equipment,
@@ -738,6 +767,7 @@ export const getEquipmentById = asyncHandler(async (req, res) => {
     maintenance,
     disposals,
     lifecycle,
+    warrantyInfo,
     depreciation: {
       originalPrice,
       depreciationRate: depRate,
