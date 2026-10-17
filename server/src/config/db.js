@@ -85,6 +85,17 @@ export const ensureCanonicalDemoUsers = async () => {
     console.log('[Ruo Database] Removed legacy audit records with null/missing hash fields so login audit logging can resume.');
   }
 
+  const legacyHashIndex = (await auditLogsCollection.indexes())
+    .find(index => index.name === 'sha256Hash_1');
+  if (legacyHashIndex) {
+    try {
+      await auditLogsCollection.dropIndex(legacyHashIndex.name);
+      console.log('[Ruo Database] Removed obsolete audit hash index sha256Hash_1.');
+    } catch (error) {
+      if (error.code !== 27) throw error;
+    }
+  }
+
   for (const seedUser of CANONICAL_DEMO_USERS) {
     const query = { email: seedUser.email.toLowerCase() };
     let user = await User.findOne(query);

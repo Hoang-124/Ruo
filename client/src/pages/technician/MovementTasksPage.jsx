@@ -1,27 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
-import { movementApi } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
+import { equipmentApi, masterDataApi, movementApi } from '../../lib/api';
 
 export const MovementTasksPage = () => {
   const { toast } = useToast();
+  const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [movements, setMovements] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'PENDING' | 'COMPLETED'
+  const [equipments, setEquipments] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedMovement, setSelectedMovement] = useState(null);
 
   // Confirm Modal
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
   const [confirmNotes, setConfirmNotes] = useState('');
+  const [requestForm, setRequestForm] = useState({ equipment_id: '', to_room_id: '', reason: '' });
   const [submitting, setSubmitting] = useState(false);
 
   const fetchMovements = async () => {
     try {
       setLoading(true);
-      const res = await movementApi.list();
-      if (res && res.success) {
-        setMovements(res.movements || []);
-      }
+      const [res, equipmentRes, roomRes] = await Promise.all([
+        movementApi.list(),
+        equipmentApi.list({ limit: 500 }),
+        masterDataApi.getRooms({ limit: 500 })
+      ]);
+      setMovements(res.movements || []);
+      setEquipments(equipmentRes.equipments || []);
+      setRooms(roomRes.rooms || []);
+      setRequestForm(prev => ({
+        ...prev,
+        equipment_id: prev.equipment_id || equipmentRes.equipments?.[0]?._id || '',
+        to_room_id: prev.to_room_id || roomRes.rooms?.[0]?._id || ''
+      }));
     } catch (err) {
       toast.error('Lỗi khi tải lệnh di chuyển: ' + err.message);
     } finally {
@@ -56,6 +71,31 @@ export const MovementTasksPage = () => {
     }
   };
 
+  const handleRequestSubmit = async (event) => {
+    event.preventDefault();
+    if (!requestForm.equipment_id || !requestForm.to_room_id || requestForm.reason.trim().length < 3) {
+      toast.error('Vui lòng chọn thiết bị, phòng đích và nhập lý do (ít nhất 3 ký tự).');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await movementApi.order({
+        ...requestForm,
+        assigned_to: currentUser?._id,
+        reason: requestForm.reason.trim(),
+        type: 'transfer'
+      });
+      toast.success('Đã gửi phiếu điều chuyển, đang chờ Quản lý CSVC phê duyệt.');
+      setShowRequestModal(false);
+      setRequestForm(prev => ({ ...prev, reason: '' }));
+      await fetchMovements();
+    } catch (error) {
+      toast.error(`Không gửi được phiếu điều chuyển: ${error.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const getMovementTypeBadge = (type) => {
     switch (type) {
       case 'replacement':
@@ -75,12 +115,14 @@ export const MovementTasksPage = () => {
 
   const filtered = movements.filter(m => {
     if (statusFilter === 'ALL') return true;
-    if (statusFilter === 'PENDING') return m.status === 'pending';
+    if (statusFilter === 'AWAITING') return m.status === 'awaiting_approval';
+    if (statusFilter === 'APPROVED') return m.status === 'approved' || m.status === 'pending';
     if (statusFilter === 'COMPLETED') return m.status === 'completed';
     return true;
   });
 
-  const pendingCount = movements.filter(m => m.status === 'pending').length;
+  const awaitingCount = movements.filter(m => m.status === 'awaiting_approval').length;
+  const pendingCount = movements.filter(m => m.status === 'approved' || m.status === 'pending').length;
   const completedCount = movements.filter(m => m.status === 'completed').length;
 
   return (
@@ -100,14 +142,24 @@ export const MovementTasksPage = () => {
           </p>
         </div>
 
-        <button
-          onClick={fetchMovements}
-          className="laser-btn laser-btn-secondary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
-        >
-          <Icons.RefreshCw size={16} />
-          <span>Làm Mới</span>
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setShowRequestModal(true)}
+            className="laser-btn laser-btn-primary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', fontSize: 13 }}
+          >
+            <Icons.Plus size={16} />
+            <span>Tạo Phiếu Điều Chuyển</span>
+          </button>
+          <button
+            onClick={fetchMovements}
+            className="laser-btn laser-btn-secondary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
+          >
+            <Icons.RefreshCw size={16} />
+            <span>Làm Mới</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Stats */}
@@ -118,8 +170,13 @@ export const MovementTasksPage = () => {
         </div>
 
         <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
-          <div style={{ fontSize: '12px', color: '#F59E0B', fontWeight: 600 }}>Cần thực hiện thực địa (Pending)</div>
+          <div style={{ fontSize: '12px', color: '#F59E0B', fontWeight: 600 }}>Đã duyệt - chờ thực hiện</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#F59E0B', marginTop: '4px' }}>{pendingCount}</div>
+        </div>
+
+        <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(14,165,233,0.3)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
+          <div style={{ fontSize: '12px', color: '#0EA5E9', fontWeight: 600 }}>Phiếu của bạn chờ duyệt</div>
+          <div style={{ fontSize: '22px', fontWeight: 800, color: '#0EA5E9', marginTop: '4px' }}>{awaitingCount}</div>
         </div>
 
         <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
@@ -132,7 +189,8 @@ export const MovementTasksPage = () => {
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--hairline-medium)', marginBottom: '20px' }}>
         {[
           { key: 'ALL', label: `Tất Cả Lệnh (${movements.length})` },
-          { key: 'PENDING', label: `Cần Thực Hiện (${pendingCount})` },
+          { key: 'AWAITING', label: `Chờ Duyệt (${awaitingCount})` },
+          { key: 'APPROVED', label: `Cần Thực Hiện (${pendingCount})` },
           { key: 'COMPLETED', label: `Đã Hoàn Thành (${completedCount})` }
         ].map(tab => (
           <button
@@ -185,7 +243,17 @@ export const MovementTasksPage = () => {
                 const eq = m.equipment_id || {};
                 const fromRoom = m.from_room_id ? `${m.from_room_id.code} (${m.from_room_id.name})` : 'Kho dự phòng (null)';
                 const toRoom = m.to_room_id ? `${m.to_room_id.code} (${m.to_room_id.name})` : 'Kho dự phòng (null)';
-                const isPending = m.status === 'pending';
+                const canComplete = m.status === 'approved' || m.status === 'pending';
+                const isAssignedElsewhere = m.assigned_to?._id && m.assigned_to._id !== currentUser?._id;
+                const statusLabels = {
+                  awaiting_approval: 'Chờ Quản lý duyệt',
+                  approved: 'Đã duyệt - cần thực hiện',
+                  pending: 'Chờ thực hiện (phiếu cũ)',
+                  rejected: 'Đã từ chối',
+                  completed: 'Đã hoàn tất',
+                  cancelled: 'Đã hủy'
+                };
+                const statusColor = m.status === 'completed' ? '#10B981' : m.status === 'rejected' || m.status === 'cancelled' ? '#EF4444' : '#F59E0B';
 
                 return (
                   <tr key={m._id} style={{ borderBottom: '1px solid var(--hairline-soft)' }}>
@@ -211,18 +279,18 @@ export const MovementTasksPage = () => {
                           fontWeight: 700,
                           padding: '3px 8px',
                           borderRadius: '4px',
-                          background: isPending ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)',
-                          color: isPending ? '#F59E0B' : '#10B981'
+                          background: `${statusColor}26`,
+                          color: statusColor
                         }}
                       >
-                        {isPending ? 'Chờ Thực Hiện' : 'Đã Xác Nhận'}
+                        {statusLabels[m.status] || m.status}
                       </span>
                     </td>
                     <td style={{ padding: '12px 18px', color: 'var(--ink-muted)', fontSize: '12px' }}>
                       {m.ordered_by?.full_name || 'Quản lý CSVC'}
                     </td>
                     <td style={{ padding: '12px 18px', textAlign: 'right' }}>
-                      {isPending ? (
+                      {canComplete && !isAssignedElsewhere ? (
                         <button
                           onClick={() => openConfirmModal(m)}
                           className="laser-btn laser-btn-primary"
@@ -231,6 +299,10 @@ export const MovementTasksPage = () => {
                           <Icons.Check size={14} />
                           <span>Xác Nhận Đã Chuyển</span>
                         </button>
+                      ) : m.status === 'awaiting_approval' ? (
+                        <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>Chờ Quản lý phê duyệt</span>
+                      ) : m.status === 'rejected' ? (
+                        <span style={{ fontSize: 12, color: '#EF4444' }}>{m.reject_reason}</span>
                       ) : (
                         <span style={{ fontSize: '12px', color: '#10B981', fontWeight: 600 }}>Hoàn Tất</span>
                       )}
@@ -242,6 +314,82 @@ export const MovementTasksPage = () => {
           </table>
         )}
       </div>
+
+      {showRequestModal && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowRequestModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: 520 }} onClick={event => event.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <div>
+                <h2 className="ruo-drawer-title">Tạo Phiếu Yêu Cầu Điều Chuyển</h2>
+                <p className="ruo-drawer-subtitle">Phiếu sẽ chuyển đến Quản lý CSVC để phê duyệt.</p>
+              </div>
+              <button type="button" onClick={() => setShowRequestModal(false)} className="ruo-drawer-close-btn">
+                <Icons.X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleRequestSubmit}>
+              <div className="ruo-drawer-body" style={{ display: 'grid', gap: 14 }}>
+                <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>
+                  Thiết bị *
+                  <select
+                    required
+                    value={requestForm.equipment_id}
+                    onChange={event => setRequestForm(prev => ({ ...prev, equipment_id: event.target.value }))}
+                    className="ruo-portal-input"
+                    style={{ height: 38 }}
+                  >
+                    <option value="" disabled>{equipments.length ? 'Chọn thiết bị cần điều chuyển' : 'Chưa có thiết bị trong hệ thống'}</option>
+                    {equipments.map(equipment => (
+                      <option key={equipment._id} value={equipment._id}>
+                        {equipment.code} — {equipment.name} ({equipment.room_id?.code || 'Kho dự phòng'})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>
+                  Phòng đích *
+                  <select
+                    required
+                    value={requestForm.to_room_id}
+                    onChange={event => setRequestForm(prev => ({ ...prev, to_room_id: event.target.value }))}
+                    className="ruo-portal-input"
+                    style={{ height: 38 }}
+                  >
+                    <option value="" disabled>{rooms.length ? 'Chọn phòng đích' : 'Chưa có phòng trong hệ thống'}</option>
+                    {rooms.map(room => (
+                      <option key={room._id} value={room._id}>
+                        {room.room_type === 'warehouse' ? '[KHO] ' : ''}{room.code} — {room.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>
+                  Lý do điều chuyển *
+                  <textarea
+                    required
+                    minLength={3}
+                    maxLength={500}
+                    rows={4}
+                    value={requestForm.reason}
+                    onChange={event => setRequestForm(prev => ({ ...prev, reason: event.target.value }))}
+                    className="ruo-portal-input"
+                    style={{ resize: 'vertical' }}
+                    placeholder="Mô tả lý do cần chuyển thiết bị..."
+                  />
+                </label>
+              </div>
+              <div className="ruo-drawer-footer">
+                <button type="button" onClick={() => setShowRequestModal(false)} className="laser-btn laser-btn-secondary">
+                  Hủy
+                </button>
+                <button type="submit" disabled={submitting || !equipments.length || !rooms.length} className="laser-btn laser-btn-primary">
+                  {submitting ? 'Đang gửi...' : 'Gửi phiếu chờ duyệt'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Confirm Movement Modal */}
       {showConfirmModal && selectedMovement && (
