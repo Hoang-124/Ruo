@@ -358,8 +358,15 @@ export const getEquipments = asyncHandler(async (req, res) => {
     warranty_status,
     search,
     q,
+    keyword: queryKeyword,
+    qr,
+    qr_code,
     minPrice,
     maxPrice,
+    min_price,
+    max_price,
+    sortBy,
+    sortOrder,
     page = 1,
     limit = 20
   } = req.query;
@@ -414,11 +421,14 @@ export const getEquipments = asyncHandler(async (req, res) => {
     query.warranty_status = warranty_status;
   }
 
-  if ((minPrice !== undefined && minPrice !== '') || (maxPrice !== undefined && maxPrice !== '')) {
-    const hasMin = minPrice !== undefined && minPrice !== '' && !isNaN(Number(minPrice));
-    const hasMax = maxPrice !== undefined && maxPrice !== '' && !isNaN(Number(maxPrice));
-    let numMin = hasMin ? Number(minPrice) : null;
-    let numMax = hasMax ? Number(maxPrice) : null;
+  const effectiveMinPrice = (min_price !== undefined && min_price !== '') ? min_price : minPrice;
+  const effectiveMaxPrice = (max_price !== undefined && max_price !== '') ? max_price : maxPrice;
+
+  if ((effectiveMinPrice !== undefined && effectiveMinPrice !== '') || (effectiveMaxPrice !== undefined && effectiveMaxPrice !== '')) {
+    const hasMin = effectiveMinPrice !== undefined && effectiveMinPrice !== '' && !isNaN(Number(effectiveMinPrice));
+    const hasMax = effectiveMaxPrice !== undefined && effectiveMaxPrice !== '' && !isNaN(Number(effectiveMaxPrice));
+    let numMin = hasMin ? Number(effectiveMinPrice) : null;
+    let numMax = hasMax ? Number(effectiveMaxPrice) : null;
 
     // Auto-swap if user entered minPrice > maxPrice
     if (numMin !== null && numMax !== null && numMin > numMax) {
@@ -435,7 +445,12 @@ export const getEquipments = asyncHandler(async (req, res) => {
     }
   }
 
-  const keyword = (q || search || '').trim();
+  const targetQr = (qr_code || qr || '').trim();
+  if (targetQr) {
+    query.qr_code = { $regex: targetQr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+  }
+
+  const keyword = (q || search || queryKeyword || '').trim();
   if (keyword) {
     const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     query.$or = [
@@ -452,6 +467,12 @@ export const getEquipments = asyncHandler(async (req, res) => {
   const l = Math.min(200, Math.max(1, parseInt(limit, 10) || 20));
   const skip = (p - 1) * l;
 
+  let sortCriteria = { created_at: -1 };
+  if (sortBy) {
+    const direction = String(sortOrder).toLowerCase() === 'asc' ? 1 : -1;
+    sortCriteria = { [sortBy]: direction };
+  }
+
   const total = await Equipment.countDocuments(query);
   const equipments = await Equipment.find(query)
     .populate('category_id')
@@ -459,7 +480,7 @@ export const getEquipments = asyncHandler(async (req, res) => {
     .populate('supplier_id')
     .populate('current_repair_unit_id')
     .populate('import_session_id')
-    .sort({ created_at: -1 })
+    .sort(sortCriteria)
     .skip(skip)
     .limit(l);
 
@@ -845,7 +866,13 @@ export const getEquipmentLifecycle = asyncHandler(async (req, res) => {
 // @desc    Update equipment info & automatically log movement if room changes (UC-3.4)
 // @route   PUT /api/equipments/:id
 export const updateEquipment = asyncHandler(async (req, res) => {
-  const equipment = await Equipment.findById(req.params.id);
+  let equipment = null;
+  if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+    equipment = await Equipment.findById(req.params.id);
+  }
+  if (!equipment) {
+    equipment = await Equipment.findOne({ code: String(req.params.id).toUpperCase().trim() });
+  }
   if (!equipment) {
     return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị.' });
   }
@@ -988,16 +1015,20 @@ export const updateEquipment = asyncHandler(async (req, res) => {
         equipment.status = normalizedNewRoomId ? EQUIPMENT_STATUSES.IN_USE : EQUIPMENT_STATUSES.IN_STOCK;
       }
 
-      // UC-3.4: Automatically create a schema-valid EquipmentMovement record when room changes
+      // UC-3.2 & UC-3.4: Automatically create a schema-valid EquipmentMovement record when room changes
+      const movementType = !oldRoomId
+        ? MOVEMENT_TYPES.ALLOCATION
+        : (!normalizedNewRoomId ? MOVEMENT_TYPES.TO_STOCK : MOVEMENT_TYPES.TRANSFER);
+
       try {
         movementRecord = await EquipmentMovement.create({
           equipment_id: equipment._id,
-          type: normalizedNewRoomId ? MOVEMENT_TYPES.TRANSFER : MOVEMENT_TYPES.TO_STOCK,
+          type: movementType,
           from_room_id: oldRoomId || null,
           to_room_id: normalizedNewRoomId || null,
           ordered_by: req.user?._id || equipment._id,
           performed_by: req.user?._id || null,
-          reason: String(movement_reason || 'Cập nhật vị trí phòng trực tiếp trên hồ sơ thiết bị (UC-3.4)').trim(),
+          reason: String(movement_reason || `Điều chuyển vị trí thiết bị (${movementType}) trực tiếp trên hồ sơ (UC-3.2 / UC-3.4)`).trim(),
           status: MOVEMENT_STATUSES.COMPLETED,
           completed_at: new Date()
         });
@@ -1040,10 +1071,11 @@ export const updateEquipment = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: movementLogged
-      ? 'Cập nhật thiết bị và tự động ghi nhận nhật ký điều chuyển phòng thành công (UC-3.4).'
+      ? 'Cập nhật thiết bị và tự động ghi nhận nhật ký điều chuyển phòng thành công (UC-3.2 / UC-3.4).'
       : 'Cập nhật thông tin thiết bị thành công.',
     equipment: updated,
     movementLogged,
+    movementTracked: movementLogged,
     movement: movementRecord
   });
 });
