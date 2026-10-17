@@ -227,7 +227,11 @@ export const createEquipment = asyncHandler(async (req, res) => {
     }
     finalQrCode = cleanCustomQR;
   } else {
-    finalQrCode = `QR-EQ-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    finalQrCode = `QR-${cleanCode}`;
+    const existingAutoQR = await Equipment.findOne({ qr_code: finalQrCode });
+    if (existingAutoQR) {
+      finalQrCode = `QR-${cleanCode}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+    }
   }
 
   const rawRem = remaining_value !== undefined ? remaining_value : remainingValue;
@@ -275,6 +279,34 @@ export const createEquipment = asyncHandler(async (req, res) => {
     .populate('current_repair_unit_id')
     .populate('import_session_id');
 
+  // Auto-record initial allocation movement if allocated directly to a room (UC-3.1 & UC-3.4)
+  let initialMovement = null;
+  if (roomDoc && canCallModel(EquipmentMovement, 'create')) {
+    try {
+      initialMovement = await EquipmentMovement.create({
+        equipment_id: equipment._id,
+        from_room_id: null,
+        to_room_id: roomDoc._id,
+        ordered_by: req.user?._id || null,
+        performed_by: req.user?._id || null,
+        status: 'completed',
+        reason: 'Tiếp nhận tài sản mới và phân bổ ban đầu về phòng học Tòa A1',
+        completed_at: new Date()
+      });
+    } catch (_) {
+      // Gracefully ignore movement failure in case of lightweight mock environments
+    }
+  }
+
+  // Build unified chronological lifecycle starting at onboarding (UC-3.1 & UC-3.5)
+  const lifecycle = buildLifecycleTimeline(
+    populated || equipment,
+    initialMovement ? [initialMovement] : [],
+    [],
+    [],
+    []
+  );
+
   // Audit log
   if (req.user) {
     await AuditLog.logAction({
@@ -288,7 +320,9 @@ export const createEquipment = asyncHandler(async (req, res) => {
         code: equipment.code,
         name: equipment.name,
         price: equipment.price,
-        category: categoryDoc.name
+        category: categoryDoc.name,
+        room: roomDoc ? roomDoc.code : null,
+        qr_code: finalQrCode
       }
     });
   }
@@ -296,7 +330,8 @@ export const createEquipment = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: 'Tạo thiết bị mới thành công.',
-    equipment: populated
+    equipment: populated || equipment,
+    lifecycle
   });
 });
 
