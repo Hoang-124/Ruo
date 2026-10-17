@@ -1062,8 +1062,33 @@ export const EquipmentsPage = () => {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm theo tên thiết bị, mã tài sản, mã QR (QR-EQ-...), serial, model..."
                 className="ruo-portal-input"
-                style={{ paddingLeft: '38px', width: '100%', height: '38px', fontWeight: 600 }}
+                style={{ paddingLeft: '38px', paddingRight: search.trim().toUpperCase().startsWith('QR-') ? '110px' : '14px', width: '100%', height: '38px', fontWeight: 600 }}
               />
+              {search.trim().toUpperCase().startsWith('QR-') && (
+                <span style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '8px',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  background: 'rgba(6, 182, 212, 0.2)',
+                  color: 'var(--laser-cyan)',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(6, 182, 212, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                  ĐỊNH DANH QR
+                </span>
+              )}
             </div>
 
             {/* Filter 1: Chủng loại */}
@@ -1203,6 +1228,106 @@ export const EquipmentsPage = () => {
               </button>
             </div>
           </div>
+
+          {/* Active Filter Badges Bar (UC-3.2) */}
+          {(search || categoryFilter !== 'ALL' || floorFilter !== 'ALL' || roomFilter !== 'ALL' || statusFilter !== 'ALL' || warrantyFilter !== 'ALL' || minPrice !== '' || maxPrice !== '') && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '8px',
+              paddingTop: '10px',
+              borderTop: '1px solid var(--border-default)',
+              fontSize: '12px'
+            }}>
+              <span style={{ color: 'var(--ink-secondary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+                Đang lọc ({totalCount} kết quả):
+              </span>
+
+              {search && (
+                <span className="ruo-badge" style={{ background: 'rgba(6, 182, 212, 0.15)', color: 'var(--laser-cyan)', border: '1px solid rgba(6, 182, 212, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Từ khóa: "{search}"</span>
+                  <button type="button" onClick={() => { setSearch(''); setTimeout(fetchEquipments, 0); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {categoryFilter !== 'ALL' && (
+                <span className="ruo-badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Loại: {categories.find(c => c._id === categoryFilter)?.name || categoryFilter}</span>
+                  <button type="button" onClick={() => { setCategoryFilter('ALL'); setPage(1); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {floorFilter !== 'ALL' && (
+                <span className="ruo-badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Tầng {floorFilter}</span>
+                  <button type="button" onClick={() => { setFloorFilter('ALL'); setPage(1); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {roomFilter !== 'ALL' && (
+                <span className="ruo-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Phòng: {roomFilter === 'warehouse' ? 'Kho dự phòng' : (rooms.find(r => r._id === roomFilter)?.code || roomFilter)}</span>
+                  <button type="button" onClick={() => { setRoomFilter('ALL'); setPage(1); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {statusFilter !== 'ALL' && (
+                <span className="ruo-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Trạng thái: {statusFilter}</span>
+                  <button type="button" onClick={() => { setStatusFilter('ALL'); setPage(1); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {warrantyFilter !== 'ALL' && (
+                <span className="ruo-badge" style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#f472b6', border: '1px solid rgba(236, 72, 153, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Bảo hành: {warrantyFilter === 'active' ? 'Còn hạn' : 'Hết hạn'}</span>
+                  <button type="button" onClick={() => { setWarrantyFilter('ALL'); setPage(1); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              {(minPrice !== '' || maxPrice !== '') && (
+                <span className="ruo-badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Giá: {minPrice ? `${Number(minPrice).toLocaleString('vi-VN')} đ` : '0'} — {maxPrice ? `${Number(maxPrice).toLocaleString('vi-VN')} đ` : '∞'}</span>
+                  <button type="button" onClick={() => { setMinPrice(''); setMaxPrice(''); setTimeout(fetchEquipments, 0); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  </button>
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--laser-cyan)',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  fontSize: '11.5px',
+                  marginLeft: 'auto'
+                }}
+              >
+                Xóa tất cả bộ lọc
+              </button>
+            </div>
+          )}
         </form>
       </div>
 
@@ -2053,21 +2178,43 @@ export const EquipmentsPage = () => {
                   </div>
                 </div>
 
-                {isEditingRoomChanged && (
-                  <div style={{ background: 'rgba(6, 182, 212, 0.1)', border: '1px solid var(--laser-cyan)', borderRadius: 'var(--radius-md)', padding: '10px 12px', fontSize: '12px' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--laser-cyan)', marginBottom: '6px' }}>
-                      ⚡ Phát hiện thay đổi vị trí phòng học — Tự động ghi Nhật ký Điều chuyển (UC-3.4):
+                {isEditingRoomChanged && (() => {
+                  const oldRoomName = selectedEq.room_id ? (selectedEq.room_id.code ? `${selectedEq.room_id.code} - ${selectedEq.room_id.name}` : selectedEq.room_id) : 'Kho dự phòng';
+                  const newRoomObj = rooms.find((r) => String(r._id) === String(formData.room_id));
+                  const newRoomName = newRoomObj ? `${newRoomObj.code} - ${newRoomObj.name}` : 'Kho dự phòng';
+                  const movType = !selectedEq.room_id
+                    ? 'ALLOCATION (Bàn giao ban đầu vào phòng học)'
+                    : (!formData.room_id ? 'TO_STOCK (Thu hồi về kho dự phòng)' : 'TRANSFER (Điều chuyển giữa hai phòng học)');
+
+                  return (
+                    <div style={{ background: 'rgba(6, 182, 212, 0.08)', border: '1.5px solid var(--laser-cyan)', borderRadius: 'var(--radius-md)', padding: '12px 14px', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, color: 'var(--laser-cyan)', marginBottom: '6px' }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="17 1 21 5 17 9" />
+                          <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                          <polyline points="7 23 3 19 7 15" />
+                          <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                        </svg>
+                        <span>PHÁT HIỆN ĐIỀU CHUYỂN VỊ TRÍ (MOVEMENT TRACKING UC-3.2 / UC-3.4)</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', marginBottom: '8px', color: '#e2e8f0', flexWrap: 'wrap' }}>
+                        <span style={{ padding: '2px 6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px' }}>Từ: <strong>{oldRoomName}</strong></span>
+                        <span style={{ color: 'var(--laser-cyan)', fontWeight: 800 }}>➔</span>
+                        <span style={{ padding: '2px 6px', background: 'rgba(6, 182, 212, 0.2)', color: 'var(--laser-cyan)', borderRadius: '4px' }}>Đến: <strong>{newRoomName}</strong></span>
+                        <span style={{ marginLeft: 'auto', fontSize: '10.5px', color: '#10b981', fontWeight: 700 }}>• {movType}</span>
+                      </div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px' }}>Lý do điều chuyển thiết bị *</label>
+                      <input
+                        type="text"
+                        placeholder="VD: Điều động máy chiếu phục vụ phòng lab đa phương tiện tầng 2..."
+                        value={formData.movement_reason}
+                        onChange={(e) => setFormData({ ...formData, movement_reason: e.target.value })}
+                        className="ruo-portal-input"
+                        style={{ width: '100%', height: '34px', fontSize: '12px' }}
+                      />
                     </div>
-                    <input
-                      type="text"
-                      placeholder="Nhập lý do điều chuyển phòng..."
-                      value={formData.movement_reason}
-                      onChange={(e) => setFormData({ ...formData, movement_reason: e.target.value })}
-                      className="ruo-portal-input"
-                      style={{ width: '100%', height: '34px', fontSize: '12px' }}
-                    />
-                  </div>
-                )}
+                  );
+                })()}
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                   <div>
