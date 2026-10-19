@@ -5,6 +5,7 @@ import { Icons } from '../common/SvgIcons';
 import { CommandPaletteModal } from '../ui/CommandPaletteModal';
 import { LogoutConfirmModal } from '../ui/LogoutConfirmModal';
 import { RuoLogo } from '../common/RuoLogo';
+import { NotificationDrawer } from '../notifications/NotificationDrawer';
 
 export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileModal }) => {
   const {
@@ -17,6 +18,9 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
     unreadCount,
     markAllNotificationsRead,
     markNotificationRead,
+    deleteNotification,
+    seedDemoNotifications,
+    fetchNotifications,
     navItems,
     logout
   } = useAuth();
@@ -24,7 +28,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
   const { toast } = useToast();
 
   const [currentTime, setCurrentTime] = useState('');
-  const [showNotifPopover, setShowNotifPopover] = useState(false);
+  const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
   const [showProfilePopover, setShowProfilePopover] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -111,68 +115,23 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
               )}
             </button>
 
-            {/* Notifications Dropdown */}
-            <div ref={notifPopoverRef} style={{ position: 'relative' }}>
+            {/* Notifications Drawer Trigger (UC-9.1: Real-time red badge & Notification Drawer) */}
+            <div style={{ position: 'relative' }}>
               <button
-                className={`ruo-icon-button ${showNotifPopover ? 'active' : ''}`}
+                className={`ruo-icon-button ${isNotifDrawerOpen ? 'active' : ''}`}
                 onClick={() => {
-                  setShowNotifPopover(!showNotifPopover);
+                  setIsNotifDrawerOpen(!isNotifDrawerOpen);
                   setShowProfilePopover(false);
                 }}
-                title="Thông báo hệ thống"
+                title={`Trung tâm thông báo: ca sửa mới, duyệt phiếu, cảnh báo deadline (${unreadCount} chưa đọc)`}
               >
-                <Icons.Bell size={15} color="var(--ink-secondary)" />
-                {unreadCount > 0 && <span className="ruo-notif-indicator" />}
+                <Icons.Bell size={15} color={unreadCount > 0 ? 'var(--ink-pure)' : 'var(--ink-secondary)'} />
+                {unreadCount > 0 && (
+                  <span className="ruo-header-badge-red" title={`${unreadCount} thông báo chưa đọc`}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </button>
-
-              {showNotifPopover && (
-                <div className="ruo-popover-menu ruo-notif-popover">
-                  <div className="ruo-popover-header">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Icons.Bell size={14} color="var(--laser-cyan)" />
-                      <span style={{ fontWeight: 700, fontSize: '13px' }}>Thông Báo Realtime ({unreadCount})</span>
-                    </div>
-                    {unreadCount > 0 && (
-                      <button onClick={markAllNotificationsRead} className="ruo-link-btn">
-                        Đã đọc tất cả
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="ruo-notif-scroll">
-                    {notifications.map((n) => {
-                      const notifId = n._id || n.id;
-                      const isRead = Boolean(n.is_read ?? n.read);
-                      const timeText = n.time || (n.created_at ? new Date(n.created_at).toLocaleString('vi-VN') : '');
-                      return (
-                        <div
-                          key={notifId}
-                          className={`ruo-notif-row ${isRead ? 'read' : 'unread'}`}
-                          style={{ cursor: isRead ? 'default' : 'pointer' }}
-                          onClick={() => {
-                            if (!isRead && notifId) {
-                              markNotificationRead(notifId);
-                            }
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                            <span className={`ruo-dot ${isRead ? 'muted' : 'cyan'}`} />
-                            <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--ink-pure)' }}>
-                              {n.title}
-                            </span>
-                          </div>
-                          <p style={{ fontSize: '12px', color: 'var(--ink-secondary)', margin: '2px 0 4px 14px' }}>
-                            {n.message}
-                          </p>
-                          <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginLeft: '14px', fontFamily: 'var(--font-sans)' }}>
-                            {timeText}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Human-Crafted User Profile & Workspace Role Switcher */}
@@ -359,6 +318,22 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
         onSelectModule={(modId) => {
           onSelectTab(modId);
           setShowCommandPalette(false);
+        }}
+      />
+
+      {/* UC-9.1: Notification Center Slide-over Drawer */}
+      <NotificationDrawer
+        isOpen={isNotifDrawerOpen}
+        onClose={() => setIsNotifDrawerOpen(false)}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        onMarkRead={markNotificationRead}
+        onMarkAllRead={markAllNotificationsRead}
+        onDeleteNotification={deleteNotification}
+        onSeedDemo={seedDemoNotifications}
+        onRefresh={fetchNotifications}
+        onNavigate={(tabId, item) => {
+          if (onSelectTab) onSelectTab(tabId);
         }}
       />
 
