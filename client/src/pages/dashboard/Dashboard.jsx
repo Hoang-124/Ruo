@@ -3,7 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../../components/common/SvgIcons';
 import { FloorPlan2D } from '../../components/common/FloorPlan2D';
 import { CAMPUS_FLOORS, ROOM_CATEGORIES } from '../../mock/campusBuildingData';
-import { equipmentApi, movementApi, repairApi, disposalApi, auditApi, reportApi, facilityApi } from '../../lib/api';
+import { equipmentApi, movementApi, repairApi, disposalApi, auditApi, facilityApi } from '../../lib/api';
+import { DashboardAnalytics } from './DashboardAnalytics';
 import { buildRoomPodIndex, getRoomPod, getPodStatus } from '../../components/common/roomPod';
 import { resolveRoomEquipments, resolveRoomStatus, summarizeRoomEquipment } from './roomPanel';
 import { Button, Card, KPI, StatusBadge, EmptyState } from '../../components/ui/Primitives';
@@ -11,7 +12,7 @@ import { Button, Card, KPI, StatusBadge, EmptyState } from '../../components/ui/
 /**
  * Dashboard - UEMS Operational Command Center
  */
-export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForReport }) => {
+export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
   const { currentUser, currentRoleKey } = useAuth();
 
   const role = currentUser?.role || currentRoleKey;
@@ -47,22 +48,10 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
   const [techMovements, setTechMovements] = useState([]);
 
   // 3. Quản Lý CSVC (Facility Manager) State
-  const [fmStats, setFmStats] = useState({
-    reportedCount: 0,
-    repairingCount: 0,
-    inStockCount: 0,
-    disposalCount: 0
-  });
   const [fmTickets, setFmTickets] = useState([]);
   const [fmMovs, setFmMovs] = useState([]);
 
   // 4. Ban Giám Hiệu (Admin) State
-  const [adminStats, setAdminStats] = useState({
-    activeCount: 0,
-    totalValuation: 0,
-    pendingDisposals: 0,
-    slaRate: '98.4%'
-  });
   const [adminDisposals, setAdminDisposals] = useState([]);
   const [recentAudits, setRecentAudits] = useState([]);
   const [auditChainValid, setAuditChainValid] = useState(true);
@@ -159,39 +148,19 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
         }
       } else if (isFM) {
         try {
-          const [eqRes, repRes, movRes, dispRes] = await Promise.all([
-            equipmentApi.list({ limit: 100 }),
-            repairApi.list(),
-            movementApi.list(),
-            disposalApi.list()
-          ]);
-          const eqList = eqRes.items || eqRes.equipments || [];
-          const allRepairs = repRes.repairs || repRes.data || [];
-          const allMovs = movRes.movements || movRes.data || [];
-          const allDisposals = dispRes.proposals || dispRes.data || [];
-
-          setFmTickets(allRepairs.filter(r => r.status === 'reported'));
-          setFmMovs(allMovs.slice(0, 5));
-          setFmStats({
-            reportedCount: allRepairs.filter(r => r.status === 'reported').length,
-            repairingCount: allRepairs.filter(r => ['assigned', 'in_progress'].includes(r.status)).length,
-            inStockCount: eqList.filter(e => e.status === 'in_stock').length,
-            disposalCount: allDisposals.filter(d => d.status === 'proposed').length + eqList.filter(e => (e.rRatio || 0) >= 60).length
-          });
+          const [repRes, movRes] = await Promise.all([repairApi.list(), movementApi.list()]);
+          setFmTickets((repRes.repairs || []).filter(r => r.status === 'reported'));
+          setFmMovs((movRes.movements || []).slice(0, 5));
         } catch (e) {
           console.warn('FM data fetch error:', e.message);
         }
       } else if (isAdmin) {
         try {
-          const [eqRes, repRes, dispRes, audRes, chainRes] = await Promise.all([
-            equipmentApi.list({ limit: 100 }),
-            repairApi.list(),
+          const [dispRes, audRes, chainRes] = await Promise.all([
             disposalApi.list(),
             auditApi.getLogs({ limit: 6 }),
             auditApi.verifyChain()
           ]);
-          const eqList = eqRes.items || eqRes.equipments || [];
-          const allRepairs = repRes.repairs || repRes.data || [];
           const allDisposals = dispRes.proposals || dispRes.data || [];
 
           setAdminDisposals(allDisposals.filter(d => d.status === 'proposed'));
@@ -199,21 +168,6 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
           if (chainRes && chainRes.verification) {
             setAuditChainValid(chainRes.verification.isValid);
           }
-          const totalVal = eqList.reduce((acc, e) => acc + (Number(e.price) || 0), 0);
-          const overdueCount = allRepairs.filter(r =>
-            r.deadline_status === 'OVERDUE' ||
-            (!['closed', 'resolved'].includes(r.status) && r.deadline && new Date(r.deadline) < new Date())
-          ).length;
-          const computedSla = allRepairs.length > 0
-            ? `${(((allRepairs.length - overdueCount) / allRepairs.length) * 100).toFixed(1)}%`
-            : '100%';
-
-          setAdminStats({
-            activeCount: eqList.filter(e => e.status === 'in_use').length,
-            totalValuation: totalVal,
-            pendingDisposals: allDisposals.filter(d => d.status === 'proposed').length,
-            slaRate: computedSla
-          });
         } catch (e) {
           console.warn('Admin data fetch error:', e.message);
         }
@@ -274,7 +228,6 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
       setSelectedRoom(floorRooms[0]);
     }
   };
-
 
   const getRoomSimulatedStatus = useCallback((room) => {
     const pod = getRoomPod(roomPods, room?.code);
@@ -356,14 +309,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
           2. PRIMARY HERO: UNIFIED DIGITAL TWIN CAD WORKSPACE
           Hợp nhất Sơ đồ phòng học và Bản đồ CAD vào không gian duy nhất
           ============================================================== */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.62fr) minmax(320px, 1fr)',
-          gap: '12px',
-          alignItems: 'start'
-        }}
-      >
+      <div className="dashboard-cad-grid">
         {/* Left Column: Interactive Architectural Map */}
         <Card
           className="ruo-card-compact"
@@ -378,7 +324,6 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
               onSelectRoom={(room) => setSelectedRoom(room)}
               getRoomSimulatedStatus={getRoomSimulatedStatus}
               roomPods={roomPods}
-
             />
           </div>
         </Card>
@@ -705,78 +650,9 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
               onClick={() => onNavigateTab('assigned_tasks')}
             />
           </>
-        ) : isFM ? (
-          <>
-            <KPI
-              label="Sự Cố Chờ Phân Công"
-              value={fmStats.reportedCount}
-              subtext="Phiếu mới cần gán kỹ thuật viên"
-              icon={Icons.AlertTriangle}
-              color="#EF4444"
-              onClick={() => onNavigateTab('tickets_kanban')}
-            />
-            <KPI
-              label="Đang Xử Lý (Kanban SLA)"
-              value={fmStats.repairingCount}
-              subtext="Theo dõi tiến độ khắc phục sự cố"
-              icon={Icons.Wrench}
-              color="#F59E0B"
-              onClick={() => onNavigateTab('tickets_kanban')}
-            />
-            <KPI
-              label="Tồn Kho Dự Phòng KHO-01"
-              value={fmStats.inStockCount}
-              subtext="Sẵn sàng cấp bù theo định mức"
-              icon={Icons.Layers}
-              color="#06B6D4"
-              onClick={() => onNavigateTab('warehouse')}
-            />
-            <KPI
-              label="Cảnh Báo Hao Mòn (R ≥ 60%)"
-              value={fmStats.disposalCount}
-              subtext="Hao mòn cao, cần lập hồ sơ BGH"
-              icon={Icons.Trash}
-              color="#8B5CF6"
-              onClick={() => onNavigateTab('disposal_propose')}
-            />
-          </>
-        ) : (
-          <>
-            <KPI
-              label="Tổng Thiết Bị Vận Hành"
-              value={adminStats.activeCount}
-              subtext="Đang phục vụ đào tạo toàn trường"
-              icon={Icons.Equipment}
-              color="#2FB37A"
-              onClick={() => onNavigateTab('equipments')}
-            />
-            <KPI
-              label="Tổng Giá Trị Tài Sản CSVC"
-              value={`${Math.round(adminStats.totalValuation / 1000000)} Tr đ`}
-              subtext="Khấu hao theo chuẩn tài sản công"
-              icon={Icons.CheckCircle}
-              color="#3B82F6"
-              onClick={() => onNavigateTab('equipments')}
-            />
-            <KPI
-              label="Chờ BGH Phê Duyệt Thanh Lý"
-              value={adminStats.pendingDisposals}
-              subtext="Ban Giám Hiệu ký Quyết định TL"
-              icon={Icons.CheckCircle}
-              color="#EF4444"
-              onClick={() => onNavigateTab('disposal_approval')}
-            />
-            <KPI
-              label="Tuân Thủ SLA Vận Hành"
-              value={adminStats.slaRate}
-              subtext="Thời gian khắc phục sự cố đạt chuẩn"
-              icon={Icons.Shield}
-              color="#10B981"
-              onClick={() => onNavigateTab('audit_log')}
-            />
-          </>
-        )}
+        ) : null}
       </div>
+      {(isAdmin || isFM) && <DashboardAnalytics refreshKey={cadRefreshKey} />}
 
       {/* ==============================================================
           4. LOWER GRID: ROLE-TAILORED OPERATIONAL PANELS

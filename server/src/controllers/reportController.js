@@ -1,52 +1,6 @@
 import { Equipment } from '../models/Equipment.js';
 import { Repair } from '../models/Repair.js';
-import { Room } from '../models/Room.js';
-import { Disposal } from '../models/Disposal.js';
-import { User } from '../models/User.js';
-import { EquipmentMovement } from '../models/EquipmentMovement.js';
-import { EQUIPMENT_STATUSES, REPAIR_STATUSES, DISPOSAL_STATUSES } from '../config/constants.js';
-
-// @desc    View operation dashboard (Facility Manager & Admin)
-// @route   GET /api/reports/dashboard
-export const getDashboardMetrics = async (req, res) => {
-  try {
-    const totalEquipment = await Equipment.countDocuments();
-    const inUseEquipment = await Equipment.countDocuments({ status: EQUIPMENT_STATUSES.IN_USE });
-    const inStockEquipment = await Equipment.countDocuments({ status: EQUIPMENT_STATUSES.IN_STOCK });
-    const brokenEquipment = await Equipment.countDocuments({ status: EQUIPMENT_STATUSES.BROKEN });
-    const repairingEquipment = await Equipment.countDocuments({ status: EQUIPMENT_STATUSES.REPAIRING });
-    const pendingDisposalEquipment = await Equipment.countDocuments({ status: EQUIPMENT_STATUSES.PENDING_DISPOSAL });
-
-    const openRepairs = await Repair.countDocuments({
-      status: { $in: [REPAIR_STATUSES.REPORTED, REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] }
-    });
-    const overdueRepairs = await Repair.countDocuments({
-      status: { $in: [REPAIR_STATUSES.REPORTED, REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] },
-      deadline: { $lt: new Date() }
-    });
-
-    const pendingDisposals = await Disposal.countDocuments({ status: DISPOSAL_STATUSES.PROPOSED });
-    const totalRooms = await Room.countDocuments();
-
-    res.json({
-      success: true,
-      metrics: {
-        totalEquipment,
-        inUseEquipment,
-        inStockEquipment,
-        brokenEquipment,
-        repairingEquipment,
-        pendingDisposalEquipment,
-        openRepairs,
-        overdueRepairs,
-        pendingDisposals,
-        totalRooms
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+export { getKpi as getDashboardMetrics } from './dashboardController.js';
 
 // @desc    View statistical report (Admin)
 // @route   GET /api/reports/statistics

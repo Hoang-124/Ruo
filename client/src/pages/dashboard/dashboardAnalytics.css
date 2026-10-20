@@ -1,0 +1,7 @@
+.dashboard-analytics { display: grid; gap: 16px; min-width: 0; }
+.dashboard-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.dashboard-kpi-grid > * { min-width: 0; overflow-wrap: anywhere; }
+.dashboard-report-error { padding: 12px; border: 1px solid #E5484D; border-radius: 8px; }
+.dashboard-cad-grid { display: grid; grid-template-columns: minmax(0, 1.62fr) minmax(320px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 1050px) { .dashboard-cad-grid { grid-template-columns: minmax(0, 1fr); } }
+.dashboard-report-error { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }

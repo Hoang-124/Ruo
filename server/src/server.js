@@ -19,6 +19,7 @@ import sparePartRoutes from './routes/sparePartRoutes.js';
 import partsRequestRoutes from './routes/partsRequestRoutes.js';
 import roleRoutes from './routes/roleRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
 import masterDataRoutes from './routes/masterDataRoutes.js';
 import adminMasterDataRoutes from './routes/adminMasterDataRoutes.js';
 
@@ -66,6 +67,7 @@ app.use('/api/roles', roleRoutes);
 app.use('/api/admin/roles', roleRoutes);
 app.use('/api/admin', adminMasterDataRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/master', masterDataRoutes);
 app.use('/api/master-data', masterDataRoutes);
 
