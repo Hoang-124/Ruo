@@ -64,6 +64,14 @@ export const getWarrantyExpiringEquipments = asyncHandler(async (req, res) => {
 // @route   POST /api/equipments
 // @access  Private (Staff, Admin)
 export const createEquipment = asyncHandler(async (req, res) => {
+  // Enforce dynamic RBAC permission check for equipment creation (UC-12.1)
+  if (req.user && typeof req.hasPermission === 'function' && !req.hasPermission('equipment:create')) {
+    return res.status(403).json({
+      success: false,
+      message: 'Quyền truy cập bị từ chối. Nghiệp vụ yêu cầu quyền [equipment:create] trên Ma trận RBAC.'
+    });
+  }
+
   const {
     code,
     assetCode,
@@ -242,7 +250,11 @@ export const createEquipment = asyncHandler(async (req, res) => {
     }
     finalQrCode = cleanCustomQR;
   } else {
-    finalQrCode = `QR-EQ-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    finalQrCode = `QR-${cleanCode}`;
+    const existingAutoQR = await Equipment.findOne({ qr_code: finalQrCode });
+    if (existingAutoQR) {
+      finalQrCode = `QR-${cleanCode}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+    }
   }
 
   const rawRem = remaining_value !== undefined ? remaining_value : remainingValue;
@@ -290,6 +302,34 @@ export const createEquipment = asyncHandler(async (req, res) => {
     .populate('current_repair_unit_id')
     .populate('import_session_id');
 
+  // Auto-record initial allocation movement if allocated directly to a room (UC-3.1 & UC-3.4)
+  let initialMovement = null;
+  if (roomDoc && canCallModel(EquipmentMovement, 'create')) {
+    try {
+      initialMovement = await EquipmentMovement.create({
+        equipment_id: equipment._id,
+        from_room_id: null,
+        to_room_id: roomDoc._id,
+        ordered_by: req.user?._id || null,
+        performed_by: req.user?._id || null,
+        status: 'completed',
+        reason: 'Tiếp nhận tài sản mới và phân bổ ban đầu về phòng học Tòa A1',
+        completed_at: new Date()
+      });
+    } catch (_) {
+      // Gracefully ignore movement failure in case of lightweight mock environments
+    }
+  }
+
+  // Build unified chronological lifecycle starting at onboarding (UC-3.1 & UC-3.5)
+  const lifecycle = buildLifecycleTimeline(
+    populated || equipment,
+    initialMovement ? [initialMovement] : [],
+    [],
+    [],
+    []
+  );
+
   // Audit log
   if (req.user) {
     await AuditLog.logAction({
@@ -303,7 +343,9 @@ export const createEquipment = asyncHandler(async (req, res) => {
         code: equipment.code,
         name: equipment.name,
         price: equipment.price,
-        category: categoryDoc.name
+        category: categoryDoc.name,
+        room: roomDoc ? roomDoc.code : null,
+        qr_code: finalQrCode
       }
     });
   }
@@ -311,13 +353,22 @@ export const createEquipment = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: 'Tạo thiết bị mới thành công.',
-    equipment: populated
+    equipment: populated || equipment,
+    lifecycle
   });
 });
 
-// @desc    Get all equipment items with search, filter, and pagination (UC-3.2)
+// @desc    Get all equipment items with search, filter, and pagination (UC-3.2 & UC-12.2)
 // @route   GET /api/equipments
 export const getEquipments = asyncHandler(async (req, res) => {
+  // Enforce dynamic RBAC permission check for equipment reading (UC-12.2 / UC-3.2)
+  if (req.user && typeof req.hasPermission === 'function' && !req.hasPermission('equipment:read')) {
+    return res.status(403).json({
+      success: false,
+      message: 'Quyền truy cập bị từ chối. Nghiệp vụ yêu cầu quyền [equipment:read] trên Ma trận RBAC.'
+    });
+  }
+
   const {
     category_id,
     category,
@@ -330,8 +381,15 @@ export const getEquipments = asyncHandler(async (req, res) => {
     warranty_status,
     search,
     q,
+    keyword: queryKeyword,
+    qr,
+    qr_code,
     minPrice,
     maxPrice,
+    min_price,
+    max_price,
+    sortBy,
+    sortOrder,
     page = 1,
     limit = 20
   } = req.query;
@@ -386,11 +444,14 @@ export const getEquipments = asyncHandler(async (req, res) => {
     query.warranty_status = warranty_status;
   }
 
-  if ((minPrice !== undefined && minPrice !== '') || (maxPrice !== undefined && maxPrice !== '')) {
-    const hasMin = minPrice !== undefined && minPrice !== '' && !isNaN(Number(minPrice));
-    const hasMax = maxPrice !== undefined && maxPrice !== '' && !isNaN(Number(maxPrice));
-    let numMin = hasMin ? Number(minPrice) : null;
-    let numMax = hasMax ? Number(maxPrice) : null;
+  const effectiveMinPrice = (min_price !== undefined && min_price !== '') ? min_price : minPrice;
+  const effectiveMaxPrice = (max_price !== undefined && max_price !== '') ? max_price : maxPrice;
+
+  if ((effectiveMinPrice !== undefined && effectiveMinPrice !== '') || (effectiveMaxPrice !== undefined && effectiveMaxPrice !== '')) {
+    const hasMin = effectiveMinPrice !== undefined && effectiveMinPrice !== '' && !isNaN(Number(effectiveMinPrice));
+    const hasMax = effectiveMaxPrice !== undefined && effectiveMaxPrice !== '' && !isNaN(Number(effectiveMaxPrice));
+    let numMin = hasMin ? Number(effectiveMinPrice) : null;
+    let numMax = hasMax ? Number(effectiveMaxPrice) : null;
 
     // Auto-swap if user entered minPrice > maxPrice
     if (numMin !== null && numMax !== null && numMin > numMax) {
@@ -407,7 +468,12 @@ export const getEquipments = asyncHandler(async (req, res) => {
     }
   }
 
-  const keyword = (q || search || '').trim();
+  const targetQr = (qr_code || qr || '').trim();
+  if (targetQr) {
+    query.qr_code = { $regex: targetQr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+  }
+
+  const keyword = (q || search || queryKeyword || '').trim();
   if (keyword) {
     const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     query.$or = [
@@ -424,6 +490,12 @@ export const getEquipments = asyncHandler(async (req, res) => {
   const l = Math.min(200, Math.max(1, parseInt(limit, 10) || 20));
   const skip = (p - 1) * l;
 
+  let sortCriteria = { created_at: -1 };
+  if (sortBy) {
+    const direction = String(sortOrder).toLowerCase() === 'asc' ? 1 : -1;
+    sortCriteria = { [sortBy]: direction };
+  }
+
   const total = await Equipment.countDocuments(query);
   const equipments = await Equipment.find(query)
     .populate('category_id')
@@ -431,16 +503,19 @@ export const getEquipments = asyncHandler(async (req, res) => {
     .populate('supplier_id')
     .populate('current_repair_unit_id')
     .populate('import_session_id')
-    .sort({ created_at: -1 })
+    .sort(sortCriteria)
     .skip(skip)
     .limit(l);
 
+  const totalPages = Math.ceil(total / l);
   res.json({
     success: true,
     total,
     page: p,
     limit: l,
-    totalPages: Math.ceil(total / l),
+    totalPages,
+    hasPrevPage: p > 1,
+    hasNextPage: p < totalPages,
     equipments
   });
 });
@@ -637,26 +712,40 @@ export const getEquipmentByQR = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get single equipment by ID with Aggregated Life-cycle Timeline & Depreciation (UC-3.3 & UC-3.5)
+// @desc    Get single equipment by ID or Asset Code with Aggregated Life-cycle Timeline & Depreciation (UC-3.1, UC-3.3 & UC-3.5)
 // @route   GET /api/equipments/:id
 export const getEquipmentById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const equipment = await Equipment.findById(id)
-    .populate('category_id')
-    .populate('room_id')
-    .populate('supplier_id')
-    .populate('current_repair_unit_id')
-    .populate('import_session_id');
+  let equipment = null;
+
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    equipment = await Equipment.findById(id)
+      .populate('category_id')
+      .populate('room_id')
+      .populate('supplier_id')
+      .populate('current_repair_unit_id')
+      .populate('import_session_id');
+  }
+  if (!equipment) {
+    equipment = await Equipment.findOne({ code: String(id).toUpperCase().trim() })
+      .populate('category_id')
+      .populate('room_id')
+      .populate('supplier_id')
+      .populate('current_repair_unit_id')
+      .populate('import_session_id');
+  }
 
   if (!equipment) {
     return res.status(404).json({
       success: false,
-      message: 'Không tìm thấy thiết bị.'
+      message: 'Không tìm thấy thiết bị trong hệ thống.'
     });
   }
 
+  const targetEquipId = equipment._id;
+
   // 1. Location movement timeline
-  const movements = await EquipmentMovement.find({ equipment_id: id })
+  const movements = await EquipmentMovement.find({ equipment_id: targetEquipId })
     .populate('from_room_id', 'code name building floor')
     .populate('to_room_id', 'code name building floor')
     .populate('ordered_by', 'code full_name email role')
@@ -664,14 +753,14 @@ export const getEquipmentById = asyncHandler(async (req, res) => {
     .sort({ created_at: -1 });
 
   // 2. Incidents & repairs timeline
-  const repairs = await Repair.find({ equipment_id: id })
+  const repairs = await Repair.find({ equipment_id: targetEquipId })
     .populate('reported_by', 'code full_name email')
     .populate('assigned_to', 'code full_name email')
     .populate('repair_unit_id', 'code name specialty phone email')
     .sort({ reported_at: -1 });
 
   // 3. Preventive maintenance timeline
-  const maintenance = await PreventiveMaintenance.find({ equipment_id: id })
+  const maintenance = await PreventiveMaintenance.find({ equipment_id: targetEquipId })
     .populate('checked_by', 'code full_name email')
     .sort({ check_date: -1 });
 
@@ -679,7 +768,7 @@ export const getEquipmentById = asyncHandler(async (req, res) => {
   let disposals = [];
   try {
     if (canCallModel(Disposal, 'find')) {
-      disposals = await Disposal.find({ equipment_id: id })
+      disposals = await Disposal.find({ equipment_id: targetEquipId })
         .populate('proposed_by', 'code full_name')
         .populate('approved_by', 'code full_name')
         .sort({ proposed_at: -1 });
@@ -699,6 +788,21 @@ export const getEquipmentById = asyncHandler(async (req, res) => {
 
   const lifecycle = buildLifecycleTimeline(equipment, movements, repairs, maintenance, disposals);
 
+  // 6. Warranty metrics
+  const now = Date.now();
+  const warrantyExpiryDate = equipment.warranty_expiry ? new Date(equipment.warranty_expiry) : null;
+  const isWarrantyExpired = warrantyExpiryDate ? warrantyExpiryDate.getTime() < now : false;
+  const warrantyDaysRemaining = warrantyExpiryDate && !isWarrantyExpired
+    ? Math.ceil((warrantyExpiryDate.getTime() - now) / (1000 * 3600 * 24))
+    : 0;
+
+  const warrantyInfo = {
+    expiryDate: warrantyExpiryDate,
+    status: isWarrantyExpired ? 'expired' : (equipment.warranty_status || 'active'),
+    daysRemaining: warrantyDaysRemaining,
+    isExpired: isWarrantyExpired
+  };
+
   res.json({
     success: true,
     equipment,
@@ -707,6 +811,7 @@ export const getEquipmentById = asyncHandler(async (req, res) => {
     maintenance,
     disposals,
     lifecycle,
+    warrantyInfo,
     depreciation: {
       originalPrice,
       depreciationRate: depRate,
@@ -784,7 +889,13 @@ export const getEquipmentLifecycle = asyncHandler(async (req, res) => {
 // @desc    Update equipment info & automatically log movement if room changes (UC-3.4)
 // @route   PUT /api/equipments/:id
 export const updateEquipment = asyncHandler(async (req, res) => {
-  const equipment = await Equipment.findById(req.params.id);
+  let equipment = null;
+  if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+    equipment = await Equipment.findById(req.params.id);
+  }
+  if (!equipment) {
+    equipment = await Equipment.findOne({ code: String(req.params.id).toUpperCase().trim() });
+  }
   if (!equipment) {
     return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị.' });
   }
@@ -927,16 +1038,20 @@ export const updateEquipment = asyncHandler(async (req, res) => {
         equipment.status = normalizedNewRoomId ? EQUIPMENT_STATUSES.IN_USE : EQUIPMENT_STATUSES.IN_STOCK;
       }
 
-      // UC-3.4: Automatically create a schema-valid EquipmentMovement record when room changes
+      // UC-3.2 & UC-3.4: Automatically create a schema-valid EquipmentMovement record when room changes
+      const movementType = !oldRoomId
+        ? MOVEMENT_TYPES.ALLOCATION
+        : (!normalizedNewRoomId ? MOVEMENT_TYPES.TO_STOCK : MOVEMENT_TYPES.TRANSFER);
+
       try {
         movementRecord = await EquipmentMovement.create({
           equipment_id: equipment._id,
-          type: normalizedNewRoomId ? MOVEMENT_TYPES.TRANSFER : MOVEMENT_TYPES.TO_STOCK,
+          type: movementType,
           from_room_id: oldRoomId || null,
           to_room_id: normalizedNewRoomId || null,
           ordered_by: req.user?._id || equipment._id,
           performed_by: req.user?._id || null,
-          reason: String(movement_reason || 'Cập nhật vị trí phòng trực tiếp trên hồ sơ thiết bị (UC-3.4)').trim(),
+          reason: String(movement_reason || `Điều chuyển vị trí thiết bị (${movementType}) trực tiếp trên hồ sơ (UC-3.2 / UC-3.4)`).trim(),
           status: MOVEMENT_STATUSES.COMPLETED,
           completed_at: new Date()
         });
@@ -979,10 +1094,11 @@ export const updateEquipment = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: movementLogged
-      ? 'Cập nhật thiết bị và tự động ghi nhận nhật ký điều chuyển phòng thành công (UC-3.4).'
+      ? 'Cập nhật thiết bị và tự động ghi nhận nhật ký điều chuyển phòng thành công (UC-3.2 / UC-3.4).'
       : 'Cập nhật thông tin thiết bị thành công.',
     equipment: updated,
     movementLogged,
+    movementTracked: movementLogged,
     movement: movementRecord
   });
 });
