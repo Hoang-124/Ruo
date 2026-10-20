@@ -60,5 +60,7 @@ const partsRequestSchema = new mongoose.Schema({
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
 });
 
+partsRequestSchema.index({ status: 1, approved_at: 1 });
+
 export const PartsRequest = mongoose.models.PartsRequest || mongoose.model('PartsRequest', partsRequestSchema);
 export default PartsRequest;

@@ -22,6 +22,7 @@ const repairLogSchema = new mongoose.Schema({
 });
 
 repairLogSchema.index({ repair_id: 1, timestamp: -1 });
+repairLogSchema.index({ timestamp: 1 });
 
 export const RepairLog = mongoose.model('RepairLog', repairLogSchema);
 export default RepairLog;
