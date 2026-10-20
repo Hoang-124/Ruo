@@ -4,7 +4,7 @@ import { Icons } from '../../components/common/SvgIcons';
 import { FloorPlan2D } from '../../components/common/FloorPlan2D';
 import { CAMPUS_FLOORS, ROOM_CATEGORIES } from '../../mock/campusBuildingData';
 import { equipmentApi, movementApi, repairApi, disposalApi, auditApi, reportApi, facilityApi } from '../../lib/api';
-import { buildRoomPodIndex, getRoomPod } from '../../components/common/roomPod';
+import { buildRoomPodIndex, getRoomPod, getPodStatus } from '../../components/common/roomPod';
 import { resolveRoomEquipments, resolveRoomStatus, summarizeRoomEquipment } from './roomPanel';
 import { Button, Card, KPI, StatusBadge, EmptyState } from '../../components/ui/Primitives';
 
@@ -74,6 +74,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
   const [cadRooms, setCadRooms] = useState([]);
   const [cadRefreshKey, setCadRefreshKey] = useState(0);
   const [cadError, setCadError] = useState('');
+  const [cadLoading, setCadLoading] = useState(true);
   const roomPods = useMemo(() => buildRoomPodIndex(cadRooms), [cadRooms]);
 
   // Pre-select first room of selected floor by default
@@ -246,6 +247,9 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
   // Reload the pods whenever the floor changes or the dashboard is refreshed.
   useEffect(() => {
     let ignore = false;
+    setCadLoading(true);
+    setCadRooms([]);
+    setCadError('');
     facilityApi.getCadCanvas('A1', selectedFloor)
       .then((res) => {
         if (ignore) return;
@@ -257,7 +261,8 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
         if (ignore) return;
         setCadRooms([]);
         setCadError(e.message || 'Không tải được dữ liệu thiết bị trực tiếp.');
-      });
+      })
+      .finally(() => { if (!ignore) setCadLoading(false); });
     return () => { ignore = true; };
   }, [selectedFloor, cadRefreshKey]);
 
@@ -270,65 +275,17 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
     }
   };
 
-  // Determine room simulated status for floor plan
+
   const getRoomSimulatedStatus = useCallback((room) => {
-    if (!room) {
-      return { status: 'available', label: 'Hoạt Động', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.35)' };
-    }
-    // Live status from the database wins over the architectural mock data
-    const livePod = room.code ? getRoomPod(roomPods, room.code) : null;
-    if (livePod?.effectiveStatus === 'inactive') {
-      return {
-        status: 'inactive',
-        label: 'Ngừng Sử Dụng',
-        color: '#8A93A3',
-        bg: 'rgba(138, 147, 163, 0.12)',
-        border: 'rgba(138, 147, 163, 0.35)'
-      };
-    }
-    if (livePod?.effectiveStatus === 'maintenance') {
-      return {
-        status: 'maintenance',
-        label: 'Bảo Trì',
-        color: '#F59E0B',
-        bg: 'rgba(245, 158, 11, 0.12)',
-        border: 'rgba(245, 158, 11, 0.35)'
-      };
-    }
-    if (room.statusOverride === 'maintenance') {
-      return {
-        status: 'maintenance',
-        label: 'Bảo Trì',
-        color: '#F59E0B',
-        bg: 'rgba(245, 158, 11, 0.12)',
-        border: 'rgba(245, 158, 11, 0.35)'
-      };
-    }
-    if (room.occupiedAt && room.occupiedAt.length > 0) {
-      // Giả lập mốc thời gian giờ học hiện tại: 10:30 (630 phút tính từ 00:00)
-      const currentMin = 630;
-      const isOccupied = room.occupiedAt.some(slot => currentMin >= slot.start && currentMin <= slot.end);
-      if (isOccupied) {
-        return {
-          status: 'occupied',
-          label: 'Đang Học',
-          color: '#F43F5E',
-          bg: 'rgba(244, 63, 94, 0.12)',
-          border: 'rgba(244, 63, 94, 0.35)'
-        };
-      }
-    }
-    return {
-      status: 'available',
-      label: 'Hoạt Động',
-      color: '#10B981',
-      bg: 'rgba(16, 185, 129, 0.12)',
-      border: 'rgba(16, 185, 129, 0.35)'
-    };
+    const pod = getRoomPod(roomPods, room?.code);
+    const status = pod?.effectiveStatus || 'unknown';
+    const meta = getPodStatus(status);
+    return { status, ...meta, bg: 'transparent', border: meta.color };
   }, [roomPods]);
 
   // Live room (database) wins over the equipment list and the architectural sample data
   const selectedPod = selectedRoom ? getRoomPod(roomPods, selectedRoom.code) : undefined;
+  const selectedRoomInfo = selectedPod || selectedRoom;
   const roomEquipmentView = useMemo(
     () => resolveRoomEquipments(selectedRoom, selectedPod, equipmentsList),
     [selectedRoom, selectedPod, equipmentsList]
@@ -389,7 +346,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
               </Button>
             </>
           )}
-          <Button size="sm" variant="primary" icon={Icons.Clock} onClick={fetchDashboardData}>
+          <Button size="sm" variant="primary" icon={Icons.Clock} loading={loading} onClick={fetchDashboardData}>
             Cập Nhật
           </Button>
         </div>
@@ -421,7 +378,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
               onSelectRoom={(room) => setSelectedRoom(room)}
               getRoomSimulatedStatus={getRoomSimulatedStatus}
               roomPods={roomPods}
-              currentTimeString="11:15"
+
             />
           </div>
         </Card>
@@ -429,7 +386,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
         {/* Right Column: Room Detail & Equipment Inspector Panel */}
         <Card
           className="ruo-card-compact"
-          title={selectedRoom ? (selectedRoom.name?.startsWith('Phòng') ? selectedRoom.name : `Phòng ${selectedRoom.name || selectedRoom.code?.replace(/^A1-/, '')}`) : "Thông Tin Phòng Học"}
+          title={selectedRoomInfo?.name || 'Thông Tin Phòng Học'}
           subtitle={selectedRoom ? `Tầng ${selectedFloor} • ${ROOM_CATEGORIES[selectedRoom.category]?.name || 'Phòng học'}` : "Chọn một phòng trên sơ đồ bên trái"}
           action={
             selectedRoom && (
@@ -457,7 +414,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
                 <div>
                   <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Phân loại:</span>
                   <strong style={{ color: 'var(--ink-primary)' }}>
-                    {ROOM_CATEGORIES[selectedRoom.category]?.name || 'Học tập'}
+                    {{ lecture: 'Phòng học', lab: 'Phòng thực hành', office: 'Văn phòng', warehouse: 'Kho' }[selectedPod?.room_type] || ROOM_CATEGORIES[selectedRoom.category]?.name || 'Chưa rõ'}
                   </strong>
                 </div>
                 <div>
@@ -469,13 +426,13 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
                 <div>
                   <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Sức chứa:</span>
                   <strong style={{ color: 'var(--ink-primary)' }}>
-                    {selectedRoom.capacity ? `${selectedRoom.capacity} chỗ` : 'Không cố định'}
+                    {selectedRoomInfo.capacity != null ? `${selectedRoomInfo.capacity} chỗ` : 'Chưa rõ'}
                   </strong>
                 </div>
                 <div>
                   <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Diện tích sàn:</span>
                   <strong style={{ color: 'var(--ink-primary)' }}>
-                    {selectedRoom.area || 60} m²
+                    {selectedRoomInfo.area ?? 'Chưa rõ'} m²
                   </strong>
                 </div>
               </div>
@@ -572,11 +529,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
                     {summarizeRoomEquipment(roomEquipments)} • dữ liệu trực tiếp
                   </div>
                 )}
-                {roomEquipmentView.source === 'sample' && (
-                  <div id="room-equipment-sample-note" style={{ marginBottom: '8px', fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-                    {cadError ? `Không tải được dữ liệu trực tiếp (${cadError}). ` : ''}Đang hiển thị dữ liệu mẫu của mặt bằng.
-                  </div>
-                )}
+                {cadError && <p role="alert">Không tải được dữ liệu phòng: {cadError}</p>}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '230px', overflowY: 'auto', paddingRight: '4px' }}>
                   {roomEquipments.map((eq, idx) => (
@@ -656,7 +609,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
 
                   {roomEquipments.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '12px', color: 'var(--ink-muted)' }}>
-                      Chưa có thiết bị đăng ký tại phòng này.
+                      {cadLoading ? 'Đang tải thiết bị…' : selectedPod ? 'Chưa có thiết bị đăng ký tại phòng này.' : 'Chưa có dữ liệu thiết bị cho phòng trên bản vẽ.'}
                     </div>
                   )}
                 </div>

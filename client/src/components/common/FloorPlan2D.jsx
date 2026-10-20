@@ -1,5 +1,4 @@
 import React from 'react';
-import { Icons } from './SvgIcons';
 import { RoomPodCard } from './RoomPodCard';
 import { getRoomPod } from './roomPod';
 import { CAMPUS_FLOORS, ROOM_CATEGORIES } from '../../mock/campusBuildingData';
@@ -21,14 +20,14 @@ export const FloorPlan2D = ({
   selectedRoom = null,
   onSelectRoom,
   getRoomSimulatedStatus,
-  roomPods = {},
-  currentTimeString = '11:15'
+  roomPods = {}
 }) => {
-  const currentFloorData = CAMPUS_FLOORS[selectedFloor] || CAMPUS_FLOORS[1];
-
-  const getCategoryColor = (categoryKey) => {
-    return ROOM_CATEGORIES[categoryKey]?.color || '#94A3B8';
-  };
+  const template = CAMPUS_FLOORS[selectedFloor] || CAMPUS_FLOORS[1];
+  const mergeLiveRoom = room => ({ ...room, ...getRoomPod(roomPods, room.code), code: room.code });
+  const currentFloorData = { ...template, topRooms: template.topRooms?.map(mergeLiveRoom), bottomRooms: template.bottomRooms?.map(mergeLiveRoom) };
+  const mappedCodes = new Set([...currentFloorData.topRooms || [], ...currentFloorData.bottomRooms || []]
+    .map(room => getRoomPod(roomPods, room.code)?.code));
+  const unmappedRooms = Object.values(roomPods).filter(room => !mappedCodes.has(room.code) && (!room.floor || room.floor === selectedFloor));
 
   const getCategoryName = (categoryKey) => {
     return ROOM_CATEGORIES[categoryKey]?.name || 'Tiện ích';
@@ -3076,6 +3075,16 @@ export const FloorPlan2D = ({
       >
         {selectedFloor === 1 ? renderFloor1Plan() : selectedFloor === 2 ? renderFloor2Plan() : selectedFloor === 3 ? renderFloor3Plan() : renderStandardFloorPlan()}
       </div>
+
+      {unmappedRooms.length > 0 && <section aria-label="Phòng chưa có vị trí trên bản vẽ">
+        <p style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Phòng đã đăng ký, chưa có vị trí trên bản vẽ:</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {unmappedRooms.map(room => <button key={room.code} type="button" className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+            onClick={() => onSelectRoom?.(room)} aria-pressed={selectedRoom?.code === room.code}>
+            {room.code} · {room.name} · {room.equipmentCount} thiết bị · {room.brokenCount} hỏng
+          </button>)}
+        </div>
+      </section>}
 
       {/* ==============================================================
           3. CATEGORY LEGEND BAR
