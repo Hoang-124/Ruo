@@ -154,20 +154,30 @@ export const EquipmentsPage = () => {
     }
   };
 
-  const fetchEquipments = async () => {
+  const fetchEquipments = async (overrides = {}) => {
     try {
       setLoading(true);
+      const effPage = overrides.page !== undefined ? overrides.page : page;
+      const effSearch = overrides.search !== undefined ? overrides.search : search;
+      const effStatus = overrides.statusFilter !== undefined ? overrides.statusFilter : statusFilter;
+      const effCategory = overrides.categoryFilter !== undefined ? overrides.categoryFilter : categoryFilter;
+      const effRoom = overrides.roomFilter !== undefined ? overrides.roomFilter : roomFilter;
+      const effFloor = overrides.floorFilter !== undefined ? overrides.floorFilter : floorFilter;
+      const effWarranty = overrides.warrantyFilter !== undefined ? overrides.warrantyFilter : warrantyFilter;
+      const effMinPrice = overrides.minPrice !== undefined ? overrides.minPrice : minPrice;
+      const effMaxPrice = overrides.maxPrice !== undefined ? overrides.maxPrice : maxPrice;
+
       const params = {
-        page,
+        page: effPage,
         limit: 50,
-        ...(search.trim() ? { q: search.trim() } : {}),
-        ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
-        ...(categoryFilter !== 'ALL' ? { category_id: categoryFilter } : {}),
-        ...(roomFilter !== 'ALL' ? { room_id: roomFilter } : {}),
-        ...(floorFilter !== 'ALL' ? { floor: Number(floorFilter) } : {}),
-        ...(warrantyFilter !== 'ALL' ? { warranty_status: warrantyFilter } : {}),
-        ...(minPrice !== '' ? { minPrice: Number(minPrice) } : {}),
-        ...(maxPrice !== '' ? { maxPrice: Number(maxPrice) } : {})
+        ...(effSearch.trim() ? { q: effSearch.trim() } : {}),
+        ...(effStatus !== 'ALL' ? { status: effStatus } : {}),
+        ...(effCategory !== 'ALL' ? { category_id: effCategory } : {}),
+        ...(effRoom !== 'ALL' ? { room_id: effRoom } : {}),
+        ...(effFloor !== 'ALL' ? { floor: Number(effFloor) } : {}),
+        ...(effWarranty !== 'ALL' ? { warranty_status: effWarranty } : {}),
+        ...(effMinPrice !== '' ? { minPrice: Number(effMinPrice) } : {}),
+        ...(effMaxPrice !== '' ? { maxPrice: Number(effMaxPrice) } : {})
       };
       const res = await equipmentApi.list(params);
       setEquipments(res?.equipments || []);
@@ -190,11 +200,22 @@ export const EquipmentsPage = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    setPage(1);
-    fetchEquipments();
+    if (page !== 1) {
+      setPage(1);
+    } else {
+      fetchEquipments({ page: 1 });
+    }
   };
 
   const handleResetFilters = () => {
+    const willTriggerEffect =
+      page !== 1 ||
+      statusFilter !== 'ALL' ||
+      categoryFilter !== 'ALL' ||
+      roomFilter !== 'ALL' ||
+      floorFilter !== 'ALL' ||
+      warrantyFilter !== 'ALL';
+
     setSearch('');
     setStatusFilter('ALL');
     setCategoryFilter('ALL');
@@ -204,7 +225,20 @@ export const EquipmentsPage = () => {
     setMinPrice('');
     setMaxPrice('');
     setPage(1);
-    setTimeout(() => fetchEquipments(), 0);
+
+    if (!willTriggerEffect) {
+      fetchEquipments({
+        page: 1,
+        search: '',
+        statusFilter: 'ALL',
+        categoryFilter: 'ALL',
+        roomFilter: 'ALL',
+        floorFilter: 'ALL',
+        warrantyFilter: 'ALL',
+        minPrice: '',
+        maxPrice: ''
+      });
+    }
   };
 
   // Export filtered directory to CSV with Vietnamese UTF-8 BOM (UC-3.2)
@@ -1232,8 +1266,8 @@ export const EquipmentsPage = () => {
               className="ruo-portal-input"
               style={{ height: '38px', fontSize: '12.5px', padding: '0 12px', width: 'auto', minWidth: '135px', fontWeight: 600 }}
             >
-              <option value="ALL">Tất cả 7 tầng</option>
-              {[1, 2, 3, 4, 5, 6, 7].map((fl) => (
+              <option value="ALL">Tất cả 5 tầng</option>
+              {[1, 2, 3, 4, 5].map((fl) => (
                 <option key={fl} value={String(fl)}>Tầng {fl} — Tòa A1</option>
               ))}
             </select>
@@ -1310,21 +1344,36 @@ export const EquipmentsPage = () => {
               />
               <button
                 type="button"
-                onClick={() => { setMinPrice(''); setMaxPrice('15000000'); }}
+                onClick={() => {
+                  setMinPrice('');
+                  setMaxPrice('15000000');
+                  if (page !== 1) setPage(1);
+                  else fetchEquipments({ page: 1, minPrice: '', maxPrice: '15000000' });
+                }}
                 style={{ fontSize: '11.5px', fontWeight: 700, padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-2)', border: '1.5px solid var(--border-strong)', color: 'var(--ink-primary)', cursor: 'pointer' }}
               >
                 &lt; 15 triệu
               </button>
               <button
                 type="button"
-                onClick={() => { setMinPrice('15000000'); setMaxPrice('40000000'); }}
+                onClick={() => {
+                  setMinPrice('15000000');
+                  setMaxPrice('40000000');
+                  if (page !== 1) setPage(1);
+                  else fetchEquipments({ page: 1, minPrice: '15000000', maxPrice: '40000000' });
+                }}
                 style={{ fontSize: '11.5px', fontWeight: 700, padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-2)', border: '1.5px solid var(--border-strong)', color: 'var(--ink-primary)', cursor: 'pointer' }}
               >
                 15 – 40 triệu
               </button>
               <button
                 type="button"
-                onClick={() => { setMinPrice('40000000'); setMaxPrice(''); }}
+                onClick={() => {
+                  setMinPrice('40000000');
+                  setMaxPrice('');
+                  if (page !== 1) setPage(1);
+                  else fetchEquipments({ page: 1, minPrice: '40000000', maxPrice: '' });
+                }}
                 style={{ fontSize: '11.5px', fontWeight: 700, padding: '5px 10px', borderRadius: '6px', background: 'var(--surface-2)', border: '1.5px solid var(--border-strong)', color: 'var(--ink-primary)', cursor: 'pointer' }}
               >
                 &gt; 40 triệu
@@ -1385,7 +1434,7 @@ export const EquipmentsPage = () => {
               {search && (
                 <span className="ruo-badge" style={{ background: 'rgba(6, 182, 212, 0.15)', color: 'var(--laser-cyan)', border: '1px solid rgba(6, 182, 212, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>Từ khóa: "{search}"</span>
-                  <button type="button" onClick={() => { setSearch(''); setTimeout(fetchEquipments, 0); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                  <button type="button" onClick={() => { setSearch(''); if (page !== 1) setPage(1); else fetchEquipments({ page: 1, search: '' }); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                   </button>
                 </span>
@@ -1439,7 +1488,7 @@ export const EquipmentsPage = () => {
               {(minPrice !== '' || maxPrice !== '') && (
                 <span className="ruo-badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '2px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>Giá: {minPrice ? `${Number(minPrice).toLocaleString('vi-VN')} đ` : '0'} — {maxPrice ? `${Number(maxPrice).toLocaleString('vi-VN')} đ` : '∞'}</span>
-                  <button type="button" onClick={() => { setMinPrice(''); setMaxPrice(''); setTimeout(fetchEquipments, 0); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                  <button type="button" onClick={() => { setMinPrice(''); setMaxPrice(''); if (page !== 1) setPage(1); else fetchEquipments({ page: 1, minPrice: '', maxPrice: '' }); }} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                   </button>
                 </span>

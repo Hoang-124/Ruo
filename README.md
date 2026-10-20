@@ -1,126 +1,127 @@
-# Ruo — Hệ Thống Quản Lý Thiết Bị & Vật Tư Đại Học
-> **RUO (University Equipment Management System — UEMS | Version 3.0)**  
-> Nền tảng số hóa quản lý vòng đời thiết bị và vật tư cho Phòng Hành chính Đại học: Định danh QR, Theo dõi Vị trí & Luân chuyển, Quy trình Sửa chữa & Bảo hành, Xuất kho Linh kiện, Bảo trì Dự phòng, Thanh lý RACI 5 Bước, Kiểm kê QR Đối soát, Import Hàng loạt, Dashboard KPI, Thông báo & Email, Sổ cái Kiểm Toán SHA-256 bất biến.
+# Ruo — Hệ Thống Quản Lý Thiết Bị & Vật Tư Đại Học (UEMS)
+
+> **RUO (University Equipment Management System — UEMS | Version 4.0)**  
+> Nền tảng số hóa quản lý toàn diện vòng đời thiết bị và cơ sở vật chất đại học: **Sơ đồ mặt bằng CAD 2D 5 tầng (Tòa A1)**, **Định danh & Kiểm kê QR**, **Luân chuyển có phê duyệt**, **Điều phối sửa chữa SLA & Bảo hành**, **Quản lý kho linh kiện**, **Thanh lý RACI 5 bước**, **Ma trận phân quyền RBAC động** và **Sổ cái kiểm toán chuỗi băm SHA-256 bất biến**.
 
 ---
 
 ## MỤC LỤC TỔNG QUAN
 
-1. [Giới Thiệu Đề Án & Tầm Nhìn](#1-giới-thiệu-đề-án--tầm-nhìn)
-2. [Sơ Đồ Kiến Trúc Hệ Thống](#2-sơ-đồ-kiến-trúc-hệ-thống)
-3. [4 Trụ Cột Kỹ Thuật Nâng Cao](#3-4-trụ-cột-kỹ-thuật-nâng-cao)
-4. [Ma Trận 4 Tác Nhân Chính Quy & Tài Khoản Trình Diễn](#4-ma-trận-4-tác-nhân-chính-quy--tài-khoản-trình-diễn)
+1. [Giới Thiệu Đề Án & Giải Pháp Cốt Lõi](#1-giới-thiệu-đề-án--giải-pháp-cốt-lõi)
+2. [Kiến Trúc Hệ Thống & Công Nghệ Sử Dụng](#2-kiến-trúc-hệ-thống--công-nghệ-sử-dụng)
+3. [Ma Trận 4 Vai Trò Chính Quy & Tài Khoản Demo](#3-ma-trận-4-vai-trò-chính-quy--tài-khoản-demo)
+4. [Ma Trận 87 Nghiệp Vụ & Phân Bổ Nhân Sự (Master Task Matrix)](#4-ma-trận-87-nghiệp-vụ--phân-bổ-nhân-sự-master-task-matrix)
 5. [Cấu Trúc Thư Mục Dự Án](#5-cấu-trúc-thư-mục-dự-án)
 6. [Đặc Tả Cơ Sở Dữ Liệu MongoDB](#6-đặc-tả-cơ-sở-dữ-liệu-mongodb)
-7. [Danh Mục API Endpoints](#7-danh-mục-api-endpoints)
-8. [Hướng Dẫn Cài Đặt & Chạy Cục Bộ](#8-hướng-dẫn-cài-đặt--chạy-cục-bộ)
-9. [Bảng Phân Rã 68 Use Cases Theo Tác Nhân](#9-bảng-phân-rã-68-use-cases-theo-tác-nhân-actor_usecasedrawio)
-10. [Quy Chuẩn Thiết Kế Giao Diện & Mã Nguồn](#10-quy-chuẩn-thiết-kế-giao-diện--mã-nguồn)
+7. [Danh Mục RESTful API Endpoints](#7-danh-mục-restful-api-endpoints)
+8. [Hướng Dẫn Cài Đặt, Khởi Chạy & Kiểm Thử](#8-hướng-dẫn-cài-đặt-khởi-chạy--kiểm-thử)
+9. [Quy Chuẩn Thiết Kế Giao Diện & Mã Nguồn](#9-quy-chuẩn-thiết-kế-giao-diện--mã-nguồn)
 
 ---
 
-## 1. GIỚI THIỆU ĐỀ ÁN & TẦM NHÌN
+## 1. GIỚI THIỆU ĐỀ ÁN & GIẢI PHÁP CỐT LÕI
 
-Hệ thống quản lý thiết bị và vật tư tại các trường đại học thường xuyên đối mặt với 4 điểm nghẽn nghiêm trọng:
+Công tác quản lý thiết bị và vật tư tại trường đại học thường đối mặt với 4 điểm nghẽn lớn:
+1. **Thiết bị thất lạc vị trí:** Thiết bị thường xuyên được điều chuyển giữa các phòng học và kho dự phòng mà không có biên bản điện tử đồng bộ.
+2. **Khó phân biệt tài sản cùng chủng loại:** Các thiết bị giống nhau (máy chiếu, điều hòa, PC phòng máy) không có định danh riêng lẻ gắn liền với hồ sơ gốc.
+3. **Đứt gãy lịch sử vòng đời:** Thiếu sự liên kết giữa ngày mua, hạn bảo hành, lịch sử sửa chữa, linh kiện thay thế và tỷ lệ hao mòn ($R$-ratio) để làm căn cứ thanh lý.
+4. **Rủi ro phân quyền & kiểm toán:** Thiếu cơ chế phân quyền động theo thời gian thực và nhật ký kiểm toán chống chỉnh sửa phục vụ công tác thanh tra.
 
-1. **Thiết bị mất dấu:** Thường xuyên được điều chuyển giữa các phòng trong ngày, gây khó khăn cho việc quản lý. Có thiết bị bị mất dấu nhiều ngày, không ai biết đang ở đâu.
-2. **Không phân biệt thiết bị cùng loại:** Ví dụ TV của phòng này với TV của phòng khác — khó truy vết khi đã bị luân chuyển.
-3. **Thiếu lịch sử sửa chữa:** Thiết bị đã hỏng gì, đã sửa gì, bảo hành còn bao lâu — không có hồ sơ rõ ràng.
-4. **Rủi ro thất thoát:** Thiếu nhật ký kiểm toán bất biến để chứng minh tính minh bạch trước thanh tra.
-
-**Ruo (UEMS)** ra đời như một hệ thống chuyên biệt cho **Phòng Hành chính Đại học**, tích hợp **Định danh QR sub-second**, **Quy trình Luân chuyển có Duyệt**, **Theo dõi Sửa chữa & Bảo hành end-to-end**, **Kiểm kê QR Đối soát** và **Sổ cái Audit Trail SHA-256**.
+### 4 Trụ Cột Kỹ Thuật Của Ruo (UEMS)
+- **Trụ cột 1 — Không gian CAD 2D & Định danh QR (`Spatial CAD & QR Identity`):** Trực quan hóa mặt bằng 5 tầng Tòa nhà A1 (`P101` – `P508`) ngay trên trang chủ; mỗi thiết bị sở hữu mã `QR-EQ-*` duy nhất để quét tra cứu dưới 1 giây.
+- **Trụ cột 2 — Luân chuyển, Sửa chữa SLA & Linh kiện (`Controlled Operations`):** Quy trình điều chuyển 3 bước (Tạo phiếu → Quản lý duyệt → KTV bàn giao), điều phối sửa chữa gắn đồng hồ đếm ngược SLA (`ON_TRACK` / `AT_RISK` / `OVERDUE`) và duyệt xuất kho linh kiện tự động trừ tồn.
+- **Trụ cột 3 — Vòng đời Tài sản, Kiểm kê QR & Thanh lý RACI 5 bước (`Asset Lifecycle & RACI`):** Theo dõi trọn vẹn dòng đời (Tiếp nhận → Phân bổ → Sửa chữa → Bảo dưỡng → Thanh lý), tự động tính chỉ số hao mòn $R = \frac{\text{Chi phí sửa lũy kế}}{\text{Nguyên giá}}$ (đề xuất thanh lý khi $R \ge 60\%$).
+- **Trụ cột 4 — Live RBAC Policy & Chuỗi khối Kiểm toán SHA-256 (`Security & Audit Chain`):** Ma trận quyền hạn động áp dụng tức thời mà không cần khởi động lại máy chủ; mọi biến động dữ liệu đều được nối chuỗi băm mật mã học (`prev_hash` → `hash`).
 
 ---
 
-## 2. SƠ ĐỒ KIẾN TRÚC HỆ THỐNG
+## 2. KIẾN TRÚC HỆ THỐNG & CÔNG NGHỆ SỬ DỤNG
 
 ```
 +----------------------------------------------------------------------------------------------------+
 |                                    CLIENT TIER (React 19 + Vite)                                    |
-|  - Obsidian Dark Command Center & Clean Academic Light Mode (Design Tokens Vanilla CSS)            |
-|  - Spatial CAD Canvas 2.5D (Sơ đồ mặt bằng 5 tầng Tòa A1 — overlay thiết bị theo phòng)          |
-|  - Equipment Lifecycle Timeline & Repair Tracking Board                                             |
-|  - Transfer Approval Queue & Warranty Expiring Dashboard                                            |
-|  - Parts Requisition, Preventive Maintenance Calendar & RACI Disposal Flow                          |
-|  - In-app Notification Center & Dashboard KPI Cards                                                 |
-|  - 100% Native Inline SVG Components (Zero External Icon Library Overhead)                         |
+|  - Design System: Obsidian Dark & Clean Academic Light Mode (Vanilla CSS Tokens)                   |
+|  - Spatial CAD 2D: FloorPlan2D & RoomPodCard (Sơ đồ mặt bằng 5 tầng Tòa A1 tương tác trực tiếp)    |
+|  - Modules: Equipment Lifecycle, QR Stocktaking, Transfer Queue, SLA Repair Kanban, RBAC Matrix    |
+|  - Strict Native Inline SVG Architecture (100% SVG thuần, không phụ thuộc thư viện icon ngoài)     |
 +----------------------------------------------------------------------------------------------------+
                                                   │
-                                                  │ HTTP/RESTful APIs (JWT Bearer Token)
+                                                  │ RESTful API (JWT Access + Refresh Token)
                                                   ▼
 +----------------------------------------------------------------------------------------------------+
 |                                   APPLICATION TIER (Node.js + Express)                              |
 |  +─────────────────────────+──────────────────────────+─────────────────────────+                   |
-|  |    Security & Access    |     Business Engines     |   Background Workers    |                   |
-|  | - Dynamic RBAC Policy   | - Transfer Approval Flow | - Repair Deadline Check |                   |
-|  | - JWT Access / Refresh  | - Repair Workflow Engine | - Warranty Expiry Alert |                   |
-|  | - Rate Limiter & Helmet | - QR Identifier Service  | - Nodemailer Queue      |                   |
-|  | - SHA-256 Audit Chain   | - Lifecycle Aggregator   |                         |                   |
-|  |                         | - Parts Inventory Mgmt   |                         |                   |
-|  |                         | - RACI Disposal 5-Step   |                         |                   |
-|  |                         | - Preventive Maint Svc   |                         |                   |
+|  |    Security & Access    |     Business Engines     |   Services & Workers    |                   |
+|  | - Dynamic RBAC Guard    | - Facility Domain Rules  | - SLA Deadline Reactor  |                   |
+|  | - Brute-force Lockout   | - QR & Batch Validator   | - Warranty Expiry Alert |                   |
+|  | - Session Revocation    | - Transfer & Repair Flow | - Nodemailer OTP/Alert  |                   |
+|  | - SHA-256 Audit Chain   | - RACI 5-Step Disposal   | - CSV/PDF Report Engine |                   |
 |  +─────────────────────────+──────────────────────────+─────────────────────────+                   |
 +----------------------------------------------------------------------------------------------------+
                                                   │
-                                                  │ Mongoose ODM (Atomic Transactions & Indexes)
+                                                  │ Mongoose ODM (Indexes & Validation)
                                                   ▼
 +----------------------------------------------------------------------------------------------------+
 |                                 PERSISTENCE TIER (MongoDB Collections)                              |
-|  users • roles • rooms • equipments • equipment_transfers • repair_tickets                          |
-|  spare_parts • parts_requests • maintenance_plans • disposals                                       |
-|  equipment_categories • suppliers • repair_units • inventory_sessions                               |
-|  notifications • audit_logs                                                                         |
+|  users • roles • refresh_tokens • password_resets • departments • rooms • categories               |
+|  suppliers • repair_units • equipments • equipment_movements • import_sessions                     |
+|  repairs • repair_logs • spare_parts • parts_requests • preventive_maintenances                    |
+|  inventory_sessions • inventory_logs • disposals • notifications • audit_logs                      |
 +----------------------------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 3. 4 TRỤ CỘT KỸ THUẬT NÂNG CAO
+## 3. MA TRẬN 4 VAI TRÒ CHÍNH QUY & TÀI KHOẢN DEMO
 
-### Trụ Cột 1: Định Danh QR & Theo Dõi Vị Trí Thiết Bị
-- Mỗi thiết bị có mã QR duy nhất bất biến (`QR-EQ-<timestamp>-<hash>`), dán trên thiết bị thực tế.
-- Quét mã QR → tra cứu tức thời: thông tin tài sản, phòng hiện tại, nguyên giá, hạn bảo hành, lịch sử sửa chữa.
-- Phân biệt được thiết bị cùng loại kể cả khi đã luân chuyển sang phòng khác.
+Hệ thống tuân thủ nguyên tắc **Phân tách nhiệm vụ (Separation of Duties — SoD)** gồm 4 vai trò chính quy và luồng tự đăng ký có kiểm duyệt (`UC-1.0` & `UC-10.7`):
 
-### Trụ Cột 2: Quy Trình Luân Chuyển & Sửa Chữa Có Kiểm Soát
-- **Luân chuyển thiết bị:** Tạo phiếu → Quản lý duyệt → Hoàn tất → Auto cập nhật phòng. Mỗi lần điều chuyển ghi: từ phòng, đến phòng, ngày giờ, người thực hiện, lý do.
-- **Sửa chữa:** Báo hỏng → Giao việc → Nhận việc (ghi nơi sửa, người mang đi) → Log chi tiết sửa (vật tư, chi phí, ảnh) → Hoàn tất (người mang về, phòng trả, BH sau sửa).
-- **Xuất kho linh kiện:** Khi sửa cần vật tư → Tạo phiếu yêu cầu → Manager duyệt → Trừ tồn kho → Cảnh báo hết hàng.
-- **Bảo hành:** Theo dõi hạn bảo hành, cảnh báo sắp hết (30/60/90 ngày), ghi BH mới sau mỗi lần sửa.
+| Họ và Tên | Vai Trò (`role`) | Email Đăng Nhập | Mã Cán Bộ | Mật Khẩu | Phạm Vi Nghiệp Vụ Trọng Tâm |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **Ban Giám Hiệu / Quản Trị Hệ Thống** | `admin` | `admin@ruo.edu.vn` | `AD001` | `Ruo@2026` | Quản trị người dùng, phê duyệt bổ nhiệm vai trò đặc quyền, cấu hình ma trận RBAC động, quản lý phòng học & Master Data, ký duyệt thanh lý BGH (`QĐ-TL`), đối soát sổ cái SHA-256 |
+| **Cán Bộ Quản Lý Cơ Sở Vật Chất** | `facility_manager` | `manager@ruo.edu.vn` | `QL001` | `Ruo@2026` | Quản lý danh mục & nhập lô thiết bị, duyệt điều chuyển phòng, điều phối phiếu sửa chữa SLA, duyệt xuất kho linh kiện, lập đợt kiểm kê QR, thẩm định thanh lý HC |
+| **Kỹ Thuật Viên Vận Hành** | `technician` | `technician@ruo.edu.vn` | `KT001` | `Ruo@2026` | Tiếp nhận & xử lý ca sửa chữa, ghi nhật ký kỹ thuật, lập phiếu lĩnh linh kiện, xác nhận bàn giao điều chuyển thực địa, quét QR kiểm kê & đề xuất thanh lý |
+| **Giảng Viên / Cán Bộ Sử Dụng** | `lecturer` | `lecturer@ruo.edu.vn` | `GV001` | `Ruo@2026` | Tra cứu sơ đồ CAD 5 tầng & thiết bị phòng học, quét QR tra cứu nhanh, gửi phiếu báo hỏng tại phòng, theo dõi tiến độ xử lý SLA và đánh giá nghiệm thu |
 
-### Trụ Cột 3: Vòng Đời Thiết Bị & Báo Cáo Thống Kê
-- **Lifecycle Timeline:** Một màn hình tổng hợp toàn bộ quá trình của thiết bị từ lúc nhập về đến khi thanh lý.
-- **Bảo trì dự phòng:** Lịch bảo dưỡng định kỳ (tháng/quý/năm), checklist kỹ thuật, tự tạo ticket sửa khi phát hiện hỏng.
-- **Thanh lý RACI 5 bước:** Đề xuất (R) → HC duyệt (A) → BGH phê duyệt (A) → Dự trù mua sắm (C) → Nhập kho mới (I).
-- **Dashboard KPI:** Tổng TB hoạt động/hỏng/sửa, BH sắp hết, chi phí sửa tích lũy, Equipment Health Score (MTBF).
-- **Báo cáo:** Thiết bị theo phòng, theo tình trạng, tần suất hỏng, sắp hết BH, quá hạn sửa. Xuất PDF/Excel chuẩn in ấn.
-- **Thông báo:** In-app notification center với badge đỏ + Email HTML tự động (Nodemailer) + Template builder.
-- **Deadline Warning:** 3 cấp cảnh báo sửa chữa: ON_TRACK (xanh), AT_RISK (cam), OVERDUE (đỏ).
-
-### Trụ Cột 4: Chuỗi Khối Kiểm Toán Bất Biến SHA-256
-- Mọi thao tác trọng yếu (tạo/sửa thiết bị, luân chuyển, sửa chữa, thanh lý) đều được ghi nhật ký kiểm toán SHA-256.
-- Khối dữ liệu chứa: `timestamp`, `userId`, `action`, `entity`, `ipAddress`, `dataDiff`, `prevHash`, `sha256Hash`.
-- Endpoint đối soát toàn vẹn `GET /api/audit/verify-chain`.
+> **Chính sách bảo mật xác thực:**
+> - Đăng nhập bằng **Email** hoặc **Mã cán bộ** (`AD001`, `QL001`, `KT001`, `GV001`).
+> - Tự đăng ký (`UC-1.0`): Tài khoản **Giảng viên** được kích hoạt ngay; tài khoản đăng ký vai trò **Kỹ thuật viên** hoặc **Quản lý CSVC** tự động vào trạng thái `pending_approval` chờ Admin phê duyệt bổ nhiệm (`UC-10.7`).
+> - Khóa bảo vệ tự động **15 phút** khi đăng nhập sai mật khẩu 5 lần liên tiếp (`UC-1.1`).
 
 ---
 
-## 4. MA TRẬN 4 TÁC NHÂN CHÍNH QUY & TÀI KHOẢN TRÌNH DIỄN
+## 4. MA TRẬN 87 NGHIỆP VỤ & PHÂN BỔ NHÂN SỰ (MASTER TASK MATRIX)
 
-Hệ thống được thiết kế theo chuẩn phân tách nhiệm vụ độc lập (**Separation of Duties** — người làm không tự duyệt việc của mình), gồm 4 vai trò chính quy và 1 vai trò khách:
+Dự án được quy hoạch gồm **87 nghiệp vụ** (`Must: 62 | Should: 25`) chia thành **4 Phase (13 Epics)** và phân bổ đều cho **5 thành viên**:
 
-| Họ và Tên | Vai trò (Role) | Email Đăng Nhập | Mã Định Danh | Mật Khẩu | Đặc Quyền Nghiệp Vụ Chính |
-| :--- | :--- | :--- | :---: | :---: | :--- |
-| **Ban Giám Hiệu / Quản Trị Hệ Thống** | `admin` | `admin@ruo.edu.vn` | `AD001` | `Ruo@2026` | Quản trị người dùng, phân quyền ma trận RBAC động, quản lý danh mục nền (Master Data), phê duyệt thanh lý cuối cùng (Ban hành QĐ-TL), tra cứu sổ cái kiểm toán SHA-256 |
-| **Cán Bộ Quản Lý Cơ Sở Vật Chất** | `facility_manager` | `manager@ruo.edu.vn` | `QL001` | `Ruo@2026` | Điều phối sửa chữa (Kanban SLA), giao việc kỹ thuật viên, cấp thiết bị dự phòng từ KHO-01, duyệt linh kiện, ra lệnh điều chuyển, kiểm kê và lập hồ sơ đề xuất thanh lý (R ≥ 60%) |
-| **Kỹ Thuật Viên Vận Hành** | `technician` | `technician@ruo.edu.vn` | `KT001` | `Ruo@2026` | Tiếp nhận nhiệm vụ, cập nhật nhật ký sửa chữa, đề xuất lĩnh linh kiện, xác nhận di chuyển thiết bị thực địa, quét QR tra cứu thông số kỹ thuật |
-| **Giảng Viên / Cán Bộ Sử Dụng** | `lecturer` | `lecturer@ruo.edu.vn` | `GV001` | `Ruo@2026` | Tra cứu thiết bị phòng học, tạo phiếu báo hỏng sự cố thực địa, theo dõi tiến độ khắc phục SLA và đánh giá chất lượng sửa chữa (1-5 sao) |
-| **Khách Vãng Lai** | `guest` | *(Không cần đăng nhập)* | — | — | Đăng nhập tài khoản trường, yêu cầu gửi mã OTP khôi phục mật khẩu |
+| Thành Viên | Số Nghiệp Vụ | Phân Hệ Phụ Trách Chính |
+| :--- | :---: | :--- |
+| **Hoàng** | **17** | System Bootstrap (Seed Data), Ma trận phân quyền động RBAC (`UC-12.1` – `UC-12.2`), Vòng đời Thiết bị, Import hàng loạt & Kiểm kê QR (`UC-3.1` – `UC-3.11`, QR Lookup), Kiểm toán chuỗi băm SHA-256 (`UC-13.1` – `UC-13.2`) |
+| **Uyên** | **18** | Xác thực & Hồ sơ cá nhân (`UC-1.0` – `UC-1.6`), Quản trị người dùng & Phê duyệt bổ nhiệm (`UC-10.1` – `UC-10.7`), Trung tâm thông báo & Email tự động (`UC-9.1` – `UC-9.4`) |
+| **Tùng** | **17** | Quản lý Phòng học & Trạng thái (`UC-2.1` – `UC-2.6`), Mặt bằng Spatial CAD 2D 5 tầng (`UC-2.7` & CAD Dashboard), Dashboard KPI & Hệ thống Báo cáo Thống kê (`UC-8.1` – `UC-8.9`) |
+| **Nguyên** | **17** | Báo hỏng, Điều phối & Nhật ký Sửa chữa (`UC-5.1` – `UC-5.9`), Yêu cầu & Kho Linh kiện (`UC-5.10` – `UC-5.12`), Theo dõi Bảo hành (`UC-6.1` – `UC-6.3`), Cảnh báo tiến độ SLA (`UC-7.1` – `UC-7.2`) |
+| **Quang** | **18** | Danh mục nền Master Data (`UC-11.1` – `UC-11.4`), Quy trình Điều chuyển Thiết bị (`UC-4.1` – `UC-4.5`), Bảo trì Dự phòng (`UC-7.3` – `UC-7.6`), Thanh lý RACI 5 bước (`UC-7.7` – `UC-7.11`) |
+| **TỔNG CỘNG** | **87** | **100% Nghiệp vụ chuẩn hóa theo đặc tả UEMS** |
 
-> **Quy chuẩn bảo mật đăng nhập:**
-> - Hỗ trợ đăng nhập linh hoạt bằng **Email trường** hoặc **Mã định danh (MSSV/Mã CB)**.
-> - Mật khẩu khởi tạo đồng bộ: **`Ruo@2026`**.
-> - **Khóa tạm 15 phút** tự động nếu nhập sai mật khẩu 5 lần liên tiếp.
-> - **OTP 6 chữ số** gửi qua email thật (SMTP) với cơ chế chống brute-force và rate-limit 3 lần/giờ.
+### Bảng Tổng Hợp 13 Epics Theo Phase Triển Khai
+
+| Phase | Epic | Mã Use Case | Mô Tả Nghiệp Vụ Trọng Tâm | Phụ Trách | Số Lượng |
+| :---: | :--- | :--- | :--- | :---: | :---: |
+| **Phase 0** | **System Bootstrap** | `Seed Initializer` | Khởi tạo 4 tài khoản mẫu, Tòa A1 5 tầng, các phòng học CAD, kho thiết bị QR, NCC, linh kiện | Hoàng | 1 |
+| **Phase 1** | **Authentication** | `UC-1.0` → `UC-1.6` | Tự đăng ký & chờ duyệt vai trò, Đăng nhập/Đăng xuất, Quên mật khẩu OTP, Đổi mật khẩu, Xem/Cập nhật hồ sơ | Uyên | 7 |
+| **Phase 1** | **Room & Facility** | `UC-2.1` → `UC-2.6` | Tạo phòng (`P101`–`P508`), Danh sách & Chi tiết phòng kèm thiết bị, Cập nhật thông số, Ngừng hoạt động & Đổi trạng thái phòng | Tùng | 6 |
+| **Phase 1** | **Spatial CAD** | `UC-2.7` + `CAD Map` | Thẻ `RoomPodCard` inline SVG và sơ đồ mặt bằng CAD 5 tầng tương tác ngay trên trang chủ cho cả 4 vai trò | Tùng | 2 |
+| **Phase 1** | **User Management** | `UC-10.1` → `UC-10.7` | Tạo tài khoản, Danh bạ phân tab realtime, Chi tiết hoạt động, Đổi role thu hồi phiên, Khóa/Mở khóa, Cấp lại mật khẩu, Duyệt bổ nhiệm | Uyên | 7 |
+| **Phase 1** | **Master Catalog** | `UC-11.1` → `UC-11.4` | Quản lý danh mục Chủng loại thiết bị, Cấu trúc tòa nhà/tầng, Nhà cung cấp, Đơn vị sửa chữa | Quang | 4 |
+| **Phase 1** | **Dynamic RBAC** | `UC-12.1` → `UC-12.2` | Ma trận phân quyền 4 vai trò, bật/tắt quyền theo module với hiệu lực tức thời (Live Policy) & chống tự khóa Admin | Hoàng | 2 |
+| **Phase 2** | **Equipment & QR Audit** | `UC-3.1` → `UC-3.11` + `QR` | Thêm/Sửa/Tra cứu đa chiều tài sản, Timeline vòng đời, Import/Validate hàng loạt, Đợt kiểm kê QR đối soát & Xuất biên bản | Hoàng | 12 |
+| **Phase 3** | **Equipment Transfer** | `UC-4.1` → `UC-4.5` | Tạo lệnh điều chuyển, Quản lý phê duyệt/từ chối, KTV xác nhận hoàn tất cập nhật phòng, Lịch sử & Hàng đợi điều chuyển | Quang | 5 |
+| **Phase 3** | **Repair & Spare Parts** | `UC-5.1` → `UC-5.12` | Báo hỏng, Giao việc SLA, KTV nhận việc, Ghi log sửa chữa, Nghiệm thu, Lịch sử sửa, Cảnh báo quá hạn, Xin lĩnh & Duyệt xuất linh kiện | Nguyên | 12 |
+| **Phase 3** | **Warranty & SLA** | `UC-6.1` → `UC-7.2` | Huy hiệu bảo hành, Cảnh báo sắp hết BH (30/60/90 ngày), Gia hạn BH sau sửa, Đồng hồ đếm ngược & Phân loại rủi ro SLA | Nguyên | 5 |
+| **Phase 3** | **Preventive & RACI Disposal** | `UC-7.3` → `UC-7.11` | Lịch & Kế hoạch bảo dưỡng định kỳ, Checklist bảo trì, Lịch sử phòng; Quy trình thanh lý RACI 5 bước ($R \ge 60\%$) | Quang | 9 |
+| **Phase 4** | **Dashboard & Reports** | `UC-8.1` → `UC-8.9` | Thẻ KPI tổng quan, Xu hướng chi phí sửa, Chỉ số sức khỏe MTBF, Báo cáo theo phòng/trạng thái/tần suất hỏng/bảo hành/SLA, Xuất CSV/PDF | Tùng | 9 |
+| **Phase 4** | **Notifications & Email** | `UC-9.1` → `UC-9.4` | Trung tâm thông báo realtime, Đánh dấu đã đọc, Gửi email tự động Nodemailer, Quản lý mẫu template email | Uyên | 4 |
+| **Phase 4** | **Immutable Audit** | `UC-13.1` → `UC-13.2` | Sổ cái kiểm toán chuỗi băm SHA-256 bất biến và thuật toán kiểm tra toàn vẹn từ khối Genesis | Hoàng | 2 |
 
 ---
 
@@ -128,253 +129,203 @@ Hệ thống được thiết kế theo chuẩn phân tách nhiệm vụ độc 
 
 ```
 d:/Ruo/
-├── client/                                 # Giao diện React 19 + Vite (Vanilla CSS Tokens)
+├── client/                                   # Giao diện người dùng (React 19 + Vite)
 │   ├── src/
-│   │   ├── components/                     # Components dùng chung
-│   │   │   ├── common/                    # FloorPlan2D, SvgIcons, Logo
-│   │   │   ├── layout/                    # AppHeader
-│   │   │   └── ui/                        # UserProfileModal, CommandPaletteModal, LogoutConfirmModal
-│   │   ├── config/                        # navigation.js (Single source of truth cho 4 vai trò & 20 tabs)
-│   │   ├── context/                       # AuthContext, ToastContext
-│   │   ├── lib/                           # api.js, router.js
+│   │   ├── components/
+│   │   │   ├── admin/                        # Modals & Drawers quản trị (UserDetail, RoleChange, Lock, ResetPwd, RoleApproval)
+│   │   │   ├── auth/                         # MandatoryPasswordChangeModal
+│   │   │   ├── common/                       # SvgIcons, Logo, RepairStepper, EquipmentLifecycleModal, EquipmentQrModal
+│   │   │   ├── layout/                       # AppHeader (Thanh điều hướng, Thông báo, Hồ sơ)
+│   │   │   ├── rooms/                        # RoomDetailModal
+│   │   │   ├── spatial/                      # FloorPlan2D, RoomPodCard (Mặt bằng CAD 2D Tòa A1)
+│   │   │   └── ui/                           # UserProfileModal, CommandPaletteModal, LogoutConfirmModal
+│   │   ├── config/                           # navigation.js (Cấu hình điều hướng & phân quyền hiển thị theo 4 vai trò)
+│   │   ├── context/                          # AuthContext, ToastContext
+│   │   ├── lib/                              # api.js (HTTP client chuẩn hóa), router.js
 │   │   ├── pages/
-│   │   │   ├── admin/                     # UserManagementPage, RBACMatrixPage, MasterDataPage, DisposalApprovalPage, AuditLogPage
-│   │   │   ├── auth/                      # LoginPage
-│   │   │   ├── dashboard/                 # Dashboard tổng quan điều hành & Sơ đồ phòng học 2D
-│   │   │   ├── equipments/                # EquipmentsPage (Quản lý thiết bị & QR), DisposalProposePage (Đề xuất thanh lý)
-│   │   │   ├── facility/                  # WarehouseStockPage (Kho KHO-01), MovementsPage (Lệnh điều chuyển)
-│   │   │   ├── incidents/                 # TicketKanbanPage (Phiếu sửa chữa 6 trạng thái SLA)
-│   │   │   ├── inventory/                 # InventoryPage (Kiểm kê CSVC & Quét QR đối soát)
-│   │   │   ├── lecturer/                  # ReportIssuePage, LecturerTicketsPage
-│   │   │   └── technician/                # TechnicianTasksPage, SparePartsPage, MovementTasksPage, QRScannerPage
-│   │   ├── App.jsx                        # Shell ứng dụng & Bộ điều hướng RBAC Guard
-│   │   └── main.jsx                       # Entry point
-│   └── vite.config.js                     # Cấu hình build & Proxy
+│   │   │   ├── admin/                        # UserManagementPage, RBACMatrixPage, MasterDataPage, DisposalApprovalPage, AuditLogPage
+│   │   │   ├── auth/                         # LoginPage (Đăng nhập, Tự đăng ký, Quên mật khẩu OTP)
+│   │   │   ├── dashboard/                    # Dashboard điều hành & tích hợp mặt bằng CAD 5 tầng
+│   │   │   ├── equipments/                   # EquipmentsPage (Danh mục, Bộ lọc, Import lô, Vòng đời), DisposalProposePage
+│   │   │   ├── facility/                     # WarehouseStockPage, MovementsPage
+│   │   │   ├── incidents/                    # TicketKanbanPage (Điều phối sự cố & SLA)
+│   │   │   ├── inventory/                    # InventoryPage (Đợt kiểm kê & Quét QR đối soát)
+│   │   │   ├── lecturer/                     # ReportIssuePage, LecturerTicketsPage
+│   │   │   ├── rooms/                        # RoomListPage, RoomFormModal, RoomStatusModal, RoomDeactivateModal, EquipmentTransferModal
+│   │   │   ├── technician/                   # TechnicianTasksPage, SparePartsPage, MovementTasksPage, QRScannerPage
+│   │   │   └── transfers/                    # TransferHistoryPage
+│   │   ├── App.jsx                           # App Shell & Route Guards
+│   │   └── main.jsx                          # Entry point
+│   └── vite.config.js                        # Cấu hình Vite & API Proxy
 │
-├── server/                                 # API Node.js + Express + MongoDB
+├── server/                                   # Máy chủ API (Node.js + Express + Mongoose)
 │   ├── src/
-│   │   ├── config/                        # constants.js (4 roles, statuses), db.js
-│   │   ├── controllers/                   # auth, equipment, movement, repair, sparePart, disposal, inventory, masterData, audit, notification, role, facility
-│   │   ├── middlewares/                   # authMiddleware (JWT, RBAC Guard nghiêm ngặt không universal override)
-│   │   ├── models/                        # 20 Mongoose Models chuẩn hóa theo dbdiagram.dbml
-│   │   ├── routes/                        # RESTful API routing
-│   │   ├── seeds/                         # seedDatabase.js (Khởi tạo 4 tài khoản và dữ liệu KHO-01)
-│   │   ├── services/                      # emailService, auditService, slaReactor
-│   │   ├── tests/                         # backendVerification.js, test_uc37_qr.js, test_login_scenarios.js...
-│   │   └── server.js                      # Entry point
-│   └── .env.example                       # Biến môi trường
+│   │   ├── config/                           # constants.js, db.js
+│   │   ├── controllers/                      # 14 Controllers xử lý nghiệp vụ
+│   │   ├── domain/facility/                  # Pure domain rules & validators cho Phòng học & Mặt bằng CAD
+│   │   ├── middlewares/                      # authMiddleware (JWT, optionalProtect, Live RBAC), errorMiddleware, securityMiddleware
+│   │   ├── models/                           # 21 Mongoose Models
+│   │   ├── routes/                           # 15 tệp định tuyến RESTful API
+│   │   ├── seeds/                            # seedDatabase.js, seedTransferDemo.js
+│   │   ├── services/                         # auditService, emailService, slaReactor
+│   │   ├── tests/                            # Bộ kịch bản kiểm thử tích hợp theo từng Use Case (UC-1, UC-3, UC-10, UC-12...)
+│   │   └── server.js                         # Khởi tạo HTTP Server & Graceful Shutdown
+│   └── test/                                 # Bộ Unit Tests (61 test cases cho domain/facility)
 │
-├── Actor_UseCase.drawio                   # Sơ đồ 68 Use Cases chi tiết cho 5 Actor
-├── DATABASE_SCHEMA.md                     # Đặc tả chi tiết 20 Collections MongoDB
-├── dbdiagram.dbml                         # Mô hình dữ liệu DBML chuẩn hóa 20 bảng
-└── README.md                               # Tài liệu hướng dẫn này
+├── DATABASE_SCHEMA.md                        # Đặc tả chi tiết Schema cơ sở dữ liệu
+├── dbdiagram.dbml                            # Sơ đồ quan hệ dữ liệu DBML
+├── package.json                              # Scripts điều phối chạy đồng thời (Concurrently)
+└── README.md                                 # Tài liệu hướng dẫn dự án
 ```
 
 ---
 
-## 6. ĐẶC TẢ CƠ SỞ DỮ LIỆU MONGODB (20 COLLECTIONS)
+## 6. ĐẶC TẢ CƠ SỞ DỮ LIỆU MONGODB
 
-Hệ thống được chuẩn hóa chính xác **20 Collections** chia thành 6 Phân hệ nghiệp vụ theo `dbdiagram.dbml` và `DATABASE_SCHEMA.md`:
+Hệ thống bao gồm **21 Mongoose Models** tại `server/src/models/`, phân tách rõ ràng theo 6 miền dữ liệu:
 
-| Phân hệ | Collection | Chức năng nghiệp vụ |
+| Phân Hệ Dữ Liệu | Model / Collection | Vai Trò Lưu Trữ Chính |
 | :--- | :--- | :--- |
-| **01. Xác Thực & Người Dùng** | `users` | Tài khoản người dùng, mã định danh, vai trò, mật khẩu hash bcrypt |
-| | `roles` | Ma trận quyền hạn RBAC động theo 4 vai trò chính quy |
-| | `user_sessions` | Phiên đăng nhập RFC-7519 jti, thu hồi phiên an toàn |
-| | `password_resets` | Mã OTP khôi phục mật khẩu, hash an toàn, chống brute-force |
-| **02. Cơ Sở Vật Chất & Danh Mục** | `rooms` | Danh mục phòng học, hội trường, phòng lab và Kho KHO-01 |
-| | `equipment_categories`| Danh mục chủng loại thiết bị và định mức khấu hao |
-| | `suppliers` | Danh mục nhà cung cấp trang thiết bị |
-| | `repair_units` | Đơn vị cung cấp dịch vụ sửa chữa chuyên trách |
-| **03. Thiết Bị & Điều Động** | `equipments` | Hồ sơ thiết bị, mã QR duy nhất, khấu hao (R-ratio), bảo hành |
-| | `equipment_movements` | Lệnh luân chuyển thiết bị giữa các phòng học và kho dự phòng |
-| | `disposals` | Hồ sơ thanh lý tài sản (Đề xuất FM → Phê duyệt BGH QĐ-TL) |
-| **04. Sự Cố & Sửa Chữa** | `repair_tickets` | Phiếu sự cố, mức độ hỏng, giao việc KTV, hạn SLA, đánh giá 1-5 sao |
-| | `repair_logs` | Nhật ký từng bước xử lý kỹ thuật của kỹ thuật viên |
-| | `spare_parts` | Danh mục linh kiện thay thế, tồn kho tối thiểu |
-| | `parts_requests` | Phiếu xin cấp phát linh kiện từ kỹ thuật viên chờ FM duyệt |
-| **05. Kiểm Kê CSVC** | `inventory_sessions` | Đợt kiểm kê tài sản chính thức của trường |
-| | `inventory_details` | Chi tiết đối soát mã QR thực địa theo từng thiết bị |
-| **06. Hệ Thống & Kiểm Toán** | `notifications` | Thông báo sự kiện trong hệ thống (in-app alerts) |
-| | `audit_logs` | Sổ cái kiểm toán SHA-256 bất biến (Tamper-evident Blockchain-like) |
-| | `system_configs` | Cấu hình tham số hệ thống toàn trường |
+| **1. Định Danh & Phân Quyền** | `User` (`users`) | Hồ sơ cán bộ/giảng viên, vai trò, trạng thái (`active`, `pending_approval`, `locked`), điểm tín nhiệm |
+| | `Role` (`roles`) | Ma trận quyền hạn động (`permissions[]`) cho 4 vai trò |
+| | `RefreshToken` (`refresh_tokens`) | Quản lý phiên đăng nhập và thu hồi token trên từng thiết bị |
+| | `PasswordReset` (`password_resets`) | Lưu trữ mã OTP 6 chữ số có thời hạn (TTL 15 phút) và bộ đếm chống vét cạn |
+| **2. Phòng Học & Danh Mục Nền** | `Room` (`rooms`) | Phòng học Tòa A1 (`P101`–`P508`), tầng (`1`–`5`), sức chứa, tọa độ CAD, trạng thái phòng |
+| | `Department` (`departments`) | Danh mục khoa, phòng ban chức năng |
+| | `Category` (`categories`) | Chủng loại thiết bị, tiền tố mã tài sản, định mức khấu hao |
+| | `Supplier` (`suppliers`) | Nhà cung cấp thiết bị và đầu mối bảo hành |
+| | `RepairUnit` (`repair_units`) | Đơn vị đối tác bảo dưỡng và sửa chữa chuyên môn |
+| **3. Thiết Bị & Luân Chuyển** | `Equipment` (`equipments`) | Hồ sơ tài sản, mã `qr_code`, serial, nguyên giá, hạn bảo hành, tỷ lệ hao mòn, vị trí phòng |
+| | `EquipmentMovement` (`equipment_movements`) | Nhật ký và quy trình phê duyệt điều chuyển thiết bị (`PENDING` → `APPROVED` → `COMPLETED`) |
+| | `ImportSession` (`import_sessions`) | Phiên kiểm tra và nhập hàng loạt thiết bị từ Excel/CSV |
+| **4. Sửa Chữa, Linh Kiện & Bảo Trì** | `Repair` (`repairs`) | Phiếu báo hỏng, mức độ ưu tiên, KTV phụ trách, hạn SLA, chi phí và đánh giá nghiệm thu |
+| | `RepairLog` (`repair_logs`) | Nhật ký chi tiết từng bước khắc phục kỹ thuật |
+| | `SparePart` (`spare_parts`) | Danh mục vật tư, linh kiện thay thế và ngưỡng cảnh báo tồn kho tối thiểu |
+| | `PartsRequest` (`parts_requests`) | Phiếu yêu cầu xuất kho linh kiện gắn với phiếu sửa chữa |
+| | `PreventiveMaintenance` (`preventive_maintenances`) | Kế hoạch và biên bản checklist bảo dưỡng định kỳ |
+| **5. Kiểm Kê & Thanh Lý** | `InventorySession` (`inventory_sessions`) | Đợt kiểm kê tài sản theo tầng hoặc phạm vi phòng học |
+| | `InventoryLog` (`inventory_logs`) | Kết quả quét QR đối soát từng thiết bị (`MATCHED`, `MISSING`, `DAMAGED`, `MISPLACED`) |
+| | `Disposal` (`disposals`) | Hồ sơ thanh lý tài sản theo quy trình RACI 5 bước và số quyết định `QĐ-TL` |
+| **6. Thông Báo & Kiểm Toán** | `Notification` (`notifications`) | Thông báo nội bộ theo người nhận và trạng thái đã đọc |
+| | `AuditLog` (`audit_logs`) | Sổ cái kiểm toán bất biến liên kết chuỗi băm SHA-256 (`prev_hash`, `hash`) |
 
 ---
 
-## 7. DANH MỤC API ENDPOINTS CHÍNH
+## 7. DANH MỤC RESTFUL API ENDPOINTS
 
-### Phân Hệ 1: Xác Thực & Quản Trị Hệ Thống (`/api/auth`, `/api/roles`, `/api/audit`)
-- `POST /api/auth/login` — Đăng nhập bằng Email hoặc Mã định danh
-- `POST /api/auth/logout` — Đăng xuất và thu hồi phiên người dùng
-- `POST /api/auth/forgot-password/request` — Yêu cầu gửi OTP khôi phục mật khẩu
-- `POST /api/auth/forgot-password/verify` — Xác thực mã OTP 6 số
-- `POST /api/auth/forgot-password/reset` — Đặt lại mật khẩu mới
-- `GET /api/auth/me` — Xem hồ sơ người dùng
-- `PUT /api/auth/me` — Cập nhật thông tin hồ sơ (SĐT, Avatar)
-- `POST /api/auth/change-password` — Đổi mật khẩu cá nhân
-- `GET /api/auth/users` — Quản lý danh sách người dùng (Admin)
-- `POST /api/auth/users` — Tạo tài khoản người dùng mới (Admin)
-- `PUT /api/auth/users/:id/role` — Cập nhật vai trò tài khoản (Admin)
-- `PUT /api/auth/users/:id/toggle-lock` — Khóa hoặc mở khóa tài khoản (Admin)
-- `POST /api/auth/users/:id/reset-password` — Đặt lại mật khẩu mặc định (Admin)
-- `GET /api/roles` — Lấy danh sách ma trận phân quyền vai trò (Admin)
-- `PUT /api/roles/:roleName/permissions` — Cập nhật ma trận phân quyền (Admin)
-- `GET /api/audit/logs` — Tra cứu nhật ký kiểm toán SHA-256 (Admin)
-- `GET /api/audit/verify-chain` — Đối soát chuỗi băm mật mã học (Admin)
-- `GET /api/audit/export/csv` — Xuất khẩu sổ cái kiểm toán ra file CSV (Admin)
+### 7.1. Xác Thực, Người Dùng & Phân Quyền RBAC (`/api/auth`, `/api/admin`, `/api/roles`)
+- `POST /api/auth/register` — Tự đăng ký tài khoản & khởi tạo yêu cầu duyệt vai trò (`UC-1.0`)
+- `POST /api/auth/login` — Đăng nhập bằng Email hoặc Mã cán bộ (`UC-1.1`)
+- `POST /api/auth/logout` — Đăng xuất và thu hồi Refresh Token (`UC-1.2`)
+- `POST /api/auth/forgot-password/request` | `/verify` | `/reset` — Khôi phục mật khẩu qua OTP Email (`UC-1.3`)
+- `POST /api/auth/change-password` — Đổi mật khẩu cá nhân (`UC-1.4`)
+- `GET /api/auth/me` & `PUT /api/auth/me` — Xem và cập nhật hồ sơ cá nhân (`UC-1.5`, `UC-1.6`)
+- `GET /api/auth/users` & `POST /api/auth/users` — Danh bạ và tạo mới người dùng (`UC-10.1`, `UC-10.2`)
+- `GET /api/auth/users/:id` — Chi tiết hồ sơ và lịch sử hoạt động (`UC-10.3`)
+- `PATCH /api/auth/users/:id/role` — Thay đổi vai trò trực tiếp & thu hồi phiên (`UC-10.4`)
+- `PATCH /api/auth/users/:id/lock` — Khóa / Mở khóa tài khoản (`UC-10.5`)
+- `POST /api/auth/users/:id/reset-password` — Cấp mật khẩu tạm thời bắt buộc đổi (`UC-10.6`)
+- `POST /api/auth/users/:id/approve` — Phê duyệt hoặc từ chối bổ nhiệm vai trò đặc quyền (`UC-10.7`)
+- `GET /api/roles` & `PUT /api/roles/:id/permissions` — Tra cứu & cập nhật ma trận quyền hạn RBAC động (`UC-12.1`, `UC-12.2`)
 
-### Phân Hệ 2: Danh Mục & Mặt Bằng CAD (`/api/master-data`, `/api/facilities`)
-- `GET /api/master-data/categories` — Danh mục loại thiết bị
-- `POST /api/master-data/categories` — Thêm loại thiết bị mới
-- `GET /api/master-data/suppliers` — Danh mục nhà cung cấp
-- `POST /api/master-data/suppliers` — Thêm nhà cung cấp mới
-- `GET /api/master-data/repair-units` — Danh mục đơn vị sửa chữa
-- `POST /api/master-data/repair-units` — Thêm đơn vị sửa chữa mới
-- `GET /api/master-data/rooms` — Danh mục phòng học & Kho KHO-01
-- `POST /api/master-data/rooms` — Thêm phòng học mới
-- `GET /api/facilities/cad-canvas` — Mặt bằng CAD số hóa 2D Tòa A1
+### 7.2. Phòng Học, Mặt Bằng CAD & Danh Mục Nền (`/api/facilities`, `/api/master-data`, `/api/admin`)
+- `GET /api/facilities/cad-canvas` — Dữ liệu mặt bằng CAD 2D 5 tầng Tòa A1 kèm thống kê thiết bị theo phòng (`UC-2.7`)
+- `GET /api/facilities/rooms` & `POST /api/facilities/rooms` — Tra cứu và thêm phòng học mới (`UC-2.1`, `UC-2.2`)
+- `GET /api/facilities/rooms/:code` — Chi tiết phòng học, danh sách thiết bị & lịch sử điều chuyển/sửa chữa (`UC-2.3`)
+- `PUT /api/facilities/rooms/:id` — Cập nhật thông số phòng học (`UC-2.4`)
+- `PUT /api/facilities/rooms/:id/deactivate` — Ngừng hoạt động phòng học có kiểm tra ràng buộc thiết bị (`UC-2.5`)
+- `PUT /api/facilities/rooms/:id/status` — Chuyển đổi trạng thái phòng (`AVAILABLE` / `MAINTENANCE` / `INACTIVE`) (`UC-2.6`)
+- `CRUD /api/admin/categories` | `/buildings` | `/suppliers` | `/repair-units` — Quản trị danh mục nền Master Data (`UC-11.1` – `UC-11.4`)
 
-### Phân Hệ 3: Thiết Bị & Điều Động (`/api/equipments`, `/api/transfers`, `/api/disposals`)
-- `GET /api/equipments` — Danh sách thiết bị (hỗ trợ phân trang, lọc phòng, lọc trạng thái)
-- `POST /api/equipments` — Đăng ký thiết bị mới kèm sinh mã QR
-- `GET /api/equipments/:id` — Chi tiết thiết bị & lịch sử bảo hành
-- `PUT /api/equipments/:id` — Cập nhật thông tin thiết bị
-- `PUT /api/equipments/:id/warranty` — Cập nhật thời hạn bảo hành
-- `GET /api/equipments/qr/:qrCode` — Tra cứu nhanh thông số thực địa qua mã QR
-- `POST /api/equipments/batch-import` — Import hàng loạt thiết bị từ dữ liệu JSON
-- `POST /api/transfers` — Kỹ thuật viên hoặc Quản lý CSVC tạo phiếu điều chuyển (chờ duyệt)
-- `GET /api/transfers/pending` — Hàng đợi phiếu chờ duyệt (Quản lý CSVC)
-- `PUT /api/transfers/:id/approve` — Quản lý CSVC phê duyệt phiếu
-- `PUT /api/transfers/:id/reject` — Quản lý CSVC từ chối phiếu, bắt buộc có lý do
-- `PUT /api/transfers/:id/complete` — Kỹ thuật viên xác nhận đã bàn giao; hệ thống cập nhật phòng của thiết bị
-- `GET /api/transfers/equipment/:id` — Lịch sử điều chuyển của một thiết bị (Admin, Quản lý CSVC, Kỹ thuật viên, Giảng viên)
-- `GET /api/transfers` — Tra cứu danh sách/lịch sử điều chuyển (các vai trò đã đăng nhập)
-- `/api/movements` — Alias tương thích ngược cho các client cũ
-- `GET /api/disposals` — Danh sách hồ sơ thanh lý thiết bị
-- `POST /api/disposals` — Lập hồ sơ đề xuất thanh lý thiết bị hao mòn R ≥ 60% (Facility Manager)
-- `PUT /api/disposals/:id/approve` — Ban Giám Hiệu phê duyệt thanh lý và ban hành QĐ-TL (Admin)
-- `PUT /api/disposals/:id/reject` — Ban Giám Hiệu từ chối thanh lý kèm lý do (Admin)
+### 7.3. Thiết Bị, Vòng Đời, Import Hàng Loạt & Kiểm Kê QR (`/api/equipments`, `/api/inventory-sessions`)
+- `GET /api/equipments` & `POST /api/equipments` — Tra cứu đa chiều (phân trang, lọc tầng/phòng/tầm giá/bảo hành) và tạo mới thiết bị (`UC-3.1`, `UC-3.2`)
+- `GET /api/equipments/:id` & `PUT /api/equipments/:id` — Chi tiết thông số và cập nhật thiết bị kèm tự động ghi vết điều chuyển (`UC-3.3`, `UC-3.4`)
+- `GET /api/equipments/:id/lifecycle` — Dòng thời gian (Lifecycle Timeline) tổng hợp 5 giai đoạn của thiết bị (`UC-3.5`)
+- `POST /api/equipments/import/validate` & `POST /api/equipments/import` — Kiểm tra lỗi từng dòng và nhập hàng loạt thiết bị (`UC-3.6`, `UC-3.7`)
+- `PUT /api/equipments/:id/dispose` — Ghi nhận quyết định thanh lý trực tiếp trên tài sản (`UC-3.8`)
+- `GET /api/equipments/qr/:qrCode` — Quét và tra cứu nhanh thiết bị qua mã QR (`QR Lookup`)
+- `GET /api/inventory-sessions` & `POST /api/inventory-sessions` — Quản lý và khởi tạo đợt kiểm kê (`UC-3.9`)
+- `POST /api/inventory-sessions/:id/scan` & `PUT /api/inventory-sessions/:id/reconcile` — Quét QR đối soát thực địa và chốt biên bản kiểm kê (`UC-3.10`, `UC-3.11`)
 
-### Phân Hệ 4: Báo Hỏng, Sửa Chữa & Linh Kiện (`/api/repairs`, `/api/spare-parts`)
-- `POST /api/repairs` — Giảng viên tạo phiếu báo hỏng thiết bị thực địa
-- `GET /api/repairs` — Danh sách phiếu sửa chữa (hỗ trợ lọc theo trạng thái, người phụ trách)
-- `GET /api/repairs/:id` — Xem chi tiết phiếu sửa chữa
-- `PUT /api/repairs/:id/assign` — Facility Manager giao việc cho KTV và cấp đồ dự phòng
-- `PUT /api/repairs/:id/accept` — Kỹ thuật viên tiếp nhận việc sửa chữa
-- `POST /api/repairs/:id/logs` — Kỹ thuật viên cập nhật nhật ký khắc phục
-- `PUT /api/repairs/:id/outcome` — KTV báo cáo kết quả hoàn thành hoặc không thể sửa
-- `PUT /api/repairs/:id/close` — Facility Manager nghiệm thu và đóng phiếu sửa chữa
-- `POST /api/repairs/:id/feedback` — Giảng viên đánh giá chất lượng sửa chữa (1-5 sao)
-- `GET /api/spare-parts` — Danh mục kho linh kiện vật tư
-- `PUT /api/spare-parts/:id/stock` — Cập nhật số lượng tồn kho linh kiện
-- `GET /api/spare-parts/requests` — Danh sách yêu cầu cấp phát linh kiện
-- `POST /api/spare-parts/requests` — KTV tạo yêu cầu cấp linh kiện cho ca sửa chữa
-- `PUT /api/spare-parts/requests/:id/approve` — Facility Manager duyệt xuất kho linh kiện
+### 7.4. Luân Chuyển Thiết Bị & Thanh Lý RACI (`/api/transfers`, `/api/disposals`)
+- `GET /api/transfers` & `POST /api/transfers` — Danh sách và tạo phiếu yêu cầu điều chuyển (`UC-4.1`)
+- `GET /api/transfers/pending` — Hàng đợi phiếu điều chuyển chờ Quản lý CSVC duyệt (`UC-4.5`)
+- `PUT /api/transfers/:id/approve` & `PUT /api/transfers/:id/reject` — Phê duyệt hoặc từ chối điều chuyển (`UC-4.2`)
+- `PUT /api/transfers/:id/complete` — Kỹ thuật viên xác nhận hoàn tất bàn giao phòng đích (`UC-4.3`)
+- `GET /api/transfers/equipment/:id` — Lịch sử điều chuyển của từng thiết bị (`UC-4.4`)
+- `GET /api/disposals` & `POST /api/disposals` — Danh sách và khởi tạo đề xuất thanh lý thiết bị ($R \ge 60\%$) (`UC-7.7`)
+- `PUT /api/disposals/:id/approve` & `PUT /api/disposals/:id/reject` — Thẩm định và phê duyệt quyết định thanh lý (`UC-7.8`, `UC-7.9`)
 
-### Phân Hệ 5: Kiểm Kê Cơ Sở Vật Chất (`/api/inventory-sessions`)
-- `GET /api/inventory-sessions` — Danh sách các đợt kiểm kê
-- `POST /api/inventory-sessions` — Khởi tạo đợt kiểm kê CSVC mới
-- `GET /api/inventory-sessions/:id` — Chi tiết tiến độ kiểm kê
-- `POST /api/inventory-sessions/:id/scan` — Quét mã QR thực địa đối soát thiết bị
-- `PUT /api/inventory-sessions/:id/reconcile` — Hoàn tất và đối soát đợt kiểm kê
+### 7.5. Sửa Chữa SLA, Linh Kiện & Bảo Hành (`/api/repairs`, `/api/spare-parts`, `/api/parts-requests`)
+- `GET /api/repairs` & `POST /api/repairs` — Danh sách và tạo phiếu báo hỏng thiết bị (`UC-5.1`, `UC-5.2`)
+- `PUT /api/repairs/:id/assign` & `PUT /api/repairs/:id/accept` — Giao việc SLA và KTV tiếp nhận sửa chữa (`UC-5.3`, `UC-5.4`)
+- `POST /api/repairs/:id/logs` & `PUT /api/repairs/:id/outcome` — Ghi nhật ký sửa chữa và báo cáo kết quả (`UC-5.5`, `UC-5.6`)
+- `PUT /api/repairs/:id/close` & `POST /api/repairs/:id/feedback` — Nghiệm thu đóng phiếu và đánh giá chất lượng (`UC-5.6`)
+- `GET /api/spare-parts` & `PUT /api/spare-parts/:id/stock` — Quản lý danh mục và tồn kho linh kiện (`UC-5.12`)
+- `GET /api/parts-requests`, `POST /api/parts-requests` & `PUT /api/parts-requests/:id/approve` — Lập phiếu xin lĩnh và duyệt xuất kho linh kiện (`UC-5.10`, `UC-5.11`)
 
-### Phân Hệ 5b: Linh Kiện (`/api/parts`, `/api/parts-requests`)
-- `GET /api/parts` — Kho linh kiện
-- `POST /api/parts` — Thêm linh kiện
-- `PUT /api/parts/:id` — Cập nhật linh kiện
-- `POST /api/parts-requests` — Yêu cầu xuất kho
-- `PUT /api/parts-requests/:id/approve` — Duyệt xuất kho
-
-### Phân Hệ 5c: Bảo Trì Dự Phòng (`/api/maintenance`)
-- `GET /api/maintenance/plans` — Lịch bảo dưỡng
-- `POST /api/maintenance/plans` — Tạo kế hoạch
-- `PUT /api/maintenance/plans/:id/log` — Log kết quả checklist
-- `GET /api/facilities/rooms/:code/maint-history` — Lịch sử bảo trì phòng
-
-### Phân Hệ 6: Báo Cáo & Sổ Cái Kiểm Toán (`/api/reports`, `/api/audit`, `/api/notifications`)
-- `GET /api/reports/by-room` — Thống kê thiết bị phân bổ theo phòng
-- `GET /api/reports/by-status` — Thống kê tình trạng hoạt động thiết bị
-- `GET /api/reports/repair-frequency` — Thống kê tần suất hỏng hóc theo chủng loại
-- `GET /api/reports/export/csv` — Xuất khẩu báo cáo dạng file CSV chuẩn
-- `GET /api/dashboard/kpi` — Thẻ chỉ số KPI thời gian thực
-- `GET /api/dashboard/health-score` — Điểm sức khỏe vận hành thiết bị toàn trường
-- `GET /api/notifications` — Danh sách thông báo nội bộ
-- `PUT /api/notifications/:id/read` — Đánh dấu thông báo đã đọc
-- `GET /api/audit/logs` — Nhật ký kiểm toán SHA-256
-- `GET /api/audit/verify-chain` — Đối soát chuỗi băm bất biến
-- `GET /api/audit/export/csv` — Xuất sổ cái kiểm toán dạng CSV
+### 7.6. Báo Cáo, Thông Báo & Kiểm Toán SHA-256 (`/api/reports`, `/api/notifications`, `/api/audit`)
+- `GET /api/reports/dashboard` | `/by-room` | `/by-status` | `/repair-frequency` | `/export/csv` — Hệ thống thống kê KPI & xuất báo cáo (`UC-8.1` – `UC-8.9`)
+- `GET /api/notifications`, `PUT /api/notifications/:id/read` & `PUT /api/notifications/read-all` — Trung tâm thông báo nội bộ (`UC-9.1`, `UC-9.2`)
+- `GET /api/audit/logs`, `GET /api/audit/verify-chain` & `GET /api/audit/export/csv` — Tra cứu, đối soát chuỗi băm SHA-256 và xuất sổ cái kiểm toán (`UC-13.1`, `UC-13.2`)
 
 ---
 
-## 8. HƯỚNG DẪN CÀI ĐẶT & CHẠY CỤC BỘ
+## 8. HƯỚNG DẪN CÀI ĐẶT, KHỞI CHẠY & KIỂM THỬ
 
-### 1. Yêu Cầu Môi Trường
-- **Node.js**: `>= 18.0.0` (Khuyến nghị LTS v20.x)
-- **MongoDB**: `>= 6.0` (Local `mongodb://localhost:27017` hoặc MongoDB Atlas)
-- **Trình duyệt**: Chrome, Edge, Firefox, Safari
+### 8.1. Yêu Cầu Môi Trường
+- **Node.js**: `>= 18.0.0` (Khuyến nghị LTS `v20.x`)
+- **MongoDB**: `>= 6.0` (Mặc định kết nối `mongodb://127.0.0.1:27017/ruo_db`)
 
----
-
-### 2. Khởi Động Backend
+### 8.2. Cài Đặt & Khởi Tạo Dữ Liệu Mẫu
+Từ thư mục gốc của dự án (`d:/Ruo`):
 
 ```bash
-cd d:/Ruo/server
+# 1. Cài đặt dependencies cho Root, Server và Client
 npm install
-cp .env.example .env
-npm run seed        # Nạp 4 tài khoản chuẩn và dữ liệu kho KHO-01
-npm run seed:transfer-demo # Bổ sung dữ liệu demo điều chuyển, không xóa dữ liệu hiện có
-npm run dev         # Khởi động máy chủ backend tại Port 5000
+npm --prefix server install
+npm --prefix client install
+
+# 2. Cấu hình biến môi trường cho Server (nếu chưa có file .env)
+cp server/.env.example server/.env
+
+# 3. Khởi tạo dữ liệu gốc (4 tài khoản mẫu, Tòa A1 5 tầng, thiết bị QR, linh kiện)
+npm run seed
 ```
 
-> Kiểm tra trạng thái máy chủ: `http://localhost:5000/api/health`
-
----
-
-### 3. Khởi Động Frontend
-
+### 8.3. Khởi Chạy Đồng Thời Backend & Frontend
 ```bash
-cd d:/Ruo/client
-npm install
-npm run build       # Biên dịch và kiểm tra tính toàn vẹn 20 phân hệ
-npm run dev         # Khởi động giao diện tại Port 5173
+# Chạy đồng thời Server (Port 5000) và Client (Port 5173) bằng 1 lệnh duy nhất
+npm run dev
+```
+- **Giao diện ứng dụng (Frontend):** `http://localhost:5173`
+- **Kiểm tra trạng thái API (Healthcheck):** `http://localhost:5000/api/health`
+
+### 8.4. Chạy Kiểm Thử Tự Động & Kiểm Tra Build
+```bash
+# Chạy bộ Unit Tests (61 test cases cho Domain Phòng học & Mặt bằng CAD)
+npm --prefix server run test:unit
+
+# Chạy bộ Integration Tests cho các Use Cases (Auth, User Mgmt, RBAC, Equipment)
+npm test
+
+# Kiểm tra biên dịch Production cho Frontend
+npm run build
 ```
 
-> Truy cập ứng dụng: **`http://localhost:5173`**
-
 ---
 
-## 9. BẢNG PHÂN RÃ 68 USE CASES THEO TÁC NHÂN (ACTOR_USECASE.DRAWIO)
+## 9. QUY CHUẨN THIẾT KẾ GIAO DIỆN & MÃ NGUỒN
 
-Hệ thống được thiết kế và mô hình hóa đầy đủ **68 Use Cases** chia theo 5 trang sơ đồ trong `Actor_UseCase.drawio`:
-
-| STT | Tác Nhân (Actor) | Phạm Vi Nghiệp Vụ Chính | Số Use Cases |
-| :---: | :--- | :--- | :---: |
-| **1** | **Admin (BGH & Quản Trị)** | Quản trị tài khoản, ma trận phân quyền RBAC động, danh mục nền (Master Data), phê duyệt thanh lý cuối cùng (ban hành QĐ-TL), sổ cái kiểm toán SHA-256 | **19 UCs** |
-| **2** | **Facility Manager (Quản Lý CSVC)** | Điều phối Kanban SLA, giao việc KTV, xuất kho dự phòng KHO-01, duyệt linh kiện, ra lệnh điều chuyển, kiểm kê thực địa, lập đề xuất thanh lý R ≥ 60% | **18 UCs** |
-| **3** | **Technician (Kỹ Thuật Viên)** | Tiếp nhận sửa chữa, ghi nhật ký khắc phục, xin linh kiện thay thế, xác nhận điều chuyển thiết bị, quét mã QR thực địa | **12 UCs** |
-| **4** | **Lecturer (Giảng Viên / Cán Bộ)** | Tra cứu thiết bị phòng học, tạo phiếu báo hỏng sự cố, theo dõi tiến độ SLA, đánh giá nghiệm thu 1-5 sao | **11 UCs** |
-| **5** | **Guest (Khách Vãng Lai)** | Đăng nhập tài khoản trường (Email/Mã số), gửi OTP qua email thật (SMTP), đặt lại mật khẩu với rate-limiting | **8 UCs** |
-| **TỔNG** | | **68 Use Cases hoàn chỉnh** | **68 UCs** |
-
-Tra cứu chi tiết sơ đồ tại file [Actor_UseCase.drawio](file:///d:/Ruo/Actor_UseCase.drawio) và đặc tả cơ sở dữ liệu tại [DATABASE_SCHEMA.md](file:///d:/Ruo/DATABASE_SCHEMA.md).
-
----
-
-## 10. QUY CHUẨN THIẾT KẾ GIAO DIỆN & MÃ NGUỒN
-
-### Hệ Thống Design Tokens & Bảng Màu Cao Cấp
-- **Obsidian Dark Command Center:** Nền `#080c14`, bề mặt `#0f172a`, viền `rgba(255,255,255,0.08)`, chữ `#f8fafc`.
-- **Clean Academic Light Mode:** Nền `#f8fafc`, bề mặt `#ffffff`, viền `#e2e8f0`, chữ `#0f172a`.
-- **Màu nhận diện:** Navy (`#0284c7`), Emerald (`#10b981`), Hổ phách (`#f59e0b`), Đỏ (`#ef4444`).
-
-### Nguyên Tắc Kỹ Thuật
-1. **100% Native Inline SVG:** Tuyệt đối không cài thư viện icon ngoài.
-2. **Full Output Enforcement:** Mọi code viết hoàn chỉnh 100%, không placeholder.
-3. **Typography:** Be Vietnam Pro (nội dung) + JetBrains Mono (mã kỹ thuật, mã QR).
+1. **Hệ Thống Giao Diện Kép (`Dual Theme Design Tokens`):**
+   - **Obsidian Dark Command Center:** Nền `#080c14`, bề mặt `#0f172a`, chữ `#f8fafc`, điểm nhấn Cyan/Navy hiện đại.
+   - **Clean Academic Light Mode:** Nền `#f8fafc`, bề mặt `#ffffff`, chữ `#0f172a`, độ tương phản cao phục vụ làm việc hành chính.
+2. **100% Native Inline SVG:** Toàn bộ biểu tượng điều hướng, trạng thái và sơ đồ mặt bằng CAD được xây dựng bằng SVG thuần nội bộ (`SvgIcons.jsx`, `FloorPlan2D.jsx`, `RoomPodCard.jsx`), tuyệt đối không phụ thuộc thư viện icon bên ngoài.
+3. **Typography:** Sử dụng bộ font **Be Vietnam Pro** cho giao diện tiếng Việt và **JetBrains Mono** cho mã tài sản, mã QR, số serial và chuỗi băm SHA-256.
 
 ---
 
 ## GIẤY PHÉP & BẢN QUYỀN
 
-Đề tài Đồ án Tốt nghiệp được nghiên cứu và phát triển bởi **Nhóm Phát Triển Ruo**.  
+Đề tài được nghiên cứu và phát triển bởi **Nhóm Phát Triển Ruo (Hoàng, Uyên, Tùng, Nguyên, Quang)**.  
 Bản quyền © 2026. Mọi quyền được bảo lưu.

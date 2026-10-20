@@ -496,16 +496,18 @@ export const getEquipments = asyncHandler(async (req, res) => {
     sortCriteria = { [sortBy]: direction };
   }
 
-  const total = await Equipment.countDocuments(query);
-  const equipments = await Equipment.find(query)
-    .populate('category_id')
-    .populate('room_id')
-    .populate('supplier_id')
-    .populate('current_repair_unit_id')
-    .populate('import_session_id')
-    .sort(sortCriteria)
-    .skip(skip)
-    .limit(l);
+  const [total, equipments] = await Promise.all([
+    Equipment.countDocuments(query),
+    Equipment.find(query)
+      .populate('category_id')
+      .populate('room_id')
+      .populate('supplier_id')
+      .populate('current_repair_unit_id')
+      .populate('import_session_id')
+      .sort(sortCriteria)
+      .skip(skip)
+      .limit(l)
+  ]);
 
   const totalPages = Math.ceil(total / l);
   res.json({
@@ -744,38 +746,36 @@ export const getEquipmentById = asyncHandler(async (req, res) => {
 
   const targetEquipId = equipment._id;
 
-  // 1. Location movement timeline
-  const movements = await EquipmentMovement.find({ equipment_id: targetEquipId })
-    .populate('from_room_id', 'code name building floor')
-    .populate('to_room_id', 'code name building floor')
-    .populate('ordered_by', 'code full_name email role')
-    .populate('performed_by', 'code full_name email role')
-    .sort({ created_at: -1 });
-
-  // 2. Incidents & repairs timeline
-  const repairs = await Repair.find({ equipment_id: targetEquipId })
-    .populate('reported_by', 'code full_name email')
-    .populate('assigned_to', 'code full_name email')
-    .populate('repair_unit_id', 'code name specialty phone email')
-    .sort({ reported_at: -1 });
-
-  // 3. Preventive maintenance timeline
-  const maintenance = await PreventiveMaintenance.find({ equipment_id: targetEquipId })
-    .populate('checked_by', 'code full_name email')
-    .sort({ check_date: -1 });
-
-  // 4. Disposals timeline
-  let disposals = [];
-  try {
-    if (canCallModel(Disposal, 'find')) {
-      disposals = await Disposal.find({ equipment_id: targetEquipId })
-        .populate('proposed_by', 'code full_name')
-        .populate('approved_by', 'code full_name')
-        .sort({ proposed_at: -1 });
-    }
-  } catch (_) {
-    disposals = [];
-  }
+  // 1-4. Parallelize movement, repair, preventive maintenance, and disposal timeline queries
+  const [movements, repairs, maintenance, disposals] = await Promise.all([
+    EquipmentMovement.find({ equipment_id: targetEquipId })
+      .populate('from_room_id', 'code name building floor')
+      .populate('to_room_id', 'code name building floor')
+      .populate('ordered_by', 'code full_name email role')
+      .populate('performed_by', 'code full_name email role')
+      .sort({ created_at: -1 }),
+    Repair.find({ equipment_id: targetEquipId })
+      .populate('reported_by', 'code full_name email')
+      .populate('assigned_to', 'code full_name email')
+      .populate('repair_unit_id', 'code name specialty phone email')
+      .sort({ reported_at: -1 }),
+    PreventiveMaintenance.find({ equipment_id: targetEquipId })
+      .populate('checked_by', 'code full_name email')
+      .sort({ check_date: -1 }),
+    (async () => {
+      try {
+        if (canCallModel(Disposal, 'find')) {
+          return await Disposal.find({ equipment_id: targetEquipId })
+            .populate('proposed_by', 'code full_name')
+            .populate('approved_by', 'code full_name')
+            .sort({ proposed_at: -1 });
+        }
+      } catch (_) {
+        // Fallback gracefully if Disposal is not mocked
+      }
+      return [];
+    })()
+  ]);
 
   // 5. Financial straight-line depreciation schedule
   const originalPrice = equipment.price || 0;
@@ -841,34 +841,35 @@ export const getEquipmentLifecycle = asyncHandler(async (req, res) => {
     });
   }
 
-  const movements = await EquipmentMovement.find({ equipment_id: id })
-    .populate('from_room_id', 'code name building floor')
-    .populate('to_room_id', 'code name building floor')
-    .populate('ordered_by', 'code full_name')
-    .populate('performed_by', 'code full_name')
-    .sort({ created_at: -1 });
-
-  const repairs = await Repair.find({ equipment_id: id })
-    .populate('reported_by', 'code full_name')
-    .populate('assigned_to', 'code full_name')
-    .populate('repair_unit_id', 'code name')
-    .sort({ reported_at: -1 });
-
-  const maintenance = await PreventiveMaintenance.find({ equipment_id: id })
-    .populate('checked_by', 'code full_name')
-    .sort({ check_date: -1 });
-
-  let disposals = [];
-  try {
-    if (canCallModel(Disposal, 'find')) {
-      disposals = await Disposal.find({ equipment_id: id })
-        .populate('proposed_by', 'code full_name')
-        .populate('approved_by', 'code full_name')
-        .sort({ proposed_at: -1 });
-    }
-  } catch (_) {
-    disposals = [];
-  }
+  const [movements, repairs, maintenance, disposals] = await Promise.all([
+    EquipmentMovement.find({ equipment_id: id })
+      .populate('from_room_id', 'code name building floor')
+      .populate('to_room_id', 'code name building floor')
+      .populate('ordered_by', 'code full_name')
+      .populate('performed_by', 'code full_name')
+      .sort({ created_at: -1 }),
+    Repair.find({ equipment_id: id })
+      .populate('reported_by', 'code full_name')
+      .populate('assigned_to', 'code full_name')
+      .populate('repair_unit_id', 'code name')
+      .sort({ reported_at: -1 }),
+    PreventiveMaintenance.find({ equipment_id: id })
+      .populate('checked_by', 'code full_name')
+      .sort({ check_date: -1 }),
+    (async () => {
+      try {
+        if (canCallModel(Disposal, 'find')) {
+          return await Disposal.find({ equipment_id: id })
+            .populate('proposed_by', 'code full_name')
+            .populate('approved_by', 'code full_name')
+            .sort({ proposed_at: -1 });
+        }
+      } catch (_) {
+        // Fallback gracefully if Disposal is not mocked
+      }
+      return [];
+    })()
+  ]);
 
   const lifecycle = buildLifecycleTimeline(equipment, movements, repairs, maintenance, disposals);
 

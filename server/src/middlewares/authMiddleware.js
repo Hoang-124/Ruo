@@ -142,5 +142,12 @@ export const requirePermission = (permissionCode, ...fallbackRoles) => {
   };
 };
 
+export const optionalProtect = async (req, res, next) => {
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    return protect(req, res, next);
+  }
+  return next();
+};
+
 export const authorize = requireRole;
 export default protect;
