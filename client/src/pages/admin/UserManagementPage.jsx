@@ -61,12 +61,20 @@ export const UserManagementPage = () => {
 
   // UC-10.2: Realtime tab counts
   const [statusCounts, setStatusCounts] = useState({ all: 0, pending: 0, active: 0, locked: 0 });
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchUsers = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const params = {};
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       if (roleFilter !== 'ALL') params.role = roleFilter;
       if (statusTab !== 'ALL') params.status = statusTab;
 
@@ -78,16 +86,16 @@ export const UserManagementPage = () => {
         }
       }
     } catch (err) {
-      toast.error('Không thể tải danh sách người dùng: ' + err.message);
+      if (!silent) toast.error('Không thể tải danh sách người dùng: ' + err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  }, [search, roleFilter, statusTab, toast]);
+  }, [debouncedSearch, roleFilter, statusTab, toast]);
 
   useEffect(() => {
-    fetchUsers();
-    // Realtime polling counts every 30s
-    const timer = setInterval(fetchUsers, 30000);
+    fetchUsers({ silent: false });
+    // Realtime polling counts every 30s (silent refresh so table does not flicker)
+    const timer = setInterval(() => fetchUsers({ silent: true }), 30000);
     return () => clearInterval(timer);
   }, [fetchUsers]);
 

@@ -91,16 +91,18 @@ export const createDisposalProposal = async (req, res) => {
     });
 
     // Notify Admins
-    const admins = await User.find({ role: USER_ROLES.ADMIN, status: USER_STATUSES.ACTIVE });
-    for (const adm of admins) {
-      await Notification.create({
-        user_id: adm._id,
-        type: 'disposal_request',
-        title: 'Hồ sơ đề xuất thanh lý tài sản',
-        message: `Facility Manager ${req.user.full_name} đề xuất thanh lý thiết bị ${equipment.code}.`,
-        reference_type: 'disposal',
-        reference_id: proposal._id
-      });
+    const admins = await User.find({ role: USER_ROLES.ADMIN, status: USER_STATUSES.ACTIVE }).select('_id');
+    if (admins.length > 0) {
+      await Notification.insertMany(
+        admins.map((adm) => ({
+          user_id: adm._id,
+          type: 'disposal_request',
+          title: 'Hồ sơ đề xuất thanh lý tài sản',
+          message: `${req.user.full_name} đề xuất thanh lý thiết bị ${equipment.code}.`,
+          reference_type: 'disposal',
+          reference_id: proposal._id
+        }))
+      );
     }
 
     res.status(201).json({

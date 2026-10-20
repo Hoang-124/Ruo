@@ -312,7 +312,7 @@ export const RBACMatrixPage = () => {
       });
       return next;
     });
-    toast.info(`Đã ${enable ? 'bật' : 'tắt'} toàn bộ quyền của nhóm cho vai trò này.`);
+    toast.info(`Đã ${enable ? 'bật' : 'tắt'} toàn bộ ${modPermissions.length} quyền của phân hệ cho vai trò này (Live Policy).`);
   };
 
   // Compute live diff between current matrixState and savedMatrixState
@@ -396,6 +396,12 @@ export const RBACMatrixPage = () => {
     const exportData = {
       system: 'Ruo University Equipment Management System (UEMS)',
       useCase: 'UC-12.1: Dynamic RBAC Matrix',
+      canonicalRolesCount: 4,
+      sodStatus: activeSodViolations.length === 0 ? 'COMPLIANT' : 'VIOLATIONS_DETECTED',
+      sodViolationsCount: activeSodViolations.length,
+      equipmentCreateAuthorizedRoles: canonicalRoles
+        .filter(r => matrixState[`${r.id}:equipment:create`])
+        .map(r => ({ id: r.id, name: r.name })),
       exportedAt: new Date().toISOString(),
       roles: canonicalRoles.map(r => {
         const perms = [];
@@ -409,6 +415,7 @@ export const RBACMatrixPage = () => {
         return {
           role: r.id,
           title: r.name,
+          canCreateEquipment: Boolean(matrixState[`${r.id}:equipment:create`]),
           activeCount: perms.length,
           permissions: perms
         };
@@ -425,7 +432,9 @@ export const RBACMatrixPage = () => {
       URL.revokeObjectURL(url);
       toast.success('Đã xuất ma trận phân quyền dạng JSON.');
     } else {
-      let csv = 'Module,Mã Quyền,Nội Dung Nghiệp Vụ,Giảng Viên,Kỹ Thuật Viên,Quản Lý CSVC,Quản Trị BGH\n';
+      let csv = '# RUO UFMS - MA TRẬN PHÂN QUYỀN RBAC (UC-12.1)\n';
+      csv += `# Xuất lúc: ${new Date().toLocaleString('vi-VN')} | Chuẩn SoD: ${activeSodViolations.length === 0 ? 'TUÂN THỦ 100%' : 'CẢNH BÁO XUNG ĐỘT'}\n`;
+      csv += 'Module,Mã Quyền,Nội Dung Nghiệp Vụ,Giảng Viên,Kỹ Thuật Viên,Quản Lý CSVC,Quản Trị BGH\n';
       allPermissionModules.forEach(mod => {
         mod.permissions.forEach(p => {
           const l = matrixState[`lecturer:${p.code}`] ? 'CÓ' : 'KHÔNG';
@@ -678,6 +687,21 @@ export const RBACMatrixPage = () => {
               </div>
               <div style={{ width: '100%', height: '8px', background: 'var(--surface-3)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
                 <div className="ruo-progress-bar-animated" style={{ width: `${percentage}%`, height: '100%', background: r.solidBg, borderRadius: '4px', transition: 'width 0.35s cubic-bezier(0.16, 1, 0.3, 1)' }} />
+              </div>
+
+              {/* Dynamic RBAC Collection Guard: POST /api/equipments */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed var(--border-default)' }}>
+                <span style={{ color: 'var(--ink-muted)' }}>POST /api/equipments:</span>
+                <span style={{
+                  fontWeight: 700,
+                  fontSize: '10.5px',
+                  padding: '1px 7px',
+                  borderRadius: '4px',
+                  background: matrixState[`${r.id}:equipment:create`] ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.12)',
+                  color: matrixState[`${r.id}:equipment:create`] ? '#10B981' : 'var(--ink-muted)'
+                }}>
+                  {matrixState[`${r.id}:equipment:create`] ? 'Được Phép Tạo' : 'Bị Chặn (403)'}
+                </span>
               </div>
             </div>
           );

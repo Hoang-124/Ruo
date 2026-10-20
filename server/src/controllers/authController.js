@@ -195,7 +195,8 @@ export const login = async (req, res) => {
         avatar: user.avatar || '',
         status: user.status,
         force_change_pw: user.force_change_pw,
-        reputeScore: 100
+        repute_score: user.repute_score !== undefined ? user.repute_score : 100,
+        reputeScore: user.repute_score !== undefined ? user.repute_score : 100
       }
     });
   } catch (error) {
