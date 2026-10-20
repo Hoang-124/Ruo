@@ -145,6 +145,9 @@ export const RoomDetailModal = ({ roomCode, onClose, onEdit }) => {
             </div>
           ) : (
             <>
+              {['maintenance', 'movements'].includes(tab) && detail.historyLimit && (
+                <p style={{ color: 'var(--ink-muted)', fontSize: '12px' }}>Hiển thị tối đa {detail.historyLimit} bản ghi gần nhất.</p>
+              )}
               {tab === 'overview' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
