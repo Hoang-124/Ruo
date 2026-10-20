@@ -264,7 +264,8 @@ export const updateRoomStatus = async (req, res) => {
     }
 
     // Equipment is only needed for the INACTIVE guard, so skip the query for other targets.
-    const rawEquipments = req.body?.status === ROOM_STATUSES.INACTIVE
+    const targetStatus = typeof req.body?.status === 'string' ? req.body.status.trim() : '';
+    const rawEquipments = targetStatus === ROOM_STATUSES.INACTIVE
       ? await Equipment.find({ room_id: room._id }).select('code name status')
       : [];
     const equipments = await attachPendingMovements(rawEquipments);
