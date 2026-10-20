@@ -75,7 +75,7 @@ app.use('/api/master-data', masterDataRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-// Start Server with proper async DB initialization
+// Start Server with proper async DB initialization & graceful shutdown
 const startServer = async () => {
   try {
     await connectDB();
@@ -83,6 +83,30 @@ const startServer = async () => {
       console.log(`[Ruo UEMS Server] Running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
       console.log(`[Ruo UEMS Server] Healthcheck: http://localhost:${PORT}/api/health`);
     });
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`[Ruo UEMS Server] Port ${PORT} is already in use. Please free port ${PORT} or stop the other server instance.`);
+      } else {
+        console.error('[Ruo UEMS Server] HTTP server error:', err.message);
+      }
+      process.exit(1);
+    });
+
+    const shutdownGracefully = (signal) => {
+      server.close(() => {
+        if (signal === 'SIGUSR2') {
+          process.kill(process.pid, 'SIGUSR2');
+        } else {
+          process.exit(0);
+        }
+      });
+    };
+
+    process.once('SIGINT', () => shutdownGracefully('SIGINT'));
+    process.once('SIGTERM', () => shutdownGracefully('SIGTERM'));
+    process.once('SIGUSR2', () => shutdownGracefully('SIGUSR2'));
+
     return server;
   } catch (error) {
     console.error('[Ruo UEMS Server] Fatal startup failure:', error.message);
