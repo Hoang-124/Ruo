@@ -14,17 +14,27 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe('Dashboard analytics', () => {
-  it('renders aggregate KPI data', async () => {
+  it('renders aggregate KPI, cost data and explicit unknown MTBF', async () => {
     expect(typeof module.DashboardAnalytics).toBe('function');
     render(<module.DashboardAnalytics refreshKey={0} />);
     expect(await screen.findByText('260')).toBeTruthy();
     expect(await screen.findByText('75%')).toBeTruthy();
+    expect(await screen.findByText('Chưa có sự cố')).toBeTruthy();
+    expect(screen.getByRole('img', { name: /chi phí/i })).toBeTruthy();
   });
-  it('retries a failed KPI request', async () => {
+  it('requests quarterly data after switching the period', async () => {
+    expect(typeof module.DashboardAnalytics).toBe('function');
+    render(<module.DashboardAnalytics refreshKey={0} />);
+    await screen.findByText('260');
+    fireEvent.change(screen.getByLabelText('Kỳ báo cáo'), { target: { value: 'quarter' } });
+    await waitFor(() => expect(reportApi.getRepairCosts).toHaveBeenLastCalledWith(expect.objectContaining({ period: 'quarter' })));
+  });
+  it('shows a retryable KPI error without hiding successfully loaded reports', async () => {
     expect(typeof module.DashboardAnalytics).toBe('function');
     reportApi.getDashboard.mockRejectedValueOnce(new Error('Mất kết nối KPI'));
     render(<module.DashboardAnalytics refreshKey={0} />);
     expect(await screen.findByText('Mất kết nối KPI')).toBeTruthy();
+    expect(await screen.findByText('Chưa có sự cố')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Thử lại chỉ số tổng quan' }));
     expect(await screen.findByText('260')).toBeTruthy();
   });

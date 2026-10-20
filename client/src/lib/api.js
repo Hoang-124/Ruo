@@ -307,8 +307,8 @@ export const roleApi = {
 
 export const reportApi = {
   getDashboard: () => api.get('/dashboard/kpi'),
-  getEquipmentHealth: () => api.get('/reports/equipment-health'),
-  getRepairCosts: () => api.get('/reports/repair-costs'),
+  getEquipmentHealth: (params) => api.get('/dashboard/health-score', params),
+  getRepairCosts: (params) => api.get('/dashboard/repair-cost', params),
   exportCsv: (type) => `${API_BASE}/reports/export?type=${type}`
 };
 
