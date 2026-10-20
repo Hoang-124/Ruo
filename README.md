@@ -321,10 +321,12 @@ Hệ thống được chuẩn hóa chính xác **20 Collections** chia thành 6 
 cd d:/Ruo/server
 npm install
 cp .env.example .env
-npm run seed        # Nạp 4 tài khoản chuẩn và dữ liệu kho KHO-01
+npm run seed        # Chỉ dùng DB demo: xóa dữ liệu cũ và nạp tài khoản/dữ liệu mẫu
 npm run seed:transfer-demo # Bổ sung dữ liệu demo điều chuyển, không xóa dữ liệu hiện có
 npm run dev         # Khởi động máy chủ backend tại Port 5000
 ```
+
+Khởi động backend không tự tạo/reset tài khoản demo và không xóa dữ liệu user/audit cũ. Chỉ chạy `seed` khi chủ động khởi tạo một database demo có thể bỏ; dữ liệu legacy cần migration riêng có sao lưu.
 
 > Kiểm tra trạng thái máy chủ: `http://localhost:5000/api/health`
 
