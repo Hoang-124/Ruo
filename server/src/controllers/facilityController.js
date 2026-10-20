@@ -15,6 +15,7 @@ import {
 import { HISTORY_LIMIT, summarizeRoomEquipment } from '../services/roomDetail.js';
 import { evaluateDeactivation, ROOM_STATUS_LABELS, evaluateStatusChange, validateDeactivationPayload } from '../services/roomStatus.js';
 import { parseCadCanvasQuery, summarizeCadRoom } from '../services/cadCanvas.js';
+import { OPEN_REPAIR_STATUSES } from '../services/dashboardAnalytics.js';
 
 const attachPendingMovements = async (equipments = []) => {
   if (!equipments.length) return [];
@@ -366,6 +367,9 @@ export const getRoomByCode = async (req, res) => {
       .populate('supplier_id', 'code name')
       .sort({ code: 1 });
     const equipmentIds = equipments.map((eq) => eq._id);
+    const openRepairs = equipmentIds.length ? await Repair.countDocuments({
+      equipment_id: { $in: equipmentIds }, status: { $in: OPEN_REPAIR_STATUSES }
+    }) : 0;
 
     // Maintenance history: repair tickets of the equipment currently in the room
     const maintenanceHistory = equipmentIds.length === 0 ? [] : await Repair.find({ equipment_id: { $in: equipmentIds } })
@@ -391,7 +395,8 @@ export const getRoomByCode = async (req, res) => {
       equipments,
       maintenanceHistory,
       movementHistory,
-      summary: summarizeRoomEquipment(equipments, maintenanceHistory)
+      historyLimit: HISTORY_LIMIT,
+      summary: { ...summarizeRoomEquipment(equipments, maintenanceHistory), openRepairs }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi khi tải thông tin chi tiết phòng.' });
