@@ -240,6 +240,7 @@
 |:---|:---|:---|:---|
 | id | int | PK |  |
 | equipment_id | int | FK → `equipment` |  |
+| room_id | int | FK → `rooms` | Phòng tại thời điểm tiếp nhận sự cố |
 | type | movement_type | - |  |
 | from_room_id | int | FK → `rooms` |  |
 | to_room_id | int | FK → `rooms` |  |
@@ -346,16 +347,39 @@
 
 ## 11. PREVENTIVE MAINTENANCE
 
+### maintenance_plans
+
+| Field | Type | Khoá | Ghi chú |
+|:---|:---|:---|:---|
+| id | ObjectId | PK |  |
+| title | varchar | - | Tên kế hoạch |
+| building | varchar | - | Mã tòa nhà |
+| floor | int | - | Tầng áp dụng |
+| room_ids | ObjectId[] | FK → `rooms` | Rỗng trong yêu cầu nghĩa là toàn bộ tầng |
+| category_ids | ObjectId[] | FK → `equipment_categories` | Rỗng nghĩa là mọi loại thiết bị |
+| frequency | varchar | - | `monthly` · `quarterly` |
+| start_date | timestamp | - | Ngày bắt đầu chu kỳ |
+| checklist | varchar[] | - | Các mục kiểm tra áp dụng cho từng thiết bị |
+| created_by | ObjectId | FK → `users` | Facility Manager lập kế hoạch |
+| is_active | boolean | - |  |
+| created_at | timestamp | - |  |
+| updated_at | timestamp | - |  |
+
 ### preventive_maintenance
 
 | Field | Type | Khoá | Ghi chú |
 |:---|:---|:---|:---|
-| id | int | PK |  |
-| equipment_id | int | FK → `equipment` |  |
-| checked_by | int | FK → `users` |  |
+| id | ObjectId | PK |  |
+| plan_id | ObjectId | FK → `maintenance_plans` | Kế hoạch định kỳ; rỗng cho dữ liệu cũ |
+| room_id | ObjectId | FK → `rooms` | Phòng tại thời điểm kiểm tra |
+| equipment_id | ObjectId | FK → `equipment` |  |
+| cycle_start | timestamp | - | Mỗi thiết bị chỉ ghi một lần trong một chu kỳ |
+| checked_by | ObjectId | FK → `users` |  |
 | check_date | timestamp | - |  |
 | status | varchar | - | `passed` · `failed` |
 | notes | varchar | - |  |
+| checklist_results | json | - | Kết quả từng mục và ghi chú lỗi |
+| repair_id | ObjectId | FK → `repairs` | Phiếu sửa chữa tự tạo khi có mục không đạt |
 | created_at | timestamp | - |  |
 
 ---

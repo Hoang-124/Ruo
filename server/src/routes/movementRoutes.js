@@ -8,7 +8,7 @@ import {
   rejectTransfer,
   confirmMovement
 } from '../controllers/movementController.js';
-import { protect, requirePermission, hasGrantedPermission } from '../middlewares/authMiddleware.js';
+import { protect, requirePermission, requireRole, hasGrantedPermission } from '../middlewares/authMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
@@ -16,6 +16,12 @@ const router = express.Router();
 router.use(protect);
 
 const requireTransferRequestPermission = (req, res, next) => {
+  if (req.user.role === USER_ROLES.ADMIN) {
+    return res.status(403).json({
+      success: false,
+      message: 'Admin chỉ được xem lịch sử điều chuyển; không thể tạo hoặc xử lý phiếu.'
+    });
+  }
   if (
     Array.isArray(req.userPermissions) &&
     (hasGrantedPermission(req.userPermissions, 'movement:order') ||
@@ -31,6 +37,16 @@ const requireTransferRequestPermission = (req, res, next) => {
   )(req, res, next);
 };
 
+const blockAdminTransferMutation = (req, res, next) => {
+  if (req.user.role === USER_ROLES.ADMIN) {
+    return res.status(403).json({
+      success: false,
+      message: 'Admin chỉ được xem lịch sử điều chuyển; không thể xử lý phiếu.'
+    });
+  }
+  next();
+};
+
 // Transfer history is available to all authenticated operational roles (UC-4.5)
 router.get(
   '/',
@@ -44,30 +60,34 @@ router.get(
 );
 router.get(
   '/pending',
-  requirePermission('movement:order', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN),
+  requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN),
   getPendingTransfers
 );
 router.get(
   '/pending-count',
+  requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN),
   getPendingTransfers
 );
 
-// Technicians, facility managers, and admins can request transfers (UC-4.1, UC-2.5/2.6)
+// Technicians and facility managers can request transfers; Admin is read-only.
 router.post('/', requireTransferRequestPermission, createMovementOrder);
 
 // Approve or reject transfer requests (UC-4.2, UC-4.3)
 router.put(
   '/:id/approve',
+  blockAdminTransferMutation,
   requirePermission('movement:order', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN),
   approveTransfer
 );
 router.put(
   '/:id/reject',
+  blockAdminTransferMutation,
   requirePermission('movement:order', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN),
   rejectTransfer
 );
 router.put(
   '/:id/cancel',
+  blockAdminTransferMutation,
   requirePermission('movement:order', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN),
   rejectTransfer
 );
@@ -75,11 +95,13 @@ router.put(
 // Confirm equipment movement execution (Technician only - UC-4.4)
 router.put(
   '/:id/complete',
+  blockAdminTransferMutation,
   requirePermission('movement:confirm', USER_ROLES.TECHNICIAN),
   confirmMovement
 );
 router.put(
   '/:id/confirm',
+  blockAdminTransferMutation,
   requirePermission('movement:confirm', USER_ROLES.TECHNICIAN),
   confirmMovement
 );

@@ -286,10 +286,11 @@ Hệ thống được chuẩn hóa chính xác **20 Collections** chia thành 6 
 - `PUT /api/parts-requests/:id/approve` — Duyệt xuất kho
 
 ### Phân Hệ 5c: Bảo Trì Dự Phòng (`/api/maintenance`)
-- `GET /api/maintenance/plans` — Lịch bảo dưỡng
-- `POST /api/maintenance/plans` — Tạo kế hoạch
-- `PUT /api/maintenance/plans/:id/log` — Log kết quả checklist
-- `GET /api/facilities/rooms/:code/maint-history` — Lịch sử bảo trì phòng
+- `GET /api/maintenance/plans` — Kỹ thuật viên/Quản lý CSVC xem lịch và thiết bị trong phạm vi kế hoạch
+- `POST /api/maintenance/plans` — Quản lý CSVC tạo lịch theo tòa, tầng, phòng, chu kỳ tháng/quý và checklist
+- `PUT /api/maintenance/plans/:id/log` — Kỹ thuật viên gửi kết quả checklist; mục không đạt tự tạo phiếu sửa chữa và cập nhật thiết bị hỏng
+- `GET /api/facilities/rooms/:code/maint-history` — Lịch sử kiểm tra bảo dưỡng và phiếu sửa chữa của phòng (mọi vai trò đã đăng nhập)
+- Giao diện: vào **Bảo Dưỡng Định Kỳ** (`#/maintenance`) bằng vai trò **Quản lý CSVC** để lập lịch/thời khóa biểu hoặc **Kỹ thuật viên** để xem lịch và ghi checklist; vào **Danh Mục Phòng Học → Chi tiết phòng → Bảo Trì** để tra cứu lịch sử của phòng.
 
 ### Phân Hệ 6: Báo Cáo & Sổ Cái Kiểm Toán (`/api/reports`, `/api/audit`, `/api/notifications`)
 - `GET /api/reports/by-room` — Thống kê thiết bị phân bổ theo phòng
