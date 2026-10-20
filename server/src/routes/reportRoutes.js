@@ -9,7 +9,7 @@ import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER));
 
 // View operation dashboard (Facility Manager & Admin)
 router.get('/dashboard', getDashboardMetrics);
