@@ -76,9 +76,7 @@ export const useRouter = () => {
     if (base === 'report-issue' || base === 'report_issue') {
       return { tab: 'report_issue', params: {} };
     }
-    if (base === 'maintenance') {
-      return { tab: 'maintenance', params: {} };
-    }
+    if (base === 'maintenance') return { tab: 'maintenance', params: {} };
     if (base === 'inventory') {
       return { tab: 'inventory', params: {} };
     }

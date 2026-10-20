@@ -8,6 +8,7 @@ import { securityHeaders } from './middlewares/securityMiddleware.js';
 // Route Imports
 import authRoutes from './routes/authRoutes.js';
 import facilityRoutes from './routes/facilityRoutes.js';
+import maintenanceRoutes from './routes/maintenanceRoutes.js';
 import equipmentRoutes from './routes/equipmentRoutes.js';
 import repairRoutes from './routes/repairRoutes.js';
 import movementRoutes from './routes/movementRoutes.js';
@@ -50,6 +51,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', authRoutes); // Supports GET /api/admin/users and POST /api/admin/users
 app.use('/api/facilities', facilityRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/equipments', equipmentRoutes);
 app.use('/api/repairs', repairRoutes);
 app.use('/api/movements', movementRoutes);

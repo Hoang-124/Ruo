@@ -22,6 +22,12 @@ const repairSchema = new mongoose.Schema({
     required: true, 
     index: true 
   },
+  room_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Room',
+    default: null,
+    index: true
+  },
   source: {
     type: String,
     enum: Object.values(REPAIR_SOURCES),

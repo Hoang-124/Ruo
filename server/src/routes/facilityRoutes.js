@@ -11,6 +11,7 @@ import {
   updateRoomStatus,
   getCadCanvasRooms, 
   getRoomByCode,
+  getRoomMaintenanceHistory,
   getRoomShortage,
   getWarehouseStock
 } from '../controllers/facilityController.js';
@@ -28,6 +29,7 @@ router.get('/cad-canvas', protect, getCadCanvasRooms);
 router.get('/warehouse/stock', protect, getWarehouseStock);
 
 router.get('/rooms', protect, getAllRooms);
+router.get('/rooms/:code/maint-history', protect, getRoomMaintenanceHistory);
 router.post('/rooms', protect, requireRole(USER_ROLES.ADMIN), createRoom);
 router.put('/rooms/:id', protect, requireRole(USER_ROLES.ADMIN), updateRoom);
 router.put('/rooms/:id/deactivate', protect, requireRole(USER_ROLES.ADMIN), deactivateRoom);
