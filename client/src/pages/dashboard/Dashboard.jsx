@@ -14,7 +14,7 @@ import { Button, Card, KPI, StatusBadge, EmptyState } from '../../components/ui/
 export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForReport }) => {
   const { currentUser, currentRoleKey } = useAuth();
 
-  const role = currentUser?.role || currentRoleKey || 'admin';
+  const role = currentUser?.role || currentRoleKey;
   const isAdmin = role === 'admin';
   const isFM = role === 'facility_manager';
   const isTech = role === 'technician';
@@ -81,7 +81,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
     return CAMPUS_FLOORS[1]?.topRooms?.[0] || null;
   });
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setCadRefreshKey((key) => key + 1);
     try {
@@ -105,8 +105,8 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
             r.reported_by?.code === currentUser?.code ||
             r.reported_by?.email === currentUser?.email
           );
-          // Show personal tickets, or if brand new show recent room tickets
-          const displayTix = myTix.length > 0 ? myTix : allRepairs.slice(0, 5);
+          // An empty personal history must not fall back to other users' tickets.
+          const displayTix = myTix;
           setLecturerTickets(displayTix);
 
           const repairing = myTix.filter(r => ['reported', 'assigned', 'in_progress'].includes(r.status)).length;
@@ -142,8 +142,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
 
           const assigned = allRepairs.filter(r =>
             r.assigned_to?._id === currentUser?._id ||
-            r.assigned_to?.code === currentUser?.code ||
-            ['assigned', 'in_progress'].includes(r.status)
+            r.assigned_to?.code === currentUser?.code
           );
 
           setTechTasks(assigned);
@@ -221,7 +220,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
     } finally {
       setLoading(false);
     }
-  };
+  }, [isLecturer, isTech, isFM, isAdmin, currentUser?._id, currentUser?.code, currentUser?.email]);
 
   const handleQuickRate = async (ticketId) => {
     if (!ticketId) return;
@@ -242,7 +241,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
 
   useEffect(() => {
     fetchDashboardData();
-  }, [currentRoleKey]);
+  }, [fetchDashboardData]);
 
   // Reload the pods whenever the floor changes or the dashboard is refreshed.
   useEffect(() => {
