@@ -14,13 +14,13 @@ import {
   updateWarrantyInfo,
   deleteEquipment
 } from '../controllers/equipmentController.js';
-import { protect, requireRole, requirePermission } from '../middlewares/authMiddleware.js';
+import { protect, optionalProtect, requireRole, requirePermission } from '../middlewares/authMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
 
 // Directory, QR lookup & Lifecycle (UC-3.2, UC-3.3, UC-3.5, UC-6.2, QR Lookup)
-router.get('/', getEquipments);
+router.get('/', optionalProtect, getEquipments);
 router.get('/categories', getEquipmentCategories);
 router.get('/warranty-expiring', getWarrantyExpiringEquipments);
 router.get('/qr/:qrCode', getEquipmentByQR);

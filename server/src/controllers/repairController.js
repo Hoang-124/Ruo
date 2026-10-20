@@ -104,20 +104,20 @@ export const getRepairById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa.' });
     }
 
-    const logs = await RepairLog.find({ repair_id: repair._id })
-      .populate('performed_by', 'full_name code email role')
-      .sort({ created_at: 1 });
-
-    const partsRequests = await PartsRequest.find({ repair_id: repair._id })
-      .populate('requested_by', 'full_name code')
-      .populate('approved_by', 'full_name code')
-      .populate('items.part_id', 'code name unit price');
-
-    const movements = await EquipmentMovement.find({ repair_id: repair._id })
-      .populate('equipment_id', 'code name')
-      .populate('from_room_id', 'code name')
-      .populate('to_room_id', 'code name')
-      .populate('performed_by', 'full_name code');
+    const [logs, partsRequests, movements] = await Promise.all([
+      RepairLog.find({ repair_id: repair._id })
+        .populate('performed_by', 'full_name code email role')
+        .sort({ created_at: 1 }),
+      PartsRequest.find({ repair_id: repair._id })
+        .populate('requested_by', 'full_name code')
+        .populate('approved_by', 'full_name code')
+        .populate('items.part_id', 'code name unit price'),
+      EquipmentMovement.find({ repair_id: repair._id })
+        .populate('equipment_id', 'code name')
+        .populate('from_room_id', 'code name')
+        .populate('to_room_id', 'code name')
+        .populate('performed_by', 'full_name code')
+    ]);
 
     res.json({ 
       success: true, 
@@ -200,16 +200,18 @@ export const createRepairReport = async (req, res) => {
     });
 
     // Notify Facility Managers
-    const managers = await User.find({ role: USER_ROLES.FACILITY_MANAGER, status: USER_STATUSES.ACTIVE });
-    for (const mgr of managers) {
-      await Notification.create({
-        user_id: mgr._id,
-        type: 'incident_reported',
-        title: 'Sự cố thiết bị mới cần phân công',
-        message: `Thiết bị ${equipment.code} - ${equipment.name} được báo hỏng mức độ [${finalLevel.toUpperCase()}].`,
-        reference_type: 'repair',
-        reference_id: repair._id
-      });
+    const managers = await User.find({ role: USER_ROLES.FACILITY_MANAGER, status: USER_STATUSES.ACTIVE }).select('_id');
+    if (managers.length > 0) {
+      await Notification.insertMany(
+        managers.map((mgr) => ({
+          user_id: mgr._id,
+          type: 'incident_reported',
+          title: 'Sự cố thiết bị mới cần phân công',
+          message: `Thiết bị ${equipment.code} - ${equipment.name} được báo hỏng mức độ [${finalLevel.toUpperCase()}].`,
+          reference_type: 'repair',
+          reference_id: repair._id
+        }))
+      );
     }
 
     res.status(201).json({

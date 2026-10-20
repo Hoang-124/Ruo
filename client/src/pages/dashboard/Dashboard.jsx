@@ -81,23 +81,26 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
     return CAMPUS_FLOORS[1]?.topRooms?.[0] || null;
   });
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (isInitialMount = false) => {
     setLoading(true);
-    setCadRefreshKey((key) => key + 1);
+    if (!isInitialMount) {
+      setCadRefreshKey((key) => key + 1);
+    }
     try {
-      // 1. Fetch equipments for architectural floor plan synchronization
-      try {
-        const eqRes = await equipmentApi.list({ limit: 100 });
-        const list = eqRes.items || eqRes.equipments || [];
-        setEquipmentsList(list);
-      } catch (e) {
+      const eqPromise = equipmentApi.list({ limit: 100 }).catch((e) => {
         console.warn('Equipments fetch error:', e.message);
-      }
+        return null;
+      });
 
-      // 2. Role-Isolated Operational Data Fetching (Zero leakage of Admin data to Lecturer)
+      // Role-Isolated Operational Data Fetching in parallel with equipment list
       if (isLecturer) {
         try {
-          const repRes = await repairApi.list();
+          const [eqRes, repRes] = await Promise.all([
+            eqPromise,
+            repairApi.list()
+          ]);
+          const eqList = eqRes?.items || eqRes?.equipments || [];
+          setEquipmentsList(eqList);
           const allRepairs = repRes.repairs || repRes.data || [];
           
           const myTix = allRepairs.filter(r => 
@@ -130,10 +133,13 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
         }
       } else if (isTech) {
         try {
-          const [repRes, movRes] = await Promise.all([
+          const [eqRes, repRes, movRes] = await Promise.all([
+            eqPromise,
             repairApi.list(),
             movementApi.list()
           ]);
+          const eqList = eqRes?.items || eqRes?.equipments || [];
+          setEquipmentsList(eqList);
           const allRepairs = repRes.repairs || repRes.data || [];
           const allMovs = (movRes.movements || movRes.data || []).filter(movement =>
             ['approved', 'pending'].includes(movement.status) &&
@@ -160,12 +166,13 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
       } else if (isFM) {
         try {
           const [eqRes, repRes, movRes, dispRes] = await Promise.all([
-            equipmentApi.list({ limit: 100 }),
+            eqPromise,
             repairApi.list(),
             movementApi.list(),
             disposalApi.list()
           ]);
-          const eqList = eqRes.items || eqRes.equipments || [];
+          const eqList = eqRes?.items || eqRes?.equipments || [];
+          setEquipmentsList(eqList);
           const allRepairs = repRes.repairs || repRes.data || [];
           const allMovs = movRes.movements || movRes.data || [];
           const allDisposals = dispRes.proposals || dispRes.data || [];
@@ -184,13 +191,14 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
       } else if (isAdmin) {
         try {
           const [eqRes, repRes, dispRes, audRes, chainRes] = await Promise.all([
-            equipmentApi.list({ limit: 100 }),
+            eqPromise,
             repairApi.list(),
             disposalApi.list(),
             auditApi.getLogs({ limit: 6 }),
             auditApi.verifyChain()
           ]);
-          const eqList = eqRes.items || eqRes.equipments || [];
+          const eqList = eqRes?.items || eqRes?.equipments || [];
+          setEquipmentsList(eqList);
           const allRepairs = repRes.repairs || repRes.data || [];
           const allDisposals = dispRes.proposals || dispRes.data || [];
 
@@ -241,7 +249,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(true);
   }, [currentRoleKey]);
 
   // Reload the pods whenever the floor changes or the dashboard is refreshed.
