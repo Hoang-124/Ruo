@@ -328,6 +328,8 @@ npm run dev         # Khởi động máy chủ backend tại Port 5000
 
 Khởi động backend không tự tạo/reset tài khoản demo và không xóa dữ liệu user/audit cũ. Chỉ chạy `seed` khi chủ động khởi tạo một database demo có thể bỏ; dữ liệu legacy cần migration riêng có sao lưu.
 
+Đối chiếu Room/CAD/Dashboard và kết quả kiểm thử: [Báo cáo task.text ngày 20/10/2026](docs/task-review-2026-10-20.md).
+
 > Kiểm tra trạng thái máy chủ: `http://localhost:5000/api/health`
 
 ---
