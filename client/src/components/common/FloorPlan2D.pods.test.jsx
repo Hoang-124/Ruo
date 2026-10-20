@@ -1,11 +1,12 @@
 import React from 'react';
-import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { render, fireEvent, cleanup } from '@testing-library/react';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import { FloorPlan2D } from './FloorPlan2D';
 import { buildRoomPodIndex } from './roomPod';
 import { CAMPUS_FLOORS } from '../../mock/campusBuildingData';
 
 const roomsOfFloor = (floor) => [...(CAMPUS_FLOORS[floor].topRooms || []), ...(CAMPUS_FLOORS[floor].bottomRooms || [])];
+afterEach(cleanup);
 
 const podsFor = (floor, overrides = {}) =>
   buildRoomPodIndex(
@@ -44,5 +45,18 @@ describe('<FloorPlan2D /> room pods (UC-2.7)', () => {
   it('draws no pods when no live data is supplied', () => {
     const { container } = render(<FloorPlan2D selectedFloor={2} />);
     expect(container.querySelectorAll('[data-testid^="room-pod-"]')).toHaveLength(0);
+  });
+
+  it('makes a newly created room selectable even when its geometry is not in the blueprint', () => {
+    const select = vi.fn();
+    const pods = buildRoomPodIndex([{ code: 'P101', name: 'Phòng mới', floor: 1, equipmentCount: 3, brokenCount: 1, status: 'available' }]);
+    const { getByRole } = render(<FloorPlan2D selectedFloor={1} roomPods={pods} onSelectRoom={select} />);
+    fireEvent.click(getByRole('button', { name: /P101.*3 thiết bị/ }));
+    expect(select).toHaveBeenCalledWith(expect.objectContaining({ code: 'P101', name: 'Phòng mới' }));
+  });
+
+  it('keeps room codes unique across architectural floors', () => {
+    const codes = [1, 2, 3, 4, 5].flatMap(floor => roomsOfFloor(floor).map(room => room.code));
+    expect(new Set(codes).size).toBe(codes.length);
   });
 });

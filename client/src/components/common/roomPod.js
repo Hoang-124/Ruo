@@ -10,6 +10,7 @@ const POD_CHAR_WIDTH = 5.9;
 const POD_CHIP_PADDING = 10;
 
 export const POD_STATUS_STYLES = {
+  unknown: { color: '#8A93A3', label: 'Chưa có dữ liệu' },
   available: { color: '#10B981', label: 'Sẵn sàng' },
   maintenance: { color: '#F59E0B', label: 'Đang bảo trì' },
   inactive: { color: '#8A93A3', label: 'Ngừng sử dụng' }
@@ -54,6 +55,7 @@ export const buildRoomPodIndex = (rooms = []) =>
       .map((room) => [
         room.code,
         {
+          ...room,
           code: room.code,
           status: room.status,
           effectiveStatus: room.effectiveStatus || room.status,
