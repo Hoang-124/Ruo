@@ -448,12 +448,14 @@ export const TechnicianTasksPage = () => {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
-                    Chi Phí Phát Sinh Ngoài Dự Kiến (VNĐ, nếu có)
+                    Chi phí sửa chữa (VNĐ, không gồm linh kiện đã xuất kho)
                   </label>
                   <input
                     type="number"
                     min="0"
                     step="10000"
+                    aria-label="Chi phí sửa chữa, không gồm linh kiện đã xuất kho"
+                    title="Không nhập lại chi phí linh kiện đã được duyệt xuất kho."
                     value={logData.cost}
                     onChange={(e) => setLogData({ ...logData, cost: e.target.value })}
                     className="ruo-portal-input"
