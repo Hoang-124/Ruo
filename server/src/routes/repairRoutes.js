@@ -2,6 +2,8 @@ import express from 'express';
 import {
   getRepairs,
   getOverdueRepairs,
+  getSlaComplianceStats,
+  checkAndNotifyOverdueRepairs,
   getRepairById,
   getEquipmentRepairHistory,
   createRepairReport,
@@ -17,9 +19,11 @@ import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
 
-// Read repairs & equipment repair history (UC-5.2, UC-5.8, UC-5.9)
+// Read repairs & SLA metrics (UC-5.2, UC-5.8, UC-5.9, UC-7.2)
 router.get('/', protect, getRepairs);
 router.get('/overdue', protect, getOverdueRepairs);
+router.get('/sla-stats', protect, getSlaComplianceStats);
+router.post('/sla/check-breaches', protect, checkAndNotifyOverdueRepairs);
 router.get('/equipment/:id', protect, getEquipmentRepairHistory);
 router.get('/:id', protect, getRepairById);
 
