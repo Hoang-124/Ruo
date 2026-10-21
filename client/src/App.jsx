@@ -141,11 +141,11 @@ const MainAppContent = () => {
           </div>
         );
 
-      // Room & Facility Directory (UC-2.1 .. UC-2.4)
+      // Room & Facility Directory
       case 'rooms':
         return renderSubPageWrapper(
           'Danh Mục Phòng Học Tòa A1',
-          'MODULE 02 • PHÒNG HỌC & CƠ SỞ VẬT CHẤT',
+          'HỆ THỐNG PHÒNG HỌC & CƠ SỞ VẬT CHẤT',
           <RoomListPage />
         );
 
@@ -168,7 +168,7 @@ const MainAppContent = () => {
       case 'report_issue':
         return renderSubPageWrapper(
           'Báo Hỏng Thiết Bị Thực Địa',
-          'MODULE 04 • BÁO HỎNG SỰ CỐ',
+          'BÁO HỎNG & TIẾP NHẬN SỰ CỐ',
           <ReportIssuePage
             onNavigateTab={(tab) => setActiveTab(tab)}
             preselectedEquipment={reportPrefill.equipment}
@@ -179,7 +179,7 @@ const MainAppContent = () => {
       case 'my_tickets':
         return renderSubPageWrapper(
           'Phiếu Sửa Chữa Của Tôi & Đánh Giá Dịch Vụ',
-          'MODULE 04 • THEO DÕI & ĐÁNH GIÁ',
+          'TIẾN ĐỘ SỬA CHỮA & ĐÁNH GIÁ DỊCH VỤ',
           <LecturerTicketsPage onNavigateTab={(tab) => setActiveTab(tab)} />
         );
 
@@ -187,35 +187,35 @@ const MainAppContent = () => {
       case 'assigned_tasks':
         return renderSubPageWrapper(
           'Nhiệm Vụ Sửa Chữa & Nhật Ký Khắc Phục',
-          'MODULE 04 • KỸ THUẬT VIÊN',
+          'NHIỆM VỤ SỬA CHỮA & TIẾP NHẬN SLA',
           <TechnicianTasksPage />
         );
 
       case 'spare_parts':
         return renderSubPageWrapper(
           'Kho Linh Kiện & Phiếu Yêu Cầu Thay Thế',
-          'MODULE 04 • LINH KIỆN VẬT TƯ',
+          'KHO LINH KIỆN & PHIẾU YÊU CẦU THAY THẾ',
           <SparePartsPage />
         );
 
       case 'movement_tasks':
         return renderSubPageWrapper(
           'Lệnh Di Chuyển & Thay Thế Thiết Bị Dự Phòng',
-          'MODULE 03 • ĐIỀU ĐỘNG THỰC ĐỊA',
+          'LỆNH DI CHUYỂN & THAY THẾ THỰC ĐỊA',
           <MovementTasksPage />
         );
 
       case 'transfer_history':
         return renderSubPageWrapper(
           'Lịch Sử Điều Chuyển Thiết Bị',
-          'MODULE 03 • TRA CỨU LỊCH SỬ',
+          'LỊCH SỬ ĐIỀU CHUYỂN THIẾT BỊ',
           <TransferHistoryPage />
         );
 
       case 'qr_scanner':
         return renderSubPageWrapper(
           'Quét Mã QR & Tra Cứu Thông Số Kỹ Thuật',
-          'MODULE 03 • TRA CỨU TẠI CHỖ',
+          'QUÉT MÃ QR & TRA CỨU TẠI CHỖ',
           <QRScannerPage />
         );
 
@@ -226,35 +226,35 @@ const MainAppContent = () => {
       case 'maintenance': // Legacy alias routed to repairs/kanban
         return renderSubPageWrapper(
           'Phiếu Sửa Chữa & Điều Phối Kỹ Thuật (Kanban SLA)',
-          'MODULE 04 • QUẢN LÝ SỰ CỐ',
+          'ĐIỀU PHỐI SỰ CỐ & SỬA CHỮA (KANBAN SLA)',
           <TicketKanbanPage />
         );
 
       case 'warehouse':
         return renderSubPageWrapper(
           'Kho Dự Phòng KHO-01 & Định Mức Phòng Học',
-          'MODULE 03 • KHO DỰ PHÒNG',
+          'KHO DỰ PHÒNG & ĐỊNH MỨC PHÒNG HỌC',
           <WarehouseStockPage />
         );
 
       case 'movements':
         return renderSubPageWrapper(
           'Điều Chuyển Trang Thiết Bị Giữa Các Phòng',
-          'MODULE 03 • ĐIỀU CHUYỂN TÀI SẢN',
+          'ĐIỀU CHUYỂN TRANG THIẾT BỊ GIỮA CÁC PHÒNG',
           <MovementsPage />
         );
 
       case 'equipments':
         return renderSubPageWrapper(
           'Kho Quản Lý Thiết Bị Trường & Tem Nhãn QR',
-          'MODULE 03 • DANH MỤC THIẾT BỊ',
+          'DANH MỤC THIẾT BỊ & HỒ SƠ TÀI SẢN',
           <EquipmentsPage />
         );
 
       case 'inventory':
         return renderSubPageWrapper(
           'Kiểm Kê CSVC & Đối Soát Mã QR Thực Địa',
-          'MODULE 05 • KIỂM KÊ TÀI SẢN',
+          'KIỂM KÊ TÀI SẢN & ĐỐI SOÁT THỰC ĐỊA',
           <InventoryPage />
         );
 
@@ -262,7 +262,7 @@ const MainAppContent = () => {
       case 'disposal_calc': // Legacy alias
         return renderSubPageWrapper(
           'Đề Xuất Thanh Lý Thiết Bị (Hao Mòn R ≥ 60%)',
-          'MODULE 03 • THANH LÝ TÀI SẢN',
+          'ĐỀ XUẤT & THẨM ĐỊNH THANH LÝ TÀI SẢN',
           <DisposalProposePage />
         );
 
@@ -270,21 +270,21 @@ const MainAppContent = () => {
       case 'users':
         return renderSubPageWrapper(
           'Quản Lý Người Dùng & Phân Bổ Vai Trò',
-          'MODULE 01 • QUẢN TRỊ HỆ THỐNG',
+          'QUẢN TRỊ TÀI KHOẢN & NGƯỜI DÙNG',
           <UserManagementPage />
         );
 
       case 'rbac':
         return renderSubPageWrapper(
           'Ma Trận Phân Quyền 4 Vai Trò (RBAC Dynamic)',
-          'MODULE 01 • PHÂN QUYỀN TRUY CẬP',
+          'MA TRẬN PHÂN QUYỀN TRUY CẬP (RBAC)',
           <RBACMatrixPage />
         );
 
       case 'master_data':
         return renderSubPageWrapper(
           'Danh Mục Dữ Liệu Nền (Loại TB, NCC, Đơn Vị SC, Phòng)',
-          'MODULE 02 • DỮ LIỆU DANH MỤC',
+          'DANH MỤC DỮ LIỆU NỀN TẢNG',
           <MasterDataPage />
         );
 
@@ -292,14 +292,14 @@ const MainAppContent = () => {
       case 'disposals': // Legacy alias for admin
         return renderSubPageWrapper(
           'Phê Duyệt Hồ Sơ Thanh Lý (Ban Giám Hiệu QĐ-TL)',
-          'MODULE 03 • QUYẾT ĐỊNH THANH LÝ',
+          'HỒ SƠ THANH LÝ TÀI SẢN',
           <DisposalApprovalPage />
         );
 
       case 'audit_log':
         return renderSubPageWrapper(
           'Sổ Cái Nhật Ký Kiểm Toán SHA-256 Bất Biến',
-          'MODULE 06 • BẢO MẬT & KIỂM TOÁN',
+          'BẢO MẬT & KIỂM TOÁN SHA-256',
           <AuditLogPage />
         );
 
