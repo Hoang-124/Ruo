@@ -7,7 +7,9 @@ import { movementApi, equipmentApi, masterDataApi, authApi } from '../../lib/api
 export const MovementsPage = () => {
   const { toast } = useToast();
   const { currentUser } = useAuth();
-  const roleBadge = currentUser?.role === 'admin' ? 'ADMIN' : 'FACILITY MANAGER';
+  const isAdmin = currentUser?.role === 'admin';
+  const canManageMovements = currentUser?.role === 'facility_manager';
+  const roleBadge = isAdmin ? 'ADMIN • CHỈ XEM' : 'FACILITY MANAGER';
   const [loading, setLoading] = useState(true);
   const [movements, setMovements] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
@@ -32,11 +34,8 @@ export const MovementsPage = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [movRes, eqRes, roomRes, techRes, pendingRes] = await Promise.all([
+      const [movRes, pendingRes] = await Promise.all([
         movementApi.list(),
-        equipmentApi.list({ limit: 100 }),
-        masterDataApi.getRooms({ limit: 100 }),
-        authApi.listUsers({ role: 'technician' }),
         movementApi.pending()
       ]);
 
@@ -44,6 +43,14 @@ export const MovementsPage = () => {
         setMovements(movRes.movements || []);
       }
       if (pendingRes?.success) setPendingApprovals(pendingRes.movements || []);
+
+      if (!canManageMovements) return;
+
+      const [eqRes, roomRes, techRes] = await Promise.all([
+        equipmentApi.list({ limit: 100 }),
+        masterDataApi.getRooms({ limit: 100 }),
+        authApi.listUsers({ role: 'technician' })
+      ]);
       if (eqRes && eqRes.success) {
         setEquipments(eqRes.equipments || []);
         if (eqRes.equipments?.length > 0 && !orderForm.equipment_id) {
@@ -74,6 +81,7 @@ export const MovementsPage = () => {
   }, []);
 
   const handleApprove = async (movement) => {
+    if (!canManageMovements) return;
     try {
       await movementApi.approve(movement._id);
       toast.success('Đã phê duyệt phiếu điều chuyển. Kỹ thuật viên được giao đã nhận thông báo.');
@@ -85,6 +93,7 @@ export const MovementsPage = () => {
 
   const handleReject = async (event) => {
     event.preventDefault();
+    if (!canManageMovements) return;
     if (!rejectingMovement || rejectReason.trim().length < 3) {
       toast.error('Vui lòng nhập lý do từ chối (ít nhất 3 ký tự).');
       return;
@@ -105,6 +114,7 @@ export const MovementsPage = () => {
 
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
+    if (!canManageMovements) return;
     if (!orderForm.equipment_id) {
       toast.error('Vui lòng chọn thiết bị cần điều chuyển.');
       return;
@@ -186,18 +196,22 @@ export const MovementsPage = () => {
             Quản Lý Điều Chuyển Thiết Bị CSVC
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
-            Ra lệnh điều chuyển tài sản giữa các giảng đường / phòng lab / kho dự phòng và theo dõi việc thực thi của Kỹ thuật viên.
+            {isAdmin
+              ? 'Tra cứu trạng thái và lịch sử các phiếu điều chuyển thiết bị (chế độ chỉ xem).'
+              : 'Ra lệnh điều chuyển tài sản giữa các giảng đường / phòng lab / kho dự phòng và theo dõi việc thực thi của Kỹ thuật viên.'}
           </p>
         </div>
 
-        <button
-          onClick={() => setShowOrderModal(true)}
-          className="laser-btn laser-btn-primary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
-        >
-          <Icons.Plus size={16} />
-          <span>Ra Lệnh Điều Chuyển Mới</span>
-        </button>
+        {canManageMovements && (
+          <button
+            onClick={() => setShowOrderModal(true)}
+            className="laser-btn laser-btn-primary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
+          >
+            <Icons.Plus size={16} />
+            <span>Ra Lệnh Điều Chuyển Mới</span>
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -255,8 +269,8 @@ export const MovementsPage = () => {
                 const eq = m.equipment_id || {};
                 const fromRoom = m.from_room_id ? `${m.from_room_id.code} (${m.from_room_id.name})` : 'Kho dự phòng (null)';
                 const toRoom = m.to_room_id ? `${m.to_room_id.code} (${m.to_room_id.name})` : 'Kho dự phòng (null)';
-                const canApprove = m.status === 'awaiting_approval';
-                const canReject = m.status === 'awaiting_approval';
+                const canApprove = canManageMovements && m.status === 'awaiting_approval';
+                const canReject = canManageMovements && m.status === 'awaiting_approval';
                 const statusLabels = {
                   awaiting_approval: 'Chờ Quản lý duyệt',
                   approved: 'Đã duyệt - chờ KTV',
@@ -336,7 +350,7 @@ export const MovementsPage = () => {
       </div>
 
       {/* Order Modal */}
-      {showOrderModal && (
+      {canManageMovements && showOrderModal && (
         <div className="ruo-drawer-backdrop" onClick={() => setShowOrderModal(false)}>
           <div className="ruo-drawer-panel" style={{ width: '540px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
@@ -453,7 +467,7 @@ export const MovementsPage = () => {
         </div>
       )}
 
-      {rejectingMovement && (
+      {canManageMovements && rejectingMovement && (
         <div className="ruo-drawer-backdrop" onClick={() => setRejectingMovement(null)}>
           <div className="ruo-drawer-panel" style={{ width: 480 }} onClick={event => event.stopPropagation()}>
             <div className="ruo-drawer-header">

@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { Building, Floor, Room } from '../models/Room.js';
 import { Equipment } from '../models/Equipment.js';
 import { Repair } from '../models/Repair.js';
+import { PreventiveMaintenance } from '../models/PreventiveMaintenance.js';
 import { EquipmentMovement } from '../models/EquipmentMovement.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { ROOM_STATUSES, ROOM_TYPES, EQUIPMENT_STATUSES, MOVEMENT_STATUSES } from '../config/constants.js';
@@ -400,6 +401,43 @@ export const getRoomByCode = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi khi tải thông tin chi tiết phòng.' });
+  }
+};
+
+export const getRoomMaintenanceHistory = async (req, res) => {
+  try {
+    const code = normalizeRoomCode(req.params.code);
+    const room = await Room.findOne({ code: { $in: getRoomCodeVariants(code) } })
+      .select('_id code name building floor');
+    if (!room) {
+      return res.status(404).json({ success: false, message: `Phòng ${code} không tồn tại.` });
+    }
+
+    const equipment = await Equipment.find({ room_id: room._id }).select('_id');
+    const equipmentIds = equipment.map((item) => item._id);
+    const [maintenanceHistory, repairHistory] = await Promise.all([
+      PreventiveMaintenance.find({ room_id: room._id })
+        .populate('equipment_id', 'code name')
+        .populate('checked_by', 'full_name code')
+        .populate('plan_id', 'title frequency')
+        .populate('repair_id', 'ticket_code status')
+        .sort({ check_date: -1 })
+        .limit(HISTORY_LIMIT),
+      Repair.find({
+        $or: [
+          { room_id: room._id },
+          ...(equipmentIds.length ? [{ room_id: null, equipment_id: { $in: equipmentIds } }] : [])
+        ]
+      })
+        .populate('equipment_id', 'code name')
+        .populate('assigned_to', 'full_name code')
+        .sort({ reported_at: -1 })
+        .limit(HISTORY_LIMIT)
+    ]);
+
+    res.json({ success: true, room, maintenanceHistory, repairHistory });
+  } catch (error) {
+    res.status(500).json({ success: false, message: `Lỗi khi tải lịch sử bảo trì phòng: ${error.message}` });
   }
 };
 

@@ -25,6 +25,7 @@ const QRScannerPage = lazy(() => import('./pages/technician/QRScannerPage').then
 const TicketKanbanPage = lazy(() => import('./pages/incidents/TicketKanbanPage').then(m => ({ default: m.TicketKanbanPage })));
 const WarehouseStockPage = lazy(() => import('./pages/facility/WarehouseStockPage').then(m => ({ default: m.WarehouseStockPage })));
 const MovementsPage = lazy(() => import('./pages/facility/MovementsPage').then(m => ({ default: m.MovementsPage })));
+const MaintenancePage = lazy(() => import('./pages/facility/MaintenancePage').then(m => ({ default: m.MaintenancePage })));
 const TransferHistoryPage = lazy(() => import('./pages/transfers/TransferHistoryPage').then(m => ({ default: m.TransferHistoryPage })));
 const EquipmentsPage = lazy(() => import('./pages/equipments/EquipmentsPage').then(m => ({ default: m.EquipmentsPage })));
 const InventoryPage = lazy(() => import('./pages/inventory/InventoryPage').then(m => ({ default: m.InventoryPage })));
@@ -223,11 +224,17 @@ const MainAppContent = () => {
       case 'tickets_kanban':
       case 'tickets':
       case 'repairs':
-      case 'maintenance': // Legacy alias routed to repairs/kanban
         return renderSubPageWrapper(
           'Phiếu Sửa Chữa & Điều Phối Kỹ Thuật (Kanban SLA)',
           'MODULE 04 • QUẢN LÝ SỰ CỐ',
           <TicketKanbanPage />
+        );
+
+      case 'maintenance':
+        return renderSubPageWrapper(
+          'Lịch Bảo Dưỡng Định Kỳ',
+          'MODULE 04 • BẢO DƯỠNG PHÒNG NGỪA',
+          <MaintenancePage />
         );
 
       case 'warehouse':
