@@ -96,7 +96,7 @@ export const DisposalProposePage = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>FACILITY MANAGER</span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>MODULE 03 • UC: PROPOSE DISPOSAL (ĐỀ XUẤT THANH LÝ)</span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Thẩm Định Hao Mòn & Đề Xuất Thanh Lý CSVC</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
             Hồ Sơ Đề Xuất Thanh Lý Tài Sản
