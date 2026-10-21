@@ -131,7 +131,8 @@ export const NOTIFICATION_TYPES = {
   PARTS_REQUEST: 'parts_request',
   DISPOSAL_REQUEST: 'disposal_request',
   WARRANTY_EXPIRING: 'warranty_expiring',
-  DEADLINE_OVERDUE: 'deadline_overdue'
+  DEADLINE_OVERDUE: 'deadline_overdue',
+  ROLE_APPROVAL_REQUEST: 'role_approval_request'
 };
 
 export const NOTIFICATION_REFERENCE_TYPES = {
@@ -139,7 +140,8 @@ export const NOTIFICATION_REFERENCE_TYPES = {
   EQUIPMENT_MOVEMENT: 'equipment_movement',
   DISPOSAL: 'disposal',
   EQUIPMENT: 'equipment',
-  PARTS_REQUEST: 'parts_request'
+  PARTS_REQUEST: 'parts_request',
+  USER: 'user'
 };
 
 export const NOTIFICATION_MESSAGES = {
