@@ -441,17 +441,17 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
         </div>
 
         {/* Modal Scrollable Body */}
-        <div style={{ padding: '24px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+        <div style={{ padding: '18px 24px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
           {/* TAB 1: PROFILE VIEW */}
           {activeTab === 'view' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Account Status & Privilege Banner */}
               <div
                 style={{
                   background: 'var(--surface-sunken)',
                   border: '1px solid var(--hairline-medium)',
                   borderRadius: 'var(--radius-lg)',
-                  padding: '16px 20px',
+                  padding: '12px 16px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -461,8 +461,8 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div
                     style={{
-                      width: '38px',
-                      height: '38px',
+                      width: '36px',
+                      height: '36px',
                       borderRadius: '10px',
                       background: 'rgba(59, 130, 246, 0.12)',
                       color: 'var(--laser-cyan)',
@@ -471,10 +471,10 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                       justifyContent: 'center'
                     }}
                   >
-                    <SvgIcons.Shield size={20} />
+                    <SvgIcons.Shield size={18} />
                   </div>
                   <div>
-                    <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink-pure)', display: 'block' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-pure)', display: 'block' }}>
                       Tài Khoản Xác Thực Nội Bộ (SSO)
                     </span>
                     <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
@@ -502,65 +502,65 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: '12px'
+                  gap: '10px'
                 }}
               >
-                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                <div style={{ background: 'var(--surface-sunken)', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '3px' }}>
                     <SvgIcons.User size={13} />
                     <span>HỌ VÀ TÊN</span>
                   </div>
-                  <strong style={{ fontSize: '14px', color: 'var(--ink-pure)' }}>
+                  <strong style={{ fontSize: '13.5px', color: 'var(--ink-pure)' }}>
                     {currentUser.name || currentUser.fullName || 'Chưa cập nhật'}
                   </strong>
                 </div>
 
-                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                <div style={{ background: 'var(--surface-sunken)', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '3px' }}>
                     <SvgIcons.User size={13} />
                     <span>MÃ ĐỊNH DANH (MSSV/CB)</span>
                   </div>
-                  <strong style={{ fontSize: '14px', color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)' }}>
+                  <strong style={{ fontSize: '13.5px', color: 'var(--ink-pure)', fontFamily: 'var(--font-sans)' }}>
                     {currentUser.code}
                   </strong>
                 </div>
 
-                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                <div style={{ background: 'var(--surface-sunken)', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '3px' }}>
                     <SvgIcons.Mail size={13} />
                     <span>EMAIL NHÀ TRƯỜNG</span>
                   </div>
-                  <strong style={{ fontSize: '13px', color: 'var(--ink-pure)' }}>
+                  <strong style={{ fontSize: '12.5px', color: 'var(--ink-pure)' }}>
                     {currentUser.email}
                   </strong>
                 </div>
 
-                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                <div style={{ background: 'var(--surface-sunken)', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '3px' }}>
                     <SvgIcons.Building size={13} />
                     <span>KHOA / ĐƠN VỊ CÔNG TÁC</span>
                   </div>
-                  <strong style={{ fontSize: '13px', color: 'var(--ink-pure)' }}>
+                  <strong style={{ fontSize: '12.5px', color: 'var(--ink-pure)' }}>
                     {currentUser.department}
                   </strong>
                 </div>
 
-                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                <div style={{ background: 'var(--surface-sunken)', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '3px' }}>
                     <SvgIcons.Phone size={13} />
                     <span>SỐ ĐIỆN THOẠI LIÊN HỆ</span>
                   </div>
-                  <strong style={{ fontSize: '13px', color: 'var(--ink-pure)' }}>
+                  <strong style={{ fontSize: '12.5px', color: 'var(--ink-pure)' }}>
                     {currentUser.phone || 'Chưa cập nhật'}
                   </strong>
                 </div>
 
-                <div style={{ background: 'var(--surface-sunken)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                <div style={{ background: 'var(--surface-sunken)', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-soft)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--ink-muted)', marginBottom: '3px' }}>
                     <SvgIcons.Shield size={13} />
                     <span>VAI TRÒ & PHÂN QUYỀN</span>
                   </div>
-                  <strong style={{ fontSize: '13px', color: 'var(--laser-cyan)' }}>
+                  <strong style={{ fontSize: '12.5px', color: 'var(--laser-cyan)' }}>
                     {currentUser.roleTitle || 'Thành viên'}
                   </strong>
                 </div>
@@ -570,7 +570,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                   style={{
                     gridColumn: 'span 2',
                     background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%)',
-                    padding: '16px 20px',
+                    padding: '13px 18px',
                     borderRadius: 'var(--radius-lg)',
                     border: '1px solid rgba(16, 185, 129, 0.25)',
                     display: 'flex',
@@ -579,12 +579,12 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                     gap: '16px'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div
                       style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '12px',
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
                         background: 'rgba(16, 185, 129, 0.16)',
                         color: '#10B981',
                         display: 'flex',
@@ -593,16 +593,16 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                         flexShrink: 0
                       }}
                     >
-                      <SvgIcons.Award size={22} />
+                      <SvgIcons.Award size={20} />
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 700, letterSpacing: '0.04em' }}>
+                        <span style={{ fontSize: '11.5px', color: 'var(--ink-muted)', fontWeight: 700, letterSpacing: '0.04em' }}>
                           ĐIỂM TÍN NHIỆM (REPUTE SCORE)
                         </span>
                         <span
                           style={{
-                            fontSize: '11px',
+                            fontSize: '10.5px',
                             fontWeight: 700,
                             color: '#10B981',
                             background: 'rgba(16, 185, 129, 0.15)',
@@ -613,16 +613,16 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                           {currentUser.reputeTier || 'Xuất Sắc'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '12px', color: 'var(--ink-muted)', marginTop: '3px' }}>
+                      <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '2px' }}>
                         Quyền hạn mượn phòng & thiết bị: <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.bookingPrivilege || 'Toàn Quyền Tiêu Chuẩn'}</strong>
                       </div>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 900, color: '#10B981', fontFamily: 'var(--font-mono, monospace)', lineHeight: 1 }}>
-                      {currentUser.reputeScore ?? 100}<span style={{ fontSize: '13px', color: 'var(--ink-muted)', fontWeight: 500 }}>/100</span>
+                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#10B981', fontFamily: 'var(--font-mono, monospace)', lineHeight: 1 }}>
+                      {currentUser.reputeScore ?? 100}<span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 500 }}>/100</span>
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '4px' }}>Mức độ tín nhiệm cao</div>
+                    <div style={{ fontSize: '10.5px', color: 'var(--ink-muted)', marginTop: '3px' }}>Mức độ tín nhiệm cao</div>
                   </div>
                 </div>
               </div>
@@ -631,74 +631,69 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
 
           {/* TAB 2: UPDATE CONTACT PROFILE (UC-1.6) */}
           {activeTab === 'edit' && (
-            <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {editStatus.success && (
-                <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-md)', color: '#10B981', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-md)', color: '#10B981', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <SvgIcons.Check size={16} />
                   <span>{editStatus.success}</span>
                 </div>
               )}
               {editStatus.error && (
-                <div style={{ padding: '12px 16px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 'var(--radius-md)', color: '#EF4444', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 'var(--radius-md)', color: '#EF4444', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <SvgIcons.XCircle size={16} />
                   <span>{editStatus.error}</span>
                 </div>
               )}
 
-              {/* Editable: Full Name (UC-1.6) */}
-              <div className="form-group">
-                <label className="form-label">
-                  Họ và tên
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--ink-muted)' }}>
-                    <SvgIcons.User size={16} />
-                  </span>
-                  <input
-                    type="text"
-                    className="form-control"
-                    style={{ paddingLeft: '38px' }}
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Nhập họ và tên..."
-                    required
-                  />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {/* Editable: Full Name (UC-1.6) */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Họ và tên</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--ink-muted)' }}>
+                      <SvgIcons.User size={15} />
+                    </span>
+                    <input
+                      type="text"
+                      className="form-control"
+                      style={{ paddingLeft: '36px' }}
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Nhập họ và tên..."
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Editable: Phone (UC-1.6) */}
-              <div className="form-group">
-                <label className="form-label">
-                  Số điện thoại liên hệ (Di động Việt Nam)
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--ink-muted)' }}>
-                    <SvgIcons.Phone size={16} />
-                  </span>
-                  <input
-                    type="tel"
-                    className="form-control"
-                    style={{ paddingLeft: '38px' }}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="0912345678"
-                  />
+                {/* Editable: Phone (UC-1.6) */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Số điện thoại liên hệ</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--ink-muted)' }}>
+                      <SvgIcons.Phone size={15} />
+                    </span>
+                    <input
+                      type="tel"
+                      className="form-control"
+                      style={{ paddingLeft: '36px' }}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="0912345678"
+                    />
+                  </div>
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '4px', display: 'block' }}>
-                  Dùng để nhận thông báo cơ sở vật chất, xử lý sự cố thiết bị và phòng học.
-                </span>
               </div>
 
               {/* Editable: Avatar Initials */}
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">
                   Biểu tượng Avatar đại diện (1-3 ký tự)
                 </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div
                     style={{
-                      width: '46px',
-                      height: '46px',
+                      width: '38px',
+                      height: '38px',
                       borderRadius: '50%',
                       background: 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)',
                       color: '#FFFFFF',
@@ -706,7 +701,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontWeight: 800,
-                      fontSize: '16px',
+                      fontSize: '14px',
                       flexShrink: 0
                     }}
                   >
@@ -729,43 +724,42 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                   background: 'var(--surface-sunken)',
                   border: '1px solid var(--hairline-medium)',
                   borderRadius: 'var(--radius-lg)',
-                  padding: '16px',
+                  padding: '12px 14px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px'
+                  gap: '8px'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 700, color: 'var(--ink-muted)' }}>
-                  <SvgIcons.Lock size={14} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-muted)' }}>
+                  <SvgIcons.Lock size={13} />
                   <span>CÁC TRƯỜNG ĐỊNH DANH BỊ KHÓA CỨNG THEO CHÍNH SÁCH ĐẠI HỌC</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', fontSize: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '11.5px' }}>
                   <div>
-                    <span style={{ color: 'var(--ink-muted)', display: 'block', fontSize: '11px' }}>MSSV/Mã CB:</span>
+                    <span style={{ color: 'var(--ink-muted)', display: 'block', fontSize: '10.5px' }}>MSSV/Mã CB:</span>
                     <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.code}</strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--ink-muted)', display: 'block', fontSize: '11px' }}>Email trường:</span>
+                    <span style={{ color: 'var(--ink-muted)', display: 'block', fontSize: '10.5px' }}>Email trường:</span>
                     <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.email}</strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--ink-muted)', display: 'block', fontSize: '11px' }}>Khoa đào tạo:</span>
+                    <span style={{ color: 'var(--ink-muted)', display: 'block', fontSize: '10.5px' }}>Khoa đào tạo:</span>
                     <strong style={{ color: 'var(--ink-pure)' }}>{currentUser.department}</strong>
                   </div>
                 </div>
-                <p style={{ fontSize: '11px', color: 'var(--ink-muted)', margin: 0, lineHeight: 1.4 }}>
-                  * Để điều chỉnh thông tin học vụ chính quy, sinh viên/giảng viên vui lòng nộp hồ sơ yêu cầu đến Phòng Đào Tạo hoặc Quản trị viên hệ thống.
-                </p>
               </div>
 
-              <button
-                type="submit"
-                disabled={editStatus.loading}
-                className="laser-btn laser-btn-primary"
-                style={{ alignSelf: 'flex-start', padding: '10px 24px', fontSize: '13px' }}
-              >
-                {editStatus.loading ? 'Đang lưu...' : 'Lưu Thay Đổi Thông Tin'}
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
+                <button
+                  type="submit"
+                  disabled={editStatus.loading}
+                  className="laser-btn laser-btn-primary"
+                  style={{ padding: '9px 24px', fontSize: '13px', fontWeight: 700 }}
+                >
+                  {editStatus.loading ? 'Đang lưu...' : 'Lưu Thay Đổi Thông Tin'}
+                </button>
+              </div>
             </form>
           )}
 
@@ -774,23 +768,23 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
             <form
               onSubmit={handleChangePassword}
               className={shakePasswordForm ? 'ruo-shake' : ''}
-              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
             >
               {passwordStatus.success && (
-                <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-md)', color: '#10B981', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-md)', color: '#10B981', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <SvgIcons.Check size={16} />
                   <span>{passwordStatus.success}</span>
                 </div>
               )}
               {passwordStatus.error && (
-                <div style={{ padding: '12px 16px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 'var(--radius-md)', color: '#EF4444', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 'var(--radius-md)', color: '#EF4444', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <SvgIcons.XCircle size={16} />
                   <span>{passwordStatus.error}</span>
                 </div>
               )}
 
               {/* Field 1: Mật khẩu hiện tại */}
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Mật khẩu hiện tại *</span>
                   <span style={{ fontSize: '11px', color: 'var(--ink-muted)', fontWeight: 400 }}>Mật khẩu đang sử dụng</span>
@@ -830,92 +824,94 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Field 2: Mật khẩu mới */}
-              <div className="form-group">
-                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Mật khẩu mới *</span>
-                  {oldPassword && newPassword && oldPassword === newPassword && (
-                    <span style={{ fontSize: '11px', color: '#EF4444', fontWeight: 600 }}>
-                      ⚠️ Mật khẩu mới đang trùng mật khẩu hiện tại
-                    </span>
-                  )}
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showNewPassword ? 'text' : 'password'}
-                    className="form-control"
-                    style={{
-                      paddingRight: '40px',
-                      borderColor: (oldPassword && newPassword && oldPassword === newPassword) ? '#EF4444' : undefined
-                    }}
-                    value={newPassword}
-                    onChange={(e) => {
-                      setNewPassword(e.target.value);
-                      if (passwordStatus.error) setPasswordStatus(prev => ({ ...prev, error: null }));
-                    }}
-                    placeholder="Mật khẩu mới an toàn..."
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '10px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--ink-muted)',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    title={showNewPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                  >
-                    {showNewPassword ? <SvgIcons.EyeOff size={16} /> : <SvgIcons.Eye size={16} />}
-                  </button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {/* Field 2: Mật khẩu mới */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Mật khẩu mới *</span>
+                    {oldPassword && newPassword && oldPassword === newPassword && (
+                      <span style={{ fontSize: '10.5px', color: '#EF4444', fontWeight: 600 }}>
+                        ⚠️ Trùng MK cũ
+                      </span>
+                    )}
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      className="form-control"
+                      style={{
+                        paddingRight: '40px',
+                        borderColor: (oldPassword && newPassword && oldPassword === newPassword) ? '#EF4444' : undefined
+                      }}
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        if (passwordStatus.error) setPasswordStatus(prev => ({ ...prev, error: null }));
+                      }}
+                      placeholder="Mật khẩu mới an toàn..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--ink-muted)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                      title={showNewPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    >
+                      {showNewPassword ? <SvgIcons.EyeOff size={16} /> : <SvgIcons.Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Field 3: Xác nhận mật khẩu mới */}
-              <div className="form-group">
-                <label className="form-label">Xác nhận mật khẩu mới *</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    className="form-control"
-                    style={{
-                      paddingRight: '40px',
-                      borderColor: (confirmPassword && !passwordCriteria.isMatching) ? '#EF4444' : undefined
-                    }}
-                    value={confirmPassword}
-                    onChange={(e) => {
-                      setConfirmPassword(e.target.value);
-                      if (passwordStatus.error) setPasswordStatus(prev => ({ ...prev, error: null }));
-                    }}
-                    placeholder="Nhập lại chính xác mật khẩu mới..."
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '10px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--ink-muted)',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    title={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                  >
-                    {showConfirmPassword ? <SvgIcons.EyeOff size={16} /> : <SvgIcons.Eye size={16} />}
-                  </button>
+                {/* Field 3: Xác nhận mật khẩu mới */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Xác nhận mật khẩu mới *</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      className="form-control"
+                      style={{
+                        paddingRight: '40px',
+                        borderColor: (confirmPassword && !passwordCriteria.isMatching) ? '#EF4444' : undefined
+                      }}
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (passwordStatus.error) setPasswordStatus(prev => ({ ...prev, error: null }));
+                      }}
+                      placeholder="Nhập lại mật khẩu mới..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--ink-muted)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                      title={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    >
+                      {showConfirmPassword ? <SvgIcons.EyeOff size={16} /> : <SvgIcons.Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -925,81 +921,82 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                   background: 'var(--surface-sunken)',
                   border: '1px solid var(--hairline-soft)',
                   borderRadius: 'var(--radius-md)',
-                  padding: '14px',
+                  padding: '10px 14px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '6px',
-                  fontSize: '12px'
+                  gap: '5px',
+                  fontSize: '11.5px'
                 }}
               >
-                <span style={{ fontWeight: 700, color: 'var(--ink-muted)', marginBottom: '4px' }}>
+                <span style={{ fontWeight: 700, color: 'var(--ink-muted)', marginBottom: '2px' }}>
                   TIÊU CHUẨN MẬT KHẨU BẢO MẬT (ISO/IEC 27001):
                 </span>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: passwordCriteria.minLength ? '#10B981' : 'var(--ink-muted)' }}>
-                    {passwordCriteria.minLength ? <SvgIcons.Check size={14} /> : <SvgIcons.XCircle size={14} />}
-                    <span>Tối thiểu 8 ký tự</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: passwordCriteria.minLength ? '#10B981' : 'var(--ink-muted)' }}>
+                    {passwordCriteria.minLength ? <SvgIcons.Check size={13} /> : <SvgIcons.XCircle size={13} />}
+                    <span>≥ 8 ký tự</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: passwordCriteria.hasUpper ? '#10B981' : 'var(--ink-muted)' }}>
-                    {passwordCriteria.hasUpper ? <SvgIcons.Check size={14} /> : <SvgIcons.XCircle size={14} />}
-                    <span>Chứa chữ in hoa (A-Z)</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: passwordCriteria.hasUpper ? '#10B981' : 'var(--ink-muted)' }}>
+                    {passwordCriteria.hasUpper ? <SvgIcons.Check size={13} /> : <SvgIcons.XCircle size={13} />}
+                    <span>Chữ in hoa (A-Z)</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: passwordCriteria.hasLower ? '#10B981' : 'var(--ink-muted)' }}>
-                    {passwordCriteria.hasLower ? <SvgIcons.Check size={14} /> : <SvgIcons.XCircle size={14} />}
-                    <span>Chứa chữ thường (a-z)</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: passwordCriteria.hasLower ? '#10B981' : 'var(--ink-muted)' }}>
+                    {passwordCriteria.hasLower ? <SvgIcons.Check size={13} /> : <SvgIcons.XCircle size={13} />}
+                    <span>Chữ thường (a-z)</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: passwordCriteria.hasNumber ? '#10B981' : 'var(--ink-muted)' }}>
-                    {passwordCriteria.hasNumber ? <SvgIcons.Check size={14} /> : <SvgIcons.XCircle size={14} />}
-                    <span>Chứa chữ số (0-9)</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: passwordCriteria.hasNumber ? '#10B981' : 'var(--ink-muted)' }}>
+                    {passwordCriteria.hasNumber ? <SvgIcons.Check size={13} /> : <SvgIcons.XCircle size={13} />}
+                    <span>Chữ số (0-9)</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: passwordCriteria.hasSpecial ? '#10B981' : 'var(--ink-muted)' }}>
-                    {passwordCriteria.hasSpecial ? <SvgIcons.Check size={14} /> : <SvgIcons.XCircle size={14} />}
-                    <span>Ký tự đặc biệt (@$!%*?&)</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: passwordCriteria.hasSpecial ? '#10B981' : 'var(--ink-muted)' }}>
+                    {passwordCriteria.hasSpecial ? <SvgIcons.Check size={13} /> : <SvgIcons.XCircle size={13} />}
+                    <span>Ký tự đặc biệt</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: passwordCriteria.isMatching ? '#10B981' : 'var(--ink-muted)' }}>
-                    {passwordCriteria.isMatching ? <SvgIcons.Check size={14} /> : <SvgIcons.XCircle size={14} />}
-                    <span>Mật khẩu xác nhận trùng khớp</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: passwordCriteria.isMatching ? '#10B981' : 'var(--ink-muted)' }}>
+                    {passwordCriteria.isMatching ? <SvgIcons.Check size={13} /> : <SvgIcons.XCircle size={13} />}
+                    <span>Xác nhận khớp</span>
                   </div>
                 </div>
               </div>
 
-              {/* Logout other devices checkbox */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer', color: 'var(--ink-secondary)' }}>
-                <input
-                  type="checkbox"
-                  checked={logoutOtherDevices}
-                  onChange={(e) => setLogoutOtherDevices(e.target.checked)}
-                  style={{ width: '16px', height: '16px', accentColor: 'var(--laser-cyan)', cursor: 'pointer' }}
-                />
-                <span>Thu hồi và đăng xuất khỏi tất cả các phiên làm việc trên thiết bị khác</span>
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', paddingTop: '2px' }}>
+                {/* Logout other devices checkbox */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: 'var(--ink-secondary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={logoutOtherDevices}
+                    onChange={(e) => setLogoutOtherDevices(e.target.checked)}
+                    style={{ width: '15px', height: '15px', accentColor: 'var(--laser-cyan)', cursor: 'pointer' }}
+                  />
+                  <span>Thu hồi phiên trên thiết bị khác</span>
+                </label>
 
-              {/* Action Button: Always responsive, never silent */}
-              <button
-                type="submit"
-                disabled={passwordStatus.loading}
-                className="laser-btn laser-btn-primary"
-                style={{
-                  alignSelf: 'flex-start',
-                  padding: '11px 26px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  opacity: passwordStatus.loading ? 0.75 : 1,
-                  cursor: passwordStatus.loading ? 'wait' : 'pointer'
-                }}
-              >
-                {passwordStatus.loading ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'ruoSpin 1s linear infinite' }}>
-                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                      <path d="M12 2a10 10 0 0 1 10 10" />
-                    </svg>
-                    <span>Đang cập nhật mật khẩu...</span>
-                  </span>
-                ) : (
-                  'Cập Nhật Mật Khẩu'
-                )}
-              </button>
+                {/* Action Button: Always responsive, never silent */}
+                <button
+                  type="submit"
+                  disabled={passwordStatus.loading}
+                  className="laser-btn laser-btn-primary"
+                  style={{
+                    padding: '9px 24px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    opacity: passwordStatus.loading ? 0.75 : 1,
+                    cursor: passwordStatus.loading ? 'wait' : 'pointer'
+                  }}
+                >
+                  {passwordStatus.loading ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'ruoSpin 1s linear infinite' }}>
+                        <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                        <path d="M12 2a10 10 0 0 1 10 10" />
+                      </svg>
+                      <span>Đang cập nhật...</span>
+                    </span>
+                  ) : (
+                    'Cập Nhật Mật Khẩu'
+                  )}
+                </button>
+              </div>
             </form>
           )}
         </div>

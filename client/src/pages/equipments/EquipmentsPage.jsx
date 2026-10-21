@@ -2078,24 +2078,24 @@ export const EquipmentsPage = () => {
             </div>
 
             <form onSubmit={handleCreateSubmit}>
-              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 
                 {/* Dynamic Live QR Matrix Preview Card (100% Pure Native SVG) */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '16px',
+                  gap: '12px',
                   background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%)',
                   border: '1px solid rgba(6, 182, 212, 0.25)',
                   borderRadius: '10px',
-                  padding: '12px 16px',
+                  padding: '8px 14px',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
                 }}>
                   <div style={{
                     background: '#ffffff',
-                    padding: '6px',
-                    borderRadius: '8px',
-                    boxShadow: '0 0 16px rgba(6, 182, 212, 0.35)',
+                    padding: '4px',
+                    borderRadius: '6px',
+                    boxShadow: '0 0 12px rgba(6, 182, 212, 0.35)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -2103,11 +2103,11 @@ export const EquipmentsPage = () => {
                   }}>
                     <NativeQrMatrixSvg 
                       value={formData.qr_code || (formData.code ? `QR-${formData.code.toUpperCase().trim()}` : 'QR-RUO-PREVIEW')} 
-                      size={84} 
+                      size={60} 
                     />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
                       <span style={{
                         fontSize: '10px',
                         fontWeight: 800,
@@ -2127,7 +2127,7 @@ export const EquipmentsPage = () => {
                     </div>
                     <div style={{
                       fontFamily: 'var(--font-mono)',
-                      fontSize: '13px',
+                      fontSize: '12.5px',
                       fontWeight: 700,
                       color: '#ffffff',
                       letterSpacing: '0.02em',
@@ -2137,14 +2137,9 @@ export const EquipmentsPage = () => {
                     }}>
                       {formData.qr_code || (formData.code ? `QR-${formData.code.toUpperCase().trim()}` : 'QR-CHUA-DINH-DANH')}
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      {formData.name || 'Tên thiết bị mới'} • {formData.brand || 'Hãng'} {formData.model ? `(${formData.model})` : ''}
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--laser-cyan)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      {Number(formData.price || 0).toLocaleString('vi-VN')} ₫ • Khấu hao: {formData.depreciation_rate || 20}%/năm
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span>{formData.name || 'Tên thiết bị mới'} • {formData.brand || 'Hãng'} {formData.model ? `(${formData.model})` : ''}</span>
+                      <span style={{ color: 'var(--laser-cyan)' }}>• {Number(formData.price || 0).toLocaleString('vi-VN')} ₫ ({formData.depreciation_rate || 20}%/năm)</span>
                     </div>
                   </div>
                 </div>
@@ -2615,7 +2610,7 @@ export const EquipmentsPage = () => {
             </div>
 
             <form onSubmit={handleBatchImport}>
-              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '75vh', overflowY: 'auto' }}>
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {/* Upload & Sample Generator Toolbar */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', background: 'var(--surface-panel)', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline-medium)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>

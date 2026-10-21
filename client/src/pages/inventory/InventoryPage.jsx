@@ -907,7 +907,7 @@ export const InventoryPage = () => {
               <button onClick={() => setShowReportModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
             </div>
 
-            <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '75vh', overflowY: 'auto' }}>
+            <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Printable Official Report Document */}
               <div id="printable-inventory-report" style={{ background: 'var(--surface-panel)', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-md)', padding: '20px' }}>
                 <div style={{ textAlign: 'center', borderBottom: '1.5px solid var(--border-strong)', paddingBottom: '14px', marginBottom: '16px' }}>
