@@ -61,7 +61,7 @@ export const RoomStatusModal = ({ room, onClose, onDone }) => {
         <div className="ruo-drawer-header">
           <div>
             <h2 id="room-status-title" className="ruo-drawer-title">Đổi Trạng Thái Phòng {room.code}</h2>
-            <p className="ruo-drawer-subtitle">UC-2.6 • Sẵn sàng ⇄ Đang bảo trì ⇄ Ngừng sử dụng</p>
+            <p className="ruo-drawer-subtitle">Trạng thái vận hành: Sẵn sàng ⇄ Đang bảo trì ⇄ Ngừng sử dụng</p>
           </div>
           <button type="button" onClick={onClose} className="ruo-drawer-close-btn" aria-label="Đóng"><Icons.Close size={18} /></button>
         </div>
