@@ -124,6 +124,8 @@ export const approvePartsRequest = async (req, res) => {
     for (const item of partsRequest.items) {
       const part = await SparePart.findById(item.part_id);
       if (part) {
+        // Preserve the actual issue price for historical reports; never trust a submitted price.
+        item.unit_price = part.price;
         const qtyToDeduct = item.qty || item.quantity || 1;
         part.stock = Math.max(0, part.stock - qtyToDeduct);
         if (part.stock <= part.min_stock) {

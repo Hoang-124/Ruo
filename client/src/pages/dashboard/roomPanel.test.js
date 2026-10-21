@@ -25,17 +25,15 @@ describe('resolveRoomEquipments (CAD front page)', () => {
     expect(result.items.map((item) => item._id)).toEqual(['a', 'c']);
   });
 
-  it('falls back to architectural sample equipment as a last resort', () => {
+  it('never fabricates sample equipment when live data is unavailable', () => {
     const result = resolveRoomEquipments(sampleRoom, undefined, []);
-    expect(result.source).toBe('sample');
-    expect(result.items.map((item) => item.name)).toEqual(['Máy chiếu', 'Điều hòa']);
-    expect(result.items[0].code).toBe('202-EQ-101');
+    expect(result.source).toBe('none');
+    expect(result.items).toEqual([]);
   });
 
-  it('marks the second sample item as repairing when the sample room is in maintenance', () => {
+  it('does not invent broken equipment from architectural sample status', () => {
     const result = resolveRoomEquipments({ ...sampleRoom, statusOverride: 'maintenance' }, undefined, []);
-    expect(result.items[1].status).toBe('repairing');
-    expect(result.items[0].status).toBe('active');
+    expect(result.items).toEqual([]);
   });
 
   it('reports none for a room with no live data and no sample equipment', () => {
@@ -50,9 +48,9 @@ describe('resolveRoomStatus', () => {
     expect(resolveRoomStatus(sampleRoom, { effectiveStatus: 'available' })).toMatchObject({ label: 'Sẵn sàng', live: true });
   });
 
-  it('falls back to the sample override without live data', () => {
-    expect(resolveRoomStatus(sampleRoom, undefined)).toMatchObject({ label: 'Vận hành tốt', live: false });
-    expect(resolveRoomStatus({ statusOverride: 'maintenance' }, undefined)).toMatchObject({ label: 'Đang bảo trì', live: false });
+  it('marks missing live status as unknown', () => {
+    expect(resolveRoomStatus(sampleRoom, undefined)).toMatchObject({ label: 'Chưa có dữ liệu', live: false });
+    expect(resolveRoomStatus({ statusOverride: 'maintenance' }, undefined)).toMatchObject({ label: 'Chưa có dữ liệu', live: false });
   });
 });
 
