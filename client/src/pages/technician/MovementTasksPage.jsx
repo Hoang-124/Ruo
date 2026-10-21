@@ -132,7 +132,7 @@ export const MovementTasksPage = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '11px', color: '#0EA5E9', background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>KỸ THUẬT VIÊN</span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>MODULE 03 • LỆNH DI CHUYỂN, THAY THẾ DỰ PHÒNG & XÁC NHẬN</span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Lệnh Di Chuyển, Thay Thế Dự Phòng & Xác Nhận Thực Địa</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
             Lệnh Di Chuyển & Thay Thế Thiết Bị Thực Địa
