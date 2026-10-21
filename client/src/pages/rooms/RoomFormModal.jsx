@@ -93,8 +93,8 @@ export const RoomFormModal = ({ room = null, onClose, onSaved }) => {
             <h2 id="room-form-title" className="ruo-drawer-title">{isEdit ? `Chỉnh Sửa Phòng ${room.code}` : 'Thêm Phòng Mới'}</h2>
             <p className="ruo-drawer-subtitle">
               {isEdit
-                ? 'UC-2.4 • Mã phòng, tòa nhà và tầng không thể thay đổi'
-                : `UC-2.1 • Tòa nhà ${ROOM_RULES.building} • Mã phòng ${ROOM_RULES.codeRangeLabel}`}
+                ? 'Mã phòng, tòa nhà và tầng cố định không thay đổi'
+                : `Tòa nhà ${ROOM_RULES.building} • Mã phòng ${ROOM_RULES.codeRangeLabel}`}
             </p>
           </div>
           <button type="button" onClick={onClose} className="ruo-drawer-close-btn" aria-label="Đóng"><Icons.Close size={18} /></button>
