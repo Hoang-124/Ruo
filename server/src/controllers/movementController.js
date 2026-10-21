@@ -10,7 +10,8 @@ import {
   USER_ROLES, 
   MOVEMENT_TYPES, 
   MOVEMENT_STATUSES, 
-  EQUIPMENT_STATUSES 
+  EQUIPMENT_STATUSES,
+  ROOM_STATUSES
 } from '../config/constants.js';
 
 // @desc    Get all movements (View movement history / orders)
@@ -122,6 +123,9 @@ export const createMovementOrder = async (req, res) => {
     const toRoom = await Room.findById(to_room_id);
     if (!toRoom) {
       return res.status(404).json({ success: false, message: 'Phòng đích không tồn tại.' });
+    }
+    if (type !== MOVEMENT_TYPES.REPAIR_OUT && toRoom.status === ROOM_STATUSES.INACTIVE) {
+      return res.status(409).json({ success: false, message: 'Không thể điều chuyển thiết bị vào phòng đã ngừng sử dụng.' });
     }
     if (equipment.room_id?.toString() === toRoom._id.toString()) {
       return res.status(400).json({ success: false, message: 'Phòng đích phải khác phòng hiện tại của thiết bị.' });
@@ -308,6 +312,14 @@ export const confirmMovement = async (req, res) => {
     const equipment = await Equipment.findById(movement.equipment_id);
     if (!equipment) {
       return res.status(404).json({ success: false, message: 'Thiết bị không còn tồn tại.' });
+    }
+
+    // Recheck at execution time: the room may have closed since the order was approved.
+    if (movement.type !== MOVEMENT_TYPES.REPAIR_OUT) {
+      const destination = await Room.findById(movement.to_room_id);
+      if (!destination || destination.status === ROOM_STATUSES.INACTIVE) {
+        return res.status(409).json({ success: false, message: 'Phòng đích không tồn tại hoặc đã ngừng sử dụng. Vui lòng chọn phòng khác.' });
+      }
     }
 
     movement.performed_by = req.user._id;

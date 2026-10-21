@@ -291,7 +291,10 @@ cp server/.env.example server/.env
 
 # 3. Khởi tạo dữ liệu gốc (4 tài khoản mẫu, Tòa A1 5 tầng, thiết bị QR, linh kiện)
 npm run seed
+npm run seed:transfer-demo # Tùy chọn: Bổ sung dữ liệu demo điều chuyển, không xóa dữ liệu hiện có
 ```
+
+> **Lưu ý an toàn dữ liệu:** Khởi động backend không tự tạo/reset tài khoản demo và không xóa dữ liệu user/audit cũ. Chỉ chạy `npm run seed` khi chủ động khởi tạo database demo.
 
 ### 8.3. Khởi Chạy Đồng Thời Backend & Frontend
 ```bash

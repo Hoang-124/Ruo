@@ -931,7 +931,7 @@ export const CAMPUS_FLOORS = {
       },
       {
         id: 'R_405_TV',
-        code: 'A1-PTV',
+        code: 'A1-PTV-T4',
         name: 'Phòng Tài vụ',
         floor: 4,
         capacity: null,

@@ -3,18 +3,19 @@ import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../../components/common/SvgIcons';
 import { FloorPlan2D } from '../../components/common/FloorPlan2D';
 import { CAMPUS_FLOORS, ROOM_CATEGORIES } from '../../mock/campusBuildingData';
-import { equipmentApi, movementApi, repairApi, disposalApi, auditApi, reportApi, facilityApi } from '../../lib/api';
-import { buildRoomPodIndex, getRoomPod } from '../../components/common/roomPod';
+import { equipmentApi, movementApi, repairApi, disposalApi, auditApi, facilityApi } from '../../lib/api';
+import { DashboardAnalytics } from './DashboardAnalytics';
+import { buildRoomPodIndex, getRoomPod, getPodStatus } from '../../components/common/roomPod';
 import { resolveRoomEquipments, resolveRoomStatus, summarizeRoomEquipment } from './roomPanel';
 import { Button, Card, KPI, StatusBadge, EmptyState } from '../../components/ui/Primitives';
 
 /**
  * Dashboard - UEMS Operational Command Center
  */
-export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForReport }) => {
+export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
   const { currentUser, currentRoleKey } = useAuth();
 
-  const role = currentUser?.role || currentRoleKey || 'admin';
+  const role = currentUser?.role || currentRoleKey;
   const isAdmin = role === 'admin';
   const isFM = role === 'facility_manager';
   const isTech = role === 'technician';
@@ -47,22 +48,10 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
   const [techMovements, setTechMovements] = useState([]);
 
   // 3. Quản Lý CSVC (Facility Manager) State
-  const [fmStats, setFmStats] = useState({
-    reportedCount: 0,
-    repairingCount: 0,
-    inStockCount: 0,
-    disposalCount: 0
-  });
   const [fmTickets, setFmTickets] = useState([]);
   const [fmMovs, setFmMovs] = useState([]);
 
   // 4. Ban Giám Hiệu (Admin) State
-  const [adminStats, setAdminStats] = useState({
-    activeCount: 0,
-    totalValuation: 0,
-    pendingDisposals: 0,
-    slaRate: '98.4%'
-  });
   const [adminDisposals, setAdminDisposals] = useState([]);
   const [recentAudits, setRecentAudits] = useState([]);
   const [auditChainValid, setAuditChainValid] = useState(true);
@@ -74,6 +63,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
   const [cadRooms, setCadRooms] = useState([]);
   const [cadRefreshKey, setCadRefreshKey] = useState(0);
   const [cadError, setCadError] = useState('');
+  const [cadLoading, setCadLoading] = useState(true);
   const roomPods = useMemo(() => buildRoomPodIndex(cadRooms), [cadRooms]);
 
   // Pre-select first room of selected floor by default
@@ -81,9 +71,9 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
     return CAMPUS_FLOORS[1]?.topRooms?.[0] || null;
   });
 
-  const fetchDashboardData = async (isInitialMount = false) => {
+  const fetchDashboardData = useCallback(async (isInitialMount = false) => {
     setLoading(true);
-    if (!isInitialMount) {
+    if (isInitialMount !== true) {
       setCadRefreshKey((key) => key + 1);
     }
     try {
@@ -108,8 +98,8 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
             r.reported_by?.code === currentUser?.code ||
             r.reported_by?.email === currentUser?.email
           );
-          // Show personal tickets, or if brand new show recent room tickets
-          const displayTix = myTix.length > 0 ? myTix : allRepairs.slice(0, 5);
+          // An empty personal history must not fall back to other users' tickets.
+          const displayTix = myTix;
           setLecturerTickets(displayTix);
 
           const repairing = myTix.filter(r => ['reported', 'assigned', 'in_progress'].includes(r.status)).length;
@@ -148,8 +138,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
 
           const assigned = allRepairs.filter(r =>
             r.assigned_to?._id === currentUser?._id ||
-            r.assigned_to?.code === currentUser?.code ||
-            ['assigned', 'in_progress'].includes(r.status)
+            r.assigned_to?.code === currentUser?.code
           );
 
           setTechTasks(assigned);
@@ -165,41 +154,31 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
         }
       } else if (isFM) {
         try {
-          const [eqRes, repRes, movRes, dispRes] = await Promise.all([
+          const [eqRes, repRes, movRes] = await Promise.all([
             eqPromise,
             repairApi.list(),
-            movementApi.list(),
-            disposalApi.list()
+            movementApi.list()
           ]);
           const eqList = eqRes?.items || eqRes?.equipments || [];
           setEquipmentsList(eqList);
           const allRepairs = repRes.repairs || repRes.data || [];
           const allMovs = movRes.movements || movRes.data || [];
-          const allDisposals = dispRes.proposals || dispRes.data || [];
 
           setFmTickets(allRepairs.filter(r => r.status === 'reported'));
           setFmMovs(allMovs.slice(0, 5));
-          setFmStats({
-            reportedCount: allRepairs.filter(r => r.status === 'reported').length,
-            repairingCount: allRepairs.filter(r => ['assigned', 'in_progress'].includes(r.status)).length,
-            inStockCount: eqList.filter(e => e.status === 'in_stock').length,
-            disposalCount: allDisposals.filter(d => d.status === 'proposed').length + eqList.filter(e => (e.rRatio || 0) >= 60).length
-          });
         } catch (e) {
           console.warn('FM data fetch error:', e.message);
         }
       } else if (isAdmin) {
         try {
-          const [eqRes, repRes, dispRes, audRes, chainRes] = await Promise.all([
+          const [eqRes, dispRes, audRes, chainRes] = await Promise.all([
             eqPromise,
-            repairApi.list(),
             disposalApi.list(),
             auditApi.getLogs({ limit: 6 }),
             auditApi.verifyChain()
           ]);
           const eqList = eqRes?.items || eqRes?.equipments || [];
           setEquipmentsList(eqList);
-          const allRepairs = repRes.repairs || repRes.data || [];
           const allDisposals = dispRes.proposals || dispRes.data || [];
 
           setAdminDisposals(allDisposals.filter(d => d.status === 'proposed'));
@@ -207,21 +186,6 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
           if (chainRes && chainRes.verification) {
             setAuditChainValid(chainRes.verification.isValid);
           }
-          const totalVal = eqList.reduce((acc, e) => acc + (Number(e.price) || 0), 0);
-          const overdueCount = allRepairs.filter(r =>
-            r.deadline_status === 'OVERDUE' ||
-            (!['closed', 'resolved'].includes(r.status) && r.deadline && new Date(r.deadline) < new Date())
-          ).length;
-          const computedSla = allRepairs.length > 0
-            ? `${(((allRepairs.length - overdueCount) / allRepairs.length) * 100).toFixed(1)}%`
-            : '100%';
-
-          setAdminStats({
-            activeCount: eqList.filter(e => e.status === 'in_use').length,
-            totalValuation: totalVal,
-            pendingDisposals: allDisposals.filter(d => d.status === 'proposed').length,
-            slaRate: computedSla
-          });
         } catch (e) {
           console.warn('Admin data fetch error:', e.message);
         }
@@ -229,7 +193,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
     } finally {
       setLoading(false);
     }
-  };
+  }, [isLecturer, isTech, isFM, isAdmin, currentUser?._id, currentUser?.code, currentUser?.email]);
 
   const handleQuickRate = async (ticketId) => {
     if (!ticketId) return;
@@ -250,11 +214,14 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
 
   useEffect(() => {
     fetchDashboardData(true);
-  }, [currentRoleKey]);
+  }, [fetchDashboardData]);
 
   // Reload the pods whenever the floor changes or the dashboard is refreshed.
   useEffect(() => {
     let ignore = false;
+    setCadLoading(true);
+    setCadRooms([]);
+    setCadError('');
     facilityApi.getCadCanvas('A1', selectedFloor)
       .then((res) => {
         if (ignore) return;
@@ -266,7 +233,8 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
         if (ignore) return;
         setCadRooms([]);
         setCadError(e.message || 'Không tải được dữ liệu thiết bị trực tiếp.');
-      });
+      })
+      .finally(() => { if (!ignore) setCadLoading(false); });
     return () => { ignore = true; };
   }, [selectedFloor, cadRefreshKey]);
 
@@ -279,65 +247,16 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
     }
   };
 
-  // Determine room simulated status for floor plan
   const getRoomSimulatedStatus = useCallback((room) => {
-    if (!room) {
-      return { status: 'available', label: 'Hoạt Động', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.35)' };
-    }
-    // Live status from the database wins over the architectural mock data
-    const livePod = room.code ? getRoomPod(roomPods, room.code) : null;
-    if (livePod?.effectiveStatus === 'inactive') {
-      return {
-        status: 'inactive',
-        label: 'Ngừng Sử Dụng',
-        color: '#8A93A3',
-        bg: 'rgba(138, 147, 163, 0.12)',
-        border: 'rgba(138, 147, 163, 0.35)'
-      };
-    }
-    if (livePod?.effectiveStatus === 'maintenance') {
-      return {
-        status: 'maintenance',
-        label: 'Bảo Trì',
-        color: '#F59E0B',
-        bg: 'rgba(245, 158, 11, 0.12)',
-        border: 'rgba(245, 158, 11, 0.35)'
-      };
-    }
-    if (room.statusOverride === 'maintenance') {
-      return {
-        status: 'maintenance',
-        label: 'Bảo Trì',
-        color: '#F59E0B',
-        bg: 'rgba(245, 158, 11, 0.12)',
-        border: 'rgba(245, 158, 11, 0.35)'
-      };
-    }
-    if (room.occupiedAt && room.occupiedAt.length > 0) {
-      // Giả lập mốc thời gian giờ học hiện tại: 10:30 (630 phút tính từ 00:00)
-      const currentMin = 630;
-      const isOccupied = room.occupiedAt.some(slot => currentMin >= slot.start && currentMin <= slot.end);
-      if (isOccupied) {
-        return {
-          status: 'occupied',
-          label: 'Đang Học',
-          color: '#F43F5E',
-          bg: 'rgba(244, 63, 94, 0.12)',
-          border: 'rgba(244, 63, 94, 0.35)'
-        };
-      }
-    }
-    return {
-      status: 'available',
-      label: 'Hoạt Động',
-      color: '#10B981',
-      bg: 'rgba(16, 185, 129, 0.12)',
-      border: 'rgba(16, 185, 129, 0.35)'
-    };
+    const pod = getRoomPod(roomPods, room?.code);
+    const status = pod?.effectiveStatus || 'unknown';
+    const meta = getPodStatus(status);
+    return { status, ...meta, bg: 'transparent', border: meta.color };
   }, [roomPods]);
 
   // Live room (database) wins over the equipment list and the architectural sample data
   const selectedPod = selectedRoom ? getRoomPod(roomPods, selectedRoom.code) : undefined;
+  const selectedRoomInfo = selectedPod || selectedRoom;
   const roomEquipmentView = useMemo(
     () => resolveRoomEquipments(selectedRoom, selectedPod, equipmentsList),
     [selectedRoom, selectedPod, equipmentsList]
@@ -398,7 +317,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
               </Button>
             </>
           )}
-          <Button size="sm" variant="primary" icon={Icons.Clock} onClick={fetchDashboardData}>
+          <Button size="sm" variant="primary" icon={Icons.Clock} loading={loading} onClick={fetchDashboardData}>
             Cập Nhật
           </Button>
         </div>
@@ -408,14 +327,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
           2. PRIMARY HERO: UNIFIED DIGITAL TWIN CAD WORKSPACE
           Hợp nhất Sơ đồ phòng học và Bản đồ CAD vào không gian duy nhất
           ============================================================== */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.62fr) minmax(320px, 1fr)',
-          gap: '12px',
-          alignItems: 'start'
-        }}
-      >
+      <div className="dashboard-cad-grid">
         {/* Left Column: Interactive Architectural Map */}
         <Card
           className="ruo-card-compact"
@@ -430,7 +342,6 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
               onSelectRoom={(room) => setSelectedRoom(room)}
               getRoomSimulatedStatus={getRoomSimulatedStatus}
               roomPods={roomPods}
-              currentTimeString="11:15"
             />
           </div>
         </Card>
@@ -438,7 +349,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
         {/* Right Column: Room Detail & Equipment Inspector Panel */}
         <Card
           className="ruo-card-compact"
-          title={selectedRoom ? (selectedRoom.name?.startsWith('Phòng') ? selectedRoom.name : `Phòng ${selectedRoom.name || selectedRoom.code?.replace(/^A1-/, '')}`) : "Thông Tin Phòng Học"}
+          title={selectedRoomInfo?.name || 'Thông Tin Phòng Học'}
           subtitle={selectedRoom ? `Tầng ${selectedFloor} • ${ROOM_CATEGORIES[selectedRoom.category]?.name || 'Phòng học'}` : "Chọn một phòng trên sơ đồ bên trái"}
           action={
             selectedRoom && (
@@ -466,7 +377,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
                 <div>
                   <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Phân loại:</span>
                   <strong style={{ color: 'var(--ink-primary)' }}>
-                    {ROOM_CATEGORIES[selectedRoom.category]?.name || 'Học tập'}
+                    {{ lecture: 'Phòng học', lab: 'Phòng thực hành', office: 'Văn phòng', warehouse: 'Kho' }[selectedPod?.room_type] || ROOM_CATEGORIES[selectedRoom.category]?.name || 'Chưa rõ'}
                   </strong>
                 </div>
                 <div>
@@ -478,13 +389,13 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
                 <div>
                   <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Sức chứa:</span>
                   <strong style={{ color: 'var(--ink-primary)' }}>
-                    {selectedRoom.capacity ? `${selectedRoom.capacity} chỗ` : 'Không cố định'}
+                    {selectedRoomInfo.capacity != null ? `${selectedRoomInfo.capacity} chỗ` : 'Chưa rõ'}
                   </strong>
                 </div>
                 <div>
                   <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Diện tích sàn:</span>
                   <strong style={{ color: 'var(--ink-primary)' }}>
-                    {selectedRoom.area || 60} m²
+                    {selectedRoomInfo.area ?? 'Chưa rõ'} m²
                   </strong>
                 </div>
               </div>
@@ -581,11 +492,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
                     {summarizeRoomEquipment(roomEquipments)} • dữ liệu trực tiếp
                   </div>
                 )}
-                {roomEquipmentView.source === 'sample' && (
-                  <div id="room-equipment-sample-note" style={{ marginBottom: '8px', fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-                    {cadError ? `Không tải được dữ liệu trực tiếp (${cadError}). ` : ''}Đang hiển thị dữ liệu mẫu của mặt bằng.
-                  </div>
-                )}
+                {cadError && <p role="alert">Không tải được dữ liệu phòng: {cadError}</p>}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '230px', overflowY: 'auto', paddingRight: '4px' }}>
                   {roomEquipments.map((eq, idx) => (
@@ -665,7 +572,7 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
 
                   {roomEquipments.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '12px', color: 'var(--ink-muted)' }}>
-                      Chưa có thiết bị đăng ký tại phòng này.
+                      {cadLoading ? 'Đang tải thiết bị…' : selectedPod ? 'Chưa có thiết bị đăng ký tại phòng này.' : 'Chưa có dữ liệu thiết bị cho phòng trên bản vẽ.'}
                     </div>
                   )}
                 </div>
@@ -761,78 +668,9 @@ export const Dashboard = ({ onNavigateTab, onOpenQRModal, onSelectEquipmentForRe
               onClick={() => onNavigateTab('assigned_tasks')}
             />
           </>
-        ) : isFM ? (
-          <>
-            <KPI
-              label="Sự Cố Chờ Phân Công"
-              value={fmStats.reportedCount}
-              subtext="Phiếu mới cần gán kỹ thuật viên"
-              icon={Icons.AlertTriangle}
-              color="#EF4444"
-              onClick={() => onNavigateTab('tickets_kanban')}
-            />
-            <KPI
-              label="Đang Xử Lý (Kanban SLA)"
-              value={fmStats.repairingCount}
-              subtext="Theo dõi tiến độ khắc phục sự cố"
-              icon={Icons.Wrench}
-              color="#F59E0B"
-              onClick={() => onNavigateTab('tickets_kanban')}
-            />
-            <KPI
-              label="Tồn Kho Dự Phòng KHO-01"
-              value={fmStats.inStockCount}
-              subtext="Sẵn sàng cấp bù theo định mức"
-              icon={Icons.Layers}
-              color="#06B6D4"
-              onClick={() => onNavigateTab('warehouse')}
-            />
-            <KPI
-              label="Cảnh Báo Hao Mòn (R ≥ 60%)"
-              value={fmStats.disposalCount}
-              subtext="Hao mòn cao, cần lập hồ sơ BGH"
-              icon={Icons.Trash}
-              color="#8B5CF6"
-              onClick={() => onNavigateTab('disposal_propose')}
-            />
-          </>
-        ) : (
-          <>
-            <KPI
-              label="Tổng Thiết Bị Vận Hành"
-              value={adminStats.activeCount}
-              subtext="Đang phục vụ đào tạo toàn trường"
-              icon={Icons.Equipment}
-              color="#2FB37A"
-              onClick={() => onNavigateTab('equipments')}
-            />
-            <KPI
-              label="Tổng Giá Trị Tài Sản CSVC"
-              value={`${Math.round(adminStats.totalValuation / 1000000)} Tr đ`}
-              subtext="Khấu hao theo chuẩn tài sản công"
-              icon={Icons.CheckCircle}
-              color="#3B82F6"
-              onClick={() => onNavigateTab('equipments')}
-            />
-            <KPI
-              label="Chờ BGH Phê Duyệt Thanh Lý"
-              value={adminStats.pendingDisposals}
-              subtext="Ban Giám Hiệu ký Quyết định TL"
-              icon={Icons.CheckCircle}
-              color="#EF4444"
-              onClick={() => onNavigateTab('disposal_approval')}
-            />
-            <KPI
-              label="Tuân Thủ SLA Vận Hành"
-              value={adminStats.slaRate}
-              subtext="Thời gian khắc phục sự cố đạt chuẩn"
-              icon={Icons.Shield}
-              color="#10B981"
-              onClick={() => onNavigateTab('audit_log')}
-            />
-          </>
-        )}
+        ) : null}
       </div>
+      {(isAdmin || isFM) && <DashboardAnalytics refreshKey={cadRefreshKey} />}
 
       {/* ==============================================================
           4. LOWER GRID: ROLE-TAILORED OPERATIONAL PANELS
