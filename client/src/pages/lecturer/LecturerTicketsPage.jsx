@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+import { isSameUser } from '../../config/navigation';
 import { repairApi } from '../../lib/api';
 
 export const LecturerTicketsPage = ({ onNavigateTab }) => {
   const { toast } = useToast();
+  const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -19,9 +22,12 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const res = await repairApi.list();
+      const currentUserId = String(currentUser?._id || currentUser?.id || '');
+      const res = await repairApi.list(
+        currentUserId && currentUserId !== 'guest' ? { reported_by: currentUserId } : {}
+      );
       if (res && res.success) {
-        setTickets(res.repairs || []);
+        setTickets((res.repairs || []).filter((r) => isSameUser(r.reported_by, currentUser)));
       }
     } catch (err) {
       toast.error('Không thể tải danh sách phiếu báo hỏng: ' + err.message);
@@ -32,7 +38,7 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
 
   useEffect(() => {
     fetchTickets();
-  }, []);
+  }, [currentUser?._id, currentUser?.id, currentUser?.code]);
 
   const openRating = (ticket) => {
     setSelectedTicket(ticket);

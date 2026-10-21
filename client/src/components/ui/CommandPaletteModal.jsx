@@ -12,6 +12,22 @@ const ALL_MODULES = [
     desc: 'Sơ đồ kiến trúc tầng 1-5, tình trạng phòng học và danh mục thiết bị thời gian thực',
     roles: ['admin', 'facility_manager', 'technician', 'lecturer']
   },
+  {
+    id: 'rooms',
+    label: 'Danh Mục Phòng Học (Tòa A1)',
+    cat: 'KHÔNG GIAN • PHÒNG HỌC',
+    icon: Icons.Room,
+    desc: 'Tra cứu phòng học, phòng thí nghiệm, sức chứa, định mức thiết bị và lịch sử bảo trì',
+    roles: ['admin', 'facility_manager', 'technician', 'lecturer']
+  },
+  {
+    id: 'transfer_history',
+    label: 'Lịch Sử Điều Chuyển Thiết Bị',
+    cat: 'TRA CỨU • ĐIỀU CHUYỂN',
+    icon: Icons.ArrowRight,
+    desc: 'Tra cứu lịch sử luân chuyển thiết bị giữa các phòng học và kho dự phòng',
+    roles: ['admin', 'facility_manager', 'technician', 'lecturer']
+  },
   // Lecturer
   {
     id: 'report_issue',
@@ -41,10 +57,10 @@ const ALL_MODULES = [
   {
     id: 'spare_parts',
     label: 'Kho Linh Kiện & Yêu Cầu Vật Tư Thay Thế',
-    cat: 'KỸ THUẬT • LINH KIỆN',
+    cat: 'KỸ THUẬT & CSVC • LINH KIỆN',
     icon: Icons.Package,
-    desc: 'Xem tồn kho linh kiện, cảnh báo tồn kho thấp và tạo phiếu xin cấp linh kiện sửa chữa',
-    roles: ['technician']
+    desc: 'Xem tồn kho linh kiện, tạo phiếu xin cấp hoặc phê duyệt xuất kho linh kiện sửa chữa',
+    roles: ['technician', 'facility_manager']
   },
   {
     id: 'movement_tasks',
@@ -57,10 +73,10 @@ const ALL_MODULES = [
   {
     id: 'qr_scanner',
     label: 'Quét Mã QR Thiết Bị Thực Địa',
-    cat: 'KỸ THUẬT • QR SCANNER',
+    cat: 'TRA CỨU • QR SCANNER',
     icon: Icons.QrCode,
     desc: 'Quét hoặc nhập mã QR để tra cứu thông số kỹ thuật, tình trạng và lịch sử bảo hành',
-    roles: ['technician']
+    roles: ['admin', 'facility_manager', 'technician', 'lecturer']
   },
   // Facility Manager
   {
@@ -70,6 +86,14 @@ const ALL_MODULES = [
     icon: Icons.Wrench,
     desc: 'Giao việc cho kỹ thuật viên, cấp đồ dự phòng từ KHO-01 và giám sát hạn SLA',
     roles: ['facility_manager']
+  },
+  {
+    id: 'maintenance',
+    label: 'Bảo Dưỡng Định Kỳ & Checklist Kỹ Thuật',
+    cat: 'QUẢN LÝ & KỸ THUẬT • BẢO DƯỠNG',
+    icon: Icons.Calendar,
+    desc: 'Lập kế hoạch bảo dưỡng định kỳ theo tầng/phòng và ghi nhận kết quả kiểm tra',
+    roles: ['facility_manager', 'technician']
   },
   {
     id: 'warehouse',
@@ -92,16 +116,16 @@ const ALL_MODULES = [
     label: 'Kho Quản Lý Thiết Bị Trường & In Tem QR',
     cat: 'TÀI SẢN • THIẾT BỊ',
     icon: Icons.Equipment,
-    desc: 'Quản lý toàn bộ thiết bị trường, đăng ký mới, cập nhật bảo hành và in tem nhãn QR',
-    roles: ['facility_manager', 'admin']
+    desc: 'Tra cứu và quản lý toàn bộ thiết bị trường, đăng ký mới, cập nhật bảo hành và in tem nhãn QR',
+    roles: ['admin', 'facility_manager', 'technician', 'lecturer']
   },
   {
     id: 'inventory',
     label: 'Kiểm Kê CSVC & Đối Soát Mã QR Thực Địa',
     cat: 'TÀI SẢN • KIỂM KÊ',
     icon: Icons.CheckCircle,
-    desc: 'Tạo đợt kiểm kê, quét đối soát camera di động và tự động tạo phiếu hỏng phát hiện',
-    roles: ['facility_manager']
+    desc: 'Tạo đợt kiểm kê, quét đối soát thực địa và tự động tạo phiếu hỏng phát hiện',
+    roles: ['facility_manager', 'technician', 'admin']
   },
   {
     id: 'disposal_propose',
@@ -176,7 +200,9 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
   if (!isOpen) return null;
 
   const userRole = String(currentUser?.role || '').toLowerCase();
-  const allowedModules = ALL_MODULES.filter(m => !m.roles || m.roles.includes(userRole));
+  const allowedModules = ALL_MODULES.filter(m =>
+    typeof isTabAllowed === 'function' ? isTabAllowed(m.id) : (!m.roles || m.roles.includes(userRole))
+  );
 
   const filtered = allowedModules.filter(
     (m) =>

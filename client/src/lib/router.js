@@ -54,12 +54,12 @@ export const useRouter = () => {
     }
     if (base === 'equipments') {
       if (segs[1]) {
-        return { tab: 'equipment_detail', params: { id: segs[1] } };
+        return { tab: 'equipments', params: { id: segs[1] } };
       }
       return { tab: 'equipments', params: {} };
     }
-    if (base === 'scan') {
-      return { tab: 'scan', params: { qr: segs[1] || '' } };
+    if (base === 'scan' || base === 'qr_scanner') {
+      return { tab: 'qr_scanner', params: { qr: segs[1] || '' } };
     }
     if (base === 'transfers') {
       return { tab: 'transfer_history', params: {} };
@@ -80,8 +80,11 @@ export const useRouter = () => {
     if (base === 'inventory') {
       return { tab: 'inventory', params: {} };
     }
-    if (base === 'disposals') {
-      return { tab: 'disposal_calc', params: {} };
+    if (base === 'disposals' || base === 'disposal_propose') {
+      return { tab: 'disposal_propose', params: {} };
+    }
+    if (base === 'disposal_approval') {
+      return { tab: 'disposal_approval', params: {} };
     }
     if (base === 'map') {
       return { tab: 'dashboard', params: {} };
@@ -90,7 +93,7 @@ export const useRouter = () => {
       const sub = segs[1];
       if (sub === 'audit') return { tab: 'audit_log', params: {} };
       if (sub === 'rbac') return { tab: 'rbac', params: {} };
-      if (sub === 'users') return { tab: 'admin_users', params: {} };
+      if (sub === 'users') return { tab: 'users', params: {} };
     }
 
     return { tab: base, params: {} };
@@ -100,6 +103,7 @@ export const useRouter = () => {
     const tabMap = {
       dashboard: '#/',
       equipments: '#/equipments',
+      qr_scanner: '#/scan',
       transfers: '#/transfers',
       transfer_history: '#/transfers',
       movements: '#/movements',
@@ -107,8 +111,11 @@ export const useRouter = () => {
       tickets: '#/repairs',
       maintenance: '#/maintenance',
       inventory: '#/inventory',
-      disposal_calc: '#/disposals',
+      disposal_propose: '#/disposal_propose',
+      disposal_approval: '#/disposal_approval',
+      disposal_calc: '#/disposal_propose',
       map: '#/map',
+      users: '#/admin/users',
       audit_log: '#/admin/audit',
       rbac: '#/admin/rbac'
     };

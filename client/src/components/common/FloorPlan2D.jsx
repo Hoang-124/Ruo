@@ -3014,9 +3014,10 @@ export const FloorPlan2D = ({
               fontFamily: 'var(--font-sans)',
               fontSize: '11px',
               fontWeight: 800,
-              color: '#38BDF8',
-              background: 'rgba(56, 189, 248, 0.12)',
-              padding: '2px 7px',
+              color: 'var(--laser-cyan)',
+              background: 'rgba(234, 88, 12, 0.12)',
+              border: '1px solid rgba(234, 88, 12, 0.28)',
+              padding: '2px 8px',
               borderRadius: '5px'
             }}
           >
@@ -3039,11 +3040,12 @@ export const FloorPlan2D = ({
                 className="ruo-rbac-toggle-pill"
                 onClick={() => onChangeFloor && onChangeFloor(fl)}
                 style={{
-                  padding: '3px 9px',
+                  padding: '3.5px 10px',
                   borderRadius: '6px',
-                  border: isActive ? '1.5px solid #38BDF8' : '1px solid var(--hairline-medium)',
-                  background: isActive ? 'rgba(56, 189, 248, 0.15)' : 'var(--canvas-subtle)',
-                  color: isActive ? '#38BDF8' : 'var(--ink-primary)',
+                  border: isActive ? '1.5px solid var(--blueprint-600)' : '1px solid var(--hairline-medium)',
+                  background: isActive ? 'var(--blueprint-600)' : 'var(--canvas-subtle)',
+                  color: isActive ? '#FFFFFF' : 'var(--ink-primary)',
+                  boxShadow: isActive ? '0 2px 8px rgba(234, 88, 12, 0.28)' : 'none',
                   fontSize: '11px',
                   fontWeight: isActive ? 700 : 500,
                   cursor: 'pointer'

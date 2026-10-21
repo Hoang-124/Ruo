@@ -164,31 +164,31 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
               <path d="M 28 0 L 0 0 0 28" fill="none" stroke="currentColor" strokeOpacity="0.04" strokeWidth="0.8" />
             </pattern>
 
-            {/* Shading Gradients for Facades */}
+            {/* Shading Gradients for Facades (Solar Terracotta & Warm Stone) */}
             <linearGradient id="isoFrontLight" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#2563EB" stopOpacity="0.20" />
-              <stop offset="50%" stopColor="#1D4ED8" stopOpacity="0.14" />
-              <stop offset="100%" stopColor="#1E40AF" stopOpacity="0.10" />
+              <stop offset="0%" stopColor="#EA580C" stopOpacity="0.22" />
+              <stop offset="50%" stopColor="#C2410C" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#9A3412" stopOpacity="0.10" />
             </linearGradient>
 
             <linearGradient id="isoSideShadow" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#1E3A8A" stopOpacity="0.38" />
-              <stop offset="100%" stopColor="#0F172A" stopOpacity="0.26" />
+              <stop offset="0%" stopColor="#7C2D12" stopOpacity="0.38" />
+              <stop offset="100%" stopColor="#1C1917" stopOpacity="0.26" />
             </linearGradient>
 
             <linearGradient id="isoTopSlab" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.16" />
-              <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.04" />
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.05" />
             </linearGradient>
 
-            {/* Skylight Glass Gradients */}
+            {/* Skylight Glass Gradients (Warm Solar Amber & Daylight Glass) */}
             <linearGradient id="isoAtriumGlassFront" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.75" />
-              <stop offset="100%" stopColor="#0284C7" stopOpacity="0.55" />
+              <stop offset="0%" stopColor="#FB923C" stopOpacity="0.82" />
+              <stop offset="100%" stopColor="#EA580C" stopOpacity="0.60" />
             </linearGradient>
             <linearGradient id="isoAtriumGlassSide" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0284C7" stopOpacity="0.65" />
-              <stop offset="100%" stopColor="#0369A1" stopOpacity="0.45" />
+              <stop offset="0%" stopColor="#EA580C" stopOpacity="0.70" />
+              <stop offset="100%" stopColor="#C2410C" stopOpacity="0.50" />
             </linearGradient>
           </defs>
 

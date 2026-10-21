@@ -20,34 +20,34 @@ export const RuoLogo = ({ size = 44, showText = true, subtitle = 'CỔNG QUẢN 
         style={{ flexShrink: 0 }}
       >
         <defs>
-          {/* Main University Royal Blue Gradient */}
+          {/* Main University Solar Terracotta & Flame Orange Gradient */}
           <linearGradient id="ruoPillarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#1E40AF" />
-            <stop offset="50%" stopColor="#2563EB" />
-            <stop offset="100%" stopColor="#3B82F6" />
+            <stop offset="0%" stopColor="#9A3412" />
+            <stop offset="50%" stopColor="#EA580C" />
+            <stop offset="100%" stopColor="#F97316" />
           </linearGradient>
 
           {/* Architectural Arch Gradient */}
           <linearGradient id="ruoArchGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#3B82F6" />
-            <stop offset="100%" stopColor="#60A5FA" />
+            <stop offset="0%" stopColor="#F97316" />
+            <stop offset="100%" stopColor="#FB923C" />
           </linearGradient>
 
           {/* Cantilever Dynamic Kickstand Gradient (The leg of the 'R') */}
           <linearGradient id="ruoKickGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#2563EB" />
-            <stop offset="100%" stopColor="#1D4ED8" />
+            <stop offset="0%" stopColor="#EA580C" />
+            <stop offset="100%" stopColor="#C2410C" />
           </linearGradient>
 
           {/* Golden Ambient Accent */}
           <linearGradient id="ruoGoldAccent" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#F59E0B" />
-            <stop offset="100%" stopColor="#FBBF24" />
+            <stop offset="0%" stopColor="#FDE68A" />
+            <stop offset="100%" stopColor="#FEF08A" />
           </linearGradient>
 
           {/* Subtle Outer Drop Shadow */}
           <filter id="ruoShadow" x="-10%" y="-10%" width="125%" height="125%" filterUnits="userSpaceOnUse">
-            <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#1E3A8A" floodOpacity="0.25" />
+            <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#7C2D12" floodOpacity="0.28" />
           </filter>
         </defs>
 
@@ -97,7 +97,7 @@ export const RuoLogo = ({ size = 44, showText = true, subtitle = 'CỔNG QUẢN 
         {/* 5. Modern Corner Chamfer Accent (Góc định vị CAD) */}
         <path
           d="M45 11L45 17M45 11L39 11"
-          stroke="#93C5FD"
+          stroke="#FDBA74"
           strokeWidth="1.5"
           strokeLinecap="round"
         />
@@ -123,16 +123,16 @@ export const RuoLogo = ({ size = 44, showText = true, subtitle = 'CỔNG QUẢN 
               style={{
                 fontSize: '10.5px',
                 fontFamily: 'var(--font-sans)',
-                fontWeight: 700,
+                fontWeight: 800,
                 padding: '2px 8px',
-                borderRadius: '4px',
-                background: 'rgba(37, 99, 235, 0.12)',
-                color: '#2563EB',
-                border: '1px solid rgba(37, 99, 235, 0.28)',
+                borderRadius: '5px',
+                background: 'rgba(234, 88, 12, 0.12)',
+                color: 'var(--blueprint-600)',
+                border: '1px solid rgba(234, 88, 12, 0.28)',
                 letterSpacing: '0.04em'
               }}
             >
-              UFMS V2.6
+              UEMS V3.0
             </span>
           </div>
 

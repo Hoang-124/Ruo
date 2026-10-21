@@ -81,7 +81,7 @@ export const MovementTasksPage = () => {
       setSubmitting(true);
       await movementApi.order({
         ...requestForm,
-        assigned_to: currentUser?._id,
+        assigned_to: currentUser?._id || currentUser?.id,
         reason: requestForm.reason.trim(),
         type: 'transfer'
       });

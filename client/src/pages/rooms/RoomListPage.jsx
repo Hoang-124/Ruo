@@ -31,9 +31,13 @@ const filterLabel = { display: 'block', fontSize: '11px', fontWeight: 700, color
  * name-or-code search and server-side pagination.
  */
 export const RoomListPage = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, hasPermission } = useAuth();
   const { toast } = useToast();
   const isAdmin = currentUser?.role === 'admin';
+  const canUpdateRoomStatus =
+    isAdmin ||
+    currentUser?.role === 'facility_manager' ||
+    (typeof hasPermission === 'function' && hasPermission('room:status:update'));
 
   const [filters, setFilters] = useState(EMPTY_ROOM_FILTERS);
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -216,7 +220,7 @@ export const RoomListPage = () => {
                             <Icons.Edit size={13} /> Sửa
                           </button>
                         )}
-                        {isAdmin && (
+                        {canUpdateRoomStatus && (
                           <button
                             type="button"
                             id={`room-status-${room.code}`}

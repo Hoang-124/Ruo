@@ -204,7 +204,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                           width: '38px',
                           height: '38px',
                           borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)',
+                          background: 'linear-gradient(135deg, #9A3412 0%, #EA580C 100%)',
                           color: '#FFFFFF',
                           display: 'flex',
                           alignItems: 'center',
@@ -340,7 +340,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                   {tab.badge && (
                     <span
                       className="ruo-subnav-badge"
-                      style={{ backgroundColor: tab.badgeColor || '#3B82F6' }}
+                      style={{ backgroundColor: tab.badgeColor || '#EA580C' }}
                     >
                       {tab.badge}
                     </span>

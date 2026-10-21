@@ -259,11 +259,12 @@ export const MaintenancePage = () => {
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 18,
-        background: 'linear-gradient(120deg, var(--surface-card), rgba(62,123,250,0.08))'
+        borderLeft: '4px solid var(--blueprint-500)',
+        background: 'linear-gradient(120deg, var(--surface-card), rgba(234, 88, 12, 0.08))'
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--blueprint-400)', fontWeight: 800, fontSize: 12, letterSpacing: '0.08em' }}>
-            <Icons.Calendar size={17} /> PHÒNG NGỪA • UC-7.3–7.6
+            <Icons.Calendar size={17} /> BẢO DƯỠNG ĐỊNH KỲ & PHÒNG NGỪA
           </div>
           <h1 style={{ color: 'var(--ink-primary)', fontSize: 25, margin: '10px 0 6px' }}>Lịch bảo dưỡng định kỳ</h1>
           <p style={{ color: 'var(--ink-muted)', fontSize: 13, margin: 0 }}>
@@ -322,7 +323,7 @@ export const MaintenancePage = () => {
                   cursor: 'pointer',
                   borderRadius: 9,
                   border: isSelected ? '1px solid var(--blueprint-400)' : '1px solid var(--border-default)',
-                  background: isSelected ? 'rgba(62,123,250,0.14)' : 'var(--surface-1)',
+                  background: isSelected ? 'rgba(234, 88, 12, 0.14)' : 'var(--surface-1)',
                   color: day.isCurrentMonth ? 'var(--ink-primary)' : 'var(--ink-muted)',
                   opacity: day.isCurrentMonth ? 1 : 0.5
                 }}
@@ -339,7 +340,7 @@ export const MaintenancePage = () => {
                       whiteSpace: 'nowrap',
                       borderRadius: 4,
                       padding: '3px 5px',
-                      background: 'rgba(62,123,250,0.15)',
+                      background: 'rgba(234, 88, 12, 0.14)',
                       color: 'var(--blueprint-400)',
                       fontSize: 10,
                       fontWeight: 700
@@ -404,7 +405,7 @@ export const MaintenancePage = () => {
               <article key={plan._id} style={{ border: '1px solid var(--border-default)', borderRadius: 12, padding: 16, background: 'var(--surface-1)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{ color: 'var(--ink-primary)', fontSize: 14, fontWeight: 800 }}>{plan.title}</div>
-                  <span style={{ borderRadius: 20, padding: '4px 8px', background: 'rgba(62,123,250,0.12)', color: 'var(--blueprint-400)', fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                  <span style={{ borderRadius: 20, padding: '4px 8px', background: 'rgba(234, 88, 12, 0.14)', color: 'var(--blueprint-400)', fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>
                     {plan.frequency === 'quarterly' ? 'HÀNG QUÝ' : 'HÀNG THÁNG'}
                   </span>
                 </div>

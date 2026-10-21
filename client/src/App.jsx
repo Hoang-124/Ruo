@@ -46,7 +46,7 @@ const MandatoryPasswordChangeModal = lazy(() => import('./components/auth/Mandat
 // Sleek native SVG loading spinner
 const LazyFallback = () => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '380px', gap: '14px', color: 'var(--ink-muted)' }}>
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3E7BFA" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blueprint-500)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
     <span style={{ fontSize: '13px', fontWeight: 600 }}>Đang nạp phân hệ vận hành...</span>
@@ -127,21 +127,6 @@ const MainAppContent = () => {
     }
 
     switch (activeTab) {
-      // 1. Dashboard (All Actors: Admin, Quản Lý CSVC, Kỹ Thuật Viên, Giảng Viên)
-      case 'dashboard':
-        return (
-          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '12px 24px 60px' }}>
-            <Dashboard
-              onNavigateTab={(tab) => setActiveTab(tab)}
-              onOpenQRModal={() => setActiveTab(currentUser?.role === 'technician' ? 'qr_scanner' : 'inventory')}
-              onSelectEquipmentForReport={(eq, room) => {
-                setReportPrefill({ equipment: eq, room: room });
-                setActiveTab('report_issue');
-              }}
-            />
-          </div>
-        );
-
       // Room & Facility Directory
       case 'rooms':
         return renderSubPageWrapper(
@@ -151,21 +136,6 @@ const MainAppContent = () => {
         );
 
       // 2. Lecturer Views
-      case 'my_rooms':
-        // Hợp nhất vào Sơ đồ phòng học & Bản đồ CAD Tòa A1 tại Dashboard
-        return (
-          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '12px 24px 60px' }}>
-            <Dashboard
-              onNavigateTab={(tab) => setActiveTab(tab)}
-              onOpenQRModal={() => setActiveTab(currentUser?.role === 'technician' ? 'qr_scanner' : 'inventory')}
-              onSelectEquipmentForReport={(eq, room) => {
-                setReportPrefill({ equipment: eq, room: room });
-                setActiveTab('report_issue');
-              }}
-            />
-          </div>
-        );
-
       case 'report_issue':
         return renderSubPageWrapper(
           'Báo Hỏng Thiết Bị Thực Địa',
@@ -233,7 +203,7 @@ const MainAppContent = () => {
       case 'maintenance':
         return renderSubPageWrapper(
           'Lịch Bảo Dưỡng Định Kỳ',
-          'MODULE 04 • BẢO DƯỠNG PHÒNG NGỪA',
+          'BẢO DƯỠNG ĐỊNH KỲ & PHÒNG NGỪA',
           <MaintenancePage />
         );
 
@@ -310,28 +280,16 @@ const MainAppContent = () => {
           <AuditLogPage />
         );
 
-      // 6. Visual Space Twin (Merged into Dashboard)
+      // 6. Unified Dashboard & Spatial CAD Digital Twin (All Actors)
+      case 'dashboard':
+      case 'my_rooms':
       case 'map':
-        return (
-          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '12px 24px 60px' }}>
-            <Dashboard
-              onNavigateTab={(tab) => setActiveTab(tab)}
-              onOpenQRModal={() => setActiveTab(currentUser?.role === 'technician' ? 'qr_scanner' : 'inventory')}
-              onSelectEquipmentForReport={(eq, room) => {
-                setReportPrefill({ equipment: eq, room: room });
-                setActiveTab('report_issue');
-              }}
-            />
-          </div>
-        );
-
       default:
-        // All canonical actors land on the Interactive Classroom Layout Floor Plan (Building A1 Digital Twin)
         return (
           <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '12px 24px 60px' }}>
             <Dashboard
               onNavigateTab={(tab) => setActiveTab(tab)}
-              onOpenQRModal={() => setActiveTab(currentUser?.role === 'technician' ? 'qr_scanner' : 'inventory')}
+              onOpenQRModal={() => setActiveTab('qr_scanner')}
               onSelectEquipmentForReport={(eq, room) => {
                 setReportPrefill({ equipment: eq, room: room });
                 setActiveTab('report_issue');
@@ -348,7 +306,7 @@ const MainAppContent = () => {
       <AppHeader
         activeTab={activeTab}
         onSelectTab={(tab) => setActiveTab(tab)}
-        onOpenQRDemo={() => setActiveTab(currentUser?.role === 'technician' ? 'qr_scanner' : 'inventory')}
+        onOpenQRDemo={() => setActiveTab('qr_scanner')}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
       />
 

@@ -157,7 +157,8 @@ export const ALL_NAV_ITEMS = {
     label: 'Điều Chuyển Thiết Bị',
     short: 'Điều Chuyển',
     icon: Icons.RefreshCw,
-    permission: 'equipment:read',
+    permission: 'movement:order',
+    altPermission: 'audit:read',
     roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN]
   },
   equipments: {
@@ -183,7 +184,7 @@ export const ALL_NAV_ITEMS = {
     short: 'Đề Xuất Thanh Lý',
     icon: Icons.Sliders,
     permission: 'disposal:propose',
-    roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN]
+    roles: [USER_ROLES.FACILITY_MANAGER]
   },
 
   // Admin Module (conforming to Admin screenshot and master prompt)
@@ -255,9 +256,28 @@ export function isTabAllowedForRole(role, tabId, hasPermission) {
   const normalizedRole = String(role || '').toLowerCase();
   const navItem = ALL_NAV_ITEMS[tabId];
   if (!navItem) return false;
-  if (typeof hasPermission === 'function' && (navItem.permission || navItem.altPermission)) {
-    if (navItem.permission && hasPermission(navItem.permission)) return true;
-    if (navItem.altPermission && hasPermission(navItem.altPermission)) return true;
+  if (!navItem.roles.includes(normalizedRole)) {
+    return false;
   }
-  return navItem.roles.includes(normalizedRole);
+  if (typeof hasPermission === 'function' && (navItem.permission || navItem.altPermission)) {
+    return Boolean(
+      (navItem.permission && hasPermission(navItem.permission)) ||
+      (navItem.altPermission && hasPermission(navItem.altPermission))
+    );
+  }
+  return true;
+}
+
+/**
+ * Safely matches a populated user object or raw ObjectId against the logged-in user
+ */
+export function isSameUser(target, currentUser) {
+  if (!target || !currentUser) return false;
+  const uid = String(currentUser._id || currentUser.id || '');
+  const tid = String(target._id || target.id || target || '');
+  return Boolean(
+    (uid && uid !== 'guest' && tid === uid) ||
+    (currentUser.code && target.code === currentUser.code) ||
+    (currentUser.email && target.email === currentUser.email)
+  );
 }

@@ -25,15 +25,25 @@
   --slate-50:  #FAFAFA;
   --white:     #FFFFFF;
 
-  /* Blueprint Brand Accent (Technical Precision) */
-  --blueprint-900: #1E3A8A;
-  --blueprint-700: #1D4ED8;
-  --blueprint-600: #2563EB;
-  --blueprint-500: #3E7BFA;
-  --blueprint-400: #60A5FA;
-  --blueprint-300: #93C5FD;
-  --blueprint-100: #DBEAFE;
-  --blueprint-50:  #EFF6FF;
+  /* Solar Terracotta & Architectural Flame Orange Brand Accent */
+  --blueprint-900: #7C2D12;
+  --blueprint-800: #9A3412;
+  --blueprint-700: #C2410C;
+  --blueprint-600: #EA580C;
+  --blueprint-500: #F97316;
+  --blueprint-400: #FB923C;
+  --blueprint-300: #FDBA74;
+  --blueprint-100: #FFEDD5;
+  --blueprint-50:  #FFF7ED;
+
+  /* Explicit Brand Orange Aliases */
+  --brand-orange-900: #7C2D12;
+  --brand-orange-700: #C2410C;
+  --brand-orange-600: #EA580C;
+  --brand-orange-500: #F97316;
+  --brand-orange-400: #FB923C;
+  --brand-orange-100: #FFEDD5;
+  --brand-orange-50:  #FFF7ED;
 
   /* Functional Status Primitives */
   --emerald-500: #2FB37A;
@@ -92,28 +102,28 @@
   --duration-normal: 200ms;
 
   /* ==========================================================================
-     2. SEMANTIC TOKENS — ACADEMIC OXFORD & ARCHITECTURAL DAYLIGHT (DEFAULT)
-     High-Contrast Crisp Paper Cards (#FFFFFF) on Architectural Stone (#E8EEF5)
-     with Deep Oxford Navy Ink (#0F172A) & Royal Cobalt Accents (#1D4ED8)
+     2. SEMANTIC TOKENS — WARM ARCHITECTURAL SANDSTONE & SOLAR ORANGE (DEFAULT)
+     High-Contrast Crisp Paper Cards (#FFFFFF) on Warm Alabaster Stone (#F7F4EF)
+     with Deep Espresso Ink (#1C1917) & Solar Terracotta Accents (#EA580C)
      ========================================================================== */
-  --bg-app: #E8EEF5;
+  --bg-app: #F7F4EF;
   --surface-1: #FFFFFF;
-  --surface-2: #F1F5F9;
-  --surface-3: #E2E8F0;
-  --surface-header: #E2E8F0;
+  --surface-2: #FAF8F5;
+  --surface-3: #F0ECE4;
+  --surface-header: #F2EDE4;
   --surface-card: #FFFFFF;
   --surface-elevated: #FFFFFF;
   --surface-glass: rgba(255, 255, 255, 0.96);
 
-  --border-subtle: #CBD5E1;
-  --border-default: #94A3B8;
-  --border-strong: #475569;
-  --border-focus: #1D4ED8;
+  --border-subtle: #E6E0D6;
+  --border-default: #CFC7BC;
+  --border-strong: #78716C;
+  --border-focus: #EA580C;
 
-  --ink-primary: #0F172A;
-  --ink-secondary: #1E293B;
-  --ink-muted: #334155;
-  --ink-faint: #64748B;
+  --ink-primary: #1C1917;
+  --ink-secondary: #292524;
+  --ink-muted: #57534E;
+  --ink-faint: #78716C;
 
   /* High-Contrast Solid & Tinted Status Tokens (WCAG AAA on Daylight Paper) */
   --status-active-color: #065F46;
@@ -121,136 +131,183 @@
   --status-active-border: #059669;
   --status-active-solid: #059669;
 
-  --status-repairing-color: #92400E;
-  --status-repairing-bg: #FEF3C7;
-  --status-repairing-border: #D97706;
-  --status-repairing-solid: #D97706;
+  --status-repairing-color: #9A3412;
+  --status-repairing-bg: #FFEDD5;
+  --status-repairing-border: #EA580C;
+  --status-repairing-solid: #EA580C;
 
-  --status-transferring-color: #1E40AF;
-  --status-transferring-bg: #DBEAFE;
-  --status-transferring-border: #2563EB;
-  --status-transferring-solid: #2563EB;
+  --status-transferring-color: #B45309;
+  --status-transferring-bg: #FEF3C7;
+  --status-transferring-border: #D97706;
+  --status-transferring-solid: #D97706;
 
   --status-disposal-color: #5B21B6;
   --status-disposal-bg: #EDE9FE;
   --status-disposal-border: #7C3AED;
   --status-disposal-solid: #7C3AED;
 
-  --status-disposed-color: #1E293B;
-  --status-disposed-bg: #E2E8F0;
-  --status-disposed-border: #64748B;
-  --status-disposed-solid: #475569;
+  --status-disposed-color: #292524;
+  --status-disposed-bg: #E7E5E4;
+  --status-disposed-border: #78716C;
+  --status-disposed-solid: #57534E;
 
   --status-overdue-color: #991B1B;
   --status-overdue-bg: #FEE2E2;
   --status-overdue-border: #DC2626;
   --status-overdue-solid: #DC2626;
 
-  /* Crisp Structural Elevation */
-  --shadow-xs: 0 1px 3px rgba(15, 23, 42, 0.08);
-  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 6px 18px rgba(15, 23, 42, 0.10), 0 2px 6px rgba(15, 23, 42, 0.06);
-  --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.06);
-  --shadow-dropdown: 0 12px 32px rgba(15, 23, 42, 0.18);
-  --shadow-drawer: -12px 0 36px rgba(15, 23, 42, 0.18);
+  /* Universal Semantic Status Aliases (Success / Warning / Danger / Info / Purple) */
+  --status-success-color: var(--status-active-color);
+  --status-success-bg: var(--status-active-bg);
+  --status-success-border: var(--status-active-border);
 
-  /* Technical Blueprint Grid */
-  --blueprint-grid: radial-gradient(rgba(29, 78, 216, 0.12) 1px, transparent 1px);
+  --status-warning-color: var(--status-repairing-color);
+  --status-warning-bg: var(--status-repairing-bg);
+  --status-warning-border: var(--status-repairing-border);
+
+  --status-danger-color: var(--status-overdue-color);
+  --status-danger-bg: var(--status-overdue-bg);
+  --status-danger-border: var(--status-overdue-border);
+
+  --status-info-color: var(--status-transferring-color);
+  --status-info-bg: var(--status-transferring-bg);
+  --status-info-border: var(--status-transferring-border);
+
+  --status-purple-color: var(--status-disposal-color);
+  --status-purple-bg: var(--status-disposal-bg);
+  --status-purple-border: var(--status-disposal-border);
+
+  /* Crisp Structural Elevation (Warm-tinted shadows) */
+  --shadow-xs: 0 1px 3px rgba(28, 25, 23, 0.07);
+  --shadow-sm: 0 2px 8px rgba(28, 25, 23, 0.07), 0 1px 2px rgba(28, 25, 23, 0.05);
+  --shadow-md: 0 8px 22px rgba(28, 25, 23, 0.09), 0 2px 6px rgba(28, 25, 23, 0.05);
+  --shadow-card: 0 2px 10px rgba(28, 25, 23, 0.06), 0 1px 3px rgba(28, 25, 23, 0.04);
+  --shadow-card-hover: 0 10px 26px rgba(234, 88, 12, 0.12), 0 3px 8px rgba(28, 25, 23, 0.06);
+  --shadow-dropdown: 0 14px 34px rgba(28, 25, 23, 0.16);
+  --shadow-drawer: -12px 0 36px rgba(28, 25, 23, 0.16);
+
+  /* Technical Architectural Grid */
+  --blueprint-grid: radial-gradient(rgba(234, 88, 12, 0.14) 1px, transparent 1px);
 
   /* Legacy & Surface Compatibility Aliases */
-  --surface-base: #E8EEF5;
+  --surface-primary: #FFFFFF;
+  --surface-input: #FAF8F5;
+  --surface-base: #F7F4EF;
   --surface-panel: #FFFFFF;
-  --surface-sunken: #DCE4EE;
-  --surface-subtle: #F1F5F9;
-  --canvas-base: #E8EEF5;
-  --canvas-subtle: #F1F5F9;
-  --hairline-soft: #CBD5E1;
-  --hairline-medium: #94A3B8;
-  --hairline-strong: #475569;
-  --ink-pure: #0F172A;
-  --laser-cyan: #1D4ED8;
-  --laser-indigo: #1E3A8A;
+  --surface-sunken: #ECE7DF;
+  --surface-subtle: #FAF8F5;
+  --canvas-base: #F7F4EF;
+  --canvas-subtle: #FAF8F5;
+  --hairline-soft: #E6E0D6;
+  --hairline-medium: #CFC7BC;
+  --hairline-strong: #78716C;
+  --ink-pure: #1C1917;
+  --laser-cyan: #EA580C;
+  --laser-indigo: #C2410C;
   --laser-emerald: #047857;
-  --laser-amber: #B45309;
+  --laser-amber: #D97706;
   --laser-crimson: #B91C1C;
   --laser-violet: #6D28D9;
 }
 
 /* ==========================================================================
-   3. NIGHT BLUEPRINT STUDIO OVERRIDES ([data-theme="dark"])
-   High-Contrast Elevated Slate Cards (#131E31) on Deep Navy (#090F1B)
+   3. WARM OBSIDIAN & CARBON STUDIO OVERRIDES ([data-theme="dark"])
+   High-Contrast Elevated Carbon Cards (#171412) on Deep Warm Obsidian (#0C0A09)
    ========================================================================== */
 [data-theme='dark'] {
-  --bg-app: #090F1B;
-  --surface-1: #131E31;
-  --surface-2: #1D2B42;
-  --surface-3: #263854;
-  --surface-header: #1E2D45;
-  --surface-card: #131E31;
-  --surface-elevated: #1A2840;
-  --surface-glass: rgba(19, 30, 49, 0.95);
+  --bg-app: #0C0A09;
+  --surface-1: #171412;
+  --surface-2: #211D1A;
+  --surface-3: #2C2623;
+  --surface-header: #1F1A17;
+  --surface-card: #171412;
+  --surface-elevated: #241F1C;
+  --surface-glass: rgba(23, 20, 18, 0.95);
 
-  --border-subtle: #293B56;
-  --border-default: #3B5275;
-  --border-strong: #6482AD;
-  --border-focus: #38BDF8;
+  --border-subtle: #2E2723;
+  --border-default: #443B35;
+  --border-strong: #786B63;
+  --border-focus: #FB923C;
 
-  --ink-primary: #FFFFFF;
-  --ink-secondary: #E2E8F0;
-  --ink-muted: #CBD5E1;
-  --ink-faint: #94A3B8;
+  --ink-primary: #FAFAF9;
+  --ink-secondary: #E7E5E4;
+  --ink-muted: #A8A29E;
+  --ink-faint: #78716C;
 
   --status-active-color: #6EE7B7;
   --status-active-bg: rgba(6, 95, 70, 0.55);
   --status-active-border: #10B981;
   --status-active-solid: #059669;
 
-  --status-repairing-color: #FDE68A;
-  --status-repairing-bg: rgba(120, 53, 15, 0.55);
-  --status-repairing-border: #F59E0B;
-  --status-repairing-solid: #D97706;
+  --status-repairing-color: #FDBA74;
+  --status-repairing-bg: rgba(124, 45, 18, 0.55);
+  --status-repairing-border: #F97316;
+  --status-repairing-solid: #EA580C;
 
-  --status-transferring-color: #93C5FD;
-  --status-transferring-bg: rgba(30, 58, 138, 0.55);
-  --status-transferring-border: #3B82F6;
-  --status-transferring-solid: #2563EB;
+  --status-transferring-color: #FDE68A;
+  --status-transferring-bg: rgba(120, 53, 15, 0.55);
+  --status-transferring-border: #F59E0B;
+  --status-transferring-solid: #D97706;
 
   --status-disposal-color: #DDD6FE;
   --status-disposal-bg: rgba(76, 29, 149, 0.55);
   --status-disposal-border: #8B5CF6;
   --status-disposal-solid: #7C3AED;
 
-  --status-disposed-color: #E2E8F0;
-  --status-disposed-bg: rgba(51, 65, 85, 0.65);
-  --status-disposed-border: #94A3B8;
-  --status-disposed-solid: #475569;
+  --status-disposed-color: #E7E5E4;
+  --status-disposed-bg: rgba(68, 64, 60, 0.65);
+  --status-disposed-border: #A8A29E;
+  --status-disposed-solid: #57534E;
 
   --status-overdue-color: #FCA5A5;
   --status-overdue-bg: rgba(127, 29, 29, 0.55);
   --status-overdue-border: #EF4444;
   --status-overdue-solid: #DC2626;
 
+  --status-success-color: var(--status-active-color);
+  --status-success-bg: var(--status-active-bg);
+  --status-success-border: var(--status-active-border);
+
+  --status-warning-color: var(--status-repairing-color);
+  --status-warning-bg: var(--status-repairing-bg);
+  --status-warning-border: var(--status-repairing-border);
+
+  --status-danger-color: var(--status-overdue-color);
+  --status-danger-bg: var(--status-overdue-bg);
+  --status-danger-border: var(--status-overdue-border);
+
+  --status-info-color: var(--status-transferring-color);
+  --status-info-bg: var(--status-transferring-bg);
+  --status-info-border: var(--status-transferring-border);
+
+  --status-purple-color: var(--status-disposal-color);
+  --status-purple-bg: var(--status-disposal-bg);
+  --status-purple-border: var(--status-disposal-border);
+
   --shadow-xs: 0 2px 5px rgba(0, 0, 0, 0.45);
   --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.55);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.65);
-  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 6px 20px rgba(0, 0, 0, 0.55);
-  --shadow-dropdown: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 14px 36px rgba(0, 0, 0, 0.7);
-  --shadow-drawer: -14px 0 42px rgba(0, 0, 0, 0.8);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 6px 20px rgba(0, 0, 0, 0.55);
+  --shadow-card-hover: inset 0 1px 0 rgba(251, 146, 60, 0.22), 0 10px 28px rgba(0, 0, 0, 0.7);
+  --shadow-dropdown: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 14px 36px rgba(0, 0, 0, 0.72);
+  --shadow-drawer: -14px 0 42px rgba(0, 0, 0, 0.82);
 
-  --blueprint-grid: radial-gradient(rgba(56, 189, 248, 0.14) 1px, transparent 1px);
+  --blueprint-grid: radial-gradient(rgba(251, 146, 60, 0.14) 1px, transparent 1px);
 
-  --surface-base: #090F1B;
-  --surface-panel: #131E31;
-  --surface-sunken: #050911;
-  --surface-subtle: #1D2B42;
-  --canvas-base: #090F1B;
-  --canvas-subtle: #131E31;
-  --hairline-soft: #293B56;
-  --hairline-medium: #3B5275;
-  --hairline-strong: #6482AD;
+  --surface-primary: #171412;
+  --surface-input: #211D1A;
+  --surface-base: #0C0A09;
+  --surface-panel: #171412;
+  --surface-sunken: #080706;
+  --surface-subtle: #211D1A;
+  --canvas-base: #0C0A09;
+  --canvas-subtle: #171412;
+  --hairline-soft: #2E2723;
+  --hairline-medium: #443B35;
+  --hairline-strong: #786B63;
   --ink-pure: #FFFFFF;
-  --laser-cyan: #38BDF8;
-  --laser-indigo: #818CF8;
+  --laser-cyan: #FB923C;
+  --laser-indigo: #F97316;
   --laser-emerald: #34D399;
   --laser-amber: #FBBF24;
   --laser-crimson: #F87171;

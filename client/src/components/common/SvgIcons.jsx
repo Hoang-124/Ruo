@@ -323,13 +323,6 @@ const rawIcons = {
       <line x1="12" y1="3" x2="12" y2="15" />
     </SvgIcon>
   ),
-  Download: (props) => (
-    <SvgIcon {...props}>
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
-    </SvgIcon>
-  ),
   Cpu: (props) => (
     <SvgIcon {...props}>
       <rect x="4" y="4" width="16" height="16" rx="2" />
@@ -428,9 +421,54 @@ const rawIcons = {
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
     </SvgIcon>
   ),
-  Star: (props) => (
+  UserPlus: (props) => (
     <SvgIcon {...props}>
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="8.5" cy="7" r="4" />
+      <line x1="20" y1="8" x2="20" y2="14" />
+      <line x1="23" y1="11" x2="17" y2="11" />
+    </SvgIcon>
+  ),
+  ClipboardCheck: (props) => (
+    <SvgIcon {...props}>
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+      <polyline points="9 14 11 16 15 12" />
+    </SvgIcon>
+  ),
+  Loader: (props) => (
+    <SvgIcon {...props}>
+      <line x1="12" y1="2" x2="12" y2="6" />
+      <line x1="12" y1="18" x2="12" y2="22" />
+      <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
+      <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+      <line x1="2" y1="12" x2="6" y2="12" />
+      <line x1="18" y1="12" x2="22" y2="12" />
+      <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
+      <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+    </SvgIcon>
+  ),
+  Package: (props) => (
+    <SvgIcon {...props}>
+      <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" />
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </SvgIcon>
+  ),
+  Refresh: (props) => (
+    <SvgIcon {...props}>
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </SvgIcon>
+  ),
+  Repeat: (props) => (
+    <SvgIcon {...props}>
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
     </SvgIcon>
   )
 };
