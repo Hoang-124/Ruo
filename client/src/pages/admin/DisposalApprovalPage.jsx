@@ -114,8 +114,8 @@ export const DisposalApprovalPage = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', color: '#EF4444', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>ADMIN MODULE</span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>THẨM QUYỀN BAN GIÁM HIỆU • UC: APPROVE DISPOSAL REQUEST</span>
+            <span style={{ fontSize: '11px', color: '#EF4444', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>BAN GIÁM HIỆU</span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Thẩm Quyền Ban Giám Hiệu • Phê Duyệt &amp; Ban Hành Quyết Định Thanh Lý</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
             Phê Duyệt Hồ Sơ Thanh Lý Thiết Bị
