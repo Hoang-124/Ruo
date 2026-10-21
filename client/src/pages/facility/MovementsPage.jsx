@@ -180,7 +180,7 @@ export const MovementsPage = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>{roleBadge}</span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>MODULE 03 • LỆNH ĐIỀU CHUYỂN & LỊCH SỬ DI CHUYỂN TÀI SẢN</span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Lệnh Điều Chuyển & Lịch Sử Di Chuyển Tài Sản Thực Địa</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
             Quản Lý Điều Chuyển Thiết Bị CSVC
