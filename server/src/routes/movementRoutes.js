@@ -47,17 +47,27 @@ const blockAdminTransferMutation = (req, res, next) => {
   next();
 };
 
+const requireTransferReadPermission = (req, res, next) => {
+  if (
+    Array.isArray(req.userPermissions) &&
+    (hasGrantedPermission(req.userPermissions, 'equipment:read') ||
+      hasGrantedPermission(req.userPermissions, 'movement:order') ||
+      hasGrantedPermission(req.userPermissions, 'movement:confirm'))
+  ) {
+    return next();
+  }
+  return requirePermission(
+    'equipment:read',
+    USER_ROLES.ADMIN,
+    USER_ROLES.FACILITY_MANAGER,
+    USER_ROLES.TECHNICIAN,
+    USER_ROLES.LECTURER
+  )(req, res, next);
+};
+
 // Transfer history is available to all authenticated operational roles (UC-4.5)
-router.get(
-  '/',
-  requirePermission('equipment:read', USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER),
-  getMovements
-);
-router.get(
-  '/equipment/:id',
-  requirePermission('equipment:read', USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER),
-  getEquipmentTransfers
-);
+router.get('/', requireTransferReadPermission, getMovements);
+router.get('/equipment/:id', requireTransferReadPermission, getEquipmentTransfers);
 router.get(
   '/pending',
   requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN),

@@ -121,7 +121,7 @@ export const RoomDeactivateModal = ({ room, onClose, onDone }) => {
         <div className="ruo-drawer-header">
           <div>
             <h2 id="room-deactivate-title" className="ruo-drawer-title">Ngừng Sử Dụng Phòng {room.code}</h2>
-            <p className="ruo-drawer-subtitle">UC-2.5 • Phòng chuyển sang INACTIVE, dữ liệu vẫn được lưu giữ</p>
+            <p className="ruo-drawer-subtitle">Phòng chuyển sang ngừng sử dụng (INACTIVE), dữ liệu lịch sử vẫn được lưu giữ</p>
           </div>
           <button type="button" onClick={onClose} className="ruo-drawer-close-btn" aria-label="Đóng"><Icons.Close size={18} /></button>
         </div>

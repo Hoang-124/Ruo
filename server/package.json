@@ -19,6 +19,7 @@
     "test:uc3_2": "node src/tests/test_uc3_2.js",
     "test:equipment": "node src/tests/test_equipment_phase2.js && node src/tests/test_crud_actions.js",
     "test:repair": "node src/tests/test_repair_phase3.js",
+    "test:sync": "node src/tests/test_cross_module_sync.js",
     "test:verify": "node src/tests/backendVerification.js"
   },
   "dependencies": {
