@@ -9,7 +9,10 @@ import {
   addRepairLog,
   reportRepairOutcome,
   closeRepairTicket,
-  getEquipmentRepairHistory
+  getEquipmentRepairHistory,
+  getOverdueRepairs,
+  getSlaComplianceStats,
+  checkAndNotifyOverdueRepairs
 } from '../controllers/repairController.js';
 import { Repair } from '../models/Repair.js';
 import { RepairLog } from '../models/RepairLog.js';
@@ -331,7 +334,189 @@ async function runWorkstream1Tests() {
   console.log('============================================================\n');
 }
 
-runWorkstream1Tests().catch((err) => {
+async function runWorkstream2Tests() {
+  console.log('--- BẮT ĐẦU KIỂM THỬ WORKSTREAM 2: SLA, DEADLINES & OVERDUE INTELLIGENCE (UC-5.9, UC-7.1, UC-7.2) ---');
+
+  const techId = new mongoose.Types.ObjectId().toString();
+  const managerId = new mongoose.Types.ObjectId().toString();
+  const eqId = new mongoose.Types.ObjectId().toString();
+
+  const createPopulateChain = (result) => {
+    const chain = {
+      populate: () => chain,
+      sort: async () => result,
+      then: (resolve) => resolve(result)
+    };
+    return chain;
+  };
+
+  // ----------------------------------------------------
+  // TEST 8: UC-5.9 - Overdue Repairs Tracking (GET /api/repairs/overdue)
+  // ----------------------------------------------------
+  console.log('\n[Test 8] UC-5.9: Quản lý & Lọc danh sách sửa chữa quá hạn SLA (getOverdueRepairs)');
+  {
+    const pastDeadline = new Date(Date.now() - 5 * 3600 * 1000); // 5 hours ago
+    const mockOverdueRepairs = [
+      {
+        _id: 'rep-overdue-01',
+        ticket_code: 'REP-OVERDUE-01',
+        status: REPAIR_STATUSES.IN_PROGRESS,
+        damage_level: DAMAGE_LEVELS.MAJOR,
+        deadline: pastDeadline,
+        equipment_id: { code: 'EQ-OVERDUE-01', name: 'Máy chiếu trễ hạn' },
+        assigned_to: { _id: techId, full_name: 'KTV Trực' },
+        toObject: function () { return { ...this }; }
+      }
+    ];
+
+    Repair.find = (filter) => createPopulateChain(mockOverdueRepairs);
+
+    const req = {
+      query: {}
+    };
+    let jsonResult = null;
+    const res = {
+      status: (code) => res,
+      json: (data) => { jsonResult = data; }
+    };
+
+    await getOverdueRepairs(req, res);
+    assert.ok(jsonResult.success, 'Query quá hạn phải thành công');
+    assert.strictEqual(jsonResult.count, 1, 'Phải có 1 phiếu quá hạn');
+    assert.strictEqual(jsonResult.data[0].deadline_status, 'overdue', 'Trạng thái SLA phải là overdue');
+    assert.ok(jsonResult.data[0].overdue_minutes >= 290, 'Số phút trễ hạn phải tính toán chính xác >= 290 phút');
+    assert.strictEqual(jsonResult.data[0].escalation_level, 'high_breach', 'Trễ > 4h phải gán escalation_level là high_breach');
+    console.log(`✓ PASS: Phát hiện phiếu trễ hạn [${jsonResult.data[0].ticket_code}]: Trễ ${jsonResult.data[0].overdue_minutes} phút, Phân cấp cảnh báo: ${jsonResult.data[0].escalation_level}`);
+  }
+
+  // ----------------------------------------------------
+  // TEST 9: UC-7.2 - SLA Compliance Rate & Metrics (GET /api/repairs/sla-stats)
+  // ----------------------------------------------------
+  console.log('\n[Test 9] UC-7.2: Thống kê & Báo cáo tỷ lệ tuân thủ SLA chuẩn ITIL (getSlaComplianceStats)');
+  {
+    const now = new Date();
+    const mockSlaRepairs = [
+      // 1. Resolved on time
+      {
+        _id: 'rep-sla-01',
+        ticket_code: 'REP-SLA-01',
+        status: REPAIR_STATUSES.RESOLVED,
+        damage_level: DAMAGE_LEVELS.CRITICAL,
+        created_at: new Date(now.getTime() - 6 * 3600 * 1000),
+        deadline: new Date(now.getTime() - 2 * 3600 * 1000),
+        completed_at: new Date(now.getTime() - 3 * 3600 * 1000), // Resolved 1h before deadline
+        equipment_id: { code: 'EQ-01', name: 'Server' }
+      },
+      // 2. Resolved overdue
+      {
+        _id: 'rep-sla-02',
+        ticket_code: 'REP-SLA-02',
+        status: REPAIR_STATUSES.CLOSED,
+        damage_level: DAMAGE_LEVELS.MAJOR,
+        created_at: new Date(now.getTime() - 30 * 3600 * 1000),
+        deadline: new Date(now.getTime() - 6 * 3600 * 1000),
+        completed_at: new Date(now.getTime() - 2 * 3600 * 1000), // Resolved 4h after deadline
+        equipment_id: { code: 'EQ-02', name: 'Switch' }
+      },
+      // 3. Open - currently overdue
+      {
+        _id: 'rep-sla-03',
+        ticket_code: 'REP-SLA-03',
+        status: REPAIR_STATUSES.IN_PROGRESS,
+        damage_level: DAMAGE_LEVELS.MAJOR,
+        created_at: new Date(now.getTime() - 10 * 3600 * 1000),
+        deadline: new Date(now.getTime() - 1 * 3600 * 1000), // 1h past deadline
+        equipment_id: { code: 'EQ-03', name: 'Router' }
+      },
+      // 4. Open - currently on track
+      {
+        _id: 'rep-sla-04',
+        ticket_code: 'REP-SLA-04',
+        status: REPAIR_STATUSES.ASSIGNED,
+        damage_level: DAMAGE_LEVELS.MINOR,
+        created_at: new Date(now.getTime() - 2 * 3600 * 1000),
+        deadline: new Date(now.getTime() + 20 * 3600 * 1000), // 20h remaining
+        equipment_id: { code: 'EQ-04', name: 'Projector' }
+      }
+    ];
+
+    Repair.find = (filter) => createPopulateChain(mockSlaRepairs);
+
+    const req = {};
+    let jsonResult = null;
+    const res = {
+      status: (code) => res,
+      json: (data) => { jsonResult = data; }
+    };
+
+    await getSlaComplianceStats(req, res);
+    assert.ok(jsonResult.success, 'Thống kê SLA phải thành công');
+    const { data } = jsonResult;
+    assert.strictEqual(data.total_with_deadline, 4, 'Tổng phiếu có SLA phải là 4');
+    assert.strictEqual(data.resolved_count, 2, 'Số phiếu đã xử lý xong là 2');
+    assert.strictEqual(data.on_time_resolved, 1, 'Số phiếu hoàn tất đúng hạn là 1');
+    assert.strictEqual(data.overdue_resolved, 1, 'Số phiếu hoàn tất trễ hạn là 1');
+    assert.strictEqual(data.currently_overdue, 1, 'Số phiếu đang mở bị quá hạn là 1');
+    assert.strictEqual(data.currently_on_track, 1, 'Số phiếu đang mở đúng hạn là 1');
+    assert.strictEqual(data.compliance_rate, 50.0, 'Tỷ lệ tuân thủ phải là 50%');
+    assert.ok(data.avg_resolution_hours > 0, 'Thời gian xử lý TB MTTR phải > 0');
+    assert.strictEqual(data.by_damage_level.critical.on_time, 1, 'Mức critical đúng hạn 1');
+    console.log(`✓ PASS: Thống kê SLA: Tỷ lệ tuân thủ = ${data.compliance_rate}%, MTTR = ${data.avg_resolution_hours}h, Đang quá hạn = ${data.currently_overdue}`);
+  }
+
+  // ----------------------------------------------------
+  // TEST 10: UC-5.9 - SLA Breach Scanner & Notifications (checkAndNotifyOverdueRepairs)
+  // ----------------------------------------------------
+  console.log('\n[Test 10] UC-5.9: Quét vi phạm SLA tự động & phát sinh Notification (checkAndNotifyOverdueRepairs)');
+  {
+    const mockOverdueRepair = {
+      _id: new mongoose.Types.ObjectId(),
+      ticket_code: 'REP-BREACH-01',
+      status: REPAIR_STATUSES.IN_PROGRESS,
+      deadline: new Date(Date.now() - 3600 * 1000),
+      assigned_to: techId,
+      equipment_id: { code: 'EQ-CAM-01', name: 'Camera AI Giám Sát' }
+    };
+
+    Repair.find = (filter) => createPopulateChain([mockOverdueRepair]);
+    User.find = async (filter) => [{ _id: managerId, role: USER_ROLES.FACILITY_MANAGER }];
+
+    const sentNotifs = [];
+    Notification.findOne = async () => null; // Chưa có thông báo trong 24h
+    Notification.create = async (doc) => {
+      sentNotifs.push(doc);
+      return doc;
+    };
+
+    const req = {};
+    let jsonResult = null;
+    const res = {
+      status: (code) => res,
+      json: (data) => { jsonResult = data; }
+    };
+
+    await checkAndNotifyOverdueRepairs(req, res);
+    assert.ok(jsonResult.success, 'Quét vi phạm phải thành công');
+    assert.strictEqual(jsonResult.overdue_tickets_count, 1, 'Phát hiện 1 phiếu trễ hạn');
+    assert.strictEqual(jsonResult.notifications_sent, 2, 'Gửi 2 thông báo (1 KTV, 1 Manager)');
+    assert.strictEqual(sentNotifs.length, 2);
+    assert.strictEqual(sentNotifs[0].type, 'deadline_overdue', 'Loại thông báo là deadline_overdue');
+    console.log(`✓ PASS: Đã quét phát hiện phiếu trễ hạn, tạo ${sentNotifs.length} thông báo cảnh báo SLA tới KTV và Manager thành công!`);
+  }
+
+  console.log('\n============================================================');
+  console.log('TẤT CẢ 3/3 TESTS CHO WORKSTREAM 2 (UC-5.9, UC-7.1, UC-7.2) ĐÃ ĐẠT 100%!');
+  console.log('TỔNG CỘNG 10/10 TESTS PHASE 3 ĐÃ VƯỢT QUA TOÀN DIỆN!');
+  console.log('============================================================\n');
+}
+
+async function main() {
+  await runWorkstream1Tests();
+  await runWorkstream2Tests();
+}
+
+main().catch((err) => {
   console.error('XẢY RA LỖI TRONG QUÁ TRÌNH KIỂM THỬ:', err);
   process.exit(1);
 });
+
