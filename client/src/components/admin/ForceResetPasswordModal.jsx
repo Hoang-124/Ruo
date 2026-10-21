@@ -112,7 +112,7 @@ export const ForceResetPasswordModal = ({
 
         {/* Body */}
         <form onSubmit={handleSubmit}>
-          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="ruo-modal-body" style={{ padding: '18px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {/* Target User Info */}
             <div
               style={{
@@ -257,8 +257,9 @@ export const ForceResetPasswordModal = ({
 
           {/* Footer */}
           <div
+            className="ruo-modal-footer"
             style={{
-              padding: '14px 24px',
+              padding: '12px 24px',
               borderTop: '1px solid var(--hairline-medium)',
               display: 'flex',
               alignItems: 'center',

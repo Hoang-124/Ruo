@@ -177,11 +177,11 @@ export const MandatoryPasswordChangeModal = () => {
 
         {/* Body */}
         <form onSubmit={handleSubmit}>
-          <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="ruo-modal-body" style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {/* Notice card */}
             <div
               style={{
-                padding: '12px 14px',
+                padding: '10px 12px',
                 borderRadius: 'var(--radius-sm)',
                 background: 'rgba(245, 158, 11, 0.08)',
                 border: '1px solid rgba(245, 158, 11, 0.3)',
@@ -190,8 +190,8 @@ export const MandatoryPasswordChangeModal = () => {
                 alignItems: 'flex-start'
               }}
             >
-              <Icons.AlertTriangle size={18} color="#F59E0B" style={{ marginTop: '2px', flexShrink: 0 }} />
-              <div style={{ fontSize: '12.5px', lineHeight: '1.5', color: 'var(--ink-secondary)' }}>
+              <Icons.AlertTriangle size={16} color="#F59E0B" style={{ marginTop: '2px', flexShrink: 0 }} />
+              <div style={{ fontSize: '12px', lineHeight: '1.4', color: 'var(--ink-secondary)' }}>
                 Xin chào <strong>{currentUser?.fullName || currentUser?.name}</strong> ({currentUser?.code}). Vì lý do an toàn bảo mật thông tin, bạn bắt buộc phải tạo mật khẩu mới đạt chuẩn trước khi có thể truy cập các tính năng của hệ thống Ruo.
               </div>
             </div>
@@ -199,12 +199,12 @@ export const MandatoryPasswordChangeModal = () => {
             {errorMessage && (
               <div
                 style={{
-                  padding: '10px 14px',
+                  padding: '8px 12px',
                   borderRadius: 'var(--radius-sm)',
                   background: 'rgba(239, 68, 68, 0.1)',
                   border: '1px solid rgba(239, 68, 68, 0.3)',
                   color: '#EF4444',
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   fontWeight: 600
                 }}
               >
@@ -214,7 +214,7 @@ export const MandatoryPasswordChangeModal = () => {
 
             {/* Field 1: Old / Temp Password */}
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '4px' }}>
                 Mật khẩu tạm thời hiện tại <span style={{ color: '#EF4444' }}>*</span>
               </label>
               <div style={{ position: 'relative' }}>
@@ -225,7 +225,7 @@ export const MandatoryPasswordChangeModal = () => {
                   placeholder="Nhập mật khẩu tạm được cấp (e.g. Ruo@...)"
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: '40px', fontSize: '13.5px' }}
+                  style={{ width: '100%', paddingRight: '40px', fontSize: '13px' }}
                 />
                 <button
                   type="button"
@@ -239,86 +239,87 @@ export const MandatoryPasswordChangeModal = () => {
               </div>
             </div>
 
-            {/* Field 2: New Password */}
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '6px' }}>
-                Mật khẩu mới của bạn <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showNew ? 'text' : 'password'}
-                  className="ruo-input"
-                  required
-                  placeholder="Nhập mật khẩu mới an toàn..."
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: '40px', fontSize: '13.5px' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNew(!showNew)}
-                  className="ruo-btn-close"
-                  title={showNew ? 'Ẩn' : 'Hiện'}
-                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', padding: '6px' }}
-                >
-                  {showNew ? <Icons.EyeOff size={15} /> : <Icons.Eye size={15} />}
-                </button>
-              </div>
-
-              {/* Visual Password Strength Meter */}
-              {newPassword && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                    <span style={{ color: 'var(--ink-secondary)' }}>Độ phức tạp mật khẩu:</span>
-                    <span style={{ fontWeight: 700, color: strengthMeta.color }}>{strengthMeta.label} ({strengthScore}%)</span>
-                  </div>
-                  <div style={{ height: '5px', width: '100%', background: 'var(--hairline-medium)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div
-                      style={{
-                        height: '100%',
-                        width: `${strengthScore}%`,
-                        background: strengthMeta.color,
-                        borderRadius: '3px',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                      }}
-                    />
-                  </div>
+            {/* Field 2 & Field 3: New Password & Confirm Password side-by-side */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '4px' }}>
+                  Mật khẩu mới của bạn <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showNew ? 'text' : 'password'}
+                    className="ruo-input"
+                    required
+                    placeholder="Mật khẩu mới..."
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    style={{ width: '100%', paddingRight: '36px', fontSize: '13px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNew(!showNew)}
+                    className="ruo-btn-close"
+                    title={showNew ? 'Ẩn' : 'Hiện'}
+                    style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', padding: '6px' }}
+                  >
+                    {showNew ? <Icons.EyeOff size={15} /> : <Icons.Eye size={15} />}
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Field 3: Confirm Password */}
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '6px' }}>
-                Xác nhận lại mật khẩu mới <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showConfirm ? 'text' : 'password'}
-                  className="ruo-input"
-                  required
-                  placeholder="Nhập lại mật khẩu mới..."
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: '40px', fontSize: '13.5px' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(!showConfirm)}
-                  className="ruo-btn-close"
-                  title={showConfirm ? 'Ẩn' : 'Hiện'}
-                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', padding: '6px' }}
-                >
-                  {showConfirm ? <Icons.EyeOff size={15} /> : <Icons.Eye size={15} />}
-                </button>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--ink-primary)', marginBottom: '4px' }}>
+                  Xác nhận lại mật khẩu mới <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showConfirm ? 'text' : 'password'}
+                    className="ruo-input"
+                    required
+                    placeholder="Nhập lại mật khẩu mới..."
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    style={{ width: '100%', paddingRight: '36px', fontSize: '13px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                    className="ruo-btn-close"
+                    title={showConfirm ? 'Ẩn' : 'Hiện'}
+                    style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', padding: '6px' }}
+                  >
+                    {showConfirm ? <Icons.EyeOff size={15} /> : <Icons.Eye size={15} />}
+                  </button>
+                </div>
               </div>
             </div>
+
+            {/* Visual Password Strength Meter */}
+            {newPassword && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                  <span style={{ color: 'var(--ink-secondary)' }}>Độ phức tạp mật khẩu:</span>
+                  <span style={{ fontWeight: 700, color: strengthMeta.color }}>{strengthMeta.label} ({strengthScore}%)</span>
+                </div>
+                <div style={{ height: '5px', width: '100%', background: 'var(--hairline-medium)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${strengthScore}%`,
+                      background: strengthMeta.color,
+                      borderRadius: '3px',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Password Policy Criteria Checklist */}
             <div
               style={{
                 background: 'var(--surface-elevated)',
-                padding: '12px 14px',
+                padding: '10px 12px',
                 borderRadius: 'var(--radius-sm)',
                 border: '1px solid var(--hairline-medium)',
                 display: 'flex',
@@ -327,33 +328,33 @@ export const MandatoryPasswordChangeModal = () => {
                 fontSize: '11.5px'
               }}
             >
-              <span style={{ fontWeight: 700, color: 'var(--ink-secondary)', marginBottom: '2px' }}>
+              <span style={{ fontWeight: 700, color: 'var(--ink-secondary)' }}>
                 Tiêu chuẩn mật khẩu an toàn:
               </span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: criteria.minLength ? '#10B981' : 'var(--ink-muted)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: criteria.minLength ? '#10B981' : 'var(--ink-muted)' }}>
                   {criteria.minLength ? <Icons.CheckCircle size={13} color="#10B981" /> : <Icons.Clock size={13} />}
-                  <span>Tối thiểu 8 ký tự</span>
+                  <span>≥ 8 ký tự</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: criteria.hasUpper ? '#10B981' : 'var(--ink-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: criteria.hasUpper ? '#10B981' : 'var(--ink-muted)' }}>
                   {criteria.hasUpper ? <Icons.CheckCircle size={13} color="#10B981" /> : <Icons.Clock size={13} />}
-                  <span>Ít nhất 1 chữ hoa (A-Z)</span>
+                  <span>Chữ hoa (A-Z)</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: criteria.hasLower ? '#10B981' : 'var(--ink-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: criteria.hasLower ? '#10B981' : 'var(--ink-muted)' }}>
                   {criteria.hasLower ? <Icons.CheckCircle size={13} color="#10B981" /> : <Icons.Clock size={13} />}
-                  <span>Ít nhất 1 chữ thường (a-z)</span>
+                  <span>Chữ thường (a-z)</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: criteria.hasNumber ? '#10B981' : 'var(--ink-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: criteria.hasNumber ? '#10B981' : 'var(--ink-muted)' }}>
                   {criteria.hasNumber ? <Icons.CheckCircle size={13} color="#10B981" /> : <Icons.Clock size={13} />}
-                  <span>Ít nhất 1 chữ số (0-9)</span>
+                  <span>Chữ số (0-9)</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: criteria.hasSpecial ? '#10B981' : 'var(--ink-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: criteria.hasSpecial ? '#10B981' : 'var(--ink-muted)' }}>
                   {criteria.hasSpecial ? <Icons.CheckCircle size={13} color="#10B981" /> : <Icons.Clock size={13} />}
-                  <span>Ít nhất 1 ký tự đặc biệt</span>
+                  <span>Ký tự đặc biệt</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: criteria.isMatching ? '#10B981' : 'var(--ink-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: criteria.isMatching ? '#10B981' : 'var(--ink-muted)' }}>
                   {criteria.isMatching ? <Icons.CheckCircle size={13} color="#10B981" /> : <Icons.Clock size={13} />}
-                  <span>Mật khẩu xác nhận khớp</span>
+                  <span>Mật khẩu khớp</span>
                 </div>
               </div>
             </div>
@@ -361,8 +362,9 @@ export const MandatoryPasswordChangeModal = () => {
 
           {/* Footer */}
           <div
+            className="ruo-modal-footer"
             style={{
-              padding: '14px 24px',
+              padding: '12px 24px',
               borderTop: '1px solid var(--hairline-medium)',
               background: 'var(--surface-elevated)',
               display: 'flex',

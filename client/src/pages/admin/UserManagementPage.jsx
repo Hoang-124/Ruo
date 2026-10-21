@@ -731,8 +731,8 @@ export const UserManagementPage = () => {
             </div>
 
             <form onSubmit={handleCreateUser}>
-              <div className="ruo-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div className="ruo-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
                     <label className="ruo-label">Mã Cán Bộ / MSSV *</label>
                     <input
@@ -759,19 +759,31 @@ export const UserManagementPage = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="ruo-label">Họ Và Tên *</label>
-                  <input
-                    type="text"
-                    className="ruo-input"
-                    required
-                    placeholder="VD: Nguyễn Văn Bình"
-                    value={createForm.full_name}
-                    onChange={(e) => setCreateForm({ ...createForm, full_name: e.target.value })}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label className="ruo-label">Họ Và Tên *</label>
+                    <input
+                      type="text"
+                      className="ruo-input"
+                      required
+                      placeholder="VD: Nguyễn Văn Bình"
+                      value={createForm.full_name}
+                      onChange={(e) => setCreateForm({ ...createForm, full_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="ruo-label">Đơn Vị / Khoa Phòng</label>
+                    <input
+                      type="text"
+                      className="ruo-input"
+                      placeholder="Khoa Công Nghệ Thông Tin"
+                      value={createForm.department}
+                      onChange={(e) => setCreateForm({ ...createForm, department: e.target.value })}
+                    />
+                  </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
                     <label className="ruo-label">Email Trường *</label>
                     <input
@@ -793,17 +805,6 @@ export const UserManagementPage = () => {
                       onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="ruo-label">Đơn Vị / Khoa Phòng</label>
-                  <input
-                    type="text"
-                    className="ruo-input"
-                    placeholder="Khoa Công Nghệ Thông Tin"
-                    value={createForm.department}
-                    onChange={(e) => setCreateForm({ ...createForm, department: e.target.value })}
-                  />
                 </div>
 
                 <div>

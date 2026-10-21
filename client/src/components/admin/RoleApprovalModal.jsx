@@ -165,7 +165,8 @@ export const RoleApprovalModal = ({
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <form onSubmit={handleSubmit}>
+          <div className="ruo-modal-body" style={{ padding: '18px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* Candidate Identity Card */}
           <div
             style={{
@@ -419,8 +420,10 @@ export const RoleApprovalModal = ({
             </div>
           </div>
 
+          </div>
+
           {/* Action Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+          <div className="ruo-modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '12px 24px' }}>
             <button
               type="button"
               onClick={onClose}

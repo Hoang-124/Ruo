@@ -385,7 +385,9 @@
 }
 
 /* ==========================================================================
-   SLIDE-OVER DRAWER
+   SLIDE-OVER DRAWER & GLOBAL MODAL SYSTEM
+   Ensures header & footer action buttons are always pinned and visible
+   without requiring users to scroll down to find Confirm/Submit buttons.
    ========================================================================== */
 .ruo-drawer-backdrop {
   position: fixed;
@@ -399,22 +401,36 @@
 }
 
 .ruo-drawer-panel {
-  height: 100%;
+  height: 100vh;
+  max-height: 100vh;
   background: var(--surface-1);
   border-left: 2px solid var(--border-strong);
   box-shadow: var(--shadow-drawer);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
   animation: slideLeft 0.34s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.ruo-drawer-panel > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  margin: 0;
+}
+
 .ruo-drawer-header {
-  padding: var(--space-5);
+  padding: 14px 20px;
   border-bottom: 1.5px solid var(--border-default);
   background: var(--surface-header);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .ruo-drawer-title {
@@ -425,7 +441,7 @@
 }
 
 .ruo-drawer-subtitle {
-  margin: 4px 0 0 0;
+  margin: 3px 0 0 0;
   font-size: var(--text-xs);
   color: var(--ink-secondary);
   font-weight: 600;
@@ -441,6 +457,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   transition:
     transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
     background-color 0.18s ease,
@@ -455,19 +472,140 @@
 }
 
 .ruo-drawer-body {
-  padding: var(--space-5);
+  padding: 16px 20px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .ruo-drawer-footer {
-  padding: 16px 20px;
+  padding: 12px 20px;
   border-top: 1.5px solid var(--border-default);
   background: var(--surface-2);
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Global Centered Modal System (.ruo-modal-*) */
+.ruo-modal-overlay {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(3, 7, 18, 0.72);
+  backdrop-filter: blur(7px);
+  box-sizing: border-box;
+  animation: fadeIn 160ms ease-out;
+}
+
+.ruo-modal-content {
+  position: relative;
+  width: min(100%, 600px);
+  max-height: min(92vh, 860px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 16px;
+  background: var(--surface-card);
+  color: var(--ink-primary);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  box-sizing: border-box;
+  animation: ruoCardCascade 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ruo-modal-content > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  margin: 0;
+}
+
+.ruo-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-header);
+  flex-shrink: 0;
+}
+
+.ruo-modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.ruo-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-default);
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+
+.ruo-btn-close {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.ruo-btn-close:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.12);
+  color: #EF4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.ruo-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-secondary);
+  margin-bottom: 5px;
+}
+
+.ruo-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-primary);
+  background: var(--surface-2);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  outline: none;
+  resize: vertical;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+.ruo-textarea:focus {
+  border-color: var(--blueprint-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
 }
 
 /* ==========================================================================
