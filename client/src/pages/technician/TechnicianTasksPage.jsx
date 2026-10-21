@@ -4,6 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { repairApi } from '../../lib/api';
 import { RepairStepper } from '../../components/repairs/RepairStepper';
+import { DeadlineCountdown } from '../../components/repairs/DeadlineCountdown';
 
 export const TechnicianTasksPage = () => {
   const { currentUser } = useAuth();
@@ -151,12 +152,14 @@ export const TechnicianTasksPage = () => {
     if (statusFilter === 'ALL') return true;
     if (statusFilter === 'TODO') return t.status === 'assigned';
     if (statusFilter === 'DOING') return t.status === 'in_progress';
+    if (statusFilter === 'OVERDUE') return !['resolved', 'unrepairable', 'closed'].includes(t.status) && t.deadline && new Date(t.deadline).getTime() < Date.now();
     if (statusFilter === 'DONE') return ['resolved', 'unrepairable', 'closed'].includes(t.status);
     return true;
   });
 
   const countTodo = tasks.filter(t => t.status === 'assigned').length;
   const countDoing = tasks.filter(t => t.status === 'in_progress').length;
+  const countOverdue = tasks.filter(t => !['resolved', 'unrepairable', 'closed'].includes(t.status) && t.deadline && new Date(t.deadline).getTime() < Date.now()).length;
   const countDone = tasks.filter(t => ['resolved', 'unrepairable', 'closed'].includes(t.status)).length;
 
   return (
@@ -166,7 +169,7 @@ export const TechnicianTasksPage = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '11px', color: '#0EA5E9', background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>KỸ THUẬT VIÊN</span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>MODULE 04 • NHIỆM VỤ SỬA CHỮA & TIẾP NHẬN SLA</span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Theo Dõi Tiến Độ Xử Lý & Tiếp Nhận SLA</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
             Nhiệm Vụ Sửa Chữa & Bảo Trì Thiết Bị
@@ -187,7 +190,7 @@ export const TechnicianTasksPage = () => {
       </div>
 
       {/* KPI Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }}>
         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
           <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Tổng nhiệm vụ được giao</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--ink-pure)', marginTop: '4px' }}>{tasks.length}</div>
@@ -197,11 +200,24 @@ export const TechnicianTasksPage = () => {
           <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--laser-cyan)', marginTop: '4px' }}>{countTodo}</div>
         </div>
         <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
-          <div style={{ fontSize: '12px', color: '#3B82F6', fontWeight: 600 }}>Đang thực hiện sửa chữa</div>
+          <div style={{ fontSize: '12px', color: '#3B82F6', fontWeight: 600 }}>Đang làm sửa chữa</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#3B82F6', marginTop: '4px' }}>{countDoing}</div>
         </div>
+        <div
+          onClick={() => setStatusFilter(statusFilter === 'OVERDUE' ? 'ALL' : 'OVERDUE')}
+          style={{
+            background: 'var(--surface-card)',
+            border: statusFilter === 'OVERDUE' ? '2px solid #EF4444' : '1px solid rgba(239,68,68,0.3)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '16px 18px',
+            cursor: 'pointer'
+          }}
+        >
+          <div style={{ fontSize: '12px', color: '#EF4444', fontWeight: 700 }}>🚨 Quá hạn SLA (Khẩn)</div>
+          <div style={{ fontSize: '22px', fontWeight: 800, color: '#EF4444', marginTop: '4px' }}>{countOverdue}</div>
+        </div>
         <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
-          <div style={{ fontSize: '12px', color: '#10B981', fontWeight: 600 }}>Đã hoàn tất / Nghiệm thu</div>
+          <div style={{ fontSize: '12px', color: '#10B981', fontWeight: 600 }}>Đã xong / Nghiệm thu</div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#10B981', marginTop: '4px' }}>{countDone}</div>
         </div>
       </div>
@@ -212,6 +228,7 @@ export const TechnicianTasksPage = () => {
           { key: 'ALL', label: `Tất Cả (${tasks.length})` },
           { key: 'TODO', label: `Cần Tiếp Nhận (${countTodo})` },
           { key: 'DOING', label: `Đang Làm (${countDoing})` },
+          { key: 'OVERDUE', label: `🚨 Quá Hạn SLA (${countOverdue})` },
           { key: 'DONE', label: `Đã Xong (${countDone})` }
         ].map(tab => (
           <button
@@ -287,9 +304,15 @@ export const TechnicianTasksPage = () => {
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '12.5px', color: 'var(--ink-muted)', marginBottom: '10px' }}>
                     <div>Vị trí: <strong style={{ color: 'var(--ink-pure)' }}>{room.code} ({room.name})</strong></div>
-                    <div>Hạn cam kết SLA: <strong style={{ color: isCritical ? '#EF4444' : 'var(--ink-pure)' }}>{t.deadline ? new Date(t.deadline).toLocaleString('vi-VN') : '—'}</strong></div>
                     <div>Người báo: <strong style={{ color: 'var(--ink-pure)' }}>{t.reported_by?.full_name || 'Giảng viên'}</strong></div>
                   </div>
+
+                  {/* Real-time SLA Deadline Countdown (UC-7.1) */}
+                  {t.deadline && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <DeadlineCountdown deadline={t.deadline} status={t.status} />
+                    </div>
+                  )}
 
                   <div style={{ margin: '10px 0' }}>
                     <RepairStepper status={t.status} outcome={t.outcome} />
