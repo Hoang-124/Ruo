@@ -72,7 +72,7 @@ export const RBACMatrixPage = () => {
   const permissionModules = [
     {
       id: 'mod_auth',
-      name: 'Module 01: Tài Khoản, Xác Thực & Phê Duyệt Chức Vụ',
+      name: 'Tài Khoản, Xác Thực & Phê Duyệt Chức Vụ',
       shortName: 'Tài Khoản & Phân Quyền',
       permissions: [
         { code: 'user:profile:read', label: 'Xem & cập nhật hồ sơ cá nhân', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
@@ -86,7 +86,7 @@ export const RBACMatrixPage = () => {
     },
     {
       id: 'mod_master',
-      name: 'Module 02: Cơ Sở Vật Chất & Sơ Đồ Mặt Bằng CAD',
+      name: 'Cơ Sở Vật Chất & Sơ Đồ Mặt Bằng CAD',
       shortName: 'Cơ Sở Vật Chất & CAD',
       permissions: [
         { code: 'room:read', label: 'Tra cứu phòng học & xem mặt bằng CAD 2D tương tác', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
@@ -98,14 +98,14 @@ export const RBACMatrixPage = () => {
     },
     {
       id: 'mod_assets',
-      name: 'Module 03: Vòng Đời Thiết Bị, Dán Nhãn QR & Điều Chuyển',
+      name: 'Vòng Đời Thiết Bị, Dán Nhãn QR & Điều Chuyển',
       shortName: 'Thiết Bị & Điều Chuyển',
       permissions: [
-        { code: 'equipment:read', label: 'Tra cứu kho thiết bị trường & lịch sử dòng đời (UC-3.2, UC-3.3, UC-3.5)', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
-        { code: 'equipment:create', label: 'Đăng ký tài sản mới vào hệ thống (UC-3.1)', defaultRoles: ['technician', 'facility_manager', 'admin'] },
-        { code: 'equipment:update', label: 'Cập nhật thông số kỹ thuật & tự động ghi điều chuyển phòng (UC-3.4)', defaultRoles: ['technician', 'facility_manager', 'admin'] },
-        { code: 'equipment:import', label: 'Nhập hàng loạt & kiểm tra lỗi danh sách thiết bị từ Excel/CSV (UC-3.6, UC-3.7)', defaultRoles: ['facility_manager', 'admin'] },
-        { code: 'equipment:dispose', label: 'Ghi nhận thanh lý tài sản DISPOSED theo QĐ BGH (UC-3.8)', defaultRoles: ['facility_manager', 'admin'] },
+        { code: 'equipment:read', label: 'Tra cứu kho thiết bị trường & lịch sử dòng đời tài sản', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
+        { code: 'equipment:create', label: 'Đăng ký tài sản mới vào hệ thống', defaultRoles: ['technician', 'facility_manager', 'admin'] },
+        { code: 'equipment:update', label: 'Cập nhật thông số kỹ thuật & tự động ghi điều chuyển phòng', defaultRoles: ['technician', 'facility_manager', 'admin'] },
+        { code: 'equipment:import', label: 'Nhập hàng loạt & kiểm tra lỗi danh sách thiết bị từ Excel/CSV', defaultRoles: ['facility_manager', 'admin'] },
+        { code: 'equipment:dispose', label: 'Ghi nhận thanh lý tài sản DISPOSED theo QĐ BGH', defaultRoles: ['facility_manager', 'admin'] },
         { code: 'equipment:qr:generate', label: 'Tạo & in nhãn mã QR chuẩn hóa cho thiết bị', defaultRoles: ['facility_manager', 'admin'] },
         { code: 'equipment:qr:scan', label: 'Quét mã QR camera tra cứu hồ sơ tài sản thực địa (<1s)', defaultRoles: ['lecturer', 'technician', 'facility_manager', 'admin'] },
         { code: 'warranty:read', label: 'Tra cứu tình trạng & thời hạn bảo hành thiết bị', defaultRoles: ['technician', 'facility_manager'] },
@@ -117,7 +117,7 @@ export const RBACMatrixPage = () => {
     },
     {
       id: 'mod_repairs',
-      name: 'Module 04: Báo Hỏng, Điều Phối Kanban & Linh Kiện Kho',
+      name: 'Báo Hỏng, Điều Phối Kanban & Linh Kiện Kho',
       shortName: 'Báo Hỏng, Sửa Chữa & Linh Kiện',
       permissions: [
         { code: 'incident:create', label: 'Báo sự cố hỏng hóc tại phòng học kèm hình ảnh', defaultRoles: ['lecturer'] },
@@ -137,20 +137,20 @@ export const RBACMatrixPage = () => {
     },
     {
       id: 'mod_audit_disposal',
-      name: 'Module 05: Kiểm Kê Tài Sản Thực Địa & Thẩm Định Thanh Lý',
+      name: 'Kiểm Kê Tài Sản Thực Địa & Thẩm Định Thanh Lý',
       shortName: 'Kiểm Kê & Thanh Lý (RACI)',
       permissions: [
-        { code: 'inventory:create', label: 'Khởi tạo phiên kiểm kê định kỳ theo phòng/tầng Tòa A1 (UC-3.9)', defaultRoles: ['facility_manager'] },
-        { code: 'inventory:scan', label: 'Quét mã QR kiểm kê & đối soát thực địa (UC-3.10)', defaultRoles: ['technician'] },
+        { code: 'inventory:create', label: 'Khởi tạo phiên kiểm kê định kỳ theo phòng/tầng Tòa A1', defaultRoles: ['facility_manager'] },
+        { code: 'inventory:scan', label: 'Quét mã QR kiểm kê & đối soát thực địa', defaultRoles: ['technician'] },
         { code: 'inventory:reconcile', label: 'Chốt số liệu kiểm kê & đối soát chênh lệch tài sản', defaultRoles: ['facility_manager'] },
-        { code: 'inventory:export', label: 'Xuất biên bản kiểm kê đầy đủ & ký số SHA-256 (UC-3.11)', defaultRoles: ['facility_manager', 'admin'] },
+        { code: 'inventory:export', label: 'Xuất biên bản kiểm kê đầy đủ & ký số SHA-256', defaultRoles: ['facility_manager', 'admin'] },
         { code: 'disposal:propose', label: 'Lập hồ sơ đề xuất thanh lý khi chỉ số R >= 60%', defaultRoles: ['facility_manager'] },
         { code: 'disposal:approve', label: 'Phê duyệt quyết định thanh lý tài sản cuối cùng (BGH)', defaultRoles: ['admin'] }
       ]
     },
     {
       id: 'mod_analytics_audit',
-      name: 'Module 06: Báo Cáo Thống Kê, Giám Sát & Kiểm Toán SHA-256',
+      name: 'Báo Cáo Thống Kê, Giám Sát & Kiểm Toán SHA-256',
       shortName: 'Báo Cáo & Kiểm Toán Bất Biến',
       permissions: [
         { code: 'dashboard:read', label: 'Xem Dashboard chỉ số vận hành tổng thể & KPI', defaultRoles: ['facility_manager', 'admin'] },
@@ -395,7 +395,7 @@ export const RBACMatrixPage = () => {
   const handleExport = (format = 'json') => {
     const exportData = {
       system: 'Ruo University Equipment Management System (UEMS)',
-      useCase: 'UC-12.1: Dynamic RBAC Matrix',
+      useCase: 'Dynamic RBAC Matrix Configuration',
       canonicalRolesCount: 4,
       sodStatus: activeSodViolations.length === 0 ? 'COMPLIANT' : 'VIOLATIONS_DETECTED',
       sodViolationsCount: activeSodViolations.length,

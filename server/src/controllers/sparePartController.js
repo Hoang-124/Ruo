@@ -119,14 +119,29 @@ export const approvePartsRequest = async (req, res) => {
 
     assertTransition('PARTS_REQUEST', partsRequest.status, PARTS_REQUEST_STATUSES.APPROVED, req.user.role);
 
-    // Deduct stock for each part and check min_stock warning
+    // 1. Kiểm tra tính sẵn sàng của tồn kho trước khi xuất (Atomic pre-validation)
+    for (const item of partsRequest.items) {
+      const part = await SparePart.findById(item.part_id);
+      if (!part) {
+        return res.status(404).json({ success: false, message: 'Linh kiện trong phiếu không tồn tại trong kho.' });
+      }
+      const qtyToDeduct = Number(item.qty || item.quantity || 1);
+      if (part.stock < qtyToDeduct) {
+        return res.status(400).json({
+          success: false,
+          message: `Tồn kho không đủ để xuất linh kiện [${part.name}]: hiện còn ${part.stock}, yêu cầu xuất ${qtyToDeduct}.`
+        });
+      }
+    }
+
+    // 2. Trừ số lượng tồn kho và cảnh báo định mức tối thiểu
     const warnings = [];
     for (const item of partsRequest.items) {
       const part = await SparePart.findById(item.part_id);
       if (part) {
         // Preserve the actual issue price for historical reports; never trust a submitted price.
         item.unit_price = part.price;
-        const qtyToDeduct = item.qty || item.quantity || 1;
+        const qtyToDeduct = Number(item.qty || item.quantity || 1);
         part.stock = Math.max(0, part.stock - qtyToDeduct);
         if (part.stock <= part.min_stock) {
           warnings.push(`Linh kiện ${part.name} (${part.code}) còn ${part.stock} cái, dưới mức tối thiểu (${part.min_stock}).`);

@@ -331,7 +331,7 @@ export const EquipmentsPage = () => {
       depreciation_rate: eq.depreciation_rate || 20,
       purchase_date: eq.purchase_date ? new Date(eq.purchase_date).toISOString().split('T')[0] : '',
       warranty_expiry: eq.warranty_expiry ? new Date(eq.warranty_expiry).toISOString().split('T')[0] : '',
-      movement_reason: 'Điều chuyển phòng khi cập nhật hồ sơ thiết bị (UC-3.4)'
+      movement_reason: 'Điều chuyển phòng khi cập nhật hồ sơ thiết bị'
     });
     setShowEditModal(true);
   };
@@ -412,7 +412,7 @@ export const EquipmentsPage = () => {
       };
       const res = await equipmentApi.create(payload);
       if (res && res.success) {
-        toast.success(`Đã đăng ký thiết bị mới [${res.equipment?.code}] thành công (UC-3.1)!`);
+        toast.success(`Đã đăng ký thiết bị mới [${res.equipment?.code}] thành công!`);
         setShowCreateModal(false);
         fetchEquipments();
       }
@@ -1028,10 +1028,10 @@ export const EquipmentsPage = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '11px', color: '#FFFFFF', background: '#1D4ED8', border: '1px solid #1E40AF', padding: '3px 9px', borderRadius: '5px', fontWeight: 800 }}>
-              MODULE 03 • TÒA NHÀ ĐA NĂNG A1
+              TÒA NHÀ ĐA NĂNG A1
             </span>
             <span style={{ fontSize: '12px', color: 'var(--ink-secondary)', fontWeight: 700 }}>
-              UC-3.1 → UC-3.8 • QUẢN LÝ VÒNG ĐỜI, NHẬP LÔ EXCEL/CSV, TEM QR &amp; THANH LÝ
+              QUẢN LÝ VÒNG ĐỜI, NHẬP LÔ EXCEL/CSV, TEM QR &amp; HỒ SƠ TÀI SẢN
             </span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>

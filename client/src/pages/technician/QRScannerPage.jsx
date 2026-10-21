@@ -211,7 +211,7 @@ export const QRScannerPage = ({ onNavigateTab }) => {
             TẤT CẢ VAI TRÒ • SUB-SECOND QR LOOKUP
           </span>
           <span style={{ fontSize: '12px', color: 'var(--ink-secondary)', fontWeight: 700 }}>
-            MODULE 03 • QUÉT MÃ QR CAMERA TRA CỨU VỊ TRÍ, THÔNG SỐ &amp; LỊCH SỬ SỬA CHỮA
+            QUÉT MÃ QR CAMERA TRA CỨU VỊ TRÍ, THÔNG SỐ &amp; LỊCH SỬ SỬA CHỮA
           </span>
         </div>
         <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
@@ -396,7 +396,7 @@ export const QRScannerPage = ({ onNavigateTab }) => {
           {lifecycle?.stages && (
             <div style={{ background: 'var(--surface-panel)', border: '1.5px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
               <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                Trạng Thái Dòng Đời Tài Sản (UC-3.5 Lifecycle Pipeline)
+                Trạng Thái Dòng Đời Tài Sản (Lifecycle Pipeline)
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
                 {lifecycle.stages.map((st) => (

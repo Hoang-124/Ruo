@@ -90,7 +90,7 @@ export const RoomListPage = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
-          <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>MODULE 02 • PHÒNG HỌC & CƠ SỞ VẬT CHẤT</span>
+          <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Hệ Thống Phòng Học & Cơ Sở Vật Chất Tòa A1</span>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-primary)', letterSpacing: '-0.02em', margin: '4px 0 0' }}>
             Danh Mục Phòng Học
           </h1>
