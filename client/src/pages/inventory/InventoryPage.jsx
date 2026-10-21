@@ -311,7 +311,7 @@ export const InventoryPage = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '11px', color: '#FFFFFF', background: '#1D4ED8', border: '1.5px solid #1E3A8A', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
-              MODULE 05 • UC-3.9, UC-3.10, UC-3.11
+              ĐỐI SOÁT THỰC ĐỊA
             </span>
             <span style={{ fontSize: '12px', color: 'var(--ink-secondary)', fontWeight: 700 }}>
               KIỂM KÊ ĐỊNH KỲ TÒA A1, QUÉT MÃ QR ĐỐI SOÁT &amp; BIÊN BẢN KÝ SỐ
@@ -345,7 +345,7 @@ export const InventoryPage = () => {
               }}
             >
               <Icons.Download size={16} />
-              <span>{exportingReport ? 'Đang Xuất...' : 'Xuất Biên Bản & Ký Số PDF (UC-3.11)'}</span>
+              <span>{exportingReport ? 'Đang Xuất...' : 'Xuất Biên Bản & Ký Số PDF'}</span>
             </button>
           )}
 
@@ -356,7 +356,7 @@ export const InventoryPage = () => {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 800 }}
             >
               <Icons.Plus size={16} />
-              <span>Tạo Đợt Kiểm Kê Mới (UC-3.9)</span>
+              <span>Tạo Đợt Kiểm Kê Mới</span>
             </button>
           )}
         </div>
@@ -442,7 +442,7 @@ export const InventoryPage = () => {
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', fontSize: '12.5px', fontWeight: 800, color: 'var(--status-info-color)', background: 'var(--status-info-bg)', border: '1.5px solid var(--status-info-border)' }}
                   >
                     <Icons.Download size={15} />
-                    <span>Xuất Biên Bản (UC-3.11)</span>
+                    <span>Xuất Biên Bản</span>
                   </button>
 
                   {canCreateOrReconcile && !isSessionLocked && (
@@ -511,7 +511,7 @@ export const InventoryPage = () => {
             ) : (
               <div style={{ background: 'var(--surface-card)', border: '2px solid var(--laser-cyan)', borderRadius: 'var(--radius-lg)', padding: '20px', boxShadow: 'var(--shadow-sm)' }}>
                 <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: 'var(--ink-pure)', margin: '0 0 14px' }}>
-                  Quét Mã QR Đối Soát Thực Địa Tại Phòng (UC-3.10)
+                  Quét Mã QR Đối Soát Thực Địa Tại Phòng
                 </h3>
 
                 <form onSubmit={handleScanSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -806,7 +806,7 @@ export const InventoryPage = () => {
           <div className="ruo-drawer-panel" style={{ width: '480px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
-                <h2 className="ruo-drawer-title">Khởi Tạo Đợt Kiểm Kê Định Kỳ (UC-3.9)</h2>
+                <h2 className="ruo-drawer-title">Khởi Tạo Đợt Kiểm Kê Định Kỳ</h2>
                 <p className="ruo-drawer-subtitle">Thiết lập đợt kiểm tra đối soát tài sản theo phòng hoặc toàn tầng Tòa A1</p>
               </div>
               <button onClick={() => setShowCreateModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
@@ -899,7 +899,7 @@ export const InventoryPage = () => {
           <div className="ruo-drawer-panel" style={{ width: '880px', maxWidth: '96vw' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
-                <h2 className="ruo-drawer-title">Biên Bản Kiểm Kê CSVC &amp; Xác Thực Chữ Ký Số (UC-3.11)</h2>
+                <h2 className="ruo-drawer-title">Biên Bản Kiểm Kê CSVC &amp; Xác Thực Chữ Ký Số</h2>
                 <p className="ruo-drawer-subtitle">
                   Mã biên bản: {reportData.report_code} • {reportData.building}
                 </p>
