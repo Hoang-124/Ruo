@@ -120,7 +120,7 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
           <span style={{ fontSize: '11px', color: '#10B981', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>GIẢNG VIÊN</span>
-          <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>MODULE 04 • UC: REPORT MALFUNCTION (BÁO HỎNG THIẾT BỊ)</span>
+          <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Tiếp Nhận Sự Cố & Báo Hỏng Thực Địa</span>
         </div>
         <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
           Phiếu Báo Hỏng Thiết Bị Phòng Học
