@@ -1,4 +1,6 @@
 .dashboard-analytics { display: grid; gap: 16px; min-width: 0; }
+.dashboard-analytics-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 1050px) { .dashboard-analytics-cards { grid-template-columns: minmax(0, 1fr); } }
 .dashboard-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .dashboard-kpi-grid > * { min-width: 0; overflow-wrap: anywhere; }
 .dashboard-report-toolbar, .dashboard-report-error, .dashboard-chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }

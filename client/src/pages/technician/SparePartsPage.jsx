@@ -115,7 +115,9 @@ export const SparePartsPage = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', color: '#0EA5E9', background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>KỸ THUẬT VIÊN</span>
+            <span style={{ fontSize: '11px', color: canApproveParts ? '#F59E0B' : '#0EA5E9', background: canApproveParts ? 'rgba(245,158,11,0.1)' : 'rgba(14,165,233,0.1)', border: canApproveParts ? '1px solid rgba(245,158,11,0.25)' : '1px solid rgba(14,165,233,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+              {canApproveParts ? 'QUẢN LÝ CSVC • DUYỆT CẤP PHÁT' : 'KỸ THUẬT VIÊN'}
+            </span>
             <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Quản Lý Vật Tư & Xuất Nhập Kho Dự Phòng</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>

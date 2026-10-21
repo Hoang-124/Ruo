@@ -1,7 +1,7 @@
 .mdp-page {
-  --mdp-accent: var(--blueprint-400, #3b82f6);
+  --mdp-accent: var(--blueprint-400, #ea580c);
   --mdp-line: var(--border-default, rgba(255, 255, 255, 0.1));
-  --mdp-raised: var(--surface-card, #0b0b0e);
+  --mdp-raised: var(--surface-card, #141210);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -16,9 +16,10 @@
   gap: 24px;
   padding: 24px 26px;
   border: 1px solid var(--mdp-line);
+  border-left: 4px solid var(--blueprint-500, #ea580c);
   border-radius: 16px;
   background:
-    radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.12), transparent 52%),
+    radial-gradient(ellipse at 0% 0%, rgba(234, 88, 12, 0.14), transparent 52%),
     var(--mdp-raised);
   box-shadow: 0 14px 38px rgba(0, 0, 0, 0.12);
 }
@@ -51,7 +52,7 @@
   min-height: 42px;
   padding: 0 17px;
   white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.22);
+  box-shadow: 0 6px 18px rgba(234, 88, 12, 0.24);
 }
 
 .mdp-tabs {
@@ -83,13 +84,13 @@
 }
 
 .mdp-tab:hover {
-  background: rgba(59, 130, 246, 0.07);
+  background: rgba(234, 88, 12, 0.08);
   color: var(--ink-primary);
 }
 
 .mdp-tab.active {
-  border-color: rgba(59, 130, 246, 0.22);
-  background: rgba(59, 130, 246, 0.13);
+  border-color: rgba(234, 88, 12, 0.28);
+  background: rgba(234, 88, 12, 0.14);
   color: var(--mdp-accent);
 }
 
@@ -108,7 +109,7 @@
 }
 
 .mdp-tab.active .mdp-tab-count {
-  background: rgba(59, 130, 246, 0.16);
+  background: rgba(234, 88, 12, 0.18);
   color: var(--mdp-accent);
 }
 
@@ -200,7 +201,7 @@
 }
 
 .mdp-table tbody tr:not(:has(.mdp-empty)):hover {
-  background: rgba(59, 130, 246, 0.035);
+  background: rgba(234, 88, 12, 0.045);
 }
 
 .mdp-table td:first-child {
@@ -243,8 +244,8 @@
 }
 
 .mdp-icon-action:hover {
-  border-color: rgba(59, 130, 246, 0.4);
-  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(234, 88, 12, 0.4);
+  background: rgba(234, 88, 12, 0.12);
   color: var(--mdp-accent);
 }
 
@@ -301,7 +302,7 @@
 .mdp-button-spinner {
   width: 17px;
   height: 17px;
-  border: 2px solid rgba(59, 130, 246, 0.2);
+  border: 2px solid rgba(234, 88, 12, 0.2);
   border-top-color: var(--mdp-accent);
   border-radius: 50%;
   animation: mdp-spin 700ms linear infinite;
@@ -420,7 +421,7 @@
 .mdp-form-modal .ruo-input:focus,
 .mdp-form-modal .ruo-textarea:focus {
   border-color: var(--mdp-accent);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.15);
 }
 
 .mdp-form-modal .ruo-input:disabled {
@@ -463,9 +464,9 @@
   height: 40px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  border: 1px solid rgba(234, 88, 12, 0.28);
   border-radius: 12px;
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(234, 88, 12, 0.12);
   color: var(--mdp-accent);
 }
 

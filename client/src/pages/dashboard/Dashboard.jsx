@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { isSameUser } from '../../config/navigation';
 import { Icons } from '../../components/common/SvgIcons';
 import { FloorPlan2D } from '../../components/common/FloorPlan2D';
 import { CAMPUS_FLOORS, ROOM_CATEGORIES } from '../../mock/campusBuildingData';
@@ -93,11 +94,7 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
           setEquipmentsList(eqList);
           const allRepairs = repRes.repairs || repRes.data || [];
           
-          const myTix = allRepairs.filter(r => 
-            r.reported_by?._id === currentUser?._id ||
-            r.reported_by?.code === currentUser?.code ||
-            r.reported_by?.email === currentUser?.email
-          );
+          const myTix = allRepairs.filter(r => isSameUser(r.reported_by, currentUser));
           // An empty personal history must not fall back to other users' tickets.
           const displayTix = myTix;
           setLecturerTickets(displayTix);
@@ -133,13 +130,10 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
           const allRepairs = repRes.repairs || repRes.data || [];
           const allMovs = (movRes.movements || movRes.data || []).filter(movement =>
             ['approved', 'pending'].includes(movement.status) &&
-            (!movement.assigned_to || movement.assigned_to._id === currentUser?._id || movement.assigned_to.code === currentUser?.code)
+            (!movement.assigned_to || isSameUser(movement.assigned_to, currentUser))
           );
 
-          const assigned = allRepairs.filter(r =>
-            r.assigned_to?._id === currentUser?._id ||
-            r.assigned_to?.code === currentUser?.code
-          );
+          const assigned = allRepairs.filter(r => isSameUser(r.assigned_to, currentUser));
 
           setTechTasks(assigned);
           setTechMovements(allMovs);
@@ -269,13 +263,38 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
       {/* ==============================================================
           1. TOP WELCOME & ROLE BAR (COMPACT COMMAND HEADER)
           ============================================================== */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '12px',
+        padding: '14px 18px',
+        background: 'linear-gradient(125deg, var(--surface-card) 0%, rgba(234, 88, 12, 0.07) 100%)',
+        border: '1px solid var(--border-default)',
+        borderLeft: '4px solid var(--blueprint-500)',
+        borderRadius: '14px',
+        boxShadow: 'var(--shadow-sm)',
+      }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '18.5px', fontWeight: 800, color: 'var(--ink-primary)', letterSpacing: '-0.01em' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+            <span style={{
+              display: 'inline-block',
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              background: '#EA580C',
+              boxShadow: '0 0 8px rgba(234, 88, 12, 0.7)'
+            }} />
+            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--blueprint-400)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              TRUNG TÂM ĐIỀU HÀNH SỐ • DIGITAL TWIN
+            </span>
+          </div>
+          <h1 style={{ margin: 0, fontSize: '19px', fontWeight: 800, color: 'var(--ink-primary)', letterSpacing: '-0.02em' }}>
             Trung Tâm Vận Hành Cơ Sở Vật Chất (UEMS Operational Command)
           </h1>
-          <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'var(--ink-muted)' }}>
-            Chào mừng <strong>{currentUser?.name}</strong> • Vai trò: <span style={{ color: 'var(--blueprint-400)', fontWeight: 700 }}>{currentUser?.roleTitle}</span>
+          <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: 'var(--ink-muted)' }}>
+            Chào mừng <strong style={{ color: 'var(--ink-primary)' }}>{currentUser?.name}</strong> • Vai trò: <span style={{ color: 'var(--blueprint-400)', fontWeight: 700 }}>{currentUser?.roleTitle}</span>
           </p>
         </div>
 
@@ -598,78 +617,80 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
           3. ROLE-TAILORED KPI METRICS ROW
           Hiển thị chỉ số chuyên biệt và phù hợp 100% với từng Actor
           ============================================================== */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-        {isLecturer ? (
-          <>
-            <KPI
-              label="Phòng Học Đang Xem"
-              value={selectedRoom ? (selectedRoom.name || `Phòng ${selectedRoom.code?.replace(/^A1-/, '')}`) : 'Chưa Chọn'}
-              subtext={`Tầng ${selectedFloor} • ${selectedRoom ? ROOM_CATEGORIES[selectedRoom.category]?.name || 'Giảng đường' : 'Chọn trên sơ đồ'}`}
-              icon={Icons.Room}
-              color="#10B981"
-            />
-            <KPI
-              label="Phiếu Báo Hỏng Của Tôi"
-              value={lecturerStats.totalTickets}
-              subtext="Tổng số sự cố thầy/cô đã gửi"
-              icon={Icons.AlertTriangle}
-              color="#F59E0B"
-              onClick={() => onNavigateTab('my_tickets')}
-            />
-            <KPI
-              label="Đang Khắc Phục"
-              value={lecturerStats.repairingTickets}
-              subtext="Kỹ thuật viên đang xử lý thực địa"
-              icon={Icons.Wrench}
-              color="#0EA5E9"
-              onClick={() => onNavigateTab('my_tickets')}
-            />
-            <KPI
-              label="Chờ Đánh Giá Dịch Vụ"
-              value={lecturerStats.pendingFeedbackTickets}
-              subtext="Đã sửa xong, mời thầy/cô chấm điểm"
-              icon={Icons.Star}
-              color="#8B5CF6"
-              onClick={() => onNavigateTab('my_tickets')}
-            />
-          </>
-        ) : isTech ? (
-          <>
-            <KPI
-              label="Nhiệm Vụ Được Giao"
-              value={techStats.assignedTasks}
-              subtext="Phiếu phân công cần tiếp nhận"
-              icon={Icons.ClipboardCheck}
-              color="#0EA5E9"
-              onClick={() => onNavigateTab('assigned_tasks')}
-            />
-            <KPI
-              label="Đang Sửa Chữa Thực Địa"
-              value={techStats.inProgressTasks}
-              subtext="Đang khắc phục tại phòng học"
-              icon={Icons.Wrench}
-              color="#F59E0B"
-              onClick={() => onNavigateTab('assigned_tasks')}
-            />
-            <KPI
-              label="Lệnh Điều Động / Thay Thế"
-              value={techStats.pendingMovements}
-              subtext="Vận chuyển thiết bị từ kho đến phòng"
-              icon={Icons.Repeat}
-              color="#10B981"
-              onClick={() => onNavigateTab('movement_tasks')}
-            />
-            <KPI
-              label="Nhiệm Vụ Đã Xong"
-              value={techStats.resolvedTasks}
-              subtext="Sự cố đã khắc phục thành công"
-              icon={Icons.CheckCircle}
-              color="#8B5CF6"
-              onClick={() => onNavigateTab('assigned_tasks')}
-            />
-          </>
-        ) : null}
-      </div>
+      {(isLecturer || isTech) && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+          {isLecturer ? (
+            <>
+              <KPI
+                label="Phòng Học Đang Xem"
+                value={selectedRoom ? (selectedRoom.name || `Phòng ${selectedRoom.code?.replace(/^A1-/, '')}`) : 'Chưa Chọn'}
+                subtext={`Tầng ${selectedFloor} • ${selectedRoom ? ROOM_CATEGORIES[selectedRoom.category]?.name || 'Giảng đường' : 'Chọn trên sơ đồ'}`}
+                icon={Icons.Room}
+                color="#10B981"
+              />
+              <KPI
+                label="Phiếu Báo Hỏng Của Tôi"
+                value={lecturerStats.totalTickets}
+                subtext="Tổng số sự cố thầy/cô đã gửi"
+                icon={Icons.AlertTriangle}
+                color="#F59E0B"
+                onClick={() => onNavigateTab('my_tickets')}
+              />
+              <KPI
+                label="Đang Khắc Phục"
+                value={lecturerStats.repairingTickets}
+                subtext="Kỹ thuật viên đang xử lý thực địa"
+                icon={Icons.Wrench}
+                color="#0EA5E9"
+                onClick={() => onNavigateTab('my_tickets')}
+              />
+              <KPI
+                label="Chờ Đánh Giá Dịch Vụ"
+                value={lecturerStats.pendingFeedbackTickets}
+                subtext="Đã sửa xong, mời thầy/cô chấm điểm"
+                icon={Icons.Star}
+                color="#8B5CF6"
+                onClick={() => onNavigateTab('my_tickets')}
+              />
+            </>
+          ) : (
+            <>
+              <KPI
+                label="Nhiệm Vụ Được Giao"
+                value={techStats.assignedTasks}
+                subtext="Phiếu phân công cần tiếp nhận"
+                icon={Icons.ClipboardCheck}
+                color="#0EA5E9"
+                onClick={() => onNavigateTab('assigned_tasks')}
+              />
+              <KPI
+                label="Đang Sửa Chữa Thực Địa"
+                value={techStats.inProgressTasks}
+                subtext="Đang khắc phục tại phòng học"
+                icon={Icons.Wrench}
+                color="#F59E0B"
+                onClick={() => onNavigateTab('assigned_tasks')}
+              />
+              <KPI
+                label="Lệnh Điều Động / Thay Thế"
+                value={techStats.pendingMovements}
+                subtext="Vận chuyển thiết bị từ kho đến phòng"
+                icon={Icons.Repeat}
+                color="#10B981"
+                onClick={() => onNavigateTab('movement_tasks')}
+              />
+              <KPI
+                label="Nhiệm Vụ Đã Xong"
+                value={techStats.resolvedTasks}
+                subtext="Sự cố đã khắc phục thành công"
+                icon={Icons.CheckCircle}
+                color="#8B5CF6"
+                onClick={() => onNavigateTab('assigned_tasks')}
+              />
+            </>
+          )}
+        </div>
+      )}
       {(isAdmin || isFM) && <DashboardAnalytics refreshKey={cadRefreshKey} />}
 
       {/* ==============================================================

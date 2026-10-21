@@ -11,6 +11,9 @@ export const InventoryPage = () => {
   const canCreateOrReconcile = typeof hasPermission === 'function'
     ? (hasPermission('inventory:create') || hasPermission('inventory:reconcile'))
     : ['facility_manager', 'admin'].includes(userRole);
+  const canScan = typeof hasPermission === 'function'
+    ? hasPermission('inventory:scan')
+    : ['technician', 'facility_manager'].includes(userRole);
 
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState([]);
@@ -508,6 +511,11 @@ export const InventoryPage = () => {
                   <span>PHIÊN KIỂM KÊ ĐÃ CHỐT SỔ ĐỐI SOÁT — Đã khóa chức năng quét thêm để bảo toàn tính toàn vẹn của Biên bản ký số SHA-256.</span>
                 </div>
               </div>
+            ) : !canScan ? (
+              <div style={{ background: 'var(--status-info-bg)', border: '1.5px solid var(--status-info-border)', borderRadius: 'var(--radius-lg)', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--status-info-color)', fontWeight: 700, fontSize: '13px' }}>
+                <Icons.Shield size={18} />
+                <span>CHẾ ĐỘ GIÁM SÁT &amp; CHỐT SỔ — Tác vụ quét mã QR thực địa do Kỹ thuật viên và Quản lý CSVC thực hiện. Bạn có thể theo dõi nhật ký đối soát, chốt sổ hoặc xuất biên bản ký số.</span>
+              </div>
             ) : (
               <div style={{ background: 'var(--surface-card)', border: '2px solid var(--laser-cyan)', borderRadius: 'var(--radius-lg)', padding: '20px', boxShadow: 'var(--shadow-sm)' }}>
                 <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: 'var(--ink-pure)', margin: '0 0 14px' }}>
@@ -757,7 +765,7 @@ export const InventoryPage = () => {
                         </td>
                         <td style={{ padding: '10px 16px', color: 'var(--ink-secondary)', fontWeight: 700 }}>{eq.status}</td>
                         <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                          {!isSessionLocked && (
+                          {!isSessionLocked && canScan && (
                             <div style={{ display: 'inline-flex', gap: '6px' }}>
                               <button
                                 type="button"

@@ -2085,11 +2085,11 @@ export const EquipmentsPage = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
-                  background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%)',
-                  border: '1px solid rgba(6, 182, 212, 0.25)',
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--border-default)',
                   borderRadius: '10px',
                   padding: '8px 14px',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                  boxShadow: 'var(--shadow-xs)'
                 }}>
                   <div style={{
                     background: '#ffffff',
@@ -2129,7 +2129,7 @@ export const EquipmentsPage = () => {
                       fontFamily: 'var(--font-mono)',
                       fontSize: '12.5px',
                       fontWeight: 700,
-                      color: '#ffffff',
+                      color: 'var(--ink-pure)',
                       letterSpacing: '0.02em',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
@@ -2376,8 +2376,8 @@ export const EquipmentsPage = () => {
                         </svg>
                         <span>PHÁT HIỆN ĐIỀU CHUYỂN VỊ TRÍ (MOVEMENT TRACKING UC-3.2 / UC-3.4)</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', marginBottom: '8px', color: '#e2e8f0', flexWrap: 'wrap' }}>
-                        <span style={{ padding: '2px 6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px' }}>Từ: <strong>{oldRoomName}</strong></span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', marginBottom: '8px', color: 'var(--ink-primary)', flexWrap: 'wrap' }}>
+                        <span style={{ padding: '2px 6px', background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>Từ: <strong>{oldRoomName}</strong></span>
                         <span style={{ color: 'var(--laser-cyan)', fontWeight: 800 }}>➔</span>
                         <span style={{ padding: '2px 6px', background: 'rgba(6, 182, 212, 0.2)', color: 'var(--laser-cyan)', borderRadius: '4px' }}>Đến: <strong>{newRoomName}</strong></span>
                         <span style={{ marginLeft: 'auto', fontSize: '10.5px', color: '#10b981', fontWeight: 700 }}>• {movType}</span>

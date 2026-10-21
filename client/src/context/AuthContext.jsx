@@ -412,6 +412,7 @@ export const AuthProvider = ({ children }) => {
   const currentUser = useMemo(() => {
     if (!apiUser) {
       return {
+        _id: 'guest',
         id: 'guest',
         name: 'Khách',
         fullName: 'Khách',
@@ -432,6 +433,7 @@ export const AuthProvider = ({ children }) => {
     const tier = apiUser.reputeTier || (repute >= 90 ? 'Xuất Sắc' : (repute >= 70 ? 'Tiêu Chuẩn' : 'Cần Lưu Ý'));
 
     return {
+      _id: apiUser._id || apiUser.id,
       id: apiUser._id || apiUser.id,
       name: apiUser.full_name || apiUser.fullName || 'Người Dùng',
       fullName: apiUser.full_name || apiUser.fullName || 'Người Dùng',

@@ -10,27 +10,27 @@
 
 :root,
 [data-theme="light"] {
-  /* High-Contrast Academic Oxford & Architectural Daylight Ledger (Default) */
-  --bg-app: #E8EEF5;
-  --canvas-base: #E8EEF5;
-  --canvas-subtle: #DCE4EE;
+  /* High-Contrast Warm Architectural Sandstone & Solar Orange Ledger (Default) */
+  --bg-app: #F7F4EF;
+  --canvas-base: #F7F4EF;
+  --canvas-subtle: #EFEBE4;
   --surface-1: #FFFFFF;
-  --surface-2: #F1F5F9;
-  --surface-3: #E2E8F0;
-  --surface-header: #E2E8F0;
+  --surface-2: #FAF8F5;
+  --surface-3: #F0ECE4;
+  --surface-header: #F2EDE4;
   --surface-panel: #FFFFFF;
-  --surface-panel-hover: #F8FAFC;
+  --surface-panel-hover: #FDFBF7;
   --surface-card: #FFFFFF;
   --surface-glass: rgba(255, 255, 255, 0.96);
   --surface-elevated: #FFFFFF;
 
-  /* Authoritative University & Architectural Accents */
-  --laser-cyan: #1D4ED8;
-  --laser-cyan-glow: rgba(29, 78, 216, 0.25);
-  --laser-indigo: #1E3A8A;
-  --laser-indigo-glow: rgba(30, 58, 138, 0.25);
-  --laser-amber: #B45309;
-  --laser-amber-glow: rgba(180, 83, 9, 0.25);
+  /* Authoritative University Solar Terracotta & Architectural Accents */
+  --laser-cyan: #EA580C;
+  --laser-cyan-glow: rgba(234, 88, 12, 0.25);
+  --laser-indigo: #C2410C;
+  --laser-indigo-glow: rgba(194, 65, 12, 0.25);
+  --laser-amber: #D97706;
+  --laser-amber-glow: rgba(217, 119, 6, 0.25);
   --laser-emerald: #047857;
   --laser-emerald-glow: rgba(4, 120, 87, 0.25);
   --laser-violet: #6D28D9;
@@ -39,22 +39,22 @@
   --laser-rose: #BE123C;
   --laser-rose-glow: rgba(190, 18, 60, 0.25);
 
-  /* Crisp Structural Borders & Dividers (High Contrast) */
-  --hairline-soft: #CBD5E1;
-  --hairline-medium: #94A3B8;
-  --hairline-strong: #475569;
-  --hairline-glow: rgba(29, 78, 216, 0.35);
-  --border-subtle: #CBD5E1;
-  --border-default: #94A3B8;
-  --border-strong: #475569;
-  --border-focus: #1D4ED8;
+  /* Crisp Structural Borders & Dividers (Warm Stone Contrast) */
+  --hairline-soft: #E6E0D6;
+  --hairline-medium: #CFC7BC;
+  --hairline-strong: #78716C;
+  --hairline-glow: rgba(234, 88, 12, 0.35);
+  --border-subtle: #E6E0D6;
+  --border-default: #CFC7BC;
+  --border-strong: #78716C;
+  --border-focus: #EA580C;
 
-  /* Razor-Sharp Typography Inks (16:1 WCAG AAA Contrast on White) */
-  --ink-pure: #0F172A;
-  --ink-primary: #0F172A;
-  --ink-secondary: #1E293B;
-  --ink-muted: #334155;
-  --ink-faint: #64748B;
+  /* Razor-Sharp Typography Inks (17:1 WCAG AAA Contrast on White) */
+  --ink-pure: #1C1917;
+  --ink-primary: #1C1917;
+  --ink-secondary: #292524;
+  --ink-muted: #57534E;
+  --ink-faint: #78716C;
 
   /* High-Contrast Status Tokens */
   --status-active-color: #065F46;
@@ -62,25 +62,25 @@
   --status-active-border: #059669;
   --status-active-solid: #059669;
 
-  --status-repairing-color: #92400E;
-  --status-repairing-bg: #FEF3C7;
-  --status-repairing-border: #D97706;
-  --status-repairing-solid: #D97706;
+  --status-repairing-color: #9A3412;
+  --status-repairing-bg: #FFEDD5;
+  --status-repairing-border: #EA580C;
+  --status-repairing-solid: #EA580C;
 
-  --status-transferring-color: #1E40AF;
-  --status-transferring-bg: #DBEAFE;
-  --status-transferring-border: #2563EB;
-  --status-transferring-solid: #2563EB;
+  --status-transferring-color: #B45309;
+  --status-transferring-bg: #FEF3C7;
+  --status-transferring-border: #D97706;
+  --status-transferring-solid: #D97706;
 
   --status-disposal-color: #5B21B6;
   --status-disposal-bg: #EDE9FE;
   --status-disposal-border: #7C3AED;
   --status-disposal-solid: #7C3AED;
 
-  --status-disposed-color: #1E293B;
-  --status-disposed-bg: #E2E8F0;
-  --status-disposed-border: #64748B;
-  --status-disposed-solid: #475569;
+  --status-disposed-color: #292524;
+  --status-disposed-bg: #E7E5E4;
+  --status-disposed-border: #78716C;
+  --status-disposed-solid: #57534E;
 
   --status-overdue-color: #991B1B;
   --status-overdue-bg: #FEE2E2;
@@ -107,61 +107,61 @@
 
   /* Spatial Digital Twin Architectural Drafting Studio Tokens */
   --spatial-card-bg: #FFFFFF;
-  --spatial-card-border: #94A3B8;
-  --spatial-card-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-  --spatial-strip-bg: #F8FAFC;
-  --spatial-bar-bg: #E2E8F0;
+  --spatial-card-border: #CFC7BC;
+  --spatial-card-shadow: 0 4px 20px rgba(28, 25, 23, 0.08);
+  --spatial-strip-bg: #FAF8F5;
+  --spatial-bar-bg: #F0ECE4;
   --spatial-node-bg: #FFFFFF;
-  --spatial-node-border: #94A3B8;
-  --spatial-node-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
-  --spatial-node-hover-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
-  --spatial-corridor-bg: rgba(15, 23, 42, 0.04);
+  --spatial-node-border: #CFC7BC;
+  --spatial-node-shadow: 0 2px 8px rgba(28, 25, 23, 0.06);
+  --spatial-node-hover-shadow: 0 8px 24px rgba(234, 88, 12, 0.14);
+  --spatial-corridor-bg: rgba(28, 25, 23, 0.04);
   --spatial-dock-bg: #FFFFFF;
-  --spatial-dock-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  --spatial-dock-shadow: 0 10px 30px rgba(28, 25, 23, 0.12);
   --spatial-drawer-bg: #FFFFFF;
-  --spatial-drawer-shadow: -15px 0 45px rgba(15, 23, 42, 0.16);
-  --spatial-tile-bg: #E2E8F0;
-  --spatial-gauge-track: #CBD5E1;
-  --spatial-canvas-bg: #E8EEF5;
+  --spatial-drawer-shadow: -15px 0 45px rgba(28, 25, 23, 0.16);
+  --spatial-tile-bg: #F0ECE4;
+  --spatial-gauge-track: #E6E0D6;
+  --spatial-canvas-bg: #F7F4EF;
   --spatial-room-card-bg: #FFFFFF;
-  --spatial-room-card-stroke: #94A3B8;
-  --spatial-corridor-text: #1E293B;
+  --spatial-room-card-stroke: #CFC7BC;
+  --spatial-corridor-text: #292524;
 
   /* Compatibility & Semantic tokens for Subpages & Modals */
   --bg-card: #FFFFFF;
-  --bg-card-subtle: #F1F5F9;
-  --border-color: #94A3B8;
-  --text-primary: #0F172A;
-  --text-secondary: #1E293B;
-  --text-muted: #334155;
-  --color-primary-50: #DBEAFE;
-  --color-primary-600: #1D4ED8;
-  --color-primary-700: #1E40AF;
-  --color-primary-800: #1E3A8A;
+  --bg-card-subtle: #FAF8F5;
+  --border-color: #CFC7BC;
+  --text-primary: #1C1917;
+  --text-secondary: #292524;
+  --text-muted: #57534E;
+  --color-primary-50: #FFEDD5;
+  --color-primary-600: #EA580C;
+  --color-primary-700: #C2410C;
+  --color-primary-800: #9A3412;
   --color-green-600: #047857;
   --color-danger-500: #DC2626;
   --color-danger-600: #B91C1C;
 }
 
-/* Night Blueprint Studio Mode ([data-theme="dark"]) */
+/* Warm Obsidian Studio Mode ([data-theme="dark"]) */
 [data-theme="dark"] {
-  --bg-app: #090F1B;
-  --canvas-base: #090F1B;
-  --canvas-subtle: #131E31;
-  --surface-1: #131E31;
-  --surface-2: #1D2B42;
-  --surface-3: #263854;
-  --surface-header: #1E2D45;
-  --surface-panel: #131E31;
-  --surface-panel-hover: #1A2840;
-  --surface-card: #131E31;
-  --surface-glass: rgba(19, 30, 49, 0.96);
-  --surface-elevated: #1A2840;
+  --bg-app: #0C0A09;
+  --canvas-base: #0C0A09;
+  --canvas-subtle: #141210;
+  --surface-1: #171412;
+  --surface-2: #211D1A;
+  --surface-3: #2C2623;
+  --surface-header: #1F1A17;
+  --surface-panel: #171412;
+  --surface-panel-hover: #241F1C;
+  --surface-card: #171412;
+  --surface-glass: rgba(23, 20, 18, 0.96);
+  --surface-elevated: #241F1C;
 
-  --laser-cyan: #38BDF8;
-  --laser-cyan-glow: rgba(56, 189, 248, 0.3);
-  --laser-indigo: #818CF8;
-  --laser-indigo-glow: rgba(129, 140, 248, 0.3);
+  --laser-cyan: #FB923C;
+  --laser-cyan-glow: rgba(251, 146, 60, 0.3);
+  --laser-indigo: #F97316;
+  --laser-indigo-glow: rgba(249, 115, 22, 0.3);
   --laser-amber: #FBBF24;
   --laser-amber-glow: rgba(251, 191, 36, 0.3);
   --laser-emerald: #34D399;
@@ -172,82 +172,82 @@
   --laser-rose: #FB7185;
   --laser-rose-glow: rgba(251, 113, 133, 0.3);
 
-  --hairline-soft: #293B56;
-  --hairline-medium: #3B5275;
-  --hairline-strong: #6482AD;
-  --hairline-glow: rgba(56, 189, 248, 0.45);
-  --border-subtle: #293B56;
-  --border-default: #3B5275;
-  --border-strong: #6482AD;
-  --border-focus: #38BDF8;
+  --hairline-soft: #2E2723;
+  --hairline-medium: #443B35;
+  --hairline-strong: #786B63;
+  --hairline-glow: rgba(251, 146, 60, 0.45);
+  --border-subtle: #2E2723;
+  --border-default: #443B35;
+  --border-strong: #786B63;
+  --border-focus: #FB923C;
 
   --ink-pure: #FFFFFF;
-  --ink-primary: #FFFFFF;
-  --ink-secondary: #E2E8F0;
-  --ink-muted: #CBD5E1;
-  --ink-faint: #94A3B8;
+  --ink-primary: #FAFAF9;
+  --ink-secondary: #E7E5E4;
+  --ink-muted: #A8A29E;
+  --ink-faint: #78716C;
 
   --status-active-color: #6EE7B7;
   --status-active-bg: rgba(6, 95, 70, 0.55);
   --status-active-border: #10B981;
   --status-active-solid: #059669;
 
-  --status-repairing-color: #FDE68A;
-  --status-repairing-bg: rgba(120, 53, 15, 0.55);
-  --status-repairing-border: #F59E0B;
-  --status-repairing-solid: #D97706;
+  --status-repairing-color: #FDBA74;
+  --status-repairing-bg: rgba(124, 45, 18, 0.55);
+  --status-repairing-border: #F97316;
+  --status-repairing-solid: #EA580C;
 
-  --status-transferring-color: #93C5FD;
-  --status-transferring-bg: rgba(30, 58, 138, 0.55);
-  --status-transferring-border: #3B82F6;
-  --status-transferring-solid: #2563EB;
+  --status-transferring-color: #FDE68A;
+  --status-transferring-bg: rgba(120, 53, 15, 0.55);
+  --status-transferring-border: #F59E0B;
+  --status-transferring-solid: #D97706;
 
   --status-disposal-color: #DDD6FE;
   --status-disposal-bg: rgba(76, 29, 149, 0.55);
   --status-disposal-border: #8B5CF6;
   --status-disposal-solid: #7C3AED;
 
-  --status-disposed-color: #E2E8F0;
-  --status-disposed-bg: rgba(51, 65, 85, 0.65);
-  --status-disposed-border: #94A3B8;
-  --status-disposed-solid: #475569;
+  --status-disposed-color: #E7E5E4;
+  --status-disposed-bg: rgba(68, 64, 60, 0.65);
+  --status-disposed-border: #A8A29E;
+  --status-disposed-solid: #57534E;
 
   --status-overdue-color: #FCA5A5;
   --status-overdue-bg: rgba(127, 29, 29, 0.55);
   --status-overdue-border: #EF4444;
   --status-overdue-solid: #DC2626;
 
-  --spatial-card-bg: #131E31;
-  --spatial-card-border: #3B5275;
+  --spatial-card-bg: #171412;
+  --spatial-card-border: #443B35;
   --spatial-card-shadow: 0 10px 35px rgba(0, 0, 0, 0.85);
-  --spatial-strip-bg: #090F1B;
-  --spatial-bar-bg: #0E1626;
-  --spatial-node-bg: #1A2840;
-  --spatial-node-border: #3B5275;
+  --spatial-strip-bg: #0C0A09;
+  --spatial-bar-bg: #141210;
+  --spatial-node-bg: #241F1C;
+  --spatial-node-border: #443B35;
   --spatial-node-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
   --spatial-node-hover-shadow: 0 8px 28px rgba(0, 0, 0, 0.9);
-  --spatial-corridor-bg: #090F1B;
-  --spatial-dock-bg: #131E31;
+  --spatial-corridor-bg: #0C0A09;
+  --spatial-dock-bg: #171412;
   --spatial-dock-shadow: 0 12px 40px rgba(0, 0, 0, 0.9);
-  --spatial-drawer-bg: #0E1626;
+  --spatial-drawer-bg: #141210;
   --spatial-drawer-shadow: -15px 0 50px rgba(0, 0, 0, 0.9);
   --spatial-tile-bg: rgba(255, 255, 255, 0.08);
   --spatial-gauge-track: rgba(255, 255, 255, 0.18);
-  --spatial-canvas-bg: #090F1B;
-  --spatial-room-card-bg: #131E31;
-  --spatial-room-card-stroke: #3B5275;
-  --spatial-corridor-text: #E2E8F0;
+  --spatial-canvas-bg: #0C0A09;
+  --spatial-room-card-bg: #171412;
+  --spatial-room-card-stroke: #443B35;
+  --spatial-corridor-text: #E7E5E4;
 
-  --bg-card: #131E31;
-  --bg-card-subtle: #1D2B42;
-  --border-color: #3B5275;
-  --text-primary: #FFFFFF;
-  --text-secondary: #E2E8F0;
-  --text-muted: #CBD5E1;
-  --color-primary-50: rgba(56, 189, 248, 0.2);
-  --color-primary-600: #38BDF8;
-  --color-primary-700: #2563EB;
-  --color-primary-800: #60A5FA;
+  --bg-card: #171412;
+  --bg-card-subtle: #211D1A;
+  --border-color: #443B35;
+  --text-primary: #FAFAF9;
+  --text-secondary: #E7E5E4;
+  --text-muted: #A8A29E;
+  --color-primary-50: rgba(249, 115, 22, 0.2);
+  --color-primary-600: #FB923C;
+  --color-primary-700: #EA580C;
+  --color-primary-800: #FDBA74;
   --color-green-600: #34D399;
   --color-danger-500: #F87171;
   --color-danger-600: #EF4444;
@@ -278,16 +278,18 @@ html, body {
 
 :root body,
 [data-theme="light"] body {
-  background-color: #E8EEF5;
+  background-color: #F7F4EF;
   background-image: 
-    radial-gradient(circle at 10% 10%, rgba(29, 78, 216, 0.06) 0%, transparent 45%),
-    radial-gradient(circle at 90% 90%, rgba(4, 120, 87, 0.05) 0%, transparent 45%),
-    linear-gradient(to bottom, #EDF2F7 0%, #E2E8F0 100%);
+    radial-gradient(circle at 12% 8%, rgba(234, 88, 12, 0.07) 0%, transparent 45%),
+    radial-gradient(circle at 88% 92%, rgba(217, 119, 6, 0.05) 0%, transparent 45%),
+    linear-gradient(to bottom, #FAF8F4 0%, #F2EDE4 100%);
 }
 
 [data-theme="dark"] body {
-  background-color: #090F1B;
-  background-image: none;
+  background-color: #0C0A09;
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(249, 115, 22, 0.06) 0%, transparent 45%),
+    radial-gradient(circle at 85% 90%, rgba(217, 119, 6, 0.04) 0%, transparent 45%);
 }
 
 /* Universal Form, Button & SVG Typography Inheritance (100% Unified) */
@@ -793,10 +795,10 @@ code, pre, .font-mono {
 
 .sidebar-item-btn.active,
 .nav-item-btn.active {
-  background: rgba(6, 182, 212, 0.12);
-  border-color: rgba(6, 182, 212, 0.35);
+  background: rgba(234, 88, 12, 0.14);
+  border-color: rgba(234, 88, 12, 0.35);
   color: #FFFFFF;
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.15);
+  box-shadow: 0 0 20px rgba(234, 88, 12, 0.18);
   font-weight: 600;
 }
 
@@ -930,9 +932,9 @@ code, pre, .font-mono {
 }
 
 .laser-badge-cyan {
-  background: rgba(6, 182, 212, 0.12);
+  background: rgba(234, 88, 12, 0.12);
   color: var(--laser-cyan);
-  border: 1px solid rgba(6, 182, 212, 0.3);
+  border: 1px solid rgba(234, 88, 12, 0.3);
 }
 
 .laser-badge-emerald {
@@ -954,9 +956,9 @@ code, pre, .font-mono {
 }
 
 .laser-badge-indigo {
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(234, 88, 12, 0.12);
   color: var(--laser-indigo);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  border: 1px solid rgba(234, 88, 12, 0.3);
 }
 
 /* Pulsing Overdue Alarm */
@@ -988,18 +990,18 @@ code, pre, .font-mono {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--laser-indigo), #4F46E5);
+  background: linear-gradient(135deg, #F97316, #EA580C);
   color: #FFFFFF;
   box-shadow: 0 2px 12px var(--laser-indigo-glow);
 }
 .btn-primary:hover {
-  background: linear-gradient(135deg, #4F46E5, #4338CA);
+  background: linear-gradient(135deg, #EA580C, #C2410C);
   transform: translateY(-1px);
   box-shadow: 0 4px 18px var(--laser-indigo-glow);
 }
 
 .btn-cyan {
-  background: linear-gradient(135deg, var(--laser-cyan), #0891B2);
+  background: linear-gradient(135deg, #F97316, #EA580C);
   color: #FFFFFF;
   box-shadow: 0 2px 12px var(--laser-cyan-glow);
 }
@@ -1670,7 +1672,7 @@ code, pre, .font-mono {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  background: linear-gradient(135deg, #2563EB, #1D4ED8);
+  background: linear-gradient(135deg, #EA580C, #C2410C);
   color: #FFFFFF;
   font-weight: 700;
   font-size: 11px;
@@ -1869,7 +1871,7 @@ code, pre, .font-mono {
 
 /* Tier 2: Sub-Navigation Bar */
 .ruo-subnav {
-  height: 44px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1881,7 +1883,7 @@ code, pre, .font-mono {
 }
 
 [data-theme="dark"] .ruo-subnav {
-  background: #0E1728;
+  background: #14110F;
 }
 
 .ruo-subnav::-webkit-scrollbar {
@@ -1891,7 +1893,7 @@ code, pre, .font-mono {
 .ruo-subnav-items {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   height: 100%;
 }
 
@@ -1902,11 +1904,12 @@ code, pre, .font-mono {
   height: 100%;
   padding: 0 14px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink-secondary);
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 2.5px solid transparent;
+  border-radius: 6px 6px 0 0;
   cursor: pointer;
   transition: all var(--transition-fast);
   white-space: nowrap;
@@ -1914,12 +1917,14 @@ code, pre, .font-mono {
 
 .ruo-subnav-btn:hover {
   color: var(--ink-pure);
+  background: rgba(234, 88, 12, 0.06);
 }
 
 .ruo-subnav-btn.active {
   color: var(--laser-cyan);
   border-bottom-color: var(--laser-cyan);
-  font-weight: 700;
+  background: linear-gradient(180deg, transparent 0%, rgba(234, 88, 12, 0.10) 100%);
+  font-weight: 800;
 }
 
 .ruo-subnav-badge {
@@ -2277,36 +2282,37 @@ code, pre, .font-mono {
    ========================================================================== */
 [data-theme="light"] .ruo-header-root {
   background: #FFFFFF;
-  border-bottom-color: #E2E8F0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border-bottom-color: #E6E0D6;
+  box-shadow: 0 2px 10px rgba(28, 25, 23, 0.05);
 }
 
 [data-theme="light"] .ruo-topbar {
   background: #FFFFFF;
-  border-bottom-color: #F1F5F9;
+  border-bottom-color: #FAF8F5;
 }
 
 [data-theme="light"] .ruo-search-trigger {
-  background: #F8FAFC;
-  border-color: #E2E8F0;
+  background: #FAF8F5;
+  border-color: #E6E0D6;
 }
 
 [data-theme="light"] .ruo-subnav {
   background: #FFFFFF;
-  border-bottom-color: #E2E8F0;
+  border-bottom-color: #E6E0D6;
 }
 
 [data-theme="light"] .ruo-subnav-btn {
-  color: #475569;
+  color: #57534E;
 }
 
 [data-theme="light"] .ruo-subnav-btn:hover {
-  color: #0F172A;
+  color: #1C1917;
+  background: rgba(234, 88, 12, 0.06);
 }
 
 [data-theme="light"] .ruo-subnav-btn.active {
-  color: #2563EB;
-  border-bottom-color: #2563EB;
+  color: #EA580C;
+  border-bottom-color: #EA580C;
 }
 
 [data-theme="light"] .ruo-cad-canvas-card {
@@ -3502,17 +3508,17 @@ svg + .ruo-portal-input,
 
 .ruo-portal-input:focus {
   border-color: var(--laser-cyan);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.28);
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.22);
 }
 
 .ruo-portal-btn-primary {
   width: 100%;
   padding: 13px 20px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
   color: #FFFFFF;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 16px rgba(234, 88, 12, 0.35);
   font-size: 14.5px;
   font-weight: 700;
   cursor: pointer;
@@ -3525,7 +3531,7 @@ svg + .ruo-portal-input,
 
 .ruo-portal-btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+  box-shadow: 0 6px 20px rgba(234, 88, 12, 0.45);
 }
 
 .ruo-portal-btn-primary:disabled {
@@ -3778,10 +3784,10 @@ svg + .ruo-portal-input,
 }
 
 .ruo-floor-tab-btn.active {
-  background: #2563EB;
+  background: #EA580C;
   color: #FFFFFF;
   font-weight: 700;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
 }
 
 .ruo-room-card-modern {
@@ -3807,8 +3813,8 @@ svg + .ruo-portal-input,
 }
 
 .ruo-room-card-modern.selected {
-  border-color: #2563EB;
-  box-shadow: 0 0 0 2px #2563EB, 0 10px 24px rgba(37, 99, 235, 0.12);
+  border-color: #EA580C;
+  box-shadow: 0 0 0 2px #EA580C, 0 10px 24px rgba(234, 88, 12, 0.14);
 }
 
 .ruo-clean-sidebar {
@@ -4625,8 +4631,8 @@ html {
   left: 8%;
   right: 8%;
   height: 2.5px;
-  background: linear-gradient(90deg, transparent 0%, #3B82F6 20%, #06B6D4 50%, #3B82F6 80%, transparent 100%);
-  box-shadow: 0 0 12px rgba(6, 182, 212, 0.85), 0 0 4px #3B82F6;
+  background: linear-gradient(90deg, transparent 0%, #EA580C 20%, #FB923C 50%, #EA580C 80%, transparent 100%);
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.85), 0 0 4px #EA580C;
   border-radius: 999px;
   pointer-events: none;
   animation: ruoLaserSweep 2.4s ease-in-out infinite;
@@ -4873,10 +4879,10 @@ button:active:not(:disabled),
 }
 
 [data-theme="dark"] .ruo-auth-showcase-panel {
-  background-color: #0B1323;
+  background-color: #120F0D;
   background-image:
-    radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.08), transparent 45%),
-    radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.08), transparent 50%),
+    radial-gradient(circle at 20% 20%, rgba(249, 115, 22, 0.09), transparent 45%),
+    radial-gradient(circle at 80% 80%, rgba(217, 119, 6, 0.08), transparent 50%),
     var(--blueprint-grid);
   background-size: 100% 100%, 100% 100%, 24px 24px;
 }
@@ -4936,19 +4942,19 @@ button:active:not(:disabled),
 
 .ruo-auth-seg-btn:hover:not(.active) {
   color: var(--ink-primary);
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(234, 88, 12, 0.08);
 }
 
 .ruo-auth-seg-btn.active {
   background: var(--blueprint-600);
   color: #FFFFFF;
   border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.32);
+  box-shadow: 0 3px 10px rgba(234, 88, 12, 0.32);
 }
 
 [data-theme="dark"] .ruo-auth-seg-btn.active {
   background: var(--blueprint-500);
-  box-shadow: 0 4px 14px rgba(62, 123, 250, 0.4);
+  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);
 }
 
 .ruo-auth-input-wrap {
@@ -4987,11 +4993,11 @@ button:active:not(:disabled),
 
 .ruo-auth-input:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.18);
 }
 
 [data-theme="dark"] .ruo-auth-input:focus {
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.22);
 }
 
 .ruo-auth-input.has-error {
@@ -5014,13 +5020,13 @@ button:active:not(:disabled),
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.32);
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.32);
   transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, filter 0.18s ease;
 }
 
 .ruo-auth-submit-btn:hover:not(:disabled) {
   transform: translateY(-1.5px);
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.44);
+  box-shadow: 0 6px 20px rgba(234, 88, 12, 0.44);
   filter: brightness(1.05);
 }
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
+import { isSameUser } from '../../config/navigation';
 import { repairApi } from '../../lib/api';
 import { RepairStepper } from '../../components/repairs/RepairStepper';
 import { DeadlineCountdown } from '../../components/repairs/DeadlineCountdown';
@@ -35,9 +36,12 @@ export const TechnicianTasksPage = () => {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const res = await repairApi.list();
+      const currentUserId = String(currentUser?._id || currentUser?.id || '');
+      const res = await repairApi.list(
+        currentUserId && currentUserId !== 'guest' ? { assigned_to: currentUserId } : {}
+      );
       if (res && res.success) {
-        setTasks(res.repairs || []);
+        setTasks((res.repairs || []).filter((r) => isSameUser(r.assigned_to, currentUser)));
       }
     } catch (err) {
       toast.error('Lỗi khi tải danh sách nhiệm vụ: ' + err.message);
@@ -48,7 +52,7 @@ export const TechnicianTasksPage = () => {
 
   useEffect(() => {
     fetchTasks();
-  }, []);
+  }, [currentUser?._id, currentUser?.id, currentUser?.code]);
 
   const handleAcceptTask = async (task) => {
     try {

@@ -115,9 +115,9 @@ export const LoginPage = ({ onLoginSuccess }) => {
               gap: '7px',
               padding: '4px 11px',
               borderRadius: '999px',
-              background: isLight ? '#EFF6FF' : 'rgba(62, 123, 250, 0.14)',
-              border: `1.5px solid ${isLight ? '#93C5FD' : 'rgba(62, 123, 250, 0.35)'}`,
-              color: isLight ? '#1D4ED8' : '#60A5FA',
+              background: isLight ? '#FFF7ED' : 'rgba(249, 115, 22, 0.14)',
+              border: `1.5px solid ${isLight ? '#FDBA74' : 'rgba(249, 115, 22, 0.35)'}`,
+              color: isLight ? '#C2410C' : '#FB923C',
               fontSize: '10.5px',
               fontWeight: 800,
               letterSpacing: '0.02em'

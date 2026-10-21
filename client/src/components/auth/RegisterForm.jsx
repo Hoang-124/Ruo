@@ -502,10 +502,10 @@ export const RegisterForm = ({
                     padding: '6.5px 6px',
                     borderRadius: '7px',
                     border: `${active ? '2px' : '1.5px'} solid ${
-                      active ? 'var(--blueprint-500)' : 'var(--border-default)'
+                      active ? 'var(--blueprint-600)' : 'var(--border-default)'
                     }`,
-                    background: active ? 'rgba(62, 123, 250, 0.12)' : 'var(--surface-2)',
-                    color: active ? 'var(--blueprint-500)' : 'var(--ink-secondary)',
+                    background: active ? 'rgba(234, 88, 12, 0.12)' : 'var(--surface-2)',
+                    color: active ? 'var(--laser-cyan)' : 'var(--ink-secondary)',
                     fontSize: '11px',
                     fontWeight: 800,
                     cursor: 'pointer',
