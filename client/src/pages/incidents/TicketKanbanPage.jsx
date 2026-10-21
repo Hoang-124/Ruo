@@ -3,12 +3,16 @@ import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { repairApi, authApi, equipmentApi, masterDataApi } from '../../lib/api';
 import { RepairStepper } from '../../components/repairs/RepairStepper';
+import { DeadlineCountdown } from '../../components/repairs/DeadlineCountdown';
 
 export const TicketKanbanPage = () => {
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [repairs, setRepairs] = useState([]);
+  const [slaStats, setSlaStats] = useState(null);
+  const [filterMode, setFilterMode] = useState('ALL'); // 'ALL' | 'OVERDUE' | 'AT_RISK'
+  const [checkingBreaches, setCheckingBreaches] = useState(false);
   const [technicians, setTechnicians] = useState([]);
   const [spareEquipments, setSpareEquipments] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -43,11 +47,12 @@ export const TicketKanbanPage = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [repRes, techRes, eqRes, roomRes] = await Promise.all([
+      const [repRes, techRes, eqRes, roomRes, slaRes] = await Promise.all([
         repairApi.list(),
         authApi.listUsers({ role: 'technician' }),
         equipmentApi.list({ status: 'in_stock' }),
-        masterDataApi.getRooms({ limit: 100 })
+        masterDataApi.getRooms({ limit: 100 }),
+        repairApi.getSlaStats().catch(() => null)
       ]);
 
       if (repRes && repRes.success) {
@@ -62,10 +67,28 @@ export const TicketKanbanPage = () => {
       if (roomRes && roomRes.success) {
         setRooms(roomRes.rooms || []);
       }
+      if (slaRes && slaRes.success) {
+        setSlaStats(slaRes.data);
+      }
     } catch (err) {
       toast.error('Lỗi khi tải dữ liệu sửa chữa: ' + err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCheckBreaches = async () => {
+    try {
+      setCheckingBreaches(true);
+      const res = await repairApi.checkSlaBreaches();
+      if (res && res.success) {
+        toast.success(res.message);
+        await fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi kiểm tra vi phạm SLA: ' + err.message);
+    } finally {
+      setCheckingBreaches(false);
     }
   };
 
@@ -151,7 +174,7 @@ export const TicketKanbanPage = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>FACILITY MANAGER</span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>MODULE 04 • QUẢN LÝ VÒNG ĐỜI SỬA CHỮA (KANBAN SLA)</span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Điều Phối Kỹ Thuật & Giám Sát Hạn Định SLA</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
             Trung Tâm Điều Phối Sửa Chữa Thiết Bị
@@ -161,14 +184,96 @@ export const TicketKanbanPage = () => {
           </p>
         </div>
 
-        <button
-          onClick={fetchData}
-          className="laser-btn laser-btn-secondary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={handleCheckBreaches}
+            disabled={checkingBreaches}
+            className="laser-btn laser-btn-secondary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', border: '1px solid rgba(239,68,68,0.4)', color: '#EF4444' }}
+            title="Quét toàn bộ phiếu quá hạn và phát cảnh báo đến KTV và Quản Lý"
+          >
+            <Icons.AlertTriangle size={16} />
+            <span>{checkingBreaches ? 'Đang Quét...' : 'Quét Cảnh Báo SLA'}</span>
+          </button>
+
+          <button
+            onClick={fetchData}
+            className="laser-btn laser-btn-secondary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
+          >
+            <Icons.RefreshCw size={16} />
+            <span>Làm Mới</span>
+          </button>
+        </div>
+      </div>
+
+      {/* SLA & KPI Stats (UC-7.2) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Tỷ Lệ Tuân Thủ SLA</div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: (slaStats?.compliance_rate ?? 100) >= 90 ? '#10B981' : (slaStats?.compliance_rate ?? 100) >= 70 ? '#F59E0B' : '#EF4444', marginTop: '4px' }}>
+            {slaStats ? `${slaStats.compliance_rate}%` : '100%'}
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
+            {slaStats?.on_time_resolved || 0} đúng hạn / {slaStats?.resolved_count || 0} đã xong
+          </div>
+        </div>
+
+        <div
+          onClick={() => setFilterMode(filterMode === 'OVERDUE' ? 'ALL' : 'OVERDUE')}
+          style={{
+            background: 'var(--surface-card)',
+            border: filterMode === 'OVERDUE' ? '2px solid #EF4444' : '1px solid rgba(239,68,68,0.3)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '16px 18px',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
         >
-          <Icons.RefreshCw size={16} />
-          <span>Làm Mới</span>
-        </button>
+          <div style={{ fontSize: '12px', color: '#EF4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>🚨 Đang Quá Hạn SLA</span>
+            {filterMode === 'OVERDUE' && <span style={{ fontSize: '10px', background: '#EF4444', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>ĐANG LỌC</span>}
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: '#EF4444', marginTop: '4px' }}>
+            {slaStats?.currently_overdue ?? 0}
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
+            Bấm để {filterMode === 'OVERDUE' ? 'hủy lọc' : 'lọc ca trễ hạn'}
+          </div>
+        </div>
+
+        <div
+          onClick={() => setFilterMode(filterMode === 'AT_RISK' ? 'ALL' : 'AT_RISK')}
+          style={{
+            background: 'var(--surface-card)',
+            border: filterMode === 'AT_RISK' ? '2px solid #F59E0B' : '1px solid rgba(245,158,11,0.3)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '16px 18px',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          <div style={{ fontSize: '12px', color: '#F59E0B', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>⚠️ Sắp Hết Hạn (≤ 2h)</span>
+            {filterMode === 'AT_RISK' && <span style={{ fontSize: '10px', background: '#F59E0B', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>ĐANG LỌC</span>}
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: '#F59E0B', marginTop: '4px' }}>
+            {slaStats?.currently_at_risk ?? 0}
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
+            Bấm để {filterMode === 'AT_RISK' ? 'hủy lọc' : 'lọc ca rủi ro'}
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Thời Gian Xử Lý TB (MTTR)</div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--laser-cyan)', marginTop: '4px' }}>
+            {slaStats?.avg_resolution_hours ?? 0}h
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
+            Khẩn cấp: {slaStats?.by_damage_level?.critical?.overdue ?? 0} trễ / {slaStats?.by_damage_level?.critical?.total ?? 0}
+          </div>
+        </div>
       </div>
 
       {/* Kanban Board Grid */}
@@ -180,7 +285,16 @@ export const TicketKanbanPage = () => {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '14px', alignItems: 'start' }}>
           {columns.map(col => {
-            const colTickets = repairs.filter(r => r.status === col.id);
+            const colTickets = repairs.filter(r => {
+              if (r.status !== col.id) return false;
+              if (filterMode === 'OVERDUE') {
+                return r.deadline_status === 'overdue' || (r.deadline && new Date(r.deadline).getTime() < Date.now());
+              }
+              if (filterMode === 'AT_RISK') {
+                return r.deadline_status === 'at_risk' || (r.remaining_minutes > 0 && r.remaining_minutes <= 120);
+              }
+              return true;
+            });
 
             return (
               <div
@@ -253,6 +367,13 @@ export const TicketKanbanPage = () => {
                           </div>
                         )}
 
+                        {/* Real-time SLA Deadline Countdown (UC-7.1) */}
+                        {t.deadline && (
+                          <div style={{ marginTop: '2px' }}>
+                            <DeadlineCountdown compact={true} deadline={t.deadline} status={t.status} />
+                          </div>
+                        )}
+
                         {/* Quick action buttons */}
                         <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }} onClick={(e) => e.stopPropagation()}>
                           {isReported && (
@@ -305,6 +426,11 @@ export const TicketKanbanPage = () => {
 
             <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <RepairStepper status={selectedTicket.status} outcome={selectedTicket.outcome} />
+
+              {/* Real-time SLA Deadline Countdown (UC-7.1) */}
+              {selectedTicket.deadline && (
+                <DeadlineCountdown deadline={selectedTicket.deadline} status={selectedTicket.status} />
+              )}
 
               <div style={{ background: 'var(--surface-panel)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                 <div>Phòng học: <strong>{selectedTicket.room_id?.code}</strong></div>
