@@ -19,7 +19,8 @@ import {
   REPAIR_OUTCOMES,
   MOVEMENT_TYPES,
   MOVEMENT_STATUSES,
-  ROOM_TYPES
+  ROOM_TYPES,
+  NOTIFICATION_TYPES
 } from '../config/constants.js';
 
 // @desc    Get all repairs with SLA evaluation & filtering
@@ -59,33 +60,219 @@ export const getRepairs = async (req, res) => {
   }
 };
 
-// @desc    Get overdue repairs (UC-5.9)
+// @desc    Get overdue repairs with SLA metrics & escalation tags (UC-5.9)
 // @route   GET /api/repairs/overdue
 export const getOverdueRepairs = async (req, res) => {
   try {
+    const { assigned_to, damage_level } = req.query;
     const now = new Date();
-    const repairs = await Repair.find({
+    const filter = {
       status: { $in: [REPAIR_STATUSES.REPORTED, REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] },
       deadline: { $lt: now }
-    })
-      .populate('equipment_id', 'code name brand model qr_code room_id')
-      .populate('reported_by', 'full_name code email role')
+    };
+
+    if (assigned_to) filter.assigned_to = assigned_to;
+    if (damage_level) filter.damage_level = damage_level;
+
+    const repairs = await Repair.find(filter)
+      .populate('equipment_id', 'code name brand model qr_code room_id estimated_repair_cost')
+      .populate('reported_by', 'full_name code email role department')
       .populate('assigned_to', 'full_name code email role')
       .sort({ deadline: 1 });
 
     const enriched = repairs.map(rep => {
-      const repObj = rep.toObject();
-      const sla = evaluateSlaStatus(rep.deadline);
-      repObj.deadline_status = sla.state;
+      const repObj = rep.toObject ? rep.toObject() : { ...rep };
+      const sla = evaluateSlaStatus(rep.deadline, now);
+      const overdueMinutes = Math.max(0, -sla.remainingMinutes);
+
+      let escalationLevel = 'moderate_breach';
+      if (overdueMinutes >= 24 * 60) {
+        escalationLevel = 'critical_breach';
+      } else if (overdueMinutes >= 4 * 60) {
+        escalationLevel = 'high_breach';
+      }
+
+      repObj.deadline_status = 'overdue';
       repObj.remaining_minutes = sla.remainingMinutes;
+      repObj.overdue_minutes = overdueMinutes;
+      repObj.escalation_level = escalationLevel;
       return repObj;
     });
 
-    res.json({ success: true, count: enriched.length, data: enriched, repairs: enriched });
+    res.json({
+      success: true,
+      count: enriched.length,
+      overdue_count: enriched.length,
+      data: enriched,
+      repairs: enriched
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Get SLA compliance rate & operational metrics (UC-7.2)
+// @route   GET /api/repairs/sla-stats
+export const getSlaComplianceStats = async (req, res) => {
+  try {
+    const now = new Date();
+    const repairsWithDeadline = await Repair.find({ deadline: { $ne: null } })
+      .populate('equipment_id', 'code name')
+      .populate('assigned_to', 'full_name code role');
+
+    let onTimeResolved = 0;
+    let overdueResolved = 0;
+    let currentlyOverdue = 0;
+    let currentlyAtRisk = 0;
+    let currentlyOnTrack = 0;
+    let totalResolutionMinutes = 0;
+    let resolvedCount = 0;
+
+    const byDamageLevel = {
+      critical: { total: 0, on_time: 0, overdue: 0 },
+      major: { total: 0, on_time: 0, overdue: 0 },
+      minor: { total: 0, on_time: 0, overdue: 0 }
+    };
+
+    repairsWithDeadline.forEach(rep => {
+      const level = rep.damage_level || 'minor';
+      if (!byDamageLevel[level]) {
+        byDamageLevel[level] = { total: 0, on_time: 0, overdue: 0 };
+      }
+      byDamageLevel[level].total += 1;
+
+      const isFinished = [REPAIR_STATUSES.RESOLVED, REPAIR_STATUSES.CLOSED, REPAIR_STATUSES.UNREPAIRABLE].includes(rep.status);
+
+      if (isFinished) {
+        resolvedCount += 1;
+        const finishTime = new Date(rep.completed_at || rep.updated_at || now);
+        const deadlineTime = new Date(rep.deadline);
+
+        if (finishTime <= deadlineTime) {
+          onTimeResolved += 1;
+          byDamageLevel[level].on_time += 1;
+        } else {
+          overdueResolved += 1;
+          byDamageLevel[level].overdue += 1;
+        }
+
+        const createTime = new Date(rep.created_at || finishTime);
+        const diffMins = Math.max(0, (finishTime.getTime() - createTime.getTime()) / (60 * 1000));
+        totalResolutionMinutes += diffMins;
+      } else {
+        const sla = evaluateSlaStatus(rep.deadline, now);
+        if (sla.state === 'overdue') {
+          currentlyOverdue += 1;
+          byDamageLevel[level].overdue += 1;
+        } else if (sla.state === 'at_risk') {
+          currentlyAtRisk += 1;
+          byDamageLevel[level].on_time += 1;
+        } else {
+          currentlyOnTrack += 1;
+          byDamageLevel[level].on_time += 1;
+        }
+      }
+    });
+
+    const totalTickets = repairsWithDeadline.length;
+    const totalFinishedWithSla = onTimeResolved + overdueResolved;
+    const complianceRate = totalFinishedWithSla > 0
+      ? Number(((onTimeResolved / totalFinishedWithSla) * 100).toFixed(1))
+      : (totalTickets > 0 && currentlyOverdue === 0 ? 100.0 : 0.0);
+
+    const avgResolutionHours = resolvedCount > 0
+      ? Number((totalResolutionMinutes / (resolvedCount * 60)).toFixed(1))
+      : 0.0;
+
+    res.json({
+      success: true,
+      data: {
+        total_with_deadline: totalTickets,
+        resolved_count: resolvedCount,
+        on_time_resolved: onTimeResolved,
+        overdue_resolved: overdueResolved,
+        currently_overdue: currentlyOverdue,
+        currently_at_risk: currentlyAtRisk,
+        currently_on_track: currentlyOnTrack,
+        compliance_rate: complianceRate,
+        avg_resolution_hours: avgResolutionHours,
+        by_damage_level: byDamageLevel
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Check open repairs for SLA breaches and send alert notifications (UC-5.9)
+// @route   POST /api/repairs/sla/check-breaches
+export const checkAndNotifyOverdueRepairs = async (req, res) => {
+  try {
+    const now = new Date();
+    const openOverdueRepairs = await Repair.find({
+      status: { $in: [REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] },
+      deadline: { $lt: now }
+    }).populate('equipment_id', 'code name');
+
+    let notifiedCount = 0;
+    const managers = await User.find({ role: USER_ROLES.FACILITY_MANAGER, status: USER_STATUSES.ACTIVE });
+
+    for (const repair of openOverdueRepairs) {
+      const existingNotif = await Notification.findOne({
+        reference_type: 'repair',
+        reference_id: repair._id,
+        type: NOTIFICATION_TYPES.DEADLINE_OVERDUE,
+        created_at: { $gte: new Date(Date.now() - 24 * 3600 * 1000) }
+      });
+
+      if (!existingNotif) {
+        const eqName = repair.equipment_id?.name || 'Thiết bị';
+        const eqCode = repair.equipment_id?.code || '';
+        const title = `🚨 CẢNH BÁO QUÁ HẠN SLA: Phiếu ${repair.ticket_code}`;
+        const message = `Phiếu sửa chữa [${repair.ticket_code}] của thiết bị ${eqName} (${eqCode}) đã vượt quá thời hạn cam kết SLA. Vui lòng ưu tiên xử lý ngay.`;
+
+        if (repair.assigned_to) {
+          await Notification.create({
+            user_id: repair.assigned_to,
+            type: NOTIFICATION_TYPES.DEADLINE_OVERDUE,
+            title,
+            message,
+            reference_type: 'repair',
+            reference_id: repair._id
+          });
+          notifiedCount += 1;
+        }
+
+        for (const mgr of managers) {
+          await Notification.create({
+            user_id: mgr._id,
+            type: NOTIFICATION_TYPES.DEADLINE_OVERDUE,
+            title,
+            message,
+            reference_type: 'repair',
+            reference_id: repair._id
+          });
+          notifiedCount += 1;
+        }
+      }
+    }
+
+    if (res) {
+      res.json({
+        success: true,
+        message: `Đã quét và phát hiện ${openOverdueRepairs.length} phiếu quá hạn, gửi ${notifiedCount} thông báo.`,
+        overdue_tickets_count: openOverdueRepairs.length,
+        notifications_sent: notifiedCount
+      });
+    }
+    return { overdueCount: openOverdueRepairs.length, notifiedCount };
+  } catch (error) {
+    if (res) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+};
+
 
 // @desc    Get single repair detail with timeline logs, movements, and parts requests
 // @route   GET /api/repairs/:id
