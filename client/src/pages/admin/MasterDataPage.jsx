@@ -122,10 +122,16 @@ export const MasterDataPage = () => {
     event.preventDefault();
     setSubmitting(true);
     try {
+      const fields = FORM_FIELDS[modalType].map(([field]) => field);
+      const payload = Object.fromEntries(
+        fields
+          .filter((field) => !editingRecord || field !== 'code')
+          .map((field) => [field, form[field]])
+      );
       if (editingRecord) {
-        await masterDataApi.update(modalType, editingRecord._id, form);
+        await masterDataApi.update(modalType, editingRecord._id, payload);
       } else {
-        await masterDataApi.create(modalType, form);
+        await masterDataApi.create(modalType, payload);
       }
       toast.success(`${editingRecord ? 'Đã cập nhật' : 'Đã thêm'} ${TITLE[modalType].toLowerCase()} thành công.`);
       setModalType(null);

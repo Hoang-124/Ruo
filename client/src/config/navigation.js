@@ -137,6 +137,13 @@ export const ALL_NAV_ITEMS = {
     permission: 'repair:assign',
     roles: [USER_ROLES.FACILITY_MANAGER]
   },
+  maintenance: {
+    id: 'maintenance',
+    label: 'Bảo Dưỡng Định Kỳ',
+    short: 'Bảo Dưỡng',
+    icon: Icons.Calendar,
+    roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN]
+  },
   warehouse: {
     id: 'warehouse',
     label: 'Kho Dự Phòng & Định Mức',
@@ -150,7 +157,7 @@ export const ALL_NAV_ITEMS = {
     label: 'Điều Chuyển Thiết Bị',
     short: 'Điều Chuyển',
     icon: Icons.RefreshCw,
-    permission: 'movement:order',
+    permission: 'equipment:read',
     roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN]
   },
   equipments: {

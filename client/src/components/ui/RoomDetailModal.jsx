@@ -63,12 +63,21 @@ export const RoomDetailModal = ({ roomCode, onClose, onEdit }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('overview');
+  const [roomHistory, setRoomHistory] = useState({ maintenanceHistory: [], repairHistory: [] });
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      setDetail(await facilityApi.getRoomByCode(roomCode));
+      const [roomDetail, maintenanceHistory] = await Promise.all([
+        facilityApi.getRoomByCode(roomCode),
+        facilityApi.getRoomMaintenanceHistory(roomCode)
+      ]);
+      setDetail(roomDetail);
+      setRoomHistory({
+        maintenanceHistory: maintenanceHistory.maintenanceHistory || [],
+        repairHistory: maintenanceHistory.repairHistory || []
+      });
     } catch (err) {
       setError(err.message || 'Không thể tải thông tin phòng.');
     } finally {
@@ -114,7 +123,7 @@ export const RoomDetailModal = ({ roomCode, onClose, onEdit }) => {
 
         <div style={{ display: 'flex', gap: '4px', padding: '0 20px', borderBottom: '1px solid var(--border-default)' }} role="tablist">
           {TABS.map((item) => {
-            const count = item.id === 'equipment' ? detail?.equipments?.length : item.id === 'maintenance' ? detail?.maintenanceHistory?.length : item.id === 'movements' ? detail?.movementHistory?.length : null;
+            const count = item.id === 'equipment' ? detail?.equipments?.length : item.id === 'maintenance' ? roomHistory.maintenanceHistory.length + roomHistory.repairHistory.length : item.id === 'movements' ? detail?.movementHistory?.length : null;
             return (
               <button
                 key={item.id}
@@ -212,26 +221,64 @@ export const RoomDetailModal = ({ roomCode, onClose, onEdit }) => {
               )}
 
               {tab === 'maintenance' && (
-                detail.maintenanceHistory.length === 0 ? <EmptyState text="Chưa có lịch sử bảo trì / sửa chữa cho thiết bị trong phòng." /> : (
-                  <TableShell>
-                    <thead>
-                      <tr style={{ background: 'var(--surface-2)' }}>
-                        <th style={th}>Phiếu</th><th style={th}>Thiết bị</th><th style={th}>Sự cố</th><th style={th}>Kỹ thuật viên</th><th style={th}>Báo lúc</th><th style={th}>Trạng thái</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detail.maintenanceHistory.map((repair) => (
-                        <tr key={repair._id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                          <td style={{ ...td, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{repair.ticket_code}</td>
-                          <td style={td}>{repair.equipment_id?.code}<div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>{repair.equipment_id?.name}</div></td>
-                          <td style={{ ...td, maxWidth: '220px' }}>{repair.incident_description}</td>
-                          <td style={td}>{repair.assigned_to?.full_name || '—'}</td>
-                          <td style={{ ...td, whiteSpace: 'nowrap' }}>{formatDateTime(repair.reported_at)}</td>
-                          <td style={td}><Pill tone={REPAIR_TONES[repair.status]}>{getRepairStatusLabel(repair.status)}</Pill></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </TableShell>
+                roomHistory.maintenanceHistory.length === 0 && roomHistory.repairHistory.length === 0 ? <EmptyState text="Chưa có lịch sử bảo dưỡng / sửa chữa cho phòng này." /> : (
+                  <div style={{ display: 'grid', gap: 20 }}>
+                    {roomHistory.maintenanceHistory.length > 0 && (
+                      <section>
+                        <h3 style={{ color: 'var(--ink-primary)', fontSize: 14, margin: '0 0 10px' }}>Kiểm tra bảo dưỡng định kỳ</h3>
+                        <TableShell>
+                          <thead>
+                            <tr style={{ background: 'var(--surface-2)' }}>
+                              <th style={th}>Ngày kiểm tra</th><th style={th}>Kế hoạch</th><th style={th}>Thiết bị</th><th style={th}>Checklist</th><th style={th}>Người kiểm tra</th><th style={th}>Kết quả</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {roomHistory.maintenanceHistory.map((record) => (
+                              <tr key={record._id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                                <td style={{ ...td, whiteSpace: 'nowrap' }}>{formatDateTime(record.check_date)}</td>
+                                <td style={td}>{record.plan_id?.title || 'Bảo dưỡng định kỳ'}</td>
+                                <td style={td}>{record.equipment_id?.code || '—'}<div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>{record.equipment_id?.name}</div></td>
+                                <td style={{ ...td, minWidth: 220 }}>
+                                  {(record.checklist_results || []).map((item) => (
+                                    <div key={item.item} style={{ color: item.passed ? '#2FB37A' : '#E5484D', marginBottom: 3 }}>
+                                      {item.passed ? '✓' : '✕'} {item.item}{item.notes ? ` — ${item.notes}` : ''}
+                                    </div>
+                                  ))}
+                                  {record.notes && <div style={{ color: 'var(--ink-muted)', marginTop: 5 }}>{record.notes}</div>}
+                                </td>
+                                <td style={td}>{record.checked_by?.full_name || '—'}</td>
+                                <td style={td}><Pill tone={record.status === 'passed' ? '#2FB37A' : '#E5484D'}>{record.status === 'passed' ? 'Đạt' : 'Phát hiện lỗi'}</Pill>{record.repair_id?.ticket_code && <div style={{ marginTop: 4, fontSize: 11 }}>Phiếu {record.repair_id.ticket_code}</div>}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </TableShell>
+                      </section>
+                    )}
+                    {roomHistory.repairHistory.length > 0 && (
+                      <section>
+                        <h3 style={{ color: 'var(--ink-primary)', fontSize: 14, margin: '0 0 10px' }}>Lịch sử sửa chữa</h3>
+                        <TableShell>
+                          <thead>
+                            <tr style={{ background: 'var(--surface-2)' }}>
+                              <th style={th}>Phiếu</th><th style={th}>Thiết bị</th><th style={th}>Sự cố</th><th style={th}>Kỹ thuật viên</th><th style={th}>Báo lúc</th><th style={th}>Trạng thái</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {roomHistory.repairHistory.map((repair) => (
+                              <tr key={repair._id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                                <td style={{ ...td, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{repair.ticket_code}</td>
+                                <td style={td}>{repair.equipment_id?.code}<div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>{repair.equipment_id?.name}</div></td>
+                                <td style={{ ...td, maxWidth: '220px' }}>{repair.incident_description}</td>
+                                <td style={td}>{repair.assigned_to?.full_name || '—'}</td>
+                                <td style={{ ...td, whiteSpace: 'nowrap' }}>{formatDateTime(repair.reported_at)}</td>
+                                <td style={td}><Pill tone={REPAIR_TONES[repair.status]}>{getRepairStatusLabel(repair.status)}</Pill></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </TableShell>
+                      </section>
+                    )}
+                  </div>
                 )
               )}
 

@@ -26,6 +26,7 @@ export { Repair } from './Repair.js';
 export { RepairLog } from './RepairLog.js';
 export { PartsRequest } from './PartsRequest.js';
 export { PreventiveMaintenance } from './PreventiveMaintenance.js';
+export { MaintenancePlan } from './MaintenancePlan.js';
 
 // Module 5: Inventory
 export { InventorySession } from './InventorySession.js';

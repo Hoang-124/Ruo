@@ -202,6 +202,7 @@ export const facilityApi = {
   getBuildings: () => api.get('/facilities/buildings'),
   getCadCanvas: (buildingCode, floorNumber) => api.get('/facilities/cad-canvas', { buildingCode, floorNumber }),
   getRoomByCode: (code) => api.get(`/facilities/rooms/${code}`),
+  getRoomMaintenanceHistory: (code) => api.get(`/facilities/rooms/${encodeURIComponent(code)}/maint-history`),
   getAllRooms: (params) => api.get('/facilities/rooms', params),
   createRoom: (data) => api.post('/facilities/rooms', data),
   updateRoom: (id, data) => api.put(`/facilities/rooms/${id}`, data),
@@ -209,6 +210,12 @@ export const facilityApi = {
   updateRoomStatus: (id, data) => api.put(`/facilities/rooms/${id}/status`, data),
   getRoomShortage: (id) => api.get(`/facilities/rooms/${id}/shortage`),
   getWarehouseStock: () => api.get('/facilities/warehouse/stock')
+};
+
+export const maintenanceApi = {
+  listPlans: () => api.get('/maintenance/plans'),
+  createPlan: (data) => api.post('/maintenance/plans', data),
+  logResult: (id, data) => api.put(`/maintenance/plans/${id}/log`, data)
 };
 
 export const movementApi = {

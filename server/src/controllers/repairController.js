@@ -165,6 +165,7 @@ export const createRepairReport = async (req, res) => {
 
     const repair = await Repair.create({
       equipment_id,
+      room_id: equipment.room_id || null,
       source,
       reported_by: req.user._id,
       incident_description: String(incident_description).trim(),
@@ -664,4 +665,3 @@ export const getEquipmentRepairHistory = async (req, res) => {
 // Compatibility exports
 export const resolveRepair = reportRepairOutcome;
 export const closeRepair = closeRepairTicket;
-
