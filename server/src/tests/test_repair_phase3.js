@@ -14,6 +14,16 @@ import {
   getSlaComplianceStats,
   checkAndNotifyOverdueRepairs
 } from '../controllers/repairController.js';
+import {
+  requestSpareParts,
+  approvePartsRequest,
+  updateSparePartStock
+} from '../controllers/sparePartController.js';
+import {
+  getWarrantyExpiringEquipments,
+  checkAndNotifyExpiringWarranties,
+  updateWarrantyInfo
+} from '../controllers/equipmentController.js';
 import { Repair } from '../models/Repair.js';
 import { RepairLog } from '../models/RepairLog.js';
 import { Equipment } from '../models/Equipment.js';
@@ -21,12 +31,16 @@ import { User } from '../models/User.js';
 import { EquipmentMovement } from '../models/EquipmentMovement.js';
 import { Notification } from '../models/Notification.js';
 import { AuditLog } from '../models/AuditLog.js';
+import { SparePart } from '../models/SparePart.js';
+import { PartsRequest } from '../models/PartsRequest.js';
 import {
   DAMAGE_LEVELS,
   REPAIR_STATUSES,
   REPAIR_OUTCOMES,
   EQUIPMENT_STATUSES,
-  USER_ROLES
+  USER_ROLES,
+  PARTS_REQUEST_STATUSES,
+  NOTIFICATION_TYPES
 } from '../config/constants.js';
 
 async function runWorkstream1Tests() {
@@ -133,11 +147,18 @@ async function runWorkstream1Tests() {
 
   RepairLog.find = () => createPopulateChain(mockLogs);
 
-  User.find = async () => [
+  const mockUserList = [
     { _id: managerId, role: USER_ROLES.FACILITY_MANAGER, full_name: 'Trần Quản Lý', status: 'active' }
   ];
+  const createUserQuery = (list) => ({
+    select: () => createUserQuery(list),
+    then: (resolve) => resolve(list),
+    catch: (reject) => {}
+  });
+  User.find = () => createUserQuery(mockUserList);
 
   Notification.create = async () => ({ success: true });
+  Notification.insertMany = async () => ({ success: true });
   AuditLog.logAction = async () => ({ success: true });
   EquipmentMovement.create = async () => ({ success: true });
 
@@ -506,13 +527,257 @@ async function runWorkstream2Tests() {
 
   console.log('\n============================================================');
   console.log('TẤT CẢ 3/3 TESTS CHO WORKSTREAM 2 (UC-5.9, UC-7.1, UC-7.2) ĐÃ ĐẠT 100%!');
-  console.log('TỔNG CỘNG 10/10 TESTS PHASE 3 ĐÃ VƯỢT QUA TOÀN DIỆN!');
+  console.log('============================================================\n');
+}
+
+async function runWorkstream3Tests() {
+  console.log('--- BẮT ĐẦU KIỂM THỬ WORKSTREAM 3: SPARE PARTS INVENTORY & REQUISITION (UC-5.10 → UC-5.12) ---');
+
+  const partId = new mongoose.Types.ObjectId().toString();
+  const repairId = new mongoose.Types.ObjectId().toString();
+  const techId = new mongoose.Types.ObjectId().toString();
+  const managerId = new mongoose.Types.ObjectId().toString();
+
+  // Mock part doc
+  let mockPart = {
+    _id: partId,
+    code: 'PART-LAMP-01',
+    name: 'Bóng đèn máy chiếu Panasonic 250W',
+    stock: 20,
+    min_stock: 5,
+    price: 1200000,
+    unit: 'Cái',
+    save: async function () { return this; }
+  };
+
+  SparePart.findById = async (id) => {
+    if (id && id.toString() === partId) return mockPart;
+    return null;
+  };
+
+  // Mock repair
+  Repair.findById = async (id) => {
+    return {
+      _id: repairId,
+      ticket_code: 'REP-TEST-PART',
+      status: REPAIR_STATUSES.IN_PROGRESS
+    };
+  };
+
+  // ----------------------------------------------------
+  // TEST 11: UC-5.10 - Request Spare Parts (POST /api/spare-parts/requests)
+  // ----------------------------------------------------
+  console.log('\n[Test 11] UC-5.10: Kỹ thuật viên lập phiếu yêu cầu cấp linh kiện (requestSpareParts)');
+  let createdPartsRequest = null;
+  PartsRequest.create = async (doc) => {
+    createdPartsRequest = {
+      _id: new mongoose.Types.ObjectId().toString(),
+      ...doc,
+      created_at: new Date(),
+      status: PARTS_REQUEST_STATUSES.PENDING,
+      save: async function () { return this; }
+    };
+    return createdPartsRequest;
+  };
+
+  const req11 = {
+    user: { _id: techId, full_name: 'KTV Trực', role: USER_ROLES.TECHNICIAN },
+    body: {
+      repair_id: repairId,
+      items: [{ part_id: partId, qty: 3, unit_price: 1200000 }]
+    }
+  };
+  let json11 = null;
+  const res11 = {
+    status: (code) => { res11.statusCode = code; return res11; },
+    json: (data) => { json11 = data; }
+  };
+  await requestSpareParts(req11, res11);
+  assert.strictEqual(res11.statusCode, 201, 'Lập phiếu yêu cầu phải trả về 201');
+  assert.ok(json11.success, 'Tạo phiếu phải thành công');
+  assert.strictEqual(json11.partsRequest.status, PARTS_REQUEST_STATUSES.PENDING, 'Trạng thái ban đầu là pending');
+  console.log(`✓ PASS: KTV gửi yêu cầu cấp 3 linh kiện thành công, trạng thái: ${json11.partsRequest.status}`);
+
+  // ----------------------------------------------------
+  // TEST 12: UC-5.11 - Approve Parts Request & Deduct Stock Atomically
+  // ----------------------------------------------------
+  console.log('\n[Test 12] UC-5.11: Quản lý phê duyệt xuất kho linh kiện nguyên tử & Chống xuất âm kho (approvePartsRequest)');
+  PartsRequest.findById = async (id) => createdPartsRequest;
+
+  // 12.1 Normal approval (20 -> 17)
+  const req12 = {
+    user: { _id: managerId, full_name: 'Quản Lý CSVC', role: USER_ROLES.FACILITY_MANAGER },
+    params: { id: createdPartsRequest._id }
+  };
+  let json12 = null;
+  const res12 = {
+    status: (code) => { res12.statusCode = code; return res12; },
+    json: (data) => { json12 = data; }
+  };
+  await approvePartsRequest(req12, res12);
+  assert.strictEqual(json12.success, true, 'Duyệt xuất kho phải thành công');
+  assert.strictEqual(mockPart.stock, 17, 'Tồn kho phải giảm từ 20 xuống 17');
+  console.log(`✓ PASS: Quản lý duyệt xuất kho: Tồn kho giảm từ 20 -> ${mockPart.stock} cái`);
+
+  // 12.2 Overdraft rejection (25 > 17)
+  const overdraftRequest = {
+    _id: new mongoose.Types.ObjectId().toString(),
+    repair_id: repairId,
+    status: PARTS_REQUEST_STATUSES.PENDING,
+    items: [{ part_id: partId, qty: 25 }],
+    save: async function () { return this; }
+  };
+  PartsRequest.findById = async (id) => overdraftRequest;
+
+  let jsonOverdraft = null;
+  const resOverdraft = {
+    status: (code) => { resOverdraft.statusCode = code; return resOverdraft; },
+    json: (data) => { jsonOverdraft = data; }
+  };
+  await approvePartsRequest(req12, resOverdraft);
+  assert.strictEqual(resOverdraft.statusCode, 400, 'Phải chặn yêu cầu vượt tồn kho (HTTP 400)');
+  assert.ok(jsonOverdraft.message.includes('Tồn kho không đủ'), 'Thông báo phải nêu rõ tồn kho không đủ');
+  assert.strictEqual(mockPart.stock, 17, 'Tồn kho không bị trừ âm, giữ nguyên 17');
+  console.log(`✓ PASS: Chống xuất âm kho: Yêu cầu 25 > 17 cái bị từ chối 400 chuẩn mực`);
+
+  // ----------------------------------------------------
+  // TEST 13: UC-5.12 - Update Spare Part Stock & Minimum Threshold
+  // ----------------------------------------------------
+  console.log('\n[Test 13] UC-5.12: Điều chỉnh định mức tối thiểu & tồn kho linh kiện (updateSparePartStock)');
+  const req13 = {
+    user: { _id: managerId, role: USER_ROLES.FACILITY_MANAGER },
+    params: { id: partId },
+    body: { stock: 30, min_stock: 8, price: 1300000 }
+  };
+  let json13 = null;
+  const res13 = {
+    status: (code) => res13,
+    json: (data) => { json13 = data; }
+  };
+  await updateSparePartStock(req13, res13);
+  assert.ok(json13.success, 'Cập nhật kho phải thành công');
+  assert.strictEqual(mockPart.stock, 30);
+  assert.strictEqual(mockPart.min_stock, 8);
+  console.log(`✓ PASS: Cập nhật định mức linh kiện thành công: Tồn kho = ${mockPart.stock}, Định mức tối thiểu = ${mockPart.min_stock}`);
+
+  console.log('\n============================================================');
+  console.log('TẤT CẢ 3/3 TESTS CHO WORKSTREAM 3 (UC-5.10 → UC-5.12) ĐÃ ĐẠT 100%!');
+  console.log('============================================================\n');
+}
+
+async function runWorkstream4Tests() {
+  console.log('--- BẮT ĐẦU KIỂM THỬ WORKSTREAM 4: WARRANTY INTELLIGENCE & EXTENSION (UC-6.1 → UC-6.3) ---');
+
+  const eqId = new mongoose.Types.ObjectId().toString();
+  const managerId = new mongoose.Types.ObjectId().toString();
+  const now = new Date();
+
+  // Mock equipment with warranty expiring in 15 days
+  const expiry15Days = new Date(now.getTime() + 15 * 24 * 3600 * 1000);
+  let mockEq = {
+    _id: eqId,
+    code: 'EQ-WAR-01',
+    name: 'Máy Chiếu Hội Trường A1-501',
+    warranty_expiry: expiry15Days,
+    warranty_status: 'active',
+    room_id: { code: 'A1-501', name: 'Hội trường 300 chỗ' },
+    status: EQUIPMENT_STATUSES.IN_USE,
+    save: async function () { return this; },
+    toObject: function () { return { ...this }; }
+  };
+
+  const createPopulateChain = (result) => {
+    const chain = {
+      populate: () => chain,
+      sort: async () => result,
+      then: (resolve) => resolve(result)
+    };
+    return chain;
+  };
+
+  // ----------------------------------------------------
+  // TEST 14: UC-6.1 & UC-6.2 - Expiring Warranties Query & Smart Urgency Tags
+  // ----------------------------------------------------
+  console.log('\n[Test 14] UC-6.1 & UC-6.2: Tra cứu danh sách thiết bị sắp hết bảo hành kèm nhãn phân cấp (getWarrantyExpiringEquipments)');
+  Equipment.find = (filter) => createPopulateChain([mockEq]);
+
+  const req14 = { query: { days: '30' } };
+  let json14 = null;
+  const res14 = {
+    status: (code) => res14,
+    json: (data) => { json14 = data; }
+  };
+  await getWarrantyExpiringEquipments(req14, res14);
+  assert.ok(json14.success, 'Query thiết bị sắp hết hạn bảo hành phải thành công');
+  assert.strictEqual(json14.count, 1);
+  const enrichedItem = json14.equipments[0];
+  assert.ok(enrichedItem.days_remaining >= 14 && enrichedItem.days_remaining <= 16, 'Số ngày còn lại phải chính xác xấp xỉ 15 ngày');
+  assert.strictEqual(enrichedItem.warranty_urgency, 'critical_30', 'Trong vòng 30 ngày phải gán mức critical_30');
+  console.log(`✓ PASS: Phát hiện thiết bị [${enrichedItem.code}]: Còn ${enrichedItem.days_remaining} ngày bảo hành, Phân cấp mức: ${enrichedItem.warranty_urgency}`);
+
+  // ----------------------------------------------------
+  // TEST 15: UC-6.2 - Warranty Expiration Scanner & Alerts (checkAndNotifyExpiringWarranties)
+  // ----------------------------------------------------
+  console.log('\n[Test 15] UC-6.2: Quét cảnh báo bảo hành sắp hết & thông báo cho Quản lý CSVC (checkAndNotifyExpiringWarranties)');
+  User.find = async (filter) => [{ _id: managerId, role: USER_ROLES.FACILITY_MANAGER, status: 'active' }];
+  const sentNotifs = [];
+  Notification.findOne = async () => null; // Chưa gửi thông báo trong 7 ngày
+  Notification.create = async (doc) => {
+    sentNotifs.push(doc);
+    return doc;
+  };
+
+  const req15 = { query: { days: '30' } };
+  let json15 = null;
+  const res15 = {
+    status: (code) => res15,
+    json: (data) => { json15 = data; }
+  };
+  await checkAndNotifyExpiringWarranties(req15, res15);
+  assert.ok(json15.success);
+  assert.strictEqual(json15.expiring_count, 1);
+  assert.strictEqual(json15.notifications_sent, 1);
+  assert.strictEqual(sentNotifs[0].type, NOTIFICATION_TYPES.WARRANTY_EXPIRING);
+  console.log(`✓ PASS: Đã quét phát hiện 1 thiết bị sắp hết hạn, tạo 1 thông báo cảnh báo bảo hành tới Quản lý CSVC thành công!`);
+
+  // ----------------------------------------------------
+  // TEST 16: UC-6.3 - Post-Repair Warranty Extension (updateWarrantyInfo)
+  // ----------------------------------------------------
+  console.log('\n[Test 16] UC-6.3: Cập nhật & Gia hạn bảo hành hậu sửa chữa kèm kiểm toán SHA-256 (updateWarrantyInfo)');
+  Equipment.findById = async (id) => mockEq;
+
+  const oneYearLater = new Date(now.getTime() + 365 * 24 * 3600 * 1000).toISOString();
+  const req16 = {
+    user: { _id: managerId, full_name: 'Quản Lý Lê Hoàng Hải', code: 'QL001', role: USER_ROLES.FACILITY_MANAGER },
+    params: { id: eqId },
+    body: {
+      warranty_expiry: oneYearLater,
+      warranty_status: 'active',
+      warranty_note: 'Gia hạn thêm 12 tháng sau khi thay cụm bóng chiếu chính hãng'
+    }
+  };
+  let json16 = null;
+  const res16 = {
+    status: (code) => res16,
+    json: (data) => { json16 = data; }
+  };
+  await updateWarrantyInfo(req16, res16);
+  assert.ok(json16.success, 'Cập nhật bảo hành phải thành công');
+  assert.strictEqual(json16.warranty_status, 'active');
+  assert.ok(json16.days_remaining >= 364, 'Số ngày bảo hành mới phải >= 364 ngày');
+  console.log(`✓ PASS: Gia hạn bảo hành thành công: Hạn mới còn ${json16.days_remaining} ngày, trạng thái: ${json16.warranty_status}`);
+
+  console.log('\n============================================================');
+  console.log('TẤT CẢ 3/3 TESTS CHO WORKSTREAM 4 (UC-6.1 → UC-6.3) ĐÃ ĐẠT 100%!');
+  console.log('TỔNG CỘNG TOÀN DIỆN 16/16 TESTS PHASE 3 ĐÃ VƯỢT QUA 100%!');
   console.log('============================================================\n');
 }
 
 async function main() {
   await runWorkstream1Tests();
   await runWorkstream2Tests();
+  await runWorkstream3Tests();
+  await runWorkstream4Tests();
 }
 
 main().catch((err) => {
