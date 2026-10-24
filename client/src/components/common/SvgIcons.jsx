@@ -5,7 +5,7 @@ import React from 'react';
  * Strict Native SVG Only — Zero external icon dependencies.
  */
 
-export const SvgIcon = ({ size = 20, color = 'currentColor', strokeWidth = 2, className = '', children, viewBox = '0 0 24 24', fill = 'none' }) => (
+export const SvgIcon = ({ size = 20, color = 'currentColor', strokeWidth = 2, className = '', children, viewBox = '0 0 24 24', fill = 'none', style = {}, ...rest }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={size}
@@ -17,6 +17,8 @@ export const SvgIcon = ({ size = 20, color = 'currentColor', strokeWidth = 2, cl
     strokeLinecap="round"
     strokeLinejoin="round"
     className={`inline-block shrink-0 ${className}`}
+    style={style}
+    {...rest}
   >
     {children}
   </svg>
