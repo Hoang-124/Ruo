@@ -10,6 +10,8 @@ import { Repair } from '../models/Repair.js';
 import { PreventiveMaintenance } from '../models/PreventiveMaintenance.js';
 import { Disposal } from '../models/Disposal.js';
 import { ImportSession } from '../models/ImportSession.js';
+import { Notification } from '../models/Notification.js';
+import { User } from '../models/User.js';
 import {
   EQUIPMENT_STATUSES,
   MOVEMENT_TYPES,
@@ -17,7 +19,11 @@ import {
   DISPOSAL_STATUSES,
   REPAIR_STATUSES,
   REPAIR_OUTCOMES,
-  ROOM_STATUSES
+  ROOM_STATUSES,
+  NOTIFICATION_TYPES,
+  NOTIFICATION_REFERENCE_TYPES,
+  USER_ROLES,
+  USER_STATUSES
 } from '../config/constants.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -37,26 +43,112 @@ export const getEquipmentCategories = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get equipments with warranty expiring within N days (default 30 days) (UC-6.2)
+// @desc    Get equipments with warranty expiring within N days (default 30 days) (UC-6.1, UC-6.2)
 // @route   GET /api/equipments/warranty-expiring
 export const getWarrantyExpiringEquipments = asyncHandler(async (req, res) => {
   const days = Math.max(1, parseInt(req.query.days, 10) || 30);
   const now = new Date();
   const cutoff = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-  const equipments = await Equipment.find({
-    warranty_expiry: { $gte: now, $lte: cutoff },
+  const includeExpired = req.query.include_expired === 'true';
+
+  const filter = {
     status: { $ne: EQUIPMENT_STATUSES.DISPOSED }
-  })
+  };
+
+  if (includeExpired) {
+    filter.warranty_expiry = { $lte: cutoff };
+  } else {
+    filter.warranty_expiry = { $gte: now, $lte: cutoff };
+  }
+
+  const equipments = await Equipment.find(filter)
     .populate('category_id', 'code name')
     .populate('room_id', 'code name building floor')
     .populate('supplier_id', 'code name phone email')
     .sort({ warranty_expiry: 1 });
 
+  const enriched = (equipments || []).map(eq => {
+    const obj = eq.toObject ? eq.toObject() : { ...eq };
+    if (obj.warranty_expiry) {
+      const expDate = new Date(obj.warranty_expiry);
+      const diffMs = expDate.getTime() - now.getTime();
+      const daysRemaining = Math.ceil(diffMs / (24 * 3600 * 1000));
+      obj.days_remaining = daysRemaining;
+      obj.is_expired = daysRemaining <= 0;
+      obj.warranty_urgency = daysRemaining <= 0
+        ? 'expired'
+        : daysRemaining <= 30
+        ? 'critical_30'
+        : daysRemaining <= 60
+        ? 'warning_60'
+        : 'safe';
+    } else {
+      obj.days_remaining = null;
+      obj.is_expired = false;
+      obj.warranty_urgency = 'none';
+    }
+    return obj;
+  });
+
   res.status(200).json({
     success: true,
-    count: equipments.length,
-    equipments,
-    items: equipments
+    count: enriched.length,
+    equipments: enriched,
+    items: enriched
+  });
+});
+
+// @desc    Scan and notify Facility Managers about equipments with warranty expiring soon (UC-6.2)
+// @route   POST /api/equipments/warranty/check-expirations
+export const checkAndNotifyExpiringWarranties = asyncHandler(async (req, res) => {
+  const days = Math.max(1, parseInt(req.query.days || req.body?.days, 10) || 30);
+  const now = new Date();
+  const cutoff = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+  const expiringEquipments = await Equipment.find({
+    warranty_expiry: { $gte: now, $lte: cutoff },
+    status: { $ne: EQUIPMENT_STATUSES.DISPOSED }
+  }).populate('room_id', 'code name');
+
+  const managers = await User.find({
+    role: { $in: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN] },
+    status: USER_STATUSES.ACTIVE
+  });
+
+  let notificationsSent = 0;
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  for (const eq of expiringEquipments) {
+    const daysLeft = Math.max(1, Math.ceil((new Date(eq.warranty_expiry).getTime() - now.getTime()) / (24 * 3600 * 1000)));
+
+    for (const mgr of managers) {
+      // Deduplicate: Don't notify if sent within last 7 days for this equipment
+      const existingNotif = await Notification.findOne({
+        user_id: mgr._id,
+        type: NOTIFICATION_TYPES.WARRANTY_EXPIRING,
+        reference_id: eq._id,
+        created_at: { $gte: sevenDaysAgo }
+      });
+
+      if (!existingNotif) {
+        await Notification.create({
+          user_id: mgr._id,
+          type: NOTIFICATION_TYPES.WARRANTY_EXPIRING,
+          title: `Cảnh báo bảo hành: ${eq.code}`,
+          message: `Thiết bị ${eq.code} (${eq.name}) tại phòng ${eq.room_id?.code || 'Kho'} sẽ hết hạn bảo hành sau ${daysLeft} ngày (${new Date(eq.warranty_expiry).toLocaleDateString('vi-VN')}).`,
+          reference_type: NOTIFICATION_REFERENCE_TYPES.EQUIPMENT,
+          reference_id: eq._id
+        });
+        notificationsSent += 1;
+      }
+    }
+  }
+
+  res.json({
+    success: true,
+    message: `Đã quét và phát hiện ${expiringEquipments.length} thiết bị sắp hết bảo hành, tạo ${notificationsSent} thông báo cảnh báo.`,
+    expiring_count: expiringEquipments.length,
+    notifications_sent: notificationsSent
   });
 });
 
@@ -432,16 +524,8 @@ export const getEquipments = asyncHandler(async (req, res) => {
     query.room_id = { $in: roomIds };
   }
 
-  if (status && status !== 'ALL') {
-    query.status = status;
-  }
-
   if (condition && condition !== 'ALL') {
     query.condition = condition;
-  }
-
-  if (warranty_status && warranty_status !== 'ALL') {
-    query.warranty_status = warranty_status;
   }
 
   const effectiveMinPrice = (min_price !== undefined && min_price !== '') ? min_price : minPrice;
@@ -486,6 +570,36 @@ export const getEquipments = asyncHandler(async (req, res) => {
     ];
   }
 
+  // Base query for metric counts (retains search/category/room/price, excludes active status & warranty tab)
+  const baseCountQuery = { ...query };
+
+  // Apply status and warranty filters to the main query
+  if (status && status !== 'ALL') {
+    query.status = status;
+  }
+
+  const now = new Date();
+  const cutoff30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  if (warranty_status && warranty_status !== 'ALL') {
+    if (warranty_status === 'expiring_30') {
+      query.warranty_expiry = { $gte: now, $lte: cutoff30 };
+      query.status = { $ne: EQUIPMENT_STATUSES.DISPOSED };
+    } else if (warranty_status === 'expired') {
+      query.$or = [
+        { warranty_status: 'expired' },
+        { warranty_expiry: { $lt: now } }
+      ];
+    } else if (warranty_status === 'active') {
+      query.$and = [
+        { warranty_status: { $ne: 'expired' } },
+        { warranty_expiry: { $gt: now } }
+      ];
+    } else {
+      query.warranty_status = warranty_status;
+    }
+  }
+
   const p = Math.max(1, parseInt(page, 10) || 1);
   const l = Math.min(200, Math.max(1, parseInt(limit, 10) || 20));
   const skip = (p - 1) * l;
@@ -496,7 +610,16 @@ export const getEquipments = asyncHandler(async (req, res) => {
     sortCriteria = { [sortBy]: direction };
   }
 
-  const [total, equipments] = await Promise.all([
+  const [
+    total,
+    equipments,
+    countAll,
+    countInUse,
+    countInStock,
+    countBroken,
+    countDisposed,
+    countExpiring
+  ] = await Promise.all([
     Equipment.countDocuments(query),
     Equipment.find(query)
       .populate('category_id')
@@ -506,8 +629,27 @@ export const getEquipments = asyncHandler(async (req, res) => {
       .populate('import_session_id')
       .sort(sortCriteria)
       .skip(skip)
-      .limit(l)
+      .limit(l),
+    Equipment.countDocuments(baseCountQuery),
+    Equipment.countDocuments({ ...baseCountQuery, status: 'in_use' }),
+    Equipment.countDocuments({ ...baseCountQuery, status: 'in_stock' }),
+    Equipment.countDocuments({ ...baseCountQuery, status: { $in: ['broken', 'repairing'] } }),
+    Equipment.countDocuments({ ...baseCountQuery, status: 'disposed' }),
+    Equipment.countDocuments({
+      ...baseCountQuery,
+      warranty_expiry: { $gte: now, $lte: cutoff30 },
+      status: { $ne: EQUIPMENT_STATUSES.DISPOSED }
+    })
   ]);
+
+  const statusCounts = {
+    all: countAll,
+    in_use: countInUse,
+    in_stock: countInStock,
+    broken: countBroken,
+    disposed: countDisposed,
+    expiring_30: countExpiring
+  };
 
   const totalPages = Math.ceil(total / l);
   res.json({
@@ -518,7 +660,8 @@ export const getEquipments = asyncHandler(async (req, res) => {
     totalPages,
     hasPrevPage: p > 1,
     hasNextPage: p < totalPages,
-    equipments
+    equipments,
+    statusCounts
   });
 });
 
@@ -1052,7 +1195,7 @@ export const updateEquipment = asyncHandler(async (req, res) => {
           to_room_id: normalizedNewRoomId || null,
           ordered_by: req.user?._id || equipment._id,
           performed_by: req.user?._id || null,
-          reason: String(movement_reason || `Điều chuyển vị trí thiết bị (${movementType}) trực tiếp trên hồ sơ (UC-3.2 / UC-3.4)`).trim(),
+          reason: String(movement_reason || `Điều chuyển vị trí thiết bị (${movementType}) trực tiếp trên hồ sơ`).trim(),
           status: MOVEMENT_STATUSES.COMPLETED,
           completed_at: new Date()
         });
@@ -1095,7 +1238,7 @@ export const updateEquipment = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: movementLogged
-      ? 'Cập nhật thiết bị và tự động ghi nhận nhật ký điều chuyển phòng thành công (UC-3.2 / UC-3.4).'
+      ? 'Cập nhật thiết bị và tự động ghi nhận nhật ký điều chuyển phòng thành công.'
       : 'Cập nhật thông tin thiết bị thành công.',
     equipment: updated,
     movementLogged,
@@ -1575,7 +1718,7 @@ export const disposeEquipment = asyncHandler(async (req, res) => {
         to_room_id: null,
         ordered_by: req.user?._id || equipment._id,
         performed_by: req.user?._id || null,
-        reason: `Thu hồi khỏi phòng học để thanh lý theo Quyết định ${cleanDecision} (UC-3.8)`,
+        reason: `Thu hồi khỏi phòng học để thanh lý theo Quyết định ${cleanDecision}`,
         status: MOVEMENT_STATUSES.COMPLETED,
         completed_at: new Date()
       });
@@ -1654,34 +1797,73 @@ export const disposeEquipment = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: `Đã thanh lý thiết bị [${equipment.code}] theo Quyết định ${cleanDecision} thành công (UC-3.8).`,
+    message: `Đã thanh lý thiết bị [${equipment.code}] theo Quyết định ${cleanDecision} thành công.`,
     equipment,
     disposal: disposalDoc
   });
 });
 
-// @desc    Update warranty info (UC: Update warranty info)
-// @route   PATCH /api/equipments/:id/warranty
+// @desc    Update and extend warranty info after repair or maintenance (UC-6.3)
+// @route   PUT /api/equipments/:id/warranty
 export const updateWarrantyInfo = asyncHandler(async (req, res) => {
   const equipment = await Equipment.findById(req.params.id);
   if (!equipment) {
     return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị.' });
   }
 
-  const { warranty_expiry, warranty_status } = req.body;
+  const { warranty_expiry, warranty_status, warranty_note, supplier_id } = req.body;
+  const oldExpiry = equipment.warranty_expiry;
+  const oldStatus = equipment.warranty_status;
+
   if (warranty_expiry) {
     equipment.warranty_expiry = new Date(warranty_expiry);
   }
   if (warranty_status) {
     equipment.warranty_status = warranty_status;
   }
+  if (supplier_id) {
+    equipment.supplier_id = supplier_id;
+  }
+
+  // Auto-sync warranty status based on new expiry date if not explicitly specified
+  if (!warranty_status && equipment.warranty_expiry) {
+    equipment.warranty_status = new Date(equipment.warranty_expiry) > new Date() ? 'active' : 'expired';
+  }
 
   await equipment.save();
 
+  // Audit log with SHA-256 integrity
+  if (req.user) {
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name || 'Hệ thống'} (${req.user.code || 'SYS'})`,
+      action: 'WARRANTY_UPDATE',
+      target_table: 'equipments',
+      entity_id: equipment._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      old_value: {
+        warranty_expiry: oldExpiry,
+        warranty_status: oldStatus
+      },
+      new_value: {
+        warranty_expiry: equipment.warranty_expiry,
+        warranty_status: equipment.warranty_status,
+        warranty_note: warranty_note || 'Gia hạn bảo hành sau sửa chữa/bảo dưỡng'
+      }
+    });
+  }
+
+  const now = new Date();
+  const daysRemaining = equipment.warranty_expiry
+    ? Math.ceil((new Date(equipment.warranty_expiry).getTime() - now.getTime()) / (24 * 3600 * 1000))
+    : null;
+
   res.json({
     success: true,
-    message: 'Cập nhật thông tin bảo hành thành công.',
-    equipment
+    message: 'Cập nhật và gia hạn bảo hành thiết bị thành công.',
+    equipment,
+    days_remaining: daysRemaining,
+    warranty_status: equipment.warranty_status
   });
 });
 
