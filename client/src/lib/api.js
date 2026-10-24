@@ -328,10 +328,12 @@ export const auditApi = {
 };
 
 export const notificationApi = {
-  list: () => api.get('/notifications'),
+  list: (params) => api.get('/notifications', params),
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markRead: (id) => api.put(`/notifications/${id}/read`),
-  markAllRead: () => api.put('/notifications/mark-all-read')
+  markAllRead: () => api.put('/notifications/mark-all-read'),
+  delete: (id) => api.delete(`/notifications/${id}`),
+  seedDemo: () => api.post('/notifications/seed-demo')
 };
 
 // Backward compatibility alias for transferApi
