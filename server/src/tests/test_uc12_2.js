@@ -1,6 +1,6 @@
 import assert from 'assert';
 import mongoose from 'mongoose';
-import { updateRolePermissions, DEFAULT_CANONICAL_ROLES } from '../controllers/roleController.js';
+import { updateRolePermissions, batchUpdateRoles, DEFAULT_CANONICAL_ROLES } from '../controllers/roleController.js';
 import { getEquipments } from '../controllers/equipmentController.js';
 import { hasGrantedPermission } from '../middlewares/authMiddleware.js';
 import { Role } from '../models/Role.js';
@@ -56,6 +56,20 @@ async function runTests() {
   Role.findById = (id) => {
     const found = mockRoles.find(r => String(r._id) === String(id));
     return Promise.resolve(found || null);
+  };
+  Role.findOneAndUpdate = async (query, update) => {
+    let role = mockRoles.find(r => r.name === query.name);
+    if (!role) {
+      role = {
+        _id: new mongoose.Types.ObjectId(),
+        name: query.name,
+        ...update.$setOnInsert,
+        permissions: []
+      };
+      mockRoles.push(role);
+    }
+    Object.assign(role, update.$set);
+    return role;
   };
 
   const createMockRes = () => {
@@ -190,9 +204,38 @@ async function runTests() {
   console.log('  ✔ Test 5 ĐẠT: Nhật ký kiểm toán lưu vết đầy đủ thông tin hành động và delta quyền hạn.');
 
   // ----------------------------------------------------
-  // TEST 6: GET /api/equipments - Phân trang Pagination Đầy Đủ (page, limit, total, totalPages, nav flags)
+  // TEST 6: Batch role updates use one request and one audit event
   // ----------------------------------------------------
-  console.log('\n▶ Test 6 (UC-12.2 & UC-3.2): Kiểm tra tính năng phân trang Pagination trên GET /api/equipments');
+  console.log('\n▶ Test 6 (UC-12.2): Lưu đồng thời ma trận RBAC bằng một batch và một audit event');
+  const auditCountBeforeBatch = loggedAuditActions.length;
+  const batchRes = createMockRes();
+  await batchUpdateRoles({
+    body: {
+      roles: Object.entries(DEFAULT_CANONICAL_ROLES).map(([name, role]) => ({
+        name,
+        permissions: role.permissions
+      }))
+    },
+    user: {
+      _id: '67a000000000000000000001',
+      code: 'AD001',
+      role: USER_ROLES.ADMIN,
+      full_name: 'Admin Tổng Quản'
+    },
+    ip: '127.0.0.1'
+  }, batchRes);
+
+  assert.strictEqual(batchRes.statusCode, 200);
+  assert.strictEqual(batchRes.jsonData.success, true);
+  assert.strictEqual(batchRes.jsonData.roles.length, 4);
+  assert.strictEqual(loggedAuditActions.length, auditCountBeforeBatch + 1);
+  assert.strictEqual(loggedAuditActions.at(-1).action, 'BATCH_UPDATE_ROLE_PERMISSIONS');
+  console.log('  ✔ Test 6 ĐẠT: Cả bốn vai trò được lưu qua một yêu cầu và một bản ghi kiểm toán.');
+
+  // ----------------------------------------------------
+  // TEST 7: GET /api/equipments - Phân trang Pagination Đầy Đủ (page, limit, total, totalPages, nav flags)
+  // ----------------------------------------------------
+  console.log('\n▶ Test 7 (UC-12.2 & UC-3.2): Kiểm tra tính năng phân trang Pagination trên GET /api/equipments');
   const mockEquipmentDocs = Array.from({ length: 25 }, (_, i) => ({
     _id: new mongoose.Types.ObjectId(),
     code: `EQ-PAGE-${String(i + 1).padStart(3, '0')}`,
@@ -240,9 +283,9 @@ async function runTests() {
   console.log('  ✔ Test 6 ĐẠT: Phân trang GET /api/equipments trả về đầy đủ metadata (totalPages: 3, hasPrevPage: true, hasNextPage: true).');
 
   // ----------------------------------------------------
-  // TEST 7: Dynamic RBAC Live Policy Guard trên GET /api/equipments
+  // TEST 8: Dynamic RBAC Live Policy Guard trên GET /api/equipments
   // ----------------------------------------------------
-  console.log('\n▶ Test 7 (UC-12.2): Thực thi Live Policy tức thì trên GET /api/equipments (Chặn khi bị thu hồi quyền)');
+  console.log('\n▶ Test 8 (UC-12.2): Thực thi Live Policy tức thì trên GET /api/equipments (Chặn khi bị thu hồi quyền)');
   
   // Case A: Người dùng có quyền equipment:read -> 200 OK
   const req7Authorized = {
