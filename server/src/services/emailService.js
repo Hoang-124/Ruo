@@ -321,6 +321,7 @@ export const dispatchTaskAssignmentEmail = async ({
   priority = 'Cao',
   deadline = 'Trong vòng 24 giờ',
   description = 'Sự cố thiết bị ghi nhận từ giảng viên',
+  category = 'TASK_ASSIGNED',
   userId = null,
   ipAddress = '127.0.0.1'
 }) => {
@@ -372,7 +373,7 @@ export const dispatchTaskAssignmentEmail = async ({
     to,
     subject,
     html,
-    category: 'TASK_ASSIGNED',
+    category,
     metadata: { ticketCode, equipmentCode, roomCode },
     auditContext: {
       user_id: userId,
@@ -443,7 +444,7 @@ export const dispatchDisposalNotificationEmail = async ({
 };
 
 // Aliases for backwards compatibility with UC-9.1
-export const sendNewRepairAssignedEmail = (params) => dispatchTaskAssignmentEmail(params);
+export const sendNewRepairAssignedEmail = (params) => dispatchTaskAssignmentEmail({ category: 'REPAIR_ASSIGNED', ...params });
 export const sendApprovalRequestEmail = ({ to, managerName, requestType, requestCode, requesterName, summary, details = [] }) => {
   const subject = `[RUO UFMS] Yêu cầu duyệt phiếu ${requestType} — #${requestCode}`;
   const html = buildInstitutionalEmailHtml({
