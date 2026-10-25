@@ -331,9 +331,17 @@ export const notificationApi = {
   list: (params) => api.get('/notifications', params),
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markRead: (id) => api.put(`/notifications/${id}/read`),
-  markAllRead: () => api.put('/notifications/mark-all-read'),
+  markReadState: (payload = { all: true }) => api.put('/notifications/read', payload),
+  markAllRead: () => api.put('/notifications/read', { all: true }),
   delete: (id) => api.delete(`/notifications/${id}`),
   seedDemo: () => api.post('/notifications/seed-demo')
+};
+
+export const adminConfigApi = {
+  getTemplates: () => api.get('/admin/config/templates'),
+  updateTemplate: (data) => api.put('/admin/config/templates', data),
+  resetTemplate: (key) => api.post('/admin/config/templates/reset', { key }),
+  resetAllTemplates: () => api.post('/admin/config/templates/reset', {})
 };
 
 // Backward compatibility alias for transferApi

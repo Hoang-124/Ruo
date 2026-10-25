@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { NotificationTemplateModal } from './NotificationTemplateModal';
 import './NotificationDrawer.css';
 
 /**
@@ -28,6 +29,14 @@ const formatRelativeTime = (timestamp) => {
  * Strict Native Inline SVGs (Zero external libraries)
  */
 const DrawerSvg = {
+  FileText: ({ size = 12, color = 'currentColor' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  ),
   Bell: ({ size = 18, color = 'currentColor' }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -105,6 +114,7 @@ export const NotificationDrawer = ({
 }) => {
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'unread' | 'repairs' | 'approvals' | 'deadlines'
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
   // Close on Escape key press
   useEffect(() => {
@@ -256,6 +266,12 @@ export const NotificationDrawer = ({
 
   return (
     <>
+      {/* Template Editor Modal (UC-9.2 / UC-9.3) */}
+      <NotificationTemplateModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+      />
+
       {/* Backdrop Overlay */}
       <div
         className={`ruo-drawer-backdrop ${isOpen ? 'open' : ''}`}
@@ -325,10 +341,9 @@ export const NotificationDrawer = ({
           </div>
         </div>
 
-        {/* Demo Seed Quick Bar */}
-        {onSeedDemo && (
-          <div className="ruo-drawer-demobar">
-            <span>Mô phỏng 3 sự kiện chính của UC-9.1:</span>
+        {/* Demo Seed & Template Editor Quick Bar */}
+        <div className="ruo-drawer-demobar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          {onSeedDemo && (
             <button
               className="ruo-demo-btn"
               onClick={handleSeedDemoClick}
@@ -336,10 +351,20 @@ export const NotificationDrawer = ({
               title="Tạo nhanh 3 thông báo mẫu: Ca sửa mới, Duyệt phiếu, Cảnh báo deadline"
             >
               <DrawerSvg.Sparkles size={11} />
-              <span>{isSeeding ? 'Đang tạo...' : '+ Tạo 3 thông báo mẫu'}</span>
+              <span>{isSeeding ? 'Đang tạo...' : '+ 3 Thông báo mẫu'}</span>
             </button>
-          </div>
-        )}
+          )}
+
+          <button
+            className="ruo-demo-btn"
+            style={{ color: '#0369A1', borderColor: 'rgba(3, 105, 161, 0.3)' }}
+            onClick={() => setIsTemplateModalOpen(true)}
+            title="Quản lý và tùy chỉnh mẫu thông báo & email (UC-9.2/9.3 Template Editor)"
+          >
+            <DrawerSvg.FileText size={11} />
+            <span>Mẫu thông báo</span>
+          </button>
+        </div>
 
         {/* Category Filter Pills */}
         <div className="ruo-drawer-tabs">

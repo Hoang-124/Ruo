@@ -324,15 +324,15 @@ export const AuthProvider = ({ children }) => {
   const markAllNotificationsRead = useCallback(async () => {
     try {
       await notificationApi.markAllRead();
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true })));
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true, isRead: true })));
     } catch (err) {
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true })));
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true, isRead: true })));
     }
   }, []);
 
   const markNotificationRead = useCallback(async (id) => {
     try {
-      await notificationApi.markRead(id);
+      await notificationApi.markReadState({ id });
       setNotifications(prev => prev.map(n => (n._id === id || n.id === id ? { ...n, is_read: true, read: true, isRead: true } : n)));
     } catch (err) {
       setNotifications(prev => prev.map(n => (n._id === id || n.id === id ? { ...n, is_read: true, read: true, isRead: true } : n)));
@@ -493,7 +493,7 @@ export const AuthProvider = ({ children }) => {
   }, [activeRole]);
 
   const unreadCount = useMemo(() => {
-    return notifications.filter(n => !n.is_read && !n.read).length;
+    return notifications.filter(n => !n.is_read && !n.read && !n.isRead).length;
   }, [notifications]);
 
   const contextValue = useMemo(() => ({
