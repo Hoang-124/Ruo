@@ -1,10 +1,14 @@
+import mongoose from 'mongoose';
 import nodemailer from 'nodemailer';
 import { ruoMailQueue, createSmtpTransporter } from '../utils/mailer.js';
+import { AuditLog } from '../models/AuditLog.js';
+import { NotificationTemplate } from '../models/NotificationTemplate.js';
+import { interpolateTemplate, DEFAULT_NOTIFICATION_TEMPLATES } from '../controllers/adminConfigController.js';
 
 /**
  * Ruo University Facilities Management System (UFMS) - Institutional Email Service
  * Module 4: Notifications & Email (UC-9.1 - UC-9.4)
- * Supports Nodemailer SMTP pooling with graceful fallback to in-memory Mail Queue
+ * UC-9.3: Automated Email Dispatcher with Nodemailer Gmail & SHA-256 Audit Trail
  */
 
 const getSenderHeader = () => {
@@ -144,9 +148,17 @@ export const buildInstitutionalEmailHtml = ({
 };
 
 /**
- * Universal email dispatcher (with SMTP transporter & queue telemetry)
+ * Universal email dispatcher (with Nodemailer Gmail / SMTP transporter & audit logging)
  */
-export const sendEmail = async ({ to, subject, html, text, category = 'TRANSACTIONAL', metadata = {} }) => {
+export const sendEmail = async ({
+  to,
+  subject,
+  html,
+  text,
+  category = 'TRANSACTIONAL',
+  metadata = {},
+  auditContext = null
+}) => {
   const targetEmail = String(to || '').trim().toLowerCase();
   if (!targetEmail) {
     return { success: false, message: 'Địa chỉ email người nhận không hợp lệ' };
@@ -169,6 +181,8 @@ export const sendEmail = async ({ to, subject, html, text, category = 'TRANSACTI
   console.log(`├─ Category: ${category}`);
   console.log(`└─ Subject: ${subject}`);
 
+  let dispatchResult = { success: true, delivered: true, simulated: true, queueId: queueItem.id };
+
   const transporter = createSmtpTransporter();
   if (transporter) {
     try {
@@ -188,23 +202,116 @@ export const sendEmail = async ({ to, subject, html, text, category = 'TRANSACTI
       const info = await Promise.race([sendPromise, timeoutPromise]);
       ruoMailQueue.recordDelivered(queueItem, info);
       console.log(`[RUO EMAIL SERVICE] ✅ Email delivered via SMTP! MsgID: ${info.messageId}`);
-      return { success: true, delivered: true, messageId: info.messageId, queueId: queueItem.id };
+      dispatchResult = { success: true, delivered: true, messageId: info.messageId, queueId: queueItem.id };
     } catch (err) {
       console.error(`[RUO EMAIL SERVICE] ⚠️ SMTP transport error (${err.message}). Buffered in mail queue.`);
       ruoMailQueue.recordDelivered(queueItem, { messageId: `fallback_${Date.now()}` });
-      return { success: true, delivered: false, simulated: true, queueId: queueItem.id, error: err.message };
+      dispatchResult = { success: true, delivered: false, simulated: true, queueId: queueItem.id, error: err.message };
+    }
+  } else {
+    // Graceful in-memory buffer (local development / test environments)
+    ruoMailQueue.recordDelivered(queueItem, { messageId: `mock_${Date.now()}` });
+  }
+
+  // Cryptographic audit log recording (GET /api/audit/logs)
+  if (auditContext) {
+    try {
+      if (typeof AuditLog?.logAction === 'function') {
+        await AuditLog.logAction({
+          user_id: auditContext.user_id || null,
+          user_display: auditContext.user_display || 'Hệ Thống Email (System)',
+          action: 'EMAIL_DISPATCH',
+          target_table: auditContext.target_table || 'audit_logs',
+          entity_id: auditContext.entity_id || queueItem.id,
+          ip_address: auditContext.ip_address || '127.0.0.1',
+          new_value: {
+            recipient: targetEmail,
+            category,
+            subject,
+            delivered: dispatchResult.delivered,
+            simulated: Boolean(dispatchResult.simulated),
+            queue_id: queueItem.id
+          }
+        });
+      }
+    } catch (auditErr) {
+      console.warn('[RUO EMAIL SERVICE] Audit logging notice:', auditErr.message);
     }
   }
 
-  // Graceful in-memory buffer (local development / test environments)
-  ruoMailQueue.recordDelivered(queueItem, { messageId: `mock_${Date.now()}` });
-  return { success: true, delivered: true, simulated: true, queueId: queueItem.id };
+  return dispatchResult;
 };
 
 /**
- * 1. CA SỬA MỚI (New Repair Assignment Email)
+ * 1. CẤP LẠI MẬT KHẨU OTP (Password Reset OTP Dispatcher - UC-9.3)
  */
-export const sendNewRepairAssignedEmail = async ({
+export const dispatchPasswordResetOtpEmail = async ({
+  to,
+  otp,
+  expiryMinutes = 15,
+  userId = null,
+  ipAddress = '127.0.0.1'
+}) => {
+  // Retrieve template if customized in DB
+  let template = DEFAULT_NOTIFICATION_TEMPLATES.password_reset;
+  try {
+    if (mongoose.connection?.readyState === 1) {
+      const custom = await NotificationTemplate.findOne({ key: 'password_reset' }).lean();
+      if (custom) template = { ...template, ...custom };
+    }
+  } catch (e) {
+    // fallback to preset
+  }
+
+  const variables = {
+    email: to,
+    otp,
+    expiry_minutes: expiryMinutes
+  };
+
+  const subject = interpolateTemplate(template.subject, variables);
+  const title = interpolateTemplate(template.title, variables);
+  const bodyText = interpolateTemplate(template.body, variables);
+
+  const html = buildInstitutionalEmailHtml({
+    title,
+    preheader: `Mã xác thực OTP của bạn là: ${otp}`,
+    badge: { text: template.badge_text || 'BẢO MẬT TÀI KHOẢN', color: template.badge_color || '#1E3A8A', bg: template.badge_bg || '#EFF6FF' },
+    recipientName: to,
+    summaryText: bodyText,
+    details: [
+      { label: 'Địa chỉ tài khoản', value: to },
+      { label: 'Mã xác thực OTP', value: `<span style="font-size: 20px; font-weight: 900; letter-spacing: 4px; color: #1E3A8A;">${otp}</span>` },
+      { label: 'Thời gian hiệu lực', value: `${expiryMinutes} phút kể từ lúc gửi` }
+    ],
+    alertNotice: {
+      title: 'CẢNH BÁO AN TOÀN',
+      color: '#DC2626',
+      bg: '#FEF2F2',
+      message: 'Không cung cấp mã này cho bất kỳ ai, kể cả nhân viên quản trị hệ thống.'
+    }
+  });
+
+  return sendEmail({
+    to,
+    subject,
+    html,
+    category: 'AUTH_OTP',
+    metadata: { otp, expiryMinutes },
+    auditContext: {
+      user_id: userId,
+      user_display: 'Hệ Thống Xác Thực (SSO)',
+      target_table: 'audit_logs',
+      entity_id: to,
+      ip_address: ipAddress
+    }
+  });
+};
+
+/**
+ * 2. PHIẾU GIAO VIỆC (Work Order & Repair Task Assignment Dispatcher - UC-9.3)
+ */
+export const dispatchTaskAssignmentEmail = async ({
   to,
   technicianName = 'Kỹ thuật viên',
   ticketCode,
@@ -212,26 +319,51 @@ export const sendNewRepairAssignedEmail = async ({
   equipmentName,
   roomCode,
   priority = 'Cao',
-  deadline,
-  description = 'Sự cố thiết bị ghi nhận từ giảng viên'
+  deadline = 'Trong vòng 24 giờ',
+  description = 'Sự cố thiết bị ghi nhận từ giảng viên',
+  userId = null,
+  ipAddress = '127.0.0.1'
 }) => {
-  const subject = `[RUO UFMS] Phân công ca sửa chữa mới — Phiếu #${ticketCode}`;
+  let template = DEFAULT_NOTIFICATION_TEMPLATES.repair_assigned;
+  try {
+    if (mongoose.connection?.readyState === 1) {
+      const custom = await NotificationTemplate.findOne({ key: 'repair_assigned' }).lean();
+      if (custom) template = { ...template, ...custom };
+    }
+  } catch (e) {
+    // fallback
+  }
+
+  const variables = {
+    ticket_code: ticketCode,
+    equipment_code: equipmentCode,
+    equipment_name: equipmentName,
+    room_code: roomCode,
+    priority,
+    deadline,
+    description
+  };
+
+  const subject = interpolateTemplate(template.subject, variables);
+  const title = interpolateTemplate(template.title, variables);
+  const bodyText = interpolateTemplate(template.body, variables);
+
   const html = buildInstitutionalEmailHtml({
-    title: 'Phân công ca sửa chữa thiết bị',
-    preheader: `Nhiệm vụ sửa chữa mới: Thiết bị ${equipmentName} (${equipmentCode}) tại phòng ${roomCode}`,
-    badge: { text: 'CA SỬA CHỮA MỚI', color: '#0369A1', bg: '#E0F2FE' },
+    title,
+    preheader: `Nhiệm vụ sửa chữa mới: Phiếu #${ticketCode} - ${equipmentName} tại phòng ${roomCode}`,
+    badge: { text: template.badge_text || 'PHIẾU GIAO VIỆC', color: template.badge_color || '#0369A1', bg: template.badge_bg || '#E0F2FE' },
     recipientName: technicianName,
-    summaryText: `Bạn vừa được Ban Quản Lý CSVC phân công thực hiện ca sửa chữa sự cố mới. Vui lòng kiểm tra thông tin và tiến hành theo quy trình SLA.`,
+    summaryText: bodyText,
     details: [
-      { label: 'Mã phiếu sửa chữa', value: `#${ticketCode}` },
-      { label: 'Thiết bị cần sửa', value: `${equipmentName} (${equipmentCode})` },
+      { label: 'Mã phiếu giao việc', value: `#${ticketCode}` },
+      { label: 'Thiết bị & Mã tài sản', value: `${equipmentName} (${equipmentCode})` },
       { label: 'Vị trí phòng học', value: `Phòng ${roomCode}` },
       { label: 'Mức độ ưu tiên', value: priority },
-      { label: 'Hạn chót cam kết (SLA)', value: deadline || 'Trong vòng 24 giờ' },
-      { label: 'Mô tả hư hỏng', value: description }
+      { label: 'Hạn chót cam kết (SLA)', value: deadline },
+      { label: 'Nội dung sự cố', value: description }
     ],
     actionButton: {
-      label: 'Mở Bàn Làm Việc Kỹ Thuật Viên',
+      label: 'Mở Bàn Làm Việc Xử Lý Sự Cố',
       url: process.env.CLIENT_URL ? `${process.env.CLIENT_URL}#repairs` : 'http://localhost:5173#repairs'
     }
   });
@@ -240,40 +372,57 @@ export const sendNewRepairAssignedEmail = async ({
     to,
     subject,
     html,
-    category: 'REPAIR_ASSIGNED',
-    metadata: { ticketCode, equipmentCode, roomCode }
+    category: 'TASK_ASSIGNED',
+    metadata: { ticketCode, equipmentCode, roomCode },
+    auditContext: {
+      user_id: userId,
+      user_display: 'Quản Lý CSVC (Facility Manager)',
+      target_table: 'audit_logs',
+      entity_id: ticketCode,
+      ip_address: ipAddress
+    }
   });
 };
 
 /**
- * 2. DUYỆT PHIẾU (Approval Request Email: Điều chuyển, Thanh lý, Linh kiện)
+ * 3. THANH LÝ TÀI SẢN (Equipment Disposal Dispatcher - UC-9.3)
  */
-export const sendApprovalRequestEmail = async ({
+export const dispatchDisposalNotificationEmail = async ({
   to,
-  managerName = 'Quản lý CSVC / Admin',
-  requestType = 'Điều chuyển thiết bị',
-  requestCode,
-  requesterName = 'Cán bộ đề xuất',
-  summary = 'Yêu cầu phê duyệt nghiệp vụ cơ sở vật chất',
-  details = []
+  recipientName = 'Hội Đồng Thanh Lý / Ban Giám Hiệu',
+  equipmentCode,
+  equipmentName = 'Thiết bị trường',
+  reason = 'Hỏng hoàn toàn, vượt quá chi phí sửa chữa',
+  recoveryValue = 0,
+  proposalId = 'N/A',
+  isApproved = false,
+  userId = null,
+  ipAddress = '127.0.0.1'
 }) => {
-  const subject = `[RUO UFMS] Yêu cầu duyệt phiếu ${requestType} — #${requestCode}`;
+  const subject = isApproved
+    ? `[RUO UFMS] Phê duyệt thanh lý thiết bị ${equipmentCode} — Hồ sơ #${proposalId}`
+    : `[RUO UFMS] Đề xuất thanh lý tài sản ${equipmentCode} — Cần phê duyệt`;
+
   const html = buildInstitutionalEmailHtml({
-    title: `Phiếu ${requestType} đang chờ duyệt`,
-    preheader: `Hồ sơ ${requestCode} từ ${requesterName} cần bạn thẩm định và phê duyệt`,
-    badge: { text: 'CẦN PHÊ DUYỆT', color: '#D97706', bg: '#FEF3C7' },
-    recipientName: managerName,
-    summaryText: `Hệ thống vừa tiếp nhận yêu cầu từ <strong>${requesterName}</strong>. Vui lòng xem xét hồ sơ và thực hiện phê duyệt kịp thời.`,
+    title: isApproved ? 'Hồ sơ thanh lý tài sản đã được phê duyệt' : 'Đề xuất thanh lý tài sản cơ sở vật chất',
+    preheader: `Hồ sơ thanh lý thiết bị ${equipmentCode} (${equipmentName})`,
+    badge: isApproved
+      ? { text: 'ĐÃ PHÊ DUYỆT THANH LÝ', color: '#15803D', bg: '#DCFCE7' }
+      : { text: 'ĐỀ XUẤT THANH LÝ', color: '#B45309', bg: '#FEF3C7' },
+    recipientName,
+    summaryText: isApproved
+      ? `Hồ sơ thanh lý thiết bị <strong>${equipmentCode}</strong> đã được Ban Giám Hiệu/Hội Đồng phê duyệt hoàn tất.`
+      : `Ban Quản Lý CSVC vừa lập hồ sơ đề xuất thanh lý tài sản hư hỏng không thể phục hồi. Kính chuyển Hội đồng thẩm định và phê duyệt.`,
     details: [
-      { label: 'Loại nghiệp vụ', value: requestType },
-      { label: 'Mã số phiếu', value: `#${requestCode}` },
-      { label: 'Người tạo đề xuất', value: requesterName },
-      { label: 'Tóm tắt nội dung', value: summary },
-      ...details
+      { label: 'Mã hồ sơ thanh lý', value: `#${proposalId}` },
+      { label: 'Mã số thiết bị', value: equipmentCode },
+      { label: 'Tên thiết bị', value: equipmentName },
+      { label: 'Lý do thanh lý', value: reason },
+      { label: 'Giá trị thu hồi dự kiến', value: `${Number(recoveryValue).toLocaleString('vi-VN')} VNĐ` }
     ],
     actionButton: {
-      label: 'Kiểm Tra & Phê Duyệt Phiếu',
-      url: process.env.CLIENT_URL ? `${process.env.CLIENT_URL}#approvals` : 'http://localhost:5173#approvals'
+      label: 'Kiểm Tra Hồ Sơ Thanh Lý',
+      url: process.env.CLIENT_URL ? `${process.env.CLIENT_URL}#disposal` : 'http://localhost:5173#disposal'
     }
   });
 
@@ -281,14 +430,38 @@ export const sendApprovalRequestEmail = async ({
     to,
     subject,
     html,
-    category: 'APPROVAL_REQUEST',
-    metadata: { requestType, requestCode, requesterName }
+    category: 'DISPOSAL_NOTIFICATION',
+    metadata: { equipmentCode, proposalId, isApproved },
+    auditContext: {
+      user_id: userId,
+      user_display: 'Ban Quản Lý CSVC (UFMS)',
+      target_table: 'audit_logs',
+      entity_id: equipmentCode,
+      ip_address: ipAddress
+    }
   });
 };
 
-/**
- * 3. CẢNH BÁO DEADLINE (Deadline SLA Alert & Overdue Notice)
- */
+// Aliases for backwards compatibility with UC-9.1
+export const sendNewRepairAssignedEmail = (params) => dispatchTaskAssignmentEmail(params);
+export const sendApprovalRequestEmail = ({ to, managerName, requestType, requestCode, requesterName, summary, details = [] }) => {
+  const subject = `[RUO UFMS] Yêu cầu duyệt phiếu ${requestType} — #${requestCode}`;
+  const html = buildInstitutionalEmailHtml({
+    title: `Phiếu ${requestType} đang chờ duyệt`,
+    badge: { text: 'CẦN PHÊ DUYỆT', color: '#D97706', bg: '#FEF3C7' },
+    recipientName: managerName,
+    summaryText: `Hệ thống tiếp nhận yêu cầu từ <strong>${requesterName}</strong>.`,
+    details: [
+      { label: 'Loại nghiệp vụ', value: requestType },
+      { label: 'Mã số phiếu', value: `#${requestCode}` },
+      { label: 'Người tạo đề xuất', value: requesterName },
+      { label: 'Nội dung', value: summary },
+      ...details
+    ]
+  });
+  return sendEmail({ to, subject, html, category: 'APPROVAL_REQUEST' });
+};
+
 export const sendDeadlineWarningEmail = async ({
   to,
   recipientName = 'Cán bộ phụ trách',
@@ -303,51 +476,19 @@ export const sendDeadlineWarningEmail = async ({
     ? `[RUO UFMS] 🚨 CẢNH BÁO QUÁ HẠN SLA — Phiếu #${ticketCode}`
     : `[RUO UFMS] ⚠️ CẢNH BÁO SẮP ĐẾN HẠN SLA — Phiếu #${ticketCode}`;
 
-  const alertNotice = isOverdue
-    ? {
-        title: 'VI PHẠM THỜI GIAN CAM KẾT (SLA BREACH)',
-        color: '#DC2626',
-        bg: '#FEF2F2',
-        message: `Phiếu này đã vượt quá hạn chót hoàn thành. Hệ thống đã ghi nhận log trễ hạn vào báo cáo hiệu suất kỹ thuật.`
-      }
-    : {
-        title: 'SẮP ĐẾN HẠN CAM KẾT HOÀN THÀNH',
-        color: '#D97706',
-        bg: '#FFFBEB',
-        message: `Chỉ còn khoảng ${hoursRemaining} giờ trước khi vượt quá cam kết SLA. Vui lòng ưu tiên xử lý dứt điểm.`
-      };
-
   const html = buildInstitutionalEmailHtml({
     title: isOverdue ? 'Phiếu sửa chữa đã quá hạn SLA' : 'Cảnh báo hạn chót hoàn thành sửa chữa',
-    preheader: `Phiếu #${ticketCode} tại phòng ${roomCode} cần được xử lý khẩn trương`,
-    badge: isOverdue
-      ? { text: 'QUÁ HẠN SLA', color: '#DC2626', bg: '#FEE2E2' }
-      : { text: 'CẢNH BÁO DEADLINE', color: '#B45309', bg: '#FEF3C7' },
+    badge: isOverdue ? { text: 'QUÁ HẠN SLA', color: '#DC2626', bg: '#FEE2E2' } : { text: 'CẢNH BÁO DEADLINE', color: '#B45309', bg: '#FEF3C7' },
     recipientName,
-    summaryText: isOverdue
-      ? `Ca sửa chữa mã phiếu <strong>#${ticketCode}</strong> đã vượt quá thời hạn quy định. Vui lòng hoàn thành ngay hoặc báo cáo giải trình.`
-      : `Ca sửa chữa mã phiếu <strong>#${ticketCode}</strong> sắp đến hạn kết thúc. Vui lòng tập trung hoàn thành đúng tiến độ.`,
+    summaryText: `Ca sửa chữa mã phiếu <strong>#${ticketCode}</strong>.`,
     details: [
       { label: 'Mã phiếu', value: `#${ticketCode}` },
-      { label: 'Mã thiết bị', value: equipmentCode || 'Chưa định danh' },
-      { label: 'Phòng học / Vị trí', value: `Phòng ${roomCode}` },
-      { label: 'Hạn chót cam kết', value: deadline || 'Hôm nay' },
-      { label: 'Tình trạng tiến độ', value: isOverdue ? '🔴 Đã quá hạn' : `🟡 Còn ${hoursRemaining} giờ` }
-    ],
-    alertNotice,
-    actionButton: {
-      label: 'Cập Nhật Tiến Độ Ngay',
-      url: process.env.CLIENT_URL ? `${process.env.CLIENT_URL}#repairs` : 'http://localhost:5173#repairs'
-    }
+      { label: 'Mã thiết bị', value: equipmentCode },
+      { label: 'Phòng học', value: `Phòng ${roomCode}` }
+    ]
   });
 
-  return sendEmail({
-    to,
-    subject,
-    html,
-    category: isOverdue ? 'DEADLINE_OVERDUE' : 'DEADLINE_WARNING',
-    metadata: { ticketCode, equipmentCode, isOverdue }
-  });
+  return sendEmail({ to, subject, html, category: isOverdue ? 'DEADLINE_OVERDUE' : 'DEADLINE_WARNING' });
 };
 
 export const getEmailQueue = () => ruoMailQueue.getHistory();
@@ -355,6 +496,9 @@ export const clearEmailQueue = () => ruoMailQueue.clear();
 
 export default {
   sendEmail,
+  dispatchPasswordResetOtpEmail,
+  dispatchTaskAssignmentEmail,
+  dispatchDisposalNotificationEmail,
   sendNewRepairAssignedEmail,
   sendApprovalRequestEmail,
   sendDeadlineWarningEmail,
