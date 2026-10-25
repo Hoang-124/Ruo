@@ -37,12 +37,13 @@ export const DEFAULT_CANONICAL_ROLES = {
       'repair:report_outcome',
       'parts:request',
       'inventory:scan',
-      'inventory:export'
+      'inventory:export',
+      'disposal:propose'
     ]
   },
   [USER_ROLES.FACILITY_MANAGER]: {
     title: 'Cán Bộ Quản Lý Cơ Sở Vật Chất (FM)',
-    description: 'Điều phối ca sửa chữa Kanban SLA, cấp phát linh kiện kho, ra lệnh điều chuyển, kiểm kê và lập đề xuất thanh lý R>=60%.',
+    description: 'Điều phối ca sửa chữa Kanban SLA, cấp phát linh kiện kho, ra lệnh điều chuyển, kiểm kê, thẩm định và lập dự trù thanh lý.',
     permissions: [
       'user:profile:read',
       'room:read',

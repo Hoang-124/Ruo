@@ -1525,6 +1525,26 @@ export const disposeEquipment = asyncHandler(async (req, res) => {
     });
   }
 
+  if (canCallModel(Disposal, 'findOne')) {
+    const activeRaciDisposal = await Disposal.findOne({
+      equipment_id: equipment._id,
+      status: {
+        $in: [
+          DISPOSAL_STATUSES.PROPOSED,
+          DISPOSAL_STATUSES.HC_APPROVED,
+          DISPOSAL_STATUSES.BGH_APPROVED,
+          DISPOSAL_STATUSES.PROCUREMENT_PLANNED
+        ]
+      }
+    });
+    if (activeRaciDisposal) {
+      return res.status(409).json({
+        success: false,
+        message: 'Thiết bị đang trong quy trình thanh lý RACI. Hoàn tất tiếp nhận tài sản thay thế tại hồ sơ trước khi thanh lý.'
+      });
+    }
+  }
+
   const {
     decision_number,
     reason,
@@ -1715,5 +1735,4 @@ export const deleteEquipment = asyncHandler(async (req, res) => {
     message: 'Đã xóa thiết bị thành công.'
   });
 });
-
 

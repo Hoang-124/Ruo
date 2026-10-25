@@ -116,6 +116,9 @@ export const INVENTORY_LOG_STATUSES = {
 
 export const DISPOSAL_STATUSES = {
   PROPOSED: 'proposed',
+  HC_APPROVED: 'hc_approved',
+  BGH_APPROVED: 'bgh_approved',
+  PROCUREMENT_PLANNED: 'procurement_planned',
   APPROVED: 'approved',
   REJECTED: 'rejected',
   COMPLETED: 'completed'
