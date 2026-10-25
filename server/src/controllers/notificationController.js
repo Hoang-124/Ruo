@@ -203,6 +203,110 @@ export const getUnreadBadgeCount = async (req, res) => {
   }
 };
 
+// Helper to calculate unread counts across all categories
+export const calculateCategoryCounts = async (userId) => {
+  const [unreadCount, repairCount, approvalCount, deadlineCount] = await Promise.all([
+    Notification.countDocuments({ user_id: userId, is_read: false }),
+    Notification.countDocuments({
+      user_id: userId,
+      is_read: false,
+      type: { $in: getCategoryTypeQuery(NOTIFICATION_CATEGORIES.REPAIRS) }
+    }),
+    Notification.countDocuments({
+      user_id: userId,
+      is_read: false,
+      type: { $in: getCategoryTypeQuery(NOTIFICATION_CATEGORIES.APPROVALS) }
+    }),
+    Notification.countDocuments({
+      user_id: userId,
+      is_read: false,
+      type: { $in: getCategoryTypeQuery(NOTIFICATION_CATEGORIES.DEADLINES) }
+    })
+  ]);
+
+  return {
+    all: unreadCount,
+    repairs: repairCount,
+    approvals: approvalCount,
+    deadlines: deadlineCount
+  };
+};
+
+// @desc    Unified Mark Read endpoint (UC-9.2)
+//          Supports: { id } for single item, { ids: [...] } for batch, or { all: true } / empty for all
+// @route   PUT /api/notifications/read or PATCH /api/notifications/read
+export const markNotificationsRead = async (req, res) => {
+  try {
+    const { id, ids } = req.body || {};
+    const userId = req.user._id;
+
+    // Case 1: Single notification ID
+    if (id) {
+      const notification = await Notification.findOneAndUpdate(
+        { _id: id, user_id: userId },
+        { is_read: true },
+        { new: true }
+      );
+
+      if (!notification) {
+        return res.status(404).json({ success: false, message: 'Thông báo không tồn tại hoặc không thuộc quyền sở hữu.' });
+      }
+
+      const categoryCounts = await calculateCategoryCounts(userId);
+
+      return res.json({
+        success: true,
+        modifiedCount: 1,
+        unreadCount: categoryCounts.all,
+        categoryCounts,
+        notification: {
+          ...notification.toObject(),
+          id: notification._id.toString(),
+          category: categorizeNotificationType(notification.type),
+          isRead: true
+        },
+        message: 'Đã đánh dấu thông báo là đã đọc.'
+      });
+    }
+
+    // Case 2: Array of notification IDs
+    if (Array.isArray(ids) && ids.length > 0) {
+      const result = await Notification.updateMany(
+        { _id: { $in: ids }, user_id: userId, is_read: false },
+        { is_read: true }
+      );
+
+      const categoryCounts = await calculateCategoryCounts(userId);
+
+      return res.json({
+        success: true,
+        modifiedCount: result.modifiedCount || 0,
+        unreadCount: categoryCounts.all,
+        categoryCounts,
+        message: `Đã đánh dấu ${result.modifiedCount || 0} thông báo là đã đọc.`
+      });
+    }
+
+    // Case 3: Mark all notifications of the user as read
+    const result = await Notification.updateMany(
+      { user_id: userId, is_read: false },
+      { is_read: true }
+    );
+
+    const categoryCounts = { all: 0, repairs: 0, approvals: 0, deadlines: 0 };
+
+    return res.json({
+      success: true,
+      modifiedCount: result.modifiedCount || 0,
+      unreadCount: 0,
+      categoryCounts,
+      message: 'Đã đánh dấu tất cả thông báo là đã đọc, xóa chấm đỏ thanh điều hướng.'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Mark single notification as read (UC-9.2)
 // @route   PATCH /api/notifications/:id/read or PUT /api/notifications/:id/read
 export const markNotificationRead = async (req, res) => {
@@ -217,11 +321,12 @@ export const markNotificationRead = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Thông báo không tồn tại hoặc không thuộc quyền sở hữu.' });
     }
 
-    const unreadCount = await Notification.countDocuments({ user_id: req.user._id, is_read: false });
+    const categoryCounts = await calculateCategoryCounts(req.user._id);
 
     res.json({
       success: true,
-      unreadCount,
+      unreadCount: categoryCounts.all,
+      categoryCounts,
       notification: {
         ...notification.toObject(),
         id: notification._id.toString(),
@@ -247,7 +352,8 @@ export const markAllNotificationsRead = async (req, res) => {
       success: true,
       modifiedCount: result.modifiedCount || 0,
       unreadCount: 0,
-      message: 'Đã đánh dấu tất cả thông báo là đã đọc.'
+      categoryCounts: { all: 0, repairs: 0, approvals: 0, deadlines: 0 },
+      message: 'Đã đánh dấu tất cả thông báo là đã đọc, xóa chấm đỏ thanh điều hướng.'
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

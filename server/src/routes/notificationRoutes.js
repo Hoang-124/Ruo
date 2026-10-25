@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getUserNotifications,
   getUnreadBadgeCount,
+  markNotificationsRead,
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
@@ -19,6 +20,9 @@ router.get('/unread-count', getUnreadBadgeCount);
 router.post('/seed-demo', seedDemoNotifications);
 
 // UC-9.2: Mark notifications as read
+// PUT /api/notifications/read supports { id }, { ids: [...] }, or { all: true }
+router.put('/read', markNotificationsRead);
+router.patch('/read', markNotificationsRead);
 router.patch('/read-all', markAllNotificationsRead);
 router.put('/read-all', markAllNotificationsRead);
 router.put('/mark-all-read', markAllNotificationsRead);
