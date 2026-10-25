@@ -7,6 +7,7 @@ import { AuditLog } from '../models/AuditLog.js';
 import { Notification } from '../models/Notification.js';
 import { USER_STATUSES, USER_ROLES } from '../config/constants.js';
 import { sendPasswordResetEmail, generateSixDigitOtp } from '../utils/mailer.js';
+import { dispatchPasswordResetOtpEmail } from '../services/emailService.js';
 
 const ACCESS_TOKEN_EXPIRY = '15m'; // UC-1.1: 15 minutes
 const REFRESH_TOKEN_EXPIRY = '7d';  // UC-1.1: 7 days
@@ -689,8 +690,15 @@ export const forgotPassword = async (req, res) => {
       expiresAt: new Date(Date.now() + 15 * 60 * 1000)
     });
 
-    const mailSent = await sendPasswordResetEmail(normalizedEmail, otp);
+    const mailResult = await dispatchPasswordResetOtpEmail({
+      to: normalizedEmail,
+      otp,
+      expiryMinutes: 15,
+      userId: user._id,
+      ipAddress: req.ip || '127.0.0.1'
+    });
     const hasSmtpConfig = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+    const mailSent = mailResult.delivered && !mailResult.simulated;
 
     res.json({
       success: true,
