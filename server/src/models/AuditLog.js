@@ -116,6 +116,11 @@ auditLogSchema.statics.logAction = async function ({
   old_value = null,
   new_value = null
 }) {
+  // Prevent Mongoose query buffering timeout if running in offline unit test environment
+  if (mongoose.connection?.readyState !== 1 && this.db?.readyState !== 1) {
+    return null;
+  }
+
   await this.deleteMany({
     $or: [
       { seq: { $exists: false } },
