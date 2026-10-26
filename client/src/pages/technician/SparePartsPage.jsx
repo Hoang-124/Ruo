@@ -555,7 +555,7 @@ export const SparePartsPage = () => {
 
       {/* Request Modal */}
       {showRequestModal && (
-        <div className="ruo-drawer-backdrop" onClick={() => setShowRequestModal(false)}>
+        <div className="ruo-drawer-backdrop open" onClick={() => setShowRequestModal(false)}>
           <div className="ruo-drawer-panel" style={{ width: '500px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
@@ -653,7 +653,7 @@ export const SparePartsPage = () => {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="ruo-drawer-backdrop" onClick={() => setShowCreateModal(false)}>
+        <div className="ruo-drawer-backdrop open" onClick={() => setShowCreateModal(false)}>
           <div className="ruo-drawer-panel" style={{ width: '520px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
@@ -769,7 +769,7 @@ export const SparePartsPage = () => {
 
       {/* Edit Modal */}
       {showEditModal && (
-        <div className="ruo-drawer-backdrop" onClick={() => setShowEditModal(false)}>
+        <div className="ruo-drawer-backdrop open" onClick={() => setShowEditModal(false)}>
           <div className="ruo-drawer-panel" style={{ width: '520px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
