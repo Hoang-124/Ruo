@@ -22,11 +22,21 @@ const podsFor = (floor, overrides = {}) =>
 
 describe('<FloorPlan2D /> room pods (UC-2.7)', () => {
   for (const floor of [1, 2, 3, 4, 5]) {
-    it(`draws a pod on the rooms of floor ${floor}`, () => {
-      const { container } = render(<FloorPlan2D selectedFloor={floor} roomPods={podsFor(floor)} />);
+    it(`draws a pod on every single architectural room of floor ${floor}`, () => {
+      const select = vi.fn();
+      const { container, getByTestId } = render(
+        <FloorPlan2D selectedFloor={floor} roomPods={podsFor(floor)} onSelectRoom={select} />
+      );
+      const expectedRooms = roomsOfFloor(floor);
       const pods = container.querySelectorAll('[data-testid^="room-pod-"]');
-      expect(pods.length).toBeGreaterThan(0);
-      expect(pods.length).toBeLessThanOrEqual(roomsOfFloor(floor).length);
+      expect(pods.length).toBe(expectedRooms.length);
+
+      for (const room of expectedRooms) {
+        const podEl = getByTestId(`room-pod-${room.code}`);
+        expect(podEl).toBeTruthy();
+        fireEvent.click(podEl.parentElement);
+        expect(select).toHaveBeenLastCalledWith(expect.objectContaining({ code: room.code }));
+      }
     });
   }
 

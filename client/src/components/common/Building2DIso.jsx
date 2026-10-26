@@ -14,47 +14,47 @@ import { CAMPUS_FLOORS } from '../../mock/campusBuildingData';
  * 
  * Strict Native SVG Only — Zero external icon dependencies.
  */
+// Configuration for 5 floors synchronized with FloorPlan2D & CAMPUS_FLOORS
+const FLOOR_CONFIG = [
+  {
+    level: 5,
+    name: 'TẦNG 5',
+    title: 'Giảng Đường Lớn & Ban Công',
+    highlight: 'PH Học Lớn & Ban công',
+    accent: '#8B5CF6'
+  },
+  {
+    level: 4,
+    name: 'TẦNG 4',
+    title: 'Hành Chính & Hội Thảo',
+    highlight: 'VP Khoa & Hội thảo',
+    accent: '#3B82F6'
+  },
+  {
+    level: 3,
+    name: 'TẦNG 3',
+    title: 'Giảng Đường & Trạm Y Tế',
+    highlight: 'Y Tế & PH 301–319',
+    accent: '#0EA5E9'
+  },
+  {
+    level: 2,
+    name: 'TẦNG 2',
+    title: 'Giảng Đường & Nghiên Cứu',
+    highlight: 'PH 201–218 & Nghiên cứu',
+    accent: '#10B981'
+  },
+  {
+    level: 1,
+    name: 'TẦNG 1',
+    title: 'Sảnh Đón Tiếp & Giếng Trời',
+    highlight: 'Thư viện & Giếng trời',
+    accent: '#F59E0B'
+  }
+];
+
 export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
   const [hoveredFloor, setHoveredFloor] = useState(null);
-
-  // Configuration for 5 floors synchronized with FloorPlan2D & CAMPUS_FLOORS
-  const FLOOR_CONFIG = [
-    {
-      level: 5,
-      name: 'TẦNG 5',
-      title: 'Sự Kiện & Sinh Hoạt',
-      highlight: 'Hội trường 300 chỗ',
-      accent: '#8B5CF6'
-    },
-    {
-      level: 4,
-      name: 'TẦNG 4',
-      title: 'Hành Chính & Hội Thảo',
-      highlight: 'VP Khoa & Hội thảo',
-      accent: '#3B82F6'
-    },
-    {
-      level: 3,
-      name: 'TẦNG 3',
-      title: 'Giảng Đường & Trạm Y Tế',
-      highlight: 'Phòng Y Tế & Giảng đường 301 - 319',
-      accent: '#0EA5E9'
-    },
-    {
-      level: 2,
-      name: 'TẦNG 2',
-      title: 'Giảng Đường Lý Thuyết',
-      highlight: 'Phòng học 201 - 208',
-      accent: '#10B981'
-    },
-    {
-      level: 1,
-      name: 'TẦNG 1',
-      title: 'Sảnh Đón Tiếp & Giếng Trời',
-      highlight: 'Thư viện & Sân Giếng Trời',
-      accent: '#F59E0B'
-    }
-  ];
 
   // Dynamically compute real stats from CAMPUS_FLOORS
   const floorsData = useMemo(() => {
