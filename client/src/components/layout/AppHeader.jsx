@@ -140,7 +140,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenQRDemo, onOpenProfileM
                 className={`ruo-profile-button ${showProfilePopover ? 'active' : ''}`}
                 onClick={() => {
                   setShowProfilePopover(!showProfilePopover);
-                  setShowNotifPopover(false);
+                  setIsNotifDrawerOpen(false);
                 }}
                 title="Hồ sơ tài khoản và chuyển đổi vai trò tác nhân"
               >
