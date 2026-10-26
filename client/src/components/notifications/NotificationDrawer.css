@@ -4,7 +4,7 @@
    ========================================================================== */
 
 /* Drawer Overlay Backdrop */
-.ruo-drawer-backdrop {
+.ruo-drawer-backdrop.ruo-notif-backdrop {
   position: fixed;
   inset: 0;
   background-color: rgba(7, 8, 10, 0.55);
@@ -16,7 +16,7 @@
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s;
 }
 
-.ruo-drawer-backdrop.open {
+.ruo-drawer-backdrop.ruo-notif-backdrop.open {
   opacity: 1;
   visibility: visible;
 }
