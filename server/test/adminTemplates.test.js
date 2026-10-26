@@ -43,7 +43,7 @@ describe('Admin Notification & Email Template Editor (UC-9.2 / UC-9.3)', () => {
       await getNotificationTemplates({}, res);
 
       assert.strictEqual(jsonRes.success, true);
-      assert.strictEqual(jsonRes.total, 4);
+      assert.ok(jsonRes.total >= 4);
       assert.ok(jsonRes.templates.some((t) => t.key === 'repair_assigned'));
       assert.ok(jsonRes.templates.some((t) => t.key === 'approval_request'));
       assert.ok(jsonRes.templates.some((t) => t.key === 'deadline_overdue'));

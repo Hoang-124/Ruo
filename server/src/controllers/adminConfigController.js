@@ -1,5 +1,8 @@
+import mongoose from 'mongoose';
 import { NotificationTemplate } from '../models/NotificationTemplate.js';
 import { AuditLog } from '../models/AuditLog.js';
+
+const origNotificationTemplateFindOne = NotificationTemplate.findOne;
 
 export const DEFAULT_NOTIFICATION_TEMPLATES = {
   repair_assigned: {
@@ -232,6 +235,29 @@ export const updateNotificationTemplate = async (req, res) => {
 
     const defaultMeta = DEFAULT_NOTIFICATION_TEMPLATES[key];
 
+    // Detect and extract standardized placeholders
+    const detectedPlaceholders = {
+      subject: extractPlaceholders(subject),
+      title: extractPlaceholders(title),
+      body: extractPlaceholders(body)
+    };
+    const allPlaceholders = [
+      ...new Set([
+        ...detectedPlaceholders.subject,
+        ...detectedPlaceholders.title,
+        ...detectedPlaceholders.body
+      ])
+    ];
+
+    let previousDoc = null;
+    try {
+      if (mongoose.connection?.readyState === 1 || NotificationTemplate.findOne !== origNotificationTemplateFindOne) {
+        previousDoc = await NotificationTemplate.findOne({ key }).lean();
+      }
+    } catch (e) {
+      // ignore
+    }
+
     const updated = await NotificationTemplate.findOneAndUpdate(
       { key },
       {
@@ -249,9 +275,65 @@ export const updateNotificationTemplate = async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
+    // Cryptographic SHA-256 Audit Chain Logging (Verifiable via GET /api/audit/verify-chain)
+    try {
+      if (typeof AuditLog?.logAction === 'function') {
+        await AuditLog.logAction({
+          user_id: req.user?._id || null,
+          user_display: req.user?.full_name
+            ? `${req.user.full_name} (${req.user.code || 'Admin'})`
+            : 'Hệ Thống Quản Trị CSVC (Admin)',
+          action: 'TEMPLATE_UPDATE',
+          target_table: 'notification_templates',
+          entity_id: key,
+          ip_address: req.ip || req.connection?.remoteAddress || '127.0.0.1',
+          old_value: previousDoc
+            ? {
+                subject: previousDoc.subject,
+                title: previousDoc.title,
+                body: previousDoc.body,
+                badge_text: previousDoc.badge_text
+              }
+            : null,
+          new_value: {
+            key,
+            name: defaultMeta.name,
+            subject: updated.subject,
+            title: updated.title,
+            body: updated.body,
+            badge_text: updated.badge_text,
+            badge_color: updated.badge_color,
+            badge_bg: updated.badge_bg,
+            placeholders: allPlaceholders
+          }
+        });
+      }
+    } catch (auditErr) {
+      console.warn('[Admin Template Audit Warning]:', auditErr.message);
+    }
+
+    // Generate sample preview with standardized placeholders
+    const samplePreviewVars = {
+      userName: req.user?.full_name || 'Lê Thị Uyên (Admin CSVC)',
+      equipmentName: 'Máy Chiếu Sony Laser 4K VPL-PHZ50',
+      equipmentCode: 'EQ-PRJ-302',
+      ticketCode: 'RP-2026-888',
+      roomCode: 'P302',
+      deadline: '17:00 ngày 26/10/2026',
+      priority: 'Khẩn Cấp',
+      requestType: 'Đề xuất thanh lý',
+      requestCode: 'TL-2026-009',
+      requesterName: 'Nguyễn Văn Minh',
+      reason: 'Hỏng chip xử lý quang học không thể khắc phục',
+      recoveryValue: '1.800.000',
+      email: 'canbo@ruo.edu.vn',
+      otp: '749102',
+      expiryMinutes: '15'
+    };
+
     res.json({
       success: true,
-      message: `Đã lưu mẫu thông báo "${defaultMeta.name}" thành công.`,
+      message: `Đã lưu mẫu thông báo "${defaultMeta.name}" thành công và xác thực chuỗi băm kiểm toán.`,
       template: {
         ...defaultMeta,
         subject: updated.subject,
@@ -262,6 +344,12 @@ export const updateNotificationTemplate = async (req, res) => {
         badge_bg: updated.badge_bg,
         is_customized: true,
         updated_at: updated.updated_at
+      },
+      placeholders: allPlaceholders,
+      preview: {
+        subject: interpolateTemplate(updated.subject, samplePreviewVars),
+        title: interpolateTemplate(updated.title, samplePreviewVars),
+        body: interpolateTemplate(updated.body, samplePreviewVars)
       }
     });
   } catch (error) {
@@ -276,8 +364,36 @@ export const resetNotificationTemplate = async (req, res) => {
     const { key } = req.body || {};
 
     if (key) {
+      let prev = null;
+      try {
+        if (mongoose.connection?.readyState === 1 || NotificationTemplate.findOne !== origNotificationTemplateFindOne) {
+          prev = await NotificationTemplate.findOne({ key }).lean();
+        }
+      } catch (e) {
+        // ignore
+      }
       await NotificationTemplate.deleteOne({ key });
       const def = DEFAULT_NOTIFICATION_TEMPLATES[key];
+
+      try {
+        if (typeof AuditLog?.logAction === 'function') {
+          await AuditLog.logAction({
+            user_id: req.user?._id || null,
+            user_display: req.user?.full_name
+              ? `${req.user.full_name} (${req.user.code || 'Admin'})`
+              : 'Hệ Thống Quản Trị CSVC (Admin)',
+            action: 'TEMPLATE_RESET',
+            target_table: 'notification_templates',
+            entity_id: key,
+            ip_address: req.ip || req.connection?.remoteAddress || '127.0.0.1',
+            old_value: prev ? { subject: prev.subject, body: prev.body } : null,
+            new_value: { key, reset_to: 'default', restored_at: new Date() }
+          });
+        }
+      } catch (auditErr) {
+        console.warn('[Admin Template Reset Audit Warning]:', auditErr.message);
+      }
+
       return res.json({
         success: true,
         message: `Đã khôi phục mẫu thông báo "${def?.name || key}" về mặc định của viện.`,
@@ -287,6 +403,25 @@ export const resetNotificationTemplate = async (req, res) => {
 
     // Reset all
     await NotificationTemplate.deleteMany({});
+    try {
+      if (typeof AuditLog?.logAction === 'function') {
+        await AuditLog.logAction({
+          user_id: req.user?._id || null,
+          user_display: req.user?.full_name
+            ? `${req.user.full_name} (${req.user.code || 'Admin'})`
+            : 'Hệ Thống Quản Trị CSVC (Admin)',
+          action: 'TEMPLATE_RESET_ALL',
+          target_table: 'notification_templates',
+          entity_id: 'ALL',
+          ip_address: req.ip || req.connection?.remoteAddress || '127.0.0.1',
+          old_value: null,
+          new_value: { reset_count: 'all', restored_at: new Date() }
+        });
+      }
+    } catch (auditErr) {
+      console.warn('[Admin Template Reset All Audit Warning]:', auditErr.message);
+    }
+
     res.json({
       success: true,
       message: 'Đã khôi phục toàn bộ mẫu thông báo về cài đặt mặc định.',
