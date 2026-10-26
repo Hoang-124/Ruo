@@ -274,7 +274,7 @@ export const NotificationDrawer = ({
 
       {/* Backdrop Overlay */}
       <div
-        className={`ruo-drawer-backdrop ruo-notif-backdrop ${isOpen ? 'open' : ''}`}
+        className={`ruo-notif-drawer-backdrop ${isOpen ? 'open' : ''}`}
         onClick={onClose}
         aria-hidden={!isOpen}
       />
