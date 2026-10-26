@@ -3,6 +3,7 @@ import { Equipment } from '../models/Equipment.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { Notification } from '../models/Notification.js';
 import { User } from '../models/User.js';
+import { dispatchDisposalNotificationEmail } from '../services/emailService.js';
 import { assertTransition } from '../domain/stateMachines.js';
 import { 
   DISPOSAL_STATUSES, 
@@ -91,7 +92,7 @@ export const createDisposalProposal = async (req, res) => {
     });
 
     // Notify Admins
-    const admins = await User.find({ role: USER_ROLES.ADMIN, status: USER_STATUSES.ACTIVE }).select('_id');
+    const admins = await User.find({ role: USER_ROLES.ADMIN, status: USER_STATUSES.ACTIVE }).select('_id email full_name');
     if (admins.length > 0) {
       await Notification.insertMany(
         admins.map((adm) => ({
@@ -103,6 +104,24 @@ export const createDisposalProposal = async (req, res) => {
           reference_id: proposal._id
         }))
       );
+
+      // UC-9.3: Automated Email Dispatcher for Disposal Proposal
+      for (const adm of admins) {
+        if (adm.email) {
+          dispatchDisposalNotificationEmail({
+            to: adm.email,
+            recipientName: adm.full_name || 'Hội Đồng Thanh Lý / Admin',
+            equipmentCode: equipment.code,
+            equipmentName: equipment.name,
+            reason: proposal.reason,
+            recoveryValue: proposal.recovery_value,
+            proposalId: proposal._id.toString(),
+            isApproved: false,
+            userId: req.user?._id,
+            ipAddress: req.ip || req.connection?.remoteAddress || '127.0.0.1'
+          }).catch((err) => console.warn('[Disposal Email Dispatcher Warning]:', err.message));
+        }
+      }
     }
 
     res.status(201).json({
@@ -156,6 +175,28 @@ export const approveDisposal = async (req, res) => {
       ip_address: req.ip || '127.0.0.1',
       new_value: { status: proposal.status, decision_number: proposal.decision_number }
     });
+
+    // UC-9.3: Automated Email Dispatcher for Disposal Approval
+    try {
+      const proposer = await User.findById(proposal.proposed_by).select('email full_name');
+      const eq = await Equipment.findById(proposal.equipment_id).select('code name');
+      if (proposer?.email) {
+        dispatchDisposalNotificationEmail({
+          to: proposer.email,
+          recipientName: proposer.full_name || 'Cán bộ quản lý CSVC',
+          equipmentCode: eq?.code || 'EQ-N/A',
+          equipmentName: eq?.name || 'Thiết bị thanh lý',
+          reason: proposal.reason,
+          recoveryValue: proposal.recovery_value,
+          proposalId: proposal._id.toString(),
+          isApproved: true,
+          userId: req.user?._id,
+          ipAddress: req.ip || req.connection?.remoteAddress || '127.0.0.1'
+        }).catch((err) => console.warn('[Disposal Approval Email Dispatcher Warning]:', err.message));
+      }
+    } catch (emailErr) {
+      console.warn('[Disposal Approval Email Dispatcher Lookup Warning]:', emailErr.message);
+    }
 
     res.json({
       success: true,

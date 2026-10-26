@@ -7,6 +7,11 @@ import {
   listAdminRepairUnits, createAdminRepairUnit, updateAdminRepairUnit, deleteAdminRepairUnit,
   listAdminBuildings, createAdminBuilding, updateAdminBuilding, deleteAdminBuilding
 } from '../controllers/adminMasterDataController.js';
+import {
+  getNotificationTemplates,
+  updateNotificationTemplate,
+  resetNotificationTemplate
+} from '../controllers/adminConfigController.js';
 
 const router = express.Router();
 const route = (handler) => (req, res, next) => {
@@ -41,5 +46,12 @@ router.route('/buildings')
 router.route('/buildings/:id')
   .put(route(updateAdminBuilding))
   .delete(route(deleteAdminBuilding));
+
+// Template Editor (UC-9.2/9.3: PUT /api/admin/config/templates)
+router.route('/config/templates')
+  .get(route(getNotificationTemplates))
+  .put(route(updateNotificationTemplate));
+
+router.post('/config/templates/reset', route(resetNotificationTemplate));
 
 export default router;
