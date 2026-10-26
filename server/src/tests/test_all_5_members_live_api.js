@@ -716,14 +716,14 @@ async function runMasterE2ESuite() {
   if (createdEqId) {
     const proposeDispRes = await apiRequest('/disposals', {
       method: 'POST',
-      token: managerToken,
+      token: techToken,
       body: {
         equipment_id: createdEqId,
         reason: 'Chi phí sửa chữa lũy kế vượt ngưỡng R >= 60% nguyên giá',
         recovery_value: 1500000
       }
     });
-    check('Quang', 'UC-7.7 & UC-7.8 Khởi tạo & thẩm định hồ sơ thanh lý khi R >= 60% (POST /api/disposals)', proposeDispRes.ok, proposeDispRes);
+    check('Quang', 'UC-7.7 KTV lập đề xuất thanh lý khi R >= 60% (POST /api/disposals)', proposeDispRes.ok, proposeDispRes);
     const dispDoc = extractDoc(proposeDispRes, 'disposal');
     const disposalId = dispDoc?._id;
 
@@ -731,12 +731,43 @@ async function runMasterE2ESuite() {
     check('Quang', 'UC-7.8 Danh sách hồ sơ thanh lý & thiết bị chạm ngưỡng R >= 60% (GET /api/disposals)', dispListRes.ok, dispListRes);
 
     if (disposalId) {
-      const bghApproveRes = await apiRequest(`/disposals/${disposalId}/approve`, {
+      const hcApproveRes = await apiRequest(`/disposals/${disposalId}/hc-approve`, {
+        method: 'PUT',
+        token: managerToken,
+        body: { review_note: 'Đã xác minh chi phí sửa chữa và tình trạng tài sản.' }
+      });
+      check('Quang', 'UC-7.8 Quản lý CSVC thẩm định hồ sơ (PUT /api/disposals/:id/hc-approve)', hcApproveRes.ok, hcApproveRes);
+
+      const bghApproveRes = await apiRequest(`/disposals/${disposalId}/bgh-approve`, {
         method: 'PUT',
         token: adminToken,
         body: { decision_number: `QĐ-BGH-2026-${suffix}`, recovery_value: 1500000 }
       });
-      check('Quang', 'UC-7.9 Ban Giám Hiệu (Admin) ký duyệt quyết định thanh lý (PUT /api/disposals/:id/approve)', bghApproveRes.ok, bghApproveRes);
+      check('Quang', 'UC-7.9 Ban Giám Hiệu (Admin) ký duyệt quyết định thanh lý (PUT /api/disposals/:id/bgh-approve)', bghApproveRes.ok, bghApproveRes);
+
+      const procurementRes = await apiRequest(`/disposals/${disposalId}/procurement`, {
+        method: 'PUT',
+        token: managerToken,
+        body: {
+          budget: 30000000,
+          replacement_name: `Máy Chiếu Laser Thay Thế E2E ${suffix}`,
+          note: 'Dự trù thay thế thiết bị cùng phòng học.'
+        }
+      });
+      check('Quang', 'UC-7.10 Quản lý lập dự trù mua sắm thay thế (PUT /api/disposals/:id/procurement)', procurementRes.ok, procurementRes);
+
+      const receiptRes = await apiRequest(`/disposals/${disposalId}/receipt`, {
+        method: 'PUT',
+        token: techToken,
+        body: {
+          code: `EQ-REPL-E2E-${suffix}`,
+          serial_number: `SN-REPL-${suffix}`,
+          brand: 'Sony',
+          model: 'VPL-Replacement',
+          price: 28000000
+        }
+      });
+      check('Quang', 'UC-7.11 KTV tiếp nhận tài sản thay thế và sinh QR (PUT /api/disposals/:id/receipt)', receiptRes.ok, receiptRes);
     }
   }
 

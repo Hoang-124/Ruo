@@ -22,9 +22,11 @@ describe('UC-9.3 Disposal Email Dispatcher Integration', () => {
     try {
       Disposal.findOne = async () => null;
       const mockEquipment = {
-        _id: 'eq_disp_001',
+        _id: '67b000000000000000000901',
         code: 'EQ-SRV-901',
         name: 'Máy Chủ HP ProLiant Gen9',
+        price: 10000000,
+        estimated_repair_cost: 7000000,
         status: EQUIPMENT_STATUSES.BROKEN,
         save: async function () { return this; }
       };
@@ -57,7 +59,7 @@ describe('UC-9.3 Disposal Email Dispatcher Integration', () => {
 
       const req = {
         body: {
-          equipment_id: 'eq_disp_001',
+          equipment_id: '67b000000000000000000901',
           reason: 'Lỗi bo mạch chủ và nguồn điện không thể khắc phục',
           recovery_value: 2500000
         },
@@ -112,6 +114,8 @@ describe('UC-9.3 Disposal Email Dispatcher Integration', () => {
   test('approveDisposal triggers automated email to proposer with audit log', async () => {
     const origDisposalFindById = Disposal.findById;
     const origUserFindById = User.findById;
+    const origUserFind = User.find;
+    const origNotifInsertMany = Notification.insertMany;
     const origEqFindById = Equipment.findById;
     const origAuditLogAction = AuditLog.logAction;
 
@@ -120,15 +124,21 @@ describe('UC-9.3 Disposal Email Dispatcher Integration', () => {
     try {
       const mockProposal = {
         _id: 'disp_prop_777',
-        equipment_id: 'eq_disp_001',
+        equipment_id: '67b000000000000000000901',
         proposed_by: 'proposer_user_01',
         reason: 'Hỏng hoàn toàn sau 8 năm sử dụng',
         recovery_value: 1500000,
-        status: DISPOSAL_STATUSES.PROPOSED,
+        status: DISPOSAL_STATUSES.HC_APPROVED,
         save: async function () { return this; }
       };
 
       Disposal.findById = async () => mockProposal;
+
+      User.find = () => ({
+        select: async () => []
+      });
+
+      Notification.insertMany = async () => [];
 
       User.findById = (id) => ({
         select: async () => ({
@@ -140,11 +150,11 @@ describe('UC-9.3 Disposal Email Dispatcher Integration', () => {
 
       Equipment.findById = () => ({
         select: async () => ({
-          _id: 'eq_disp_001',
+          _id: '67b000000000000000000901',
           code: 'EQ-SRV-901',
           name: 'Máy Chủ HP ProLiant Gen9'
         }),
-        _id: 'eq_disp_001',
+        _id: '67b000000000000000000901',
         code: 'EQ-SRV-901',
         name: 'Máy Chủ HP ProLiant Gen9',
         status: EQUIPMENT_STATUSES.PENDING_DISPOSAL,
@@ -182,7 +192,7 @@ describe('UC-9.3 Disposal Email Dispatcher Integration', () => {
       await new Promise(r => setTimeout(r, 60));
 
       assert.strictEqual(jsonRes.success, true);
-      assert.strictEqual(mockProposal.status, DISPOSAL_STATUSES.COMPLETED);
+      assert.strictEqual(mockProposal.status, DISPOSAL_STATUSES.BGH_APPROVED);
 
       // Verify email dispatch audit log
       assert.ok(emailAudit, 'Disposal approval must record email dispatch audit log');
@@ -194,6 +204,8 @@ describe('UC-9.3 Disposal Email Dispatcher Integration', () => {
     } finally {
       Disposal.findById = origDisposalFindById;
       User.findById = origUserFindById;
+      User.find = origUserFind;
+      Notification.insertMany = origNotifInsertMany;
       Equipment.findById = origEqFindById;
       AuditLog.logAction = origAuditLogAction;
     }

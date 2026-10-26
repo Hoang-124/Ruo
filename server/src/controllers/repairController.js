@@ -28,12 +28,13 @@ import {
 // @route   GET /api/repairs
 export const getRepairs = async (req, res) => {
   try {
-    const { status, reported_by, assigned_to, damage_level } = req.query;
+    const { status, reported_by, assigned_to, damage_level, outcome } = req.query;
     const filter = {};
     if (status) filter.status = status;
     if (reported_by) filter.reported_by = reported_by;
     if (assigned_to) filter.assigned_to = assigned_to;
     if (damage_level) filter.damage_level = damage_level;
+    if (outcome) filter.outcome = outcome;
 
     const repairs = await Repair.find(filter)
       .populate('equipment_id', 'code name brand model qr_code room_id price remaining_value estimated_repair_cost')

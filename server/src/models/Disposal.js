@@ -58,6 +58,26 @@ const disposalSchema = new mongoose.Schema({
     type: Date, 
     default: null 
   },
+  repair_cost: { type: Number, default: 0, min: 0 },
+  original_value: { type: Number, default: 0, min: 0 },
+  r_ratio: { type: Number, default: 0, min: 0 },
+  prior_equipment_status: { type: String, default: '' },
+  hc_reviewed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  hc_reviewed_at: { type: Date, default: null },
+  hc_review_note: { type: String, default: '' },
+  bgh_reviewed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  procurement: {
+    budget: { type: Number, min: 0, default: null },
+    replacement_name: { type: String, default: '' },
+    category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
+    room_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Room', default: null },
+    planned_at: { type: Date, default: null },
+    planned_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    note: { type: String, default: '' }
+  },
+  replacement_equipment_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Equipment', default: null },
+  received_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  received_at: { type: Date, default: null },
   completed_at: {
     type: Date,
     default: null
