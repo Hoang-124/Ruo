@@ -18,6 +18,7 @@ import { Supplier } from '../models/Supplier.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { EquipmentMovement } from '../models/EquipmentMovement.js';
 import { Repair } from '../models/Repair.js';
+import { Disposal } from '../models/Disposal.js';
 import { PreventiveMaintenance } from '../models/PreventiveMaintenance.js';
 import { EQUIPMENT_STATUSES } from '../config/constants.js';
 
@@ -379,6 +380,24 @@ async function runTests() {
   // TEST 6: PUT /api/equipments/:id/dispose (UC-3.8) + Chặn điều chuyển tài sản đã thanh lý
   console.log('▶ Test 6 (UC-3.8): Thanh lý tài sản DISPOSED kèm Số quyết định BGH & chặn điều chuyển tài sản đã thanh lý');
   {
+    const originalFindOne = Disposal.findOne;
+    let raciBlockStatus = 200;
+    let raciBlockBody = null;
+    Disposal.findOne = async () => ({ _id: 'active-raci-disposal' });
+    const raciBlockRes = {
+      status: (code) => { raciBlockStatus = code; return raciBlockRes; },
+      json: (data) => { raciBlockBody = data; }
+    };
+    await disposeEquipment({
+      params: { id: '67b000000000000000000001' },
+      user: { _id: 'admin-id', full_name: 'Admin BGH', code: 'AD01' },
+      body: { decision_number: 'QĐ-BGH-2026-BLOCK' }
+    }, raciBlockRes);
+    assert.strictEqual(raciBlockStatus, 409);
+    assert.match(raciBlockBody.message, /quy trình thanh lý RACI/);
+    assert.strictEqual(mockDb[0].status, EQUIPMENT_STATUSES.IN_USE, 'Không được thanh lý trước khi tiếp nhận tài sản thay thế');
+    Disposal.findOne = originalFindOne;
+
     let dispResult = null;
     const reqDisp = {
       params: { id: '67b000000000000000000001' },
