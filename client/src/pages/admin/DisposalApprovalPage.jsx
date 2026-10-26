@@ -96,16 +96,19 @@ export const DisposalApprovalPage = () => {
     }
   };
 
+  const APPROVED_STATUSES = ['bgh_approved', 'procurement_planned', 'approved', 'completed'];
+
   const filtered = proposals.filter((p) => {
     if (filterStatus === 'ALL') return true;
-    if (filterStatus === 'PENDING') return p.status === 'proposed';
-    if (filterStatus === 'APPROVED') return p.status === 'approved' || p.status === 'completed';
+    if (filterStatus === 'PENDING') return p.status === 'hc_approved' || p.status === 'proposed';
+    if (filterStatus === 'APPROVED') return APPROVED_STATUSES.includes(p.status);
     if (filterStatus === 'REJECTED') return p.status === 'rejected';
     return true;
   });
 
-  const countPending = proposals.filter((p) => p.status === 'proposed').length;
-  const countApproved = proposals.filter((p) => p.status === 'approved' || p.status === 'completed').length;
+  const countPending = proposals.filter((p) => p.status === 'hc_approved').length;
+  const countWaitingHc = proposals.filter((p) => p.status === 'proposed').length;
+  const countApproved = proposals.filter((p) => APPROVED_STATUSES.includes(p.status)).length;
   const countRejected = proposals.filter((p) => p.status === 'rejected').length;
 
   return (
@@ -162,7 +165,7 @@ export const DisposalApprovalPage = () => {
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--hairline-medium)', marginBottom: '20px' }}>
         {[
           { key: 'ALL', label: `Tất Cả (${proposals.length})` },
-          { key: 'PENDING', label: `Cần Xử Lý (${countPending})` },
+          { key: 'PENDING', label: `Cần Xử Lý (${countPending}${countWaitingHc > 0 ? ` + ${countWaitingHc} chờ CSVC` : ''})` },
           { key: 'APPROVED', label: `Đã Duyệt (${countApproved})` },
           { key: 'REJECTED', label: `Từ Chối (${countRejected})` }
         ].map((tab) => (
@@ -203,9 +206,19 @@ export const DisposalApprovalPage = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {filtered.map((p) => {
             const eq = p.equipment_id || {};
-            const isPending = p.status === 'proposed';
-            const isApproved = p.status === 'approved' || p.status === 'completed';
+            const isReadyForBgh = p.status === 'hc_approved';
+            const isWaitingHc = p.status === 'proposed';
+            const isPending = isReadyForBgh || isWaitingHc;
+            const isApproved = APPROVED_STATUSES.includes(p.status);
             const isRejected = p.status === 'rejected';
+            const statusLabel =
+              p.status === 'proposed' ? 'CHỜ CSVC THẨM ĐỊNH'
+              : p.status === 'hc_approved' ? 'CHỜ BGH PHÊ DUYỆT'
+              : p.status === 'bgh_approved' ? `BGH ĐÃ DUYỆT (${p.decision_number || 'QD-OK'}) • CHỜ DỰ TRÙ`
+              : p.status === 'procurement_planned' ? `ĐÃ DỰ TRÙ MUA SẮM (${p.decision_number || 'QD-OK'})`
+              : p.status === 'completed' ? `HOÀN TẤT THANH LÝ (${p.decision_number || 'QD-OK'})`
+              : p.status === 'approved' ? `ĐÃ PHÊ DUYỆT (${p.decision_number || 'QD-OK'})`
+              : 'ĐÃ TỪ CHỐI';
 
             return (
               <div
@@ -240,7 +253,7 @@ export const DisposalApprovalPage = () => {
                         color: isPending ? '#F59E0B' : isApproved ? '#10B981' : '#EF4444'
                       }}
                     >
-                      {isPending ? 'CHỜ PHÊ DUYỆT' : isApproved ? `ĐÃ PHÊ DUYỆT (${p.decision_number || 'QD-OK'})` : 'ĐÃ TỪ CHỐI'}
+                      {statusLabel}
                     </span>
                   </div>
 
@@ -275,7 +288,7 @@ export const DisposalApprovalPage = () => {
                   </div>
                 </div>
 
-                {isPending && (
+                {isReadyForBgh && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '160px' }}>
                     <button
                       onClick={() => openApprove(p)}
@@ -283,7 +296,7 @@ export const DisposalApprovalPage = () => {
                       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
                     >
                       <Icons.CheckCircle size={16} />
-                      <span>Phê Duyệt</span>
+                      <span>Phê Duyệt BGH</span>
                     </button>
 
                     <button
@@ -294,6 +307,12 @@ export const DisposalApprovalPage = () => {
                       <Icons.X size={16} />
                       <span>Từ Chối</span>
                     </button>
+                  </div>
+                )}
+
+                {isWaitingHc && (
+                  <div style={{ minWidth: '170px', fontSize: '12px', color: '#F59E0B', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontWeight: 600 }}>
+                    Đang chờ Quản lý CSVC thẩm định bước 1 (HC Review) trước khi trình BGH.
                   </div>
                 )}
               </div>
