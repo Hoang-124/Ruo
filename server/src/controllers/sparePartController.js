@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { SparePart } from '../models/SparePart.js';
 import { PartsRequest } from '../models/PartsRequest.js';
 import { Repair } from '../models/Repair.js';
@@ -14,7 +15,7 @@ import {
 // @route   GET /api/spare-parts
 export const getSpareParts = async (req, res) => {
   try {
-    const parts = await SparePart.find().populate('supplier_id', 'code name phone');
+    const parts = await SparePart.find().populate('supplier_id', 'code name phone').sort({ code: 1 });
     res.json({
       success: true,
       total: parts.length,
@@ -25,7 +26,158 @@ export const getSpareParts = async (req, res) => {
   }
 };
 
-// @desc    Update spare parts stock (Facility Manager)
+// @desc    Create new spare part (Facility Manager, Admin) (UC-5.12)
+// @route   POST /api/spare-parts
+export const createSparePart = async (req, res) => {
+  try {
+    const { code, name, stock = 0, min_stock = 5, price = 0, unit = 'Cái', supplier_id = null } = req.body;
+    if (!code || !String(code).trim()) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã linh kiện.' });
+    }
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tên linh kiện.' });
+    }
+
+    const cleanCode = String(code).trim().toUpperCase();
+    const existingPart = await SparePart.findOne({ code: cleanCode });
+    if (existingPart) {
+      return res.status(409).json({ success: false, message: `Mã linh kiện ${cleanCode} đã tồn tại trong hệ thống.` });
+    }
+
+    const numStock = Number(stock);
+    const numMinStock = Number(min_stock);
+    const numPrice = Number(price);
+
+    if (numStock < 0 || numMinStock < 0 || numPrice < 0) {
+      return res.status(400).json({ success: false, message: 'Số lượng tồn kho, định mức tối thiểu và đơn giá phải là số không âm.' });
+    }
+
+    if (supplier_id && !mongoose.isValidObjectId(supplier_id)) {
+      return res.status(400).json({ success: false, message: 'Mã nhà cung cấp không hợp lệ.' });
+    }
+
+    const part = await SparePart.create({
+      code: cleanCode,
+      name: String(name).trim(),
+      stock: numStock,
+      min_stock: numMinStock,
+      price: numPrice,
+      unit: String(unit).trim() || 'Cái',
+      supplier_id: supplier_id || null
+    });
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'CREATE_SPARE_PART',
+      target_table: 'spare_parts',
+      entity_id: part._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      new_value: { code: part.code, name: part.name, stock: part.stock, price: part.price }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Thêm linh kiện [${part.code}] ${part.name} thành công.`,
+      part
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update spare part details (Facility Manager, Admin) (UC-5.12)
+// @route   PUT /api/spare-parts/:id
+export const updateSparePart = async (req, res) => {
+  try {
+    const { name, stock, min_stock, price, unit, supplier_id } = req.body;
+    const part = await SparePart.findById(req.params.id);
+    if (!part) {
+      return res.status(404).json({ success: false, message: 'Linh kiện không tồn tại.' });
+    }
+
+    const oldValue = { name: part.name, stock: part.stock, min_stock: part.min_stock, price: part.price, unit: part.unit };
+
+    if (name !== undefined && String(name).trim()) part.name = String(name).trim();
+    if (stock !== undefined) {
+      const numStock = Number(stock);
+      if (numStock < 0) return res.status(400).json({ success: false, message: 'Số lượng tồn kho không được âm.' });
+      part.stock = numStock;
+    }
+    if (min_stock !== undefined) {
+      const numMinStock = Number(min_stock);
+      if (numMinStock < 0) return res.status(400).json({ success: false, message: 'Định mức tối thiểu không được âm.' });
+      part.min_stock = numMinStock;
+    }
+    if (price !== undefined) {
+      const numPrice = Number(price);
+      if (numPrice < 0) return res.status(400).json({ success: false, message: 'Đơn giá không được âm.' });
+      part.price = numPrice;
+    }
+    if (unit !== undefined && String(unit).trim()) part.unit = String(unit).trim();
+    if (supplier_id !== undefined) {
+      if (supplier_id && !mongoose.isValidObjectId(supplier_id)) {
+        return res.status(400).json({ success: false, message: 'Mã nhà cung cấp không hợp lệ.' });
+      }
+      part.supplier_id = supplier_id || null;
+    }
+
+    await part.save();
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'UPDATE_SPARE_PART',
+      target_table: 'spare_parts',
+      entity_id: part._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      old_value: oldValue,
+      new_value: { name: part.name, stock: part.stock, min_stock: part.min_stock, price: part.price, unit: part.unit }
+    });
+
+    res.json({ success: true, message: 'Cập nhật thông tin linh kiện thành công.', part });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Delete spare part with reference validation (Facility Manager, Admin) (UC-5.12)
+// @route   DELETE /api/spare-parts/:id
+export const deleteSparePart = async (req, res) => {
+  try {
+    const part = await SparePart.findById(req.params.id);
+    if (!part) {
+      return res.status(404).json({ success: false, message: 'Linh kiện không tồn tại.' });
+    }
+
+    // Referential integrity check: Cannot delete parts referenced in parts requests
+    const isUsedInRequests = await PartsRequest.exists({ 'items.part_id': part._id });
+    if (isUsedInRequests) {
+      return res.status(409).json({
+        success: false,
+        message: `Không thể xóa linh kiện [${part.code}]: Linh kiện đã phát sinh trong lịch sử yêu cầu cấp phát. Vui lòng điều chỉnh số lượng tồn kho về 0 để ngưng xuất.`
+      });
+    }
+
+    await SparePart.findByIdAndDelete(part._id);
+
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name} (${req.user.code})`,
+      action: 'DELETE_SPARE_PART',
+      target_table: 'spare_parts',
+      entity_id: part._id.toString(),
+      ip_address: req.ip || '127.0.0.1',
+      old_value: { code: part.code, name: part.name, stock: part.stock }
+    });
+
+    res.json({ success: true, message: `Đã xóa mã linh kiện [${part.code}] thành công.` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update spare parts stock (Facility Manager, Admin) (UC-5.12)
 // @route   PUT /api/spare-parts/:id/stock
 export const updateSparePartStock = async (req, res) => {
   try {
