@@ -1,6 +1,9 @@
 import express from 'express';
 import {
   getSpareParts,
+  createSparePart,
+  updateSparePart,
+  deleteSparePart,
   updateSparePartStock,
   getPartsRequests,
   requestSpareParts,
@@ -14,6 +17,15 @@ const router = express.Router();
 
 // View spare parts stock (Technician, Facility Manager, Admin)
 router.get('/', protect, getSpareParts);
+
+// Create new spare part (Facility Manager, Admin) (UC-5.12)
+router.post('/', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), createSparePart);
+
+// Update spare part details (Facility Manager, Admin) (UC-5.12)
+router.put('/:id', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), updateSparePart);
+
+// Delete spare part (Facility Manager, Admin) (UC-5.12)
+router.delete('/:id', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), deleteSparePart);
 
 // Update spare parts stock (Facility Manager, Admin)
 router.put('/:id/stock', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), updateSparePartStock);
