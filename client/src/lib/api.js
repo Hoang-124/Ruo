@@ -195,6 +195,8 @@ export const equipmentApi = {
   importBatch: (data) => api.post('/equipments/import', data),
   dispose: (id, data) => api.put(`/equipments/${id}/dispose`, data),
   updateWarranty: (id, data) => api.put(`/equipments/${id}/warranty`, data),
+  getExpiringWarranties: (days = 30, includeExpired = false) => api.get('/equipments/warranty-expiring', { days, include_expired: includeExpired }),
+  checkWarrantyExpirations: (days = 30) => api.post('/equipments/warranty/check-expirations', { days }),
   delete: (id) => api.delete(`/equipments/${id}`)
 };
 
