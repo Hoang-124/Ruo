@@ -80,16 +80,11 @@ export const useRouter = () => {
     if (base === 'inventory') {
       return { tab: 'inventory', params: {} };
     }
-<<<<<<< HEAD
-    if (base === 'disposals' || base === 'disposal_propose' || base === 'disposal_approval') {
-      return { tab: 'disposal_propose', params: {} };
-=======
     if (base === 'disposals' || base === 'disposal_propose') {
       return { tab: 'disposal_propose', params: {} };
     }
     if (base === 'disposal_approval') {
       return { tab: 'disposal_approval', params: {} };
->>>>>>> ca8534b9d0c45dffa087463b90f8f23c2ae02c73
     }
     if (base === 'map') {
       return { tab: 'dashboard', params: {} };
@@ -117,11 +112,7 @@ export const useRouter = () => {
       maintenance: '#/maintenance',
       inventory: '#/inventory',
       disposal_propose: '#/disposal_propose',
-<<<<<<< HEAD
-      disposal_approval: '#/disposal_propose',
-=======
       disposal_approval: '#/disposal_approval',
->>>>>>> ca8534b9d0c45dffa087463b90f8f23c2ae02c73
       disposal_calc: '#/disposal_propose',
       map: '#/map',
       users: '#/admin/users',

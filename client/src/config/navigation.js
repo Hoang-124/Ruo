@@ -184,7 +184,7 @@ export const ALL_NAV_ITEMS = {
     short: 'Đề Xuất Thanh Lý',
     icon: Icons.Sliders,
     permission: 'disposal:propose',
-    roles: [USER_ROLES.FACILITY_MANAGER]
+    roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN]
   },
 
   // Admin Module (conforming to Admin screenshot and master prompt)

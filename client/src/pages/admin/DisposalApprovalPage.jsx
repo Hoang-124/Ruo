@@ -61,7 +61,7 @@ export const DisposalApprovalPage = () => {
 
     try {
       setSubmitting(true);
-      const res = await disposalApi.approve(selectedProposal._id, decisionNumber.trim(), Number(recoveryValue) || 0);
+      const res = await disposalApi.bghApprove(selectedProposal._id, decisionNumber.trim(), Number(recoveryValue) || 0);
       if (res && res.success) {
         toast.success(`Đã phê duyệt thanh lý thành công theo Quyết định ${decisionNumber}!`);
         setShowApproveModal(false);
@@ -338,7 +338,7 @@ export const DisposalApprovalPage = () => {
             <form onSubmit={handleApproveSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', color: '#10B981' }}>
-                  Hành động này xác nhận Ban Giám Hiệu đồng ý thanh lý thiết bị. Trạng thái thiết bị sẽ được chuyển thành <strong>ĐÃ THANH LÝ (disposed)</strong> và đưa ra khỏi danh mục tài sản hoạt động.
+                  BGH chấp thuận hồ sơ và ban hành quyết định. Sau bước lập dự trù, Kỹ thuật viên tiếp nhận thiết bị thay thế; khi đó thiết bị cũ mới được chuyển sang trạng thái <strong>ĐÃ THANH LÝ (disposed)</strong>.
                 </div>
 
                 <div>
@@ -363,7 +363,7 @@ export const DisposalApprovalPage = () => {
                   <input
                     type="number"
                     min="0"
-                    step="10000"
+                    step="1"
                     value={recoveryValue}
                     onChange={(e) => setRecoveryValue(e.target.value)}
                     className="ruo-portal-input"

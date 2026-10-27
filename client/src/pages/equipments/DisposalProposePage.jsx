@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { disposalApi, equipmentApi, repairApi } from '../../lib/api';
+import { USER_ROLES } from '../../config/navigation';
+import { disposalApi, repairApi } from '../../lib/api';
 
 export const DisposalProposePage = () => {
+  const { currentUser } = useAuth();
   const { toast } = useToast();
+  const isTechnician = currentUser?.role === USER_ROLES.TECHNICIAN;
+  const isFacilityManager = currentUser?.role === USER_ROLES.FACILITY_MANAGER;
   const [loading, setLoading] = useState(true);
   const [proposals, setProposals] = useState([]);
   const [candidates, setCandidates] = useState([]);
@@ -13,8 +18,10 @@ export const DisposalProposePage = () => {
   // Modal
   const [showModal, setShowModal] = useState(false);
   const [showProcurementModal, setShowProcurementModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState(null);
   const [procurementForm, setProcurementForm] = useState({ replacement_name: '', budget: 0, note: '' });
+  const [receiptForm, setReceiptForm] = useState({ code: '', serial_number: '', brand: '', model: '', price: '' });
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -29,7 +36,7 @@ export const DisposalProposePage = () => {
       setLoading(true);
       const [dispRes, repRes] = await Promise.all([
         disposalApi.list(),
-        repairApi.list({ outcome: 'unrepairable' })
+        isFacilityManager ? repairApi.list({ outcome: 'unrepairable' }) : Promise.resolve(null)
       ]);
 
       if (dispRes && dispRes.success) {
@@ -48,14 +55,15 @@ export const DisposalProposePage = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [isFacilityManager]);
 
   const openProposeModal = (eq = null) => {
+    const equipment = eq || candidates[0];
     setFormData({
-      equipment_id: eq ? eq._id : (candidates[0]?._id || ''),
-      repair_id: '',
+      equipment_id: equipment?._id || '',
+      repair_id: equipment?.unrepairable_repair_id || '',
       reason: 'Chi phí sửa chữa tích lũy vượt 60% giá trị còn lại (R >= 60%) hoặc linh kiện không còn sản xuất.',
-      recovery_value: eq?.remaining_value ? Math.round(eq.remaining_value * 0.1) : 0
+      recovery_value: equipment?.remaining_value ? Math.round(equipment.remaining_value * 0.1) : 0
     });
     setShowModal(true);
   };
@@ -156,35 +164,90 @@ export const DisposalProposePage = () => {
     }
   };
 
+  const openReceipt = (proposal) => {
+    setSelectedProposal(proposal);
+    setReceiptForm({ code: '', serial_number: '', brand: '', model: '', price: '' });
+    setShowReceiptModal(true);
+  };
+
+  const handleReceiptSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedProposal) return;
+
+    const price = Number(receiptForm.price);
+    const budget = Number(selectedProposal.procurement?.budget);
+    if (!receiptForm.code.trim()) {
+      toast.error('Vui lòng nhập mã tài sản mới.');
+      return;
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+      toast.error('Nguyên giá thực tế phải lớn hơn 0.');
+      return;
+    }
+    if (!Number.isFinite(budget) || price > budget) {
+      toast.error('Nguyên giá thực tế không được vượt ngân sách dự trù.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await disposalApi.completeReceipt(selectedProposal._id, {
+        code: receiptForm.code.trim(),
+        serial_number: receiptForm.serial_number.trim(),
+        brand: receiptForm.brand.trim(),
+        model: receiptForm.model.trim(),
+        price
+      });
+      if (res && res.success) {
+        toast.success(res.message || 'Đã tiếp nhận thiết bị mới và hoàn tất hồ sơ thanh lý.');
+        setShowReceiptModal(false);
+        setSelectedProposal(null);
+        await fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tiếp nhận thiết bị thay thế: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>FACILITY MANAGER</span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Thẩm Định Hao Mòn & Đề Xuất Thanh Lý CSVC</span>
+            <span style={{ fontSize: '11px', color: isTechnician ? '#0EA5E9' : '#F59E0B', background: isTechnician ? 'rgba(14,165,233,0.1)' : 'rgba(245,158,11,0.1)', border: `1px solid ${isTechnician ? 'rgba(14,165,233,0.25)' : 'rgba(245,158,11,0.25)'}`, padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+              {isTechnician ? 'KỸ THUẬT VIÊN' : 'FACILITY MANAGER'}
+            </span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>
+              {isTechnician ? 'Tiếp nhận thiết bị thay thế theo dự trù đã được duyệt' : 'Thẩm Định Hao Mòn & Đề Xuất Thanh Lý CSVC'}
+            </span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
             Hồ Sơ Đề Xuất Thanh Lý Tài Sản
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
-            Lập danh sách các thiết bị hỏng không thể sửa chữa hoặc chi phí vượt 60% để trình Ban Giám Hiệu ban hành Quyết định thanh lý.
+            {isTechnician
+              ? 'Tiếp nhận thiết bị thay thế sau khi BGH phê duyệt và Quản lý CSVC hoàn tất dự trù mua sắm.'
+              : 'Lập danh sách các thiết bị hỏng không thể sửa chữa hoặc chi phí vượt 60% để trình Ban Giám Hiệu ban hành Quyết định thanh lý.'}
           </p>
         </div>
 
-        <button
-          onClick={() => openProposeModal()}
-          className="laser-btn laser-btn-primary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
-        >
-          <Icons.Plus size={16} />
-          <span>Lập Hồ Sơ Đề Xuất Mới</span>
-        </button>
+        {(isFacilityManager || isTechnician) && (
+          <button
+            onClick={() => openProposeModal()}
+            className="laser-btn laser-btn-primary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
+          >
+            <Icons.Plus size={16} />
+            <span>{isTechnician ? 'Đề Xuất Thanh Lý Thiết Bị' : 'Lập Hồ Sơ Đề Xuất Mới'}</span>
+          </button>
+        )}
       </div>
 
       {/* Flagged Candidates Warning Card */}
-      {candidates.length > 0 && (
+      {(isFacilityManager || isTechnician) && candidates.length > 0 && (
         <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 'var(--radius-lg)', padding: '18px 20px', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
             <Icons.AlertTriangle size={18} color="#F59E0B" />
@@ -193,7 +256,7 @@ export const DisposalProposePage = () => {
             </h3>
           </div>
           <div style={{ fontSize: '12.5px', color: 'var(--ink-muted)', marginBottom: '12px' }}>
-            Các tài sản dưới đây có tình trạng <strong>bị hỏng</strong> hoặc đã được Kỹ thuật viên báo cáo <strong>không thể sửa chữa (unrepairable)</strong>:
+            Các tài sản dưới đây đủ điều kiện khi <strong>R ≥ 60%</strong> hoặc có kết luận <strong>không thể sửa chữa</strong>:
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
@@ -216,7 +279,7 @@ export const DisposalProposePage = () => {
                   </div>
                   <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink-pure)' }}>{c.name}</div>
                   <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
-                    Trạng thái: <strong style={{ color: '#EF4444' }}>{c.status}</strong> • Giá gốc: {(c.price || 0).toLocaleString('vi-VN')} đ
+                    Trạng thái: <strong style={{ color: '#EF4444' }}>                    {c.status}</strong> • R: {Number(c.r_ratio || 0).toFixed(1)}% • Giá gốc: {(c.price || 0).toLocaleString('vi-VN')} đ
                   </div>
                 </div>
 
@@ -225,7 +288,7 @@ export const DisposalProposePage = () => {
                   className="laser-btn laser-btn-secondary"
                   style={{ padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}
                 >
-                  Lập Đề Xuất
+                  {isTechnician ? 'Tạo Hồ Sơ Thanh Lý' : 'Lập Đề Xuất'}
                 </button>
               </div>
             ))}
@@ -261,7 +324,7 @@ export const DisposalProposePage = () => {
                 <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Thu Hồi Dự Kiến</th>
                 <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Trạng Thái RACI</th>
                 <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Ngày Đề Xuất</th>
-                <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Thao Tác CSVC</th>
+                <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>{isTechnician ? 'Tiếp Nhận' : 'Thao Tác CSVC'}</th>
               </tr>
             </thead>
             <tbody>
@@ -284,6 +347,11 @@ export const DisposalProposePage = () => {
                     <td style={{ padding: '12px 18px' }}>
                       <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--laser-cyan)' }}>{eq.code}</div>
                       <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{eq.name}</div>
+                      {p.status === 'completed' && p.replacement_equipment_id && (
+                        <div style={{ marginTop: '5px', fontSize: '11px', color: '#10B981' }}>
+                          Thiết bị mới: {p.replacement_equipment_id.code} • QR: {p.replacement_equipment_id.qr_code}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '12px 18px', maxWidth: '300px' }}>
                       <div style={{ color: 'var(--ink-secondary)' }}>{p.reason}</div>
@@ -314,7 +382,7 @@ export const DisposalProposePage = () => {
                       {new Date(p.created_at).toLocaleDateString('vi-VN')}
                     </td>
                     <td style={{ padding: '12px 18px' }}>
-                      {p.status === 'proposed' && (
+                      {isFacilityManager && p.status === 'proposed' && (
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button
                             type="button"
@@ -336,7 +404,7 @@ export const DisposalProposePage = () => {
                           </button>
                         </div>
                       )}
-                      {p.status === 'bgh_approved' && (
+                      {isFacilityManager && p.status === 'bgh_approved' && (
                         <button
                           type="button"
                           disabled={submitting}
@@ -347,7 +415,19 @@ export const DisposalProposePage = () => {
                           Lập Dự Trù Mua Sắm
                         </button>
                       )}
-                      {p.status !== 'proposed' && p.status !== 'bgh_approved' && (
+                      {isTechnician && p.status === 'procurement_planned' && (
+                        <button
+                          type="button"
+                          disabled={submitting}
+                          onClick={() => openReceipt(p)}
+                          className="laser-btn laser-btn-primary"
+                          style={{ padding: '5px 10px', fontSize: '11.5px', fontWeight: 700 }}
+                        >
+                          Tiếp Nhận Thiết Bị Mới
+                        </button>
+                      )}
+                      {!(isFacilityManager && ['proposed', 'bgh_approved'].includes(p.status)) &&
+                        !(isTechnician && p.status === 'procurement_planned') && (
                         <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>—</span>
                       )}
                     </td>
@@ -380,14 +460,21 @@ export const DisposalProposePage = () => {
                   <select
                     required
                     value={formData.equipment_id}
-                    onChange={(e) => setFormData({ ...formData, equipment_id: e.target.value })}
+                    onChange={(e) => {
+                      const equipment = candidates.find((candidate) => candidate._id === e.target.value);
+                      setFormData({
+                        ...formData,
+                        equipment_id: e.target.value,
+                        repair_id: equipment?.unrepairable_repair_id || ''
+                      });
+                    }}
                     className="ruo-portal-input"
                     style={{ width: '100%' }}
                   >
                     <option value="">-- Chọn thiết bị --</option>
                     {candidates.map((c) => (
                       <option key={c._id} value={c._id}>
-                        {c.code} - {c.name} ({c.status})
+                        {c.code} - {c.name} ({c.status}, R {Number(c.r_ratio || 0).toFixed(1)}%)
                       </option>
                     ))}
                   </select>
@@ -405,6 +492,9 @@ export const DisposalProposePage = () => {
                       style={{ width: '100%' }}
                     >
                       <option value="">-- Không gắn phiếu --</option>
+                      {formData.repair_id && !closedRepairs.some((repair) => repair._id === formData.repair_id) && (
+                        <option value={formData.repair_id}>Phiếu không thể sửa chữa gắn với thiết bị đã chọn</option>
+                      )}
                       {closedRepairs.map((r) => (
                         <option key={r._id} value={r._id}>
                           {r.ticket_code} - {r.incident_description?.slice(0, 40)}
@@ -507,6 +597,60 @@ export const DisposalProposePage = () => {
                 <button type="button" onClick={() => setShowProcurementModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
                 <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
                   {submitting ? 'Đang Lưu...' : 'Lưu Dự Trù Mua Sắm'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showReceiptModal && selectedProposal && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowReceiptModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '540px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <div>
+                <h2 className="ruo-drawer-title">Tiếp Nhận Tài Sản Thay Thế</h2>
+                <p className="ruo-drawer-subtitle">
+                  Thay thế {selectedProposal.equipment_id?.code} • Ngân sách tối đa: {Number(selectedProposal.procurement?.budget || 0).toLocaleString('vi-VN')} VNĐ
+                </p>
+              </div>
+              <button onClick={() => setShowReceiptModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
+            </div>
+            <form onSubmit={handleReceiptSubmit}>
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ padding: '10px 12px', background: 'var(--surface-panel)', borderRadius: 'var(--radius-md)', fontSize: '12px', color: 'var(--ink-muted)' }}>
+                  Danh mục: <strong>{selectedProposal.procurement?.category_id?.name || 'Theo dự trù'}</strong>
+                  {' • '}Phòng nhận: <strong>{selectedProposal.procurement?.room_id?.name || selectedProposal.procurement?.room_id?.code || 'Theo dự trù'}</strong>
+                  <br />Mã QR sẽ được hệ thống tự sinh sau khi tiếp nhận thành công.
+                </div>
+                <div>
+                  <label htmlFor="receipt-code" style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Mã tài sản mới *</label>
+                  <input id="receipt-code" type="text" required value={receiptForm.code} onChange={(e) => setReceiptForm({ ...receiptForm, code: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                </div>
+                <div>
+                  <label htmlFor="receipt-serial" style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Số serial</label>
+                  <input id="receipt-serial" type="text" value={receiptForm.serial_number} onChange={(e) => setReceiptForm({ ...receiptForm, serial_number: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label htmlFor="receipt-brand" style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Hãng</label>
+                    <input id="receipt-brand" type="text" value={receiptForm.brand} onChange={(e) => setReceiptForm({ ...receiptForm, brand: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label htmlFor="receipt-model" style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Model</label>
+                    <input id="receipt-model" type="text" value={receiptForm.model} onChange={(e) => setReceiptForm({ ...receiptForm, model: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="receipt-price" style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Nguyên giá thực tế (VNĐ) *</label>
+                  <input id="receipt-price" type="number" min="1" step="1" required value={receiptForm.price} onChange={(e) => setReceiptForm({ ...receiptForm, price: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--ink-muted)' }}>Không vượt quá {Number(selectedProposal.procurement?.budget || 0).toLocaleString('vi-VN')} VNĐ.</div>
+                </div>
+              </div>
+              <div className="ruo-drawer-footer">
+                <button type="button" onClick={() => setShowReceiptModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  {submitting ? 'Đang Tiếp Nhận...' : 'Xác Nhận Tiếp Nhận'}
                 </button>
               </div>
             </form>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
-import { equipmentApi, masterDataApi } from '../../lib/api';
+import { disposalApi, equipmentApi, masterDataApi } from '../../lib/api';
 
 // Pure Native SVG 2D QR Matrix Generator (Deterministic from string seed, zero external libraries)
 const NativeQrMatrixSvg = ({ value = 'QR-EQ-2026-001', size = 148 }) => {
@@ -85,6 +85,8 @@ export const EquipmentsPage = () => {
   const canImportOrDispose = typeof hasPermission === 'function'
     ? (hasPermission('equipment:import') || hasPermission('equipment:dispose'))
     : ['admin', 'facility_manager'].includes(userRole);
+  const canUseDisposalWorkflow = userRole === 'technician' &&
+    (typeof hasPermission === 'function' ? hasPermission('disposal:propose') : true);
 
   const [loading, setLoading] = useState(true);
   const [equipments, setEquipments] = useState([]);
@@ -131,6 +133,20 @@ export const EquipmentsPage = () => {
   const [showQrModal, setShowQrModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [showDisposeModal, setShowDisposeModal] = useState(false);
+  const [disposalCandidates, setDisposalCandidates] = useState([]);
+  const [disposalProposals, setDisposalProposals] = useState([]);
+  const [selectedDisposalCandidate, setSelectedDisposalCandidate] = useState(null);
+  const [selectedReceiptProposal, setSelectedReceiptProposal] = useState(null);
+  const [showDisposalProposalModal, setShowDisposalProposalModal] = useState(false);
+  const [showReplacementReceiptModal, setShowReplacementReceiptModal] = useState(false);
+  const [disposalReason, setDisposalReason] = useState('');
+  const [replacementReceiptForm, setReplacementReceiptForm] = useState({
+    code: '',
+    serial_number: '',
+    brand: '',
+    model: '',
+    price: ''
+  });
   const [submitting, setSubmitting] = useState(false);
 
   // Form states (UC-3.1 & UC-3.4)
@@ -227,9 +243,25 @@ export const EquipmentsPage = () => {
     }
   };
 
+  const fetchDisposalWorkflow = async () => {
+    try {
+      const res = await disposalApi.list();
+      if (res?.success) {
+        setDisposalCandidates(res.candidates || []);
+        setDisposalProposals(res.proposals || []);
+      }
+    } catch (err) {
+      toast.error('Không thể tải dữ liệu quy trình thanh lý: ' + err.message);
+    }
+  };
+
   useEffect(() => {
     fetchMasterData();
   }, []);
+
+  useEffect(() => {
+    if (canUseDisposalWorkflow) fetchDisposalWorkflow();
+  }, [canUseDisposalWorkflow]);
 
   useEffect(() => {
     fetchEquipments();
@@ -397,6 +429,87 @@ export const EquipmentsPage = () => {
       recovery_value: Math.round((eq.price || 0) * 0.05)
     });
     setShowDisposeModal(true);
+  };
+
+  const openDisposalProposal = (candidate) => {
+    setSelectedDisposalCandidate(candidate);
+    setDisposalReason(
+      `Thiết bị đủ điều kiện thanh lý: R = ${Number(candidate.r_ratio || 0).toFixed(1)}% (chi phí sửa chữa / nguyên giá).`
+    );
+    setShowDisposalProposalModal(true);
+  };
+
+  const handleDisposalProposalSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedDisposalCandidate || !disposalReason.trim()) {
+      toast.error('Vui lòng nhập lý do đề xuất thanh lý.');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const res = await disposalApi.propose({
+        equipment_id: selectedDisposalCandidate._id,
+        repair_id: selectedDisposalCandidate.unrepairable_repair_id || null,
+        reason: disposalReason.trim(),
+        recovery_value: 0
+      });
+      if (res?.success) {
+        toast.success(res.message || 'Đã gửi đề xuất thanh lý.');
+        setShowDisposalProposalModal(false);
+        setSelectedDisposalCandidate(null);
+        await Promise.all([fetchEquipments(), fetchDisposalWorkflow()]);
+      }
+    } catch (err) {
+      toast.error('Không thể gửi đề xuất thanh lý: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openReplacementReceipt = (proposal) => {
+    setSelectedReceiptProposal(proposal);
+    setReplacementReceiptForm({ code: '', serial_number: '', brand: '', model: '', price: '' });
+    setShowReplacementReceiptModal(true);
+  };
+
+  const handleReplacementReceiptSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedReceiptProposal) return;
+    const price = Number(replacementReceiptForm.price);
+    const budget = Number(selectedReceiptProposal.procurement?.budget);
+    if (!replacementReceiptForm.code.trim()) {
+      toast.error('Vui lòng nhập mã tài sản mới.');
+      return;
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+      toast.error('Nguyên giá thực tế phải lớn hơn 0.');
+      return;
+    }
+    if (!Number.isFinite(budget) || price > budget) {
+      toast.error('Nguyên giá thực tế không được vượt ngân sách dự trù.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await disposalApi.completeReceipt(selectedReceiptProposal._id, {
+        code: replacementReceiptForm.code.trim(),
+        serial_number: replacementReceiptForm.serial_number.trim(),
+        brand: replacementReceiptForm.brand.trim(),
+        model: replacementReceiptForm.model.trim(),
+        price
+      });
+      if (res?.success) {
+        toast.success(res.message || 'Đã tiếp nhận thiết bị thay thế và sinh mã QR.');
+        setShowReplacementReceiptModal(false);
+        setSelectedReceiptProposal(null);
+        await Promise.all([fetchEquipments(), fetchDisposalWorkflow()]);
+      }
+    } catch (err) {
+      toast.error('Không thể tiếp nhận thiết bị thay thế: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const openDetail = async (eq) => {
@@ -1872,6 +1985,15 @@ export const EquipmentsPage = () => {
                   const roomInfo = eq.room_id ? `${eq.room_id.code} (${eq.room_id.name})` : 'Kho dự phòng';
                   const catInfo = eq.category_id?.name || 'Chung';
                   const isWarrantyActive = eq.warranty_expiry && new Date(eq.warranty_expiry) > new Date();
+                  const disposalCandidate = disposalCandidates.find((candidate) => String(candidate._id) === String(eq._id));
+                  const activeDisposal = disposalProposals.find((proposal) =>
+                    String(proposal.equipment_id?._id || proposal.equipment_id) === String(eq._id) &&
+                    !['completed', 'rejected'].includes(proposal.status)
+                  );
+                  const plannedReceipt = disposalProposals.find((proposal) =>
+                    String(proposal.equipment_id?._id || proposal.equipment_id) === String(eq._id) &&
+                    proposal.status === 'procurement_planned'
+                  );
 
                   return (
                     <tr
@@ -1908,6 +2030,28 @@ export const EquipmentsPage = () => {
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          {canUseDisposalWorkflow && disposalCandidate && !activeDisposal && (
+                            <button
+                              type="button"
+                              onClick={() => openDisposalProposal(disposalCandidate)}
+                              className="laser-btn laser-btn-secondary"
+                              style={{ padding: '6px 9px', borderRadius: '6px', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.5)', fontSize: '11px', fontWeight: 700 }}
+                              title={`Đề xuất thanh lý (R = ${Number(disposalCandidate.r_ratio || 0).toFixed(1)}%)`}
+                            >
+                              Đề Xuất TL
+                            </button>
+                          )}
+                          {canUseDisposalWorkflow && plannedReceipt && (
+                            <button
+                              type="button"
+                              onClick={() => openReplacementReceipt(plannedReceipt)}
+                              className="laser-btn laser-btn-primary"
+                              style={{ padding: '6px 9px', borderRadius: '6px', fontSize: '11px', fontWeight: 700 }}
+                              title="Tiếp nhận thiết bị thay thế theo dự trù"
+                            >
+                              Tiếp Nhận Mới
+                            </button>
+                          )}
                           <button
                             onClick={() => openQr(eq)}
                             className="laser-btn laser-btn-secondary"
@@ -3294,6 +3438,101 @@ export const EquipmentsPage = () => {
                     {submitting ? 'Đang Nhập Kho...' : `2. Nhập Hàng Loạt Vào Kho (${validationResult ? validationResult.validCount : parsedBatchItems.length} TB)`}
                   </button>
                 </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showDisposalProposalModal && selectedDisposalCandidate && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowDisposalProposalModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '540px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <div>
+                <h2 className="ruo-drawer-title">Đề Xuất Thanh Lý Thiết Bị</h2>
+                <p className="ruo-drawer-subtitle">
+                  {selectedDisposalCandidate.code} • R = {Number(selectedDisposalCandidate.r_ratio || 0).toFixed(1)}%
+                </p>
+              </div>
+              <button onClick={() => setShowDisposalProposalModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
+            </div>
+            <form onSubmit={handleDisposalProposalSubmit}>
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ padding: '10px 12px', background: 'var(--surface-panel)', borderRadius: 'var(--radius-md)', fontSize: '12px', color: 'var(--ink-muted)' }}>
+                  Đủ điều kiện khi R ≥ 60% hoặc có phiếu sửa chữa kết luận không thể sửa chữa. Hồ sơ sẽ chuyển cho Facility Manager thẩm định.
+                </div>
+                <div>
+                  <label htmlFor="equipment-disposal-reason" style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Lý do đề xuất *
+                  </label>
+                  <textarea
+                    id="equipment-disposal-reason"
+                    required
+                    rows={4}
+                    value={disposalReason}
+                    onChange={(e) => setDisposalReason(e.target.value)}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+              <div className="ruo-drawer-footer">
+                <button type="button" onClick={() => setShowDisposalProposalModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  {submitting ? 'Đang Gửi...' : 'Gửi Đề Xuất'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showReplacementReceiptModal && selectedReceiptProposal && (
+        <div className="ruo-drawer-backdrop" onClick={() => setShowReplacementReceiptModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '540px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <div>
+                <h2 className="ruo-drawer-title">Tiếp Nhận Thiết Bị Thay Thế</h2>
+                <p className="ruo-drawer-subtitle">
+                  Thay thế {selectedReceiptProposal.equipment_id?.code || 'tài sản cũ'} • Ngân sách tối đa: {Number(selectedReceiptProposal.procurement?.budget || 0).toLocaleString('vi-VN')} VNĐ
+                </p>
+              </div>
+              <button onClick={() => setShowReplacementReceiptModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
+            </div>
+            <form onSubmit={handleReplacementReceiptSubmit}>
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ padding: '10px 12px', background: 'var(--surface-panel)', borderRadius: 'var(--radius-md)', fontSize: '12px', color: 'var(--ink-muted)' }}>
+                  Danh mục và phòng nhận được giữ theo dự trù. QR tự sinh khi xác nhận thành công.
+                </div>
+                <div>
+                  <label htmlFor="equipment-receipt-code" style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Mã tài sản mới *</label>
+                  <input id="equipment-receipt-code" type="text" required value={replacementReceiptForm.code} onChange={(e) => setReplacementReceiptForm({ ...replacementReceiptForm, code: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                </div>
+                <div>
+                  <label htmlFor="equipment-receipt-serial" style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Số serial</label>
+                  <input id="equipment-receipt-serial" type="text" value={replacementReceiptForm.serial_number} onChange={(e) => setReplacementReceiptForm({ ...replacementReceiptForm, serial_number: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label htmlFor="equipment-receipt-brand" style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Hãng</label>
+                    <input id="equipment-receipt-brand" type="text" value={replacementReceiptForm.brand} onChange={(e) => setReplacementReceiptForm({ ...replacementReceiptForm, brand: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label htmlFor="equipment-receipt-model" style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Model</label>
+                    <input id="equipment-receipt-model" type="text" value={replacementReceiptForm.model} onChange={(e) => setReplacementReceiptForm({ ...replacementReceiptForm, model: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="equipment-receipt-price" style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>Nguyên giá thực tế (VNĐ) *</label>
+                  <input id="equipment-receipt-price" type="number" min="1" step="1" required value={replacementReceiptForm.price} onChange={(e) => setReplacementReceiptForm({ ...replacementReceiptForm, price: e.target.value })} className="ruo-portal-input" style={{ width: '100%' }} />
+                  <div style={{ marginTop: '4px', fontSize: '11px', color: 'var(--ink-muted)' }}>Không vượt quá {Number(selectedReceiptProposal.procurement?.budget || 0).toLocaleString('vi-VN')} VNĐ.</div>
+                </div>
+              </div>
+              <div className="ruo-drawer-footer">
+                <button type="button" onClick={() => setShowReplacementReceiptModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  {submitting ? 'Đang Tiếp Nhận...' : 'Xác Nhận Tiếp Nhận'}
+                </button>
               </div>
             </form>
           </div>

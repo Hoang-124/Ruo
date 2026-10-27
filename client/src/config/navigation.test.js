@@ -15,7 +15,8 @@ const DEFAULT_ROLE_PERMS = {
     'user:profile:read', 'room:read', 'equipment:read', 'equipment:create',
     'equipment:update', 'equipment:qr:scan', 'warranty:read', 'warranty:update',
     'movement:confirm', 'incident:create', 'repair:read_assigned', 'repair:accept',
-    'repair:log', 'repair:report_outcome', 'parts:request', 'inventory:scan', 'inventory:export'
+    'repair:log', 'repair:report_outcome', 'parts:request', 'inventory:scan', 'inventory:export',
+    'disposal:propose'
   ],
   [USER_ROLES.FACILITY_MANAGER]: [
     'user:profile:read', 'room:read', 'equipment:read', 'equipment:create',
@@ -74,14 +75,14 @@ describe('RBAC Navigation & Tab Isolation (4 Canonical Roles)', () => {
     expect(isTabAllowedForRole(USER_ROLES.LECTURER, 'rbac', hasPerm)).toBe(false);
   });
 
-  it('blocks technician from movements (FM/Admin order page), disposal_propose, and admin tabs', () => {
+  it('grants technician access to disposal receipt and blocks manager-order and admin tabs', () => {
     const hasPerm = makeHasPermission(USER_ROLES.TECHNICIAN);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'assigned_tasks', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'movement_tasks', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'spare_parts', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'inventory', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'movements', hasPerm)).toBe(false);
-    expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'disposal_propose', hasPerm)).toBe(false);
+    expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'disposal_propose', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'users', hasPerm)).toBe(false);
   });
 
