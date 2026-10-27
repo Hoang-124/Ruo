@@ -20,6 +20,7 @@ import { SparePart } from '../src/models/SparePart.js';
 import { PartsRequest } from '../src/models/PartsRequest.js';
 import { EquipmentMovement } from '../src/models/EquipmentMovement.js';
 import { AuditLog } from '../src/models/AuditLog.js';
+import { parseWarrantyQuery } from '../src/services/reportAnalytics.js';
 
 // Only the randomly named database created by this test is dropped. Never seed application data.
 const uri = process.env.TEST_MONGO_URI || 'mongodb://127.0.0.1:27028';
@@ -150,6 +151,30 @@ test('health score counts incident records rather than stale repair_count; pagin
   assert.equal(first.failureCount, 2);
   assert.ok(Math.abs(first.mtbfDays - first.ageDays / 2) < 0.02);
   assert.equal((await request('/api/dashboard/health-score?page=-1')).status, 400);
+});
+
+test('UC-8.7 warranty uses inclusive Vietnam calendar days, excludes void/disposed and paginates', async () => {
+  const { start, end } = parseWarrantyQuery({ days: '30' });
+  const changed = equipment.slice(0, 6);
+  try {
+    const expires = [start, new Date(end - 1), new Date(start - 1), end, start, start];
+    for (let index = 0; index < changed.length; index++) {
+      await Equipment.updateOne({ _id: changed[index]._id }, { warranty_expiry: expires[index],
+        ...(index === 4 ? { warranty_status: 'void' } : {}), ...(index === 5 ? { status: 'disposed' } : {}) });
+    }
+    const result = await request('/api/reports/warranty-expiring?days=30&limit=1');
+    assert.equal(result.status, 200);
+    assert.equal(result.body.total, 2);
+    assert.equal(result.body.totalPages, 2);
+    assert.equal(result.body.equipment[0].daysRemaining, 0);
+    const second = await request('/api/reports/warranty-expiring?days=30&limit=1&page=2', 'facility_manager');
+    assert.equal(second.body.equipment[0].daysRemaining, 30);
+    assert.equal((await request('/api/reports/warranty-expiring?days=-1')).status, 400);
+    assert.equal((await request('/api/reports/warranty-expiring?days=30&days=60')).status, 400);
+    for (const role of ['lecturer', 'technician']) assert.equal((await request('/api/reports/warranty-expiring', role)).status, 403);
+  } finally {
+    await Equipment.updateMany({ _id: { $in: changed.map(item => item._id) } }, { warranty_expiry: null, warranty_status: 'active', status: 'in_use' });
+  }
 });
 
 test('CAD, room detail and reports agree on equipment and include serial/QR/history', async () => {

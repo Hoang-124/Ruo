@@ -325,6 +325,7 @@ export const reportApi = {
   getByRoom: () => api.get('/reports/by-room'),
   getByStatus: () => api.get('/reports/by-status'),
   getRepairFrequency: (params) => api.get('/reports/repair-frequency', params),
+  getWarrantyExpiring: (params) => api.get('/reports/warranty-expiring', params),
   getDashboard: () => api.get('/dashboard/kpi'),
   getEquipmentHealth: (params) => api.get('/dashboard/health-score', params),
   getRepairCosts: (params) => api.get('/dashboard/repair-cost', params),

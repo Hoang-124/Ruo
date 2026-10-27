@@ -2,8 +2,32 @@ import { Equipment } from '../models/Equipment.js';
 import { Repair } from '../models/Repair.js';
 import { Room } from '../models/Room.js';
 import { Category } from '../models/Category.js';
-import { parseCostQuery, REPORT_TIMEZONE } from '../services/dashboardAnalytics.js';
+import { parseCostQuery, REPORT_TIMEZONE, ACTIVE_EQUIPMENT_FILTER } from '../services/dashboardAnalytics.js';
+import { parseWarrantyQuery, warrantyDaysRemaining } from '../services/reportAnalytics.js';
+import '../models/Supplier.js';
 export { getKpi as getDashboardMetrics } from './dashboardController.js';
+
+export const getWarrantyExpiring = async (req, res) => {
+  const now = new Date();
+  const query = parseWarrantyQuery(req.query, now);
+  if (!query.valid) return res.status(400).json({ success: false, message: query.message });
+  try {
+    const filter = { ...ACTIVE_EQUIPMENT_FILTER, warranty_status: { $ne: 'void' },
+      warranty_expiry: { $gte: query.start, $lt: query.end } };
+    const [equipment, total] = await Promise.all([
+      Equipment.find(filter).select('code name status warranty_expiry warranty_status category_id room_id supplier_id')
+        .populate('category_id', 'code name').populate('room_id', 'code name')
+        .populate('supplier_id', 'code name contact phone email')
+        .sort({ warranty_expiry: 1, code: 1, _id: 1 }).skip(query.skip).limit(query.limit).lean(),
+      Equipment.countDocuments(filter)
+    ]);
+    res.json({ success: true, generatedAt: now, timezone: REPORT_TIMEZONE, days: query.days,
+      page: query.page, limit: query.limit, total, totalPages: Math.max(1, Math.ceil(total / query.limit)),
+      equipment: equipment.map(item => ({ ...item, daysRemaining: warrantyDaysRemaining(item.warranty_expiry, query.start) })) });
+  } catch {
+    res.status(500).json({ success: false, message: 'Không tải được báo cáo sắp hết bảo hành.' });
+  }
+};
 
 export const getRepairFrequency = async (req, res) => {
   const query = parseCostQuery(req.query);

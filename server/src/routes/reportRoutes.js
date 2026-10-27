@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getStatisticalReport,
   getRepairFrequency,
+  getWarrantyExpiring,
   exportStatisticalReport
 } from '../controllers/reportController.js';
 import { getKpi, getHealthScore, getRepairCost, getEquipmentByRoom, getEquipmentByStatus } from '../controllers/dashboardController.js';
@@ -22,6 +23,7 @@ router.get('/repair-costs', getRepairCost);
 router.get('/by-room', getEquipmentByRoom);
 router.get('/by-status', getEquipmentByStatus);
 router.get('/repair-frequency', getRepairFrequency);
+router.get('/warranty-expiring', getWarrantyExpiring);
 
 // Export statistical report (Admin & Facility Manager)
 router.get('/export', exportStatisticalReport);
