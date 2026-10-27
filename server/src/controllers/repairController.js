@@ -7,6 +7,7 @@ import { PartsRequest } from '../models/PartsRequest.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { Notification } from '../models/Notification.js';
 import { User } from '../models/User.js';
+import { dispatchTaskAssignmentEmail } from '../services/emailService.js';
 import { computeDeadline, evaluateSlaStatus } from '../services/slaReactor.js';
 import { assertTransition } from '../domain/stateMachines.js';
 import { 
@@ -484,6 +485,29 @@ export const assignRepairTask = async (req, res) => {
         reference_type: 'repair',
         reference_id: repair._id
       });
+
+      // UC-9.3: Automated Email Dispatcher for Phiếu giao việc
+      try {
+        const techUser = await User.findById(repair.assigned_to).select('email full_name');
+        const eq = await Equipment.findById(repair.equipment_id).populate('room_id', 'code name');
+        if (techUser?.email) {
+          dispatchTaskAssignmentEmail({
+            to: techUser.email,
+            technicianName: techUser.full_name || 'Kỹ thuật viên',
+            ticketCode: repair.ticket_code,
+            equipmentCode: eq?.code || 'EQ-N/A',
+            equipmentName: eq?.name || 'Thiết bị cơ sở vật chất',
+            roomCode: eq?.room_id?.code || eq?.room_id?.name || 'Phòng học / Khu vực',
+            priority: repair.priority || 'Cao',
+            deadline: repair.deadline ? new Date(repair.deadline).toLocaleString('vi-VN') : 'Trong vòng 24 giờ',
+            description: repair.issue_description || repair.description || 'Sự cố thiết bị cần xử lý',
+            userId: req.user?._id,
+            ipAddress: req.ip || req.connection?.remoteAddress || '127.0.0.1'
+          }).catch((err) => console.warn('[Repair Email Dispatcher Warning]:', err.message));
+        }
+      } catch (emailErr) {
+        console.warn('[Repair Email Dispatcher Lookup Warning]:', emailErr.message);
+      }
     }
 
     res.json({ success: true, message: 'Phân công nhiệm vụ thành công.', data: repair });

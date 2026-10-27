@@ -75,7 +75,7 @@ const estimateChipWidth = (text) => Math.ceil(text.length * POD_CHAR_WIDTH + POD
  * Chips are right-aligned at the bottom of the room so they never cover the left-aligned title.
  */
 export const getPodLayout = ({ w, h, code, equipmentCount = 0, brokenCount = 0 }) => {
-  const full = h >= 90 && w >= 110;
+  const full = h >= 70 && w >= 110;
   const main = full ? `${getShortRoomCode(code)} · ${equipmentCount} TB` : String(equipmentCount);
   const broken = brokenCount > 0 ? (full ? `${brokenCount} hỏng` : `!${brokenCount}`) : '';
 

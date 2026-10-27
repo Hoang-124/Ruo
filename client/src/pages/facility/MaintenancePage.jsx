@@ -3,11 +3,7 @@ import { Icons } from '../../components/common/SvgIcons';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { facilityApi, maintenanceApi, masterDataApi } from '../../lib/api';
-import {
-  getMaintenanceCalendarDays,
-  getMaintenanceOccurrencesForMonth,
-  getMaintenancePlanDetails
-} from './maintenanceCalendar';
+import { getMaintenanceCalendarDays, getMaintenanceOccurrencesForMonth } from './maintenanceCalendar';
 
 const DEFAULT_CHECKLIST = [
   'Kiểm tra nguồn điện và dây kết nối',
@@ -333,31 +329,26 @@ export const MaintenancePage = () => {
                 }}
               >
                 <span style={{ fontSize: 12, fontWeight: isSelected ? 800 : 600 }}>{day.day}</span>
-                {duePlans.slice(0, 2).map((plan) => {
-                  const details = getMaintenancePlanDetails(plan, equipment);
-                  return (
+                {duePlans.slice(0, 2).map((plan) => (
                   <span
                     key={plan._id}
-                    title={`${plan.title} · Tòa ${plan.building}, tầng ${plan.floor} · ${details.roomLabel} · ${details.categoryLabel}`}
+                    title={plan.title}
                     style={{
                       width: '100%',
                       overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
                       borderRadius: 4,
                       padding: '3px 5px',
                       background: 'rgba(234, 88, 12, 0.14)',
                       color: 'var(--blueprint-400)',
-                      fontSize: 9,
-                      fontWeight: 700,
-                      lineHeight: 1.35
+                      fontSize: 10,
+                      fontWeight: 700
                     }}
                   >
-                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plan.title}</span>
-                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.85 }}>
-                      {plan.building} · T{plan.floor} · {plan.room_ids?.length || 0} phòng
-                    </span>
+                    {plan.title}
                   </span>
-                  );
-                })}
+                ))}
                 {duePlans.length > 2 && <span style={{ color: 'var(--ink-muted)', fontSize: 9 }}>+{duePlans.length - 2} kế hoạch</span>}
               </button>
             );
@@ -373,25 +364,12 @@ export const MaintenancePage = () => {
           ) : (
             <div style={{ display: 'grid', gap: 8 }}>
               {selectedDayPlans.map((plan) => (
-                <div key={plan._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, padding: 12, borderRadius: 8, background: 'var(--surface-2)' }}>
-                  <div style={{ minWidth: 220, flex: 1 }}>
+                <div key={plan._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, padding: 10, borderRadius: 8, background: 'var(--surface-2)' }}>
+                  <div>
                     <strong style={{ display: 'block', color: 'var(--ink-primary)', fontSize: 12 }}>{plan.title}</strong>
-                    <span style={{ display: 'block', color: 'var(--ink-muted)', fontSize: 11, marginTop: 4 }}>
-                      Tòa {plan.building} • Tầng {plan.floor} • {plan.frequency === 'quarterly' ? 'Hàng quý' : 'Hàng tháng'}
+                    <span style={{ color: 'var(--ink-muted)', fontSize: 11 }}>
+                      Tòa {plan.building} • Tầng {plan.floor} • {plan.room_ids?.length || 0} phòng • {plan.frequency === 'quarterly' ? 'Hàng quý' : 'Hàng tháng'}
                     </span>
-                    {(() => {
-                      const details = getMaintenancePlanDetails(plan, equipment);
-                      return (
-                        <>
-                          <span style={{ display: 'block', color: 'var(--ink-secondary)', fontSize: 11, marginTop: 4 }}>
-                            Phòng ({plan.room_ids?.length || 0}): {details.roomLabel}
-                          </span>
-                          <span style={{ display: 'block', color: 'var(--ink-secondary)', fontSize: 11, marginTop: 3 }}>
-                            Loại thiết bị: {details.categoryLabel} • {details.equipmentCount} thiết bị trong phạm vi
-                          </span>
-                        </>
-                      );
-                    })()}
                   </div>
                   {isTechnician && (
                     <button type="button" className="ruo-btn ruo-btn-primary ruo-btn-sm" onClick={() => openMaintenanceLog(plan)}>
@@ -425,10 +403,6 @@ export const MaintenancePage = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: 12 }}>
             {plans.map((plan) => (
               <article key={plan._id} style={{ border: '1px solid var(--border-default)', borderRadius: 12, padding: 16, background: 'var(--surface-1)' }}>
-                {(() => {
-                  const details = getMaintenancePlanDetails(plan, equipment);
-                  return (
-                    <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{ color: 'var(--ink-primary)', fontSize: 14, fontWeight: 800 }}>{plan.title}</div>
                   <span style={{ borderRadius: 20, padding: '4px 8px', background: 'rgba(234, 88, 12, 0.14)', color: 'var(--blueprint-400)', fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>
@@ -436,13 +410,15 @@ export const MaintenancePage = () => {
                   </span>
                 </div>
                 <div style={{ color: 'var(--ink-secondary)', fontSize: 12, marginTop: 10 }}>
-                  Tòa {plan.building} • Tầng {plan.floor} • {plan.room_ids?.length || 0} phòng: {details.roomLabel}
+                  Tòa {plan.building} • Tầng {plan.floor} • {plan.room_ids?.length || 0} phòng
                 </div>
                 <div style={{ color: 'var(--ink-muted)', fontSize: 12, marginTop: 5 }}>
                   Bắt đầu {formatDate(plan.start_date)} • Kỳ kế tiếp {formatDate(plan.schedule?.next_due_at)}
                 </div>
                 <div style={{ color: 'var(--ink-muted)', fontSize: 11, marginTop: 8 }}>
-                  Loại thiết bị: {details.categoryLabel} • {details.equipmentCount} thiết bị • {plan.checklist?.length || 0} mục checklist
+                  {plan.checklist?.length || 0} mục checklist
+                  {' · '}
+                  {plan.category_ids?.length ? plan.category_ids.map((category) => category.name).join(', ') : 'Tất cả loại thiết bị'}
                 </div>
                 {isTechnician && (
                   <button
@@ -454,9 +430,6 @@ export const MaintenancePage = () => {
                     <Icons.ClipboardCheck size={14} /> Ghi nhận kiểm tra
                   </button>
                 )}
-                    </>
-                  );
-                })()}
               </article>
             ))}
           </div>

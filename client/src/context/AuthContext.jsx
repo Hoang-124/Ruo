@@ -151,11 +151,11 @@ export const AuthProvider = ({ children }) => {
     }
   }, [isLoggedIn]);
 
-  // Periodic notification polling (every 45s)
+  // Periodic notification polling (every 25s for real-time badge)
   useEffect(() => {
     if (isLoggedIn) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 45000);
+      const interval = setInterval(fetchNotifications, 25000);
       return () => clearInterval(interval);
     }
   }, [isLoggedIn, fetchNotifications]);
@@ -324,20 +324,42 @@ export const AuthProvider = ({ children }) => {
   const markAllNotificationsRead = useCallback(async () => {
     try {
       await notificationApi.markAllRead();
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true })));
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true, isRead: true })));
     } catch (err) {
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true })));
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true, isRead: true })));
     }
   }, []);
 
   const markNotificationRead = useCallback(async (id) => {
     try {
-      await notificationApi.markRead(id);
-      setNotifications(prev => prev.map(n => (n._id === id || n.id === id ? { ...n, is_read: true, read: true } : n)));
+      await notificationApi.markReadState({ id });
+      setNotifications(prev => prev.map(n => (n._id === id || n.id === id ? { ...n, is_read: true, read: true, isRead: true } : n)));
     } catch (err) {
-      setNotifications(prev => prev.map(n => (n._id === id || n.id === id ? { ...n, is_read: true, read: true } : n)));
+      setNotifications(prev => prev.map(n => (n._id === id || n.id === id ? { ...n, is_read: true, read: true, isRead: true } : n)));
     }
   }, []);
+
+  const deleteNotification = useCallback(async (id) => {
+    try {
+      await notificationApi.delete(id);
+      setNotifications(prev => prev.filter(n => n._id !== id && n.id !== id));
+    } catch (err) {
+      setNotifications(prev => prev.filter(n => n._id !== id && n.id !== id));
+    }
+  }, []);
+
+  const seedDemoNotifications = useCallback(async () => {
+    try {
+      const res = await notificationApi.seedDemo();
+      if (res.success && Array.isArray(res.notifications)) {
+        await fetchNotifications();
+      }
+      return res;
+    } catch (err) {
+      console.warn('Seed demo error:', err.message);
+      return { success: false, message: err.message };
+    }
+  }, [fetchNotifications]);
 
   // Active canonical role derived strictly from backend user profile
   const activeRole = useMemo(() => {
@@ -364,8 +386,7 @@ export const AuthProvider = ({ children }) => {
         'user:profile:read', 'room:read', 'equipment:read', 'equipment:create',
         'equipment:update', 'equipment:qr:scan', 'warranty:read', 'warranty:update',
         'movement:confirm', 'incident:create', 'repair:read_assigned', 'repair:accept',
-        'repair:log', 'repair:report_outcome', 'parts:request', 'inventory:scan', 'inventory:export',
-        'disposal:propose'
+        'repair:log', 'repair:report_outcome', 'parts:request', 'inventory:scan', 'inventory:export'
       ],
       [USER_ROLES.FACILITY_MANAGER]: [
         'user:profile:read', 'room:read', 'equipment:read', 'equipment:create',
@@ -472,7 +493,7 @@ export const AuthProvider = ({ children }) => {
   }, [activeRole]);
 
   const unreadCount = useMemo(() => {
-    return notifications.filter(n => !n.is_read && !n.read).length;
+    return notifications.filter(n => !n.is_read && !n.read && !n.isRead).length;
   }, [notifications]);
 
   const contextValue = useMemo(() => ({
@@ -491,6 +512,8 @@ export const AuthProvider = ({ children }) => {
     unreadCount,
     markAllNotificationsRead,
     markNotificationRead,
+    deleteNotification,
+    seedDemoNotifications,
     fetchNotifications,
     allRolePermissions: ROLE_PERMISSIONS,
     isLoggedIn,
@@ -522,6 +545,8 @@ export const AuthProvider = ({ children }) => {
     unreadCount,
     markAllNotificationsRead,
     markNotificationRead,
+    deleteNotification,
+    seedDemoNotifications,
     fetchNotifications,
     isLoggedIn,
     token,

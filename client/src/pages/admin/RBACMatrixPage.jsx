@@ -144,7 +144,7 @@ export const RBACMatrixPage = () => {
         { code: 'inventory:scan', label: 'Quét mã QR kiểm kê & đối soát thực địa', defaultRoles: ['technician'] },
         { code: 'inventory:reconcile', label: 'Chốt số liệu kiểm kê & đối soát chênh lệch tài sản', defaultRoles: ['facility_manager'] },
         { code: 'inventory:export', label: 'Xuất biên bản kiểm kê đầy đủ & ký số SHA-256', defaultRoles: ['facility_manager', 'admin'] },
-        { code: 'disposal:propose', label: 'Đề xuất, thẩm định hồ sơ và lập dự trù thanh lý', defaultRoles: ['technician', 'facility_manager'] },
+        { code: 'disposal:propose', label: 'Lập hồ sơ đề xuất thanh lý khi chỉ số R >= 60%', defaultRoles: ['facility_manager'] },
         { code: 'disposal:approve', label: 'Phê duyệt quyết định thanh lý tài sản cuối cùng (BGH)', defaultRoles: ['admin'] }
       ]
     },
@@ -363,7 +363,7 @@ export const RBACMatrixPage = () => {
     try {
       setSaving(true);
 
-      // Save the matrix in one request so each permission change shares one audit event.
+      // Persist each role through the live-policy endpoint.
       const payload = canonicalRoles.map(r => {
         const activePerms = [];
         allPermissionModules.forEach(mod => {
@@ -381,10 +381,7 @@ export const RBACMatrixPage = () => {
         };
       });
 
-      const response = await roleApi.batchUpdate(payload);
-      if (!response?.success) {
-        throw new Error(response?.message || 'Máy chủ không lưu được ma trận phân quyền.');
-      }
+      await Promise.all(payload.map(role => roleApi.update(role.name, role.permissions)));
       toast.success('Đã lưu cấu hình ma trận phân quyền RBAC thành công vào cơ sở dữ liệu MongoDB!');
       await loadRoles();
       window.dispatchEvent(new CustomEvent('ruo:rbac-updated'));

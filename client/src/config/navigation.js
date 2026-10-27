@@ -180,11 +180,11 @@ export const ALL_NAV_ITEMS = {
   },
   disposal_propose: {
     id: 'disposal_propose',
-    label: 'Quy Trình Thanh Lý',
-    short: 'Thanh Lý',
+    label: 'Đề Xuất Thanh Lý',
+    short: 'Đề Xuất Thanh Lý',
     icon: Icons.Sliders,
-    permission: 'equipment:read',
-    roles: [USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN]
+    permission: 'disposal:propose',
+    roles: [USER_ROLES.FACILITY_MANAGER]
   },
 
   // Admin Module (conforming to Admin screenshot and master prompt)
@@ -210,6 +210,14 @@ export const ALL_NAV_ITEMS = {
     short: 'Danh Mục',
     icon: Icons.Settings,
     permission: 'category:*',
+    roles: [USER_ROLES.ADMIN]
+  },
+  disposal_approval: {
+    id: 'disposal_approval',
+    label: 'Phê Duyệt Thanh Lý (BGH)',
+    short: 'Duyệt Thanh Lý',
+    icon: Icons.CheckCircle,
+    permission: 'disposal:approve',
     roles: [USER_ROLES.ADMIN]
   },
   audit_log: {

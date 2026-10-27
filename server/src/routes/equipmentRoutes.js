@@ -6,6 +6,7 @@ import {
   getEquipmentByQR,
   getEquipmentCategories,
   getWarrantyExpiringEquipments,
+  checkAndNotifyExpiringWarranties,
   createEquipment,
   updateEquipment,
   validateBatchImport,
@@ -23,6 +24,7 @@ const router = express.Router();
 router.get('/', optionalProtect, getEquipments);
 router.get('/categories', getEquipmentCategories);
 router.get('/warranty-expiring', getWarrantyExpiringEquipments);
+router.post('/warranty/check-expirations', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), checkAndNotifyExpiringWarranties);
 router.get('/qr/:qrCode', getEquipmentByQR);
 router.get('/code/:qrCode', getEquipmentByQR);
 router.get('/:id/lifecycle', getEquipmentLifecycle);

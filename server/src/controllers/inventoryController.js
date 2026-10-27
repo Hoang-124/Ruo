@@ -61,10 +61,11 @@ export const createSession = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tên đợt kiểm kê hợp lệ.' });
     }
 
-    if (!['building', 'floor', 'rooms'].includes(scope_type)) {
+    const normalizedScopeType = scope_type === 'rooms' ? 'room' : scope_type;
+    if (!['building', 'floor', 'room', 'all'].includes(normalizedScopeType)) {
       return res.status(400).json({
         success: false,
-        message: 'Phạm vi kiểm kê (scope_type) phải là một trong: building, floor, rooms.'
+        message: 'Phạm vi kiểm kê (scope_type) phải là một trong: building, floor, room.'
       });
     }
 
@@ -82,7 +83,7 @@ export const createSession = async (req, res) => {
       }
     }
 
-    if (scope_type === 'floor') {
+    if (normalizedScopeType === 'floor') {
       const floorNum = Number(scope_floor);
       if (!Number.isInteger(floorNum) || floorNum < 1 || floorNum > 5) {
         return res.status(400).json({
@@ -95,14 +96,14 @@ export const createSession = async (req, res) => {
         const floorRooms = await Room.find({ building: 'A1', floor: floorNum }).select('_id');
         resolvedScopeIds = floorRooms.map((r) => r._id);
       }
-    } else if (scope_type === 'rooms') {
+    } else if (normalizedScopeType === 'room') {
       if (resolvedScopeIds.length === 0) {
         return res.status(400).json({
           success: false,
           message: 'Vui lòng chọn ít nhất 1 phòng học thuộc Tòa A1 khi khởi tạo kiểm kê theo phòng.'
         });
       }
-    } else if (scope_type === 'building' && resolvedScopeIds.length === 0) {
+    } else if ((normalizedScopeType === 'building' || normalizedScopeType === 'all') && resolvedScopeIds.length === 0) {
       try {
         if (canCallModel(Room, 'find')) {
           const allBuildingRooms = await Room.find({ building: 'A1' }).select('_id');
@@ -117,7 +118,7 @@ export const createSession = async (req, res) => {
 
     const session = await InventorySession.create({
       name: cleanName,
-      scope_type,
+      scope_type: normalizedScopeType,
       scope_floor: resolvedFloor,
       scope_ids: resolvedScopeIds,
       created_by: req.user._id,

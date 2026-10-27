@@ -9,6 +9,7 @@ import { Room } from '../models/Room.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { Notification } from '../models/Notification.js';
 import { User } from '../models/User.js';
+import { dispatchDisposalNotificationEmail } from '../services/emailService.js';
 import { assertTransition } from '../domain/stateMachines.js';
 import {
   DISPOSAL_STATUSES,
@@ -46,11 +47,11 @@ const auditDisposal = (req, proposal, action, newValue) => AuditLog.logAction({
   new_value: newValue
 });
 
-const notifyRoles = async (roles, proposal, title, message) => {
+const notifyRoles = async (roles, proposal, title, message, emailOptions = null) => {
   const recipients = await User.find({
     role: { $in: roles },
     status: USER_STATUSES.ACTIVE
-  }).select('_id');
+  }).select('_id email full_name');
   if (recipients.length) {
     await Notification.insertMany(recipients.map(({ _id }) => ({
       user_id: _id,
@@ -60,6 +61,26 @@ const notifyRoles = async (roles, proposal, title, message) => {
       reference_type: 'disposal',
       reference_id: proposal._id
     })));
+
+    if (emailOptions?.equipment) {
+      const { req, equipment, isApproved = false } = emailOptions;
+      for (const recipient of recipients) {
+        if (recipient.email) {
+          dispatchDisposalNotificationEmail({
+            to: recipient.email,
+            recipientName: recipient.full_name || 'Hội Đồng Thanh Lý / Quản lý CSVC',
+            equipmentCode: equipment.code || 'EQ-N/A',
+            equipmentName: equipment.name || 'Thiết bị thanh lý',
+            reason: proposal.reason,
+            recoveryValue: proposal.recovery_value,
+            proposalId: proposal._id.toString(),
+            isApproved,
+            userId: req?.user?._id,
+            ipAddress: req?.ip || req?.connection?.remoteAddress || '127.0.0.1'
+          }).catch((err) => console.warn('[Disposal Email Dispatcher Warning]:', err.message));
+        }
+      }
+    }
   }
 };
 
@@ -206,7 +227,8 @@ export const createDisposalProposal = async (req, res) => {
       [USER_ROLES.FACILITY_MANAGER],
       proposal,
       'Hồ sơ thanh lý chờ thẩm định CSVC',
-      `${req.user.full_name} đề xuất thanh lý thiết bị ${equipment.code}; chỉ số R là ${rRatio}%.`
+      `${req.user.full_name} đề xuất thanh lý thiết bị ${equipment.code}; chỉ số R là ${rRatio}%.`,
+      { req, equipment, isApproved: false }
     );
 
     res.status(201).json({
@@ -231,11 +253,13 @@ export const hcApproveDisposal = async (req, res) => {
     proposal.hc_review_note = String(req.body.review_note || '').trim();
     await proposal.save();
     await auditDisposal(req, proposal, 'DISPOSAL_HC_APPROVE', { status: proposal.status, note: proposal.hc_review_note });
+    const eq = await Equipment.findById(proposal.equipment_id);
     await notifyRoles(
       [USER_ROLES.ADMIN],
       proposal,
       'Hồ sơ thanh lý chờ BGH phê duyệt',
-      `CSVC đã thẩm định thiết bị ${proposal.equipment_id}; hồ sơ đang chờ quyết định BGH.`
+      `CSVC đã thẩm định thiết bị ${eq?.code || proposal.equipment_id}; hồ sơ đang chờ quyết định BGH.`,
+      eq ? { req, equipment: eq, isApproved: false } : null
     );
     res.json({ success: true, message: 'CSVC đã thẩm định; hồ sơ được chuyển Ban Giám Hiệu.', data: proposal });
   } catch (error) {
@@ -272,6 +296,29 @@ export const bghApproveDisposal = async (req, res) => {
       'Hồ sơ thanh lý đã được BGH phê duyệt',
       `Quyết định ${decisionNumber} đã được ban hành cho thiết bị ${proposal.equipment_id}.`
     );
+
+    // UC-9.3: Automated Email Dispatcher for Disposal Approval
+    try {
+      const proposer = await User.findById(proposal.proposed_by).select('email full_name');
+      const eq = await Equipment.findById(proposal.equipment_id).select('code name');
+      if (proposer?.email) {
+        dispatchDisposalNotificationEmail({
+          to: proposer.email,
+          recipientName: proposer.full_name || 'Cán bộ quản lý CSVC',
+          equipmentCode: eq?.code || 'EQ-N/A',
+          equipmentName: eq?.name || 'Thiết bị thanh lý',
+          reason: proposal.reason,
+          recoveryValue: proposal.recovery_value,
+          proposalId: proposal._id.toString(),
+          isApproved: true,
+          userId: req.user?._id,
+          ipAddress: req.ip || req.connection?.remoteAddress || '127.0.0.1'
+        }).catch((err) => console.warn('[Disposal Approval Email Dispatcher Warning]:', err.message));
+      }
+    } catch (emailErr) {
+      console.warn('[Disposal Approval Email Dispatcher Lookup Warning]:', emailErr.message);
+    }
+
     res.json({ success: true, message: 'BGH đã phê duyệt; hồ sơ chuyển sang bước lập dự trù mua sắm.', data: proposal });
   } catch (error) {
     const status = error.statusCode || 500;

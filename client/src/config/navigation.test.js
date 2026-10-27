@@ -15,8 +15,7 @@ const DEFAULT_ROLE_PERMS = {
     'user:profile:read', 'room:read', 'equipment:read', 'equipment:create',
     'equipment:update', 'equipment:qr:scan', 'warranty:read', 'warranty:update',
     'movement:confirm', 'incident:create', 'repair:read_assigned', 'repair:accept',
-    'repair:log', 'repair:report_outcome', 'parts:request', 'inventory:scan', 'inventory:export',
-    'disposal:propose'
+    'repair:log', 'repair:report_outcome', 'parts:request', 'inventory:scan', 'inventory:export'
   ],
   [USER_ROLES.FACILITY_MANAGER]: [
     'user:profile:read', 'room:read', 'equipment:read', 'equipment:create',
@@ -75,14 +74,14 @@ describe('RBAC Navigation & Tab Isolation (4 Canonical Roles)', () => {
     expect(isTabAllowedForRole(USER_ROLES.LECTURER, 'rbac', hasPerm)).toBe(false);
   });
 
-  it('grants technician access to disposal proposals and blocks manager/admin-only tabs', () => {
+  it('blocks technician from movements (FM/Admin order page), disposal_propose, and admin tabs', () => {
     const hasPerm = makeHasPermission(USER_ROLES.TECHNICIAN);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'assigned_tasks', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'movement_tasks', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'spare_parts', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'inventory', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'movements', hasPerm)).toBe(false);
-    expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'disposal_propose', hasPerm)).toBe(true);
+    expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'disposal_propose', hasPerm)).toBe(false);
     expect(isTabAllowedForRole(USER_ROLES.TECHNICIAN, 'users', hasPerm)).toBe(false);
   });
 
@@ -103,21 +102,11 @@ describe('RBAC Navigation & Tab Isolation (4 Canonical Roles)', () => {
     expect(isTabAllowedForRole(USER_ROLES.ADMIN, 'users', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.ADMIN, 'rbac', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.ADMIN, 'master_data', hasPerm)).toBe(true);
-    expect(isTabAllowedForRole(USER_ROLES.ADMIN, 'disposal_propose', hasPerm)).toBe(true);
-    expect(getNavItemsForRole(USER_ROLES.ADMIN, hasPerm).map((item) => item.id)).toContain('disposal_propose');
-    expect(isTabAllowedForRole(USER_ROLES.ADMIN, 'disposal_approval', hasPerm)).toBe(false);
+    expect(isTabAllowedForRole(USER_ROLES.ADMIN, 'disposal_approval', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.ADMIN, 'audit_log', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.ADMIN, 'movements', hasPerm)).toBe(true);
     expect(isTabAllowedForRole(USER_ROLES.ADMIN, 'report_issue', hasPerm)).toBe(false);
     expect(isTabAllowedForRole(USER_ROLES.ADMIN, 'assigned_tasks', hasPerm)).toBe(false);
-  });
-
-  it('shows one shared disposal workflow entry to technician, manager, and admin', () => {
-    for (const role of [USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN]) {
-      const tabs = getNavItemsForRole(role, makeHasPermission(role)).map((item) => item.id);
-      expect(tabs).toContain('disposal_propose');
-      expect(tabs.filter((tab) => tab === 'disposal_propose')).toHaveLength(1);
-    }
   });
 
   it('safely matches populated user objects and raw IDs without matching undefined/guest', () => {

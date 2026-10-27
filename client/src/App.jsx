@@ -225,7 +225,7 @@ const MainAppContent = () => {
         return renderSubPageWrapper(
           'Kho Quản Lý Thiết Bị Trường & Tem Nhãn QR',
           'DANH MỤC THIẾT BỊ & HỒ SƠ TÀI SẢN',
-          <EquipmentsPage onNavigateTab={(tab) => setActiveTab(tab)} />
+          <EquipmentsPage />
         );
 
       case 'inventory':
@@ -237,16 +237,9 @@ const MainAppContent = () => {
 
       case 'disposal_propose':
       case 'disposal_calc': // Legacy alias
-        if (currentUser?.role === 'admin') {
-          return renderSubPageWrapper(
-            'Phê Duyệt Hồ Sơ Thanh Lý (Ban Giám Hiệu)',
-            'QUY TRÌNH THANH LÝ TÀI SẢN',
-            <DisposalApprovalPage />
-          );
-        }
         return renderSubPageWrapper(
-          'Quy Trình Thanh Lý Thiết Bị',
-          'ĐỀ XUẤT, THẨM ĐỊNH & DỰ TRÙ THANH LÝ',
+          'Đề Xuất Thanh Lý Thiết Bị (Hao Mòn R ≥ 60%)',
+          'ĐỀ XUẤT & THẨM ĐỊNH THANH LÝ TÀI SẢN',
           <DisposalProposePage />
         );
 
@@ -270,6 +263,14 @@ const MainAppContent = () => {
           'Danh Mục Dữ Liệu Nền (Loại TB, NCC, Đơn Vị SC, Phòng)',
           'DANH MỤC DỮ LIỆU NỀN TẢNG',
           <MasterDataPage />
+        );
+
+      case 'disposal_approval':
+      case 'disposals': // Legacy alias for admin
+        return renderSubPageWrapper(
+          'Phê Duyệt Hồ Sơ Thanh Lý (Ban Giám Hiệu QĐ-TL)',
+          'HỒ SƠ THANH LÝ TÀI SẢN',
+          <DisposalApprovalPage />
         );
 
       case 'audit_log':

@@ -171,7 +171,7 @@ export const ToastProvider = ({ children }) => {
   }, []);
 
   const toast = {
-    success: (message, title = 'Đăng Xuất Thành Công', duration = 3500) =>
+    success: (message, title = 'Thao Tác Thành Công', duration = 3500) =>
       addToast({ type: 'success', title, message, duration }),
     error: (message, title = 'Có Lỗi Xảy Ra', duration = 4000) =>
       addToast({ type: 'error', title, message, duration }),

@@ -19,8 +19,8 @@ export const DISPOSAL_WORKFLOW_PERMISSION = 'disposal:propose';
 // View disposal requests (Admin, Facility Manager)
 router.get('/', protect, getDisposalList);
 
-// Propose disposal (Technician) (UC-7.7)
-router.post('/', protect, requirePermission(DISPOSAL_WORKFLOW_PERMISSION, USER_ROLES.TECHNICIAN), createDisposalProposal);
+// Propose disposal (Technician & Facility Manager) (UC-7.7)
+router.post('/', protect, requirePermission(DISPOSAL_WORKFLOW_PERMISSION, USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER), createDisposalProposal);
 
 // Approve disposal request (Admin only)
 router.put('/:id/approve', protect, requirePermission('disposal:approve', USER_ROLES.ADMIN), approveDisposal);

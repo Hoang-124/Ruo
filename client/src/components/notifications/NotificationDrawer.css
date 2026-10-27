@@ -1,0 +1,542 @@
+/* ==========================================================================
+   RUO UFMS - NOTIFICATION DRAWER (UC-9.1) STYLES
+   Agency-grade Slide-over Drawer with High-contrast Red Badge & Micro-interactions
+   ========================================================================== */
+
+/* Drawer Overlay Backdrop */
+.ruo-notif-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(7, 8, 10, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s;
+}
+
+.ruo-notif-drawer-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Slide-over Drawer Container */
+.ruo-drawer-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 460px;
+  background: var(--surface-primary, #FFFFFF);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.22);
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-left: 1px solid var(--hairline-soft, #E2E8F0);
+}
+
+.ruo-drawer-container.open {
+  transform: translateX(0);
+}
+
+/* Drawer Header */
+.ruo-drawer-container .ruo-drawer-header {
+  padding: 18px 20px;
+  background: var(--surface-secondary, #F8FAFC);
+  border-bottom: 1px solid var(--hairline-soft, #E2E8F0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.ruo-drawer-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ruo-drawer-icon-wrap {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(234, 88, 12, 0.12) 100%);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--blueprint-600, #2563EB);
+  flex-shrink: 0;
+}
+
+.ruo-drawer-container .ruo-drawer-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink-pure, #0F172A);
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.ruo-drawer-container .ruo-drawer-subtitle {
+  font-size: 11.5px;
+  color: var(--ink-muted, #64748B);
+  margin: 2px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Red Unread Badge Pill */
+.ruo-badge-red-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #EF4444;
+  color: #FFFFFF;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.45);
+  animation: ruo-pulse-glow 2s infinite ease-in-out;
+}
+
+@keyframes ruo-pulse-glow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.75);
+  }
+}
+
+.ruo-drawer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ruo-drawer-btn {
+  background: transparent;
+  border: 1px solid var(--hairline-soft, #E2E8F0);
+  border-radius: 8px;
+  color: var(--ink-secondary, #475569);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ruo-drawer-btn:hover {
+  background: var(--surface-hover, #F1F5F9);
+  color: var(--ink-pure, #0F172A);
+  border-color: var(--slate-300, #CBD5E1);
+}
+
+.ruo-drawer-container .ruo-drawer-close-btn {
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted, #64748B);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ruo-drawer-container .ruo-drawer-close-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #EF4444;
+}
+
+/* Category Filter Tabs Bar */
+.ruo-drawer-tabs {
+  padding: 10px 16px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--surface-primary, #FFFFFF);
+  border-bottom: 1px solid var(--hairline-soft, #E2E8F0);
+  flex-shrink: 0;
+}
+
+.ruo-drawer-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ruo-tab-pill {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--hairline-soft, #E2E8F0);
+  background: var(--surface-secondary, #F8FAFC);
+  color: var(--ink-secondary, #475569);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.ruo-tab-pill:hover {
+  background: var(--surface-hover, #F1F5F9);
+  color: var(--ink-pure, #0F172A);
+}
+
+.ruo-tab-pill.active {
+  background: var(--slate-900, #0F172A);
+  color: #FFFFFF;
+  border-color: var(--slate-900, #0F172A);
+}
+
+[data-theme="dark"] .ruo-tab-pill.active {
+  background: #2563EB;
+  border-color: #2563EB;
+  color: #FFFFFF;
+}
+
+.ruo-tab-count {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.08);
+  font-weight: 700;
+}
+
+.ruo-tab-pill.active .ruo-tab-count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
+}
+
+.ruo-tab-count.alert {
+  background: #EF4444;
+  color: #FFFFFF;
+}
+
+/* Demo quick-bar */
+.ruo-drawer-demobar {
+  padding: 8px 16px;
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.06) 0%, rgba(234, 88, 12, 0.06) 100%);
+  border-bottom: 1px dashed var(--hairline-soft, #E2E8F0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--ink-secondary, #475569);
+  flex-shrink: 0;
+}
+
+.ruo-demo-btn {
+  background: var(--surface-primary, #FFFFFF);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  color: #2563EB;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.ruo-demo-btn:hover {
+  background: #2563EB;
+  color: #FFFFFF;
+}
+
+/* Notification List Area */
+.ruo-drawer-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Individual Notification Card */
+.ruo-notif-card {
+  border-radius: 12px;
+  border: 1px solid var(--hairline-soft, #E2E8F0);
+  background: var(--surface-primary, #FFFFFF);
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.ruo-notif-card:hover {
+  border-color: var(--slate-300, #CBD5E1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.ruo-notif-card.unread {
+  background: var(--surface-highlight, rgba(37, 99, 235, 0.03));
+  border-left: 3.5px solid var(--laser-cyan, #0284C7);
+}
+
+.ruo-notif-card.category-deadlines.unread {
+  background: rgba(239, 68, 68, 0.03);
+  border-left-color: #EF4444;
+}
+
+.ruo-notif-card.category-approvals.unread {
+  background: rgba(217, 119, 6, 0.03);
+  border-left-color: #D97706;
+}
+
+.ruo-notif-card.category-repairs.unread {
+  background: rgba(14, 165, 233, 0.03);
+  border-left-color: #0284C7;
+}
+
+/* Icon Avatar per Category */
+.ruo-notif-badge-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ruo-notif-badge-icon.repairs {
+  background: #E0F2FE;
+  color: #0284C7;
+}
+
+.ruo-notif-badge-icon.approvals {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+.ruo-notif-badge-icon.deadlines {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.ruo-notif-badge-icon.general {
+  background: #F1F5F9;
+  color: #64748B;
+}
+
+[data-theme="dark"] .ruo-notif-badge-icon.repairs {
+  background: rgba(2, 132, 199, 0.2);
+}
+
+[data-theme="dark"] .ruo-notif-badge-icon.approvals {
+  background: rgba(217, 119, 6, 0.2);
+}
+
+[data-theme="dark"] .ruo-notif-badge-icon.deadlines {
+  background: rgba(220, 38, 38, 0.2);
+}
+
+/* Card Content Details */
+.ruo-notif-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ruo-notif-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.ruo-notif-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink-pure, #0F172A);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.ruo-notif-time {
+  font-size: 11px;
+  color: var(--ink-muted, #94A3B8);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ruo-notif-desc {
+  font-size: 12.5px;
+  color: var(--ink-secondary, #475569);
+  line-height: 1.45;
+  margin: 4px 0 8px 0;
+  word-break: break-word;
+}
+
+/* Card Bottom Tags & Actions */
+.ruo-notif-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--hairline-soft, #F1F5F9);
+}
+
+.ruo-notif-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ruo-notif-tag.repairs {
+  background: #E0F2FE;
+  color: #0369A1;
+}
+
+.ruo-notif-tag.approvals {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.ruo-notif-tag.deadlines {
+  background: #FEE2E2;
+  color: #B91C1C;
+}
+
+.ruo-notif-tag.general {
+  background: #F1F5F9;
+  color: #475569;
+}
+
+.ruo-notif-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ruo-card-btn {
+  background: transparent;
+  border: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.ruo-card-btn.primary {
+  color: #2563EB;
+}
+
+.ruo-card-btn.primary:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.ruo-card-btn.dismiss {
+  color: var(--ink-muted, #94A3B8);
+}
+
+.ruo-card-btn.dismiss:hover {
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Empty State Area */
+.ruo-drawer-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--ink-muted, #94A3B8);
+}
+
+.ruo-empty-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--surface-secondary, #F8FAFC);
+  border: 1.5px dashed var(--hairline-soft, #CBD5E1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--ink-muted, #94A3B8);
+}
+
+.ruo-drawer-empty h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-pure, #0F172A);
+  margin: 0 0 6px 0;
+}
+
+.ruo-drawer-empty p {
+  font-size: 12.5px;
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+  max-width: 260px;
+}
+
+/* Drawer Footer */
+.ruo-drawer-container .ruo-drawer-footer {
+  padding: 12px 20px;
+  background: var(--surface-secondary, #F8FAFC);
+  border-top: 1px solid var(--hairline-soft, #E2E8F0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--ink-muted, #64748B);
+  flex-shrink: 0;
+}
+
+.ruo-sync-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.ruo-sync-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  animation: ruo-sync-pulse 2s infinite ease-in-out;
+}
+
+@keyframes ruo-sync-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}

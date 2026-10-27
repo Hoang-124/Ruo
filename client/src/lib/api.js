@@ -195,6 +195,8 @@ export const equipmentApi = {
   importBatch: (data) => api.post('/equipments/import', data),
   dispose: (id, data) => api.put(`/equipments/${id}/dispose`, data),
   updateWarranty: (id, data) => api.put(`/equipments/${id}/warranty`, data),
+  getExpiringWarranties: (days = 30, includeExpired = false) => api.get('/equipments/warranty-expiring', { days, include_expired: includeExpired }),
+  checkWarrantyExpirations: (days = 30) => api.post('/equipments/warranty/check-expirations', { days }),
   delete: (id) => api.delete(`/equipments/${id}`)
 };
 
@@ -272,13 +274,22 @@ export const sparePartApi = {
 export const disposalApi = {
   list: () => api.get('/disposals'),
   propose: (data) => api.post('/disposals', data),
+  hcApprove: (id, review_note = '') => api.put(`/disposals/${id}/hc-approve`, { review_note }),
+  hcReject: (id, reject_reason) => api.put(`/disposals/${id}/hc-reject`, { reject_reason }),
   approve: (id, decision_number, recovery_value) => api.put(`/disposals/${id}/approve`, { decision_number, recovery_value }),
+<<<<<<< HEAD
   reject: (id, reject_reason) => api.put(`/disposals/${id}/reject`, { reject_reason }),
   hcApprove: (id, review_note = '') => api.put(`/disposals/${id}/hc-approve`, { review_note }),
   hcReject: (id, reject_reason) => api.put(`/disposals/${id}/hc-reject`, { reject_reason }),
   bghApprove: (id, decision_number, recovery_value) => api.put(`/disposals/${id}/bgh-approve`, { decision_number, recovery_value }),
   procurement: (id, data) => api.put(`/disposals/${id}/procurement`, data),
   receipt: (id, data) => api.put(`/disposals/${id}/receipt`, data)
+=======
+  bghApprove: (id, decision_number, recovery_value) => api.put(`/disposals/${id}/bgh-approve`, { decision_number, recovery_value }),
+  reject: (id, reject_reason) => api.put(`/disposals/${id}/reject`, { reject_reason }),
+  planProcurement: (id, data) => api.put(`/disposals/${id}/procurement`, data),
+  completeReceipt: (id, data) => api.put(`/disposals/${id}/receipt`, data)
+>>>>>>> ca8534b9d0c45dffa087463b90f8f23c2ae02c73
 };
 
 export const inventoryApi = {
@@ -333,10 +344,20 @@ export const auditApi = {
 };
 
 export const notificationApi = {
-  list: () => api.get('/notifications'),
+  list: (params) => api.get('/notifications', params),
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markRead: (id) => api.put(`/notifications/${id}/read`),
-  markAllRead: () => api.put('/notifications/mark-all-read')
+  markReadState: (payload = { all: true }) => api.put('/notifications/read', payload),
+  markAllRead: () => api.put('/notifications/read', { all: true }),
+  delete: (id) => api.delete(`/notifications/${id}`),
+  seedDemo: () => api.post('/notifications/seed-demo')
+};
+
+export const adminConfigApi = {
+  getTemplates: () => api.get('/admin/config/templates'),
+  updateTemplate: (data) => api.put('/admin/config/templates', data),
+  resetTemplate: (key) => api.post('/admin/config/templates/reset', { key }),
+  resetAllTemplates: () => api.post('/admin/config/templates/reset', {})
 };
 
 // Backward compatibility alias for transferApi

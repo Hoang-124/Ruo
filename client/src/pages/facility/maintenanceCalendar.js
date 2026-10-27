@@ -49,31 +49,3 @@ export const getMaintenanceOccurrencesForMonth = (plans, year, month) => {
 
   return occurrences;
 };
-
-const getId = (item) => String(typeof item === 'object' && item !== null ? item._id : item);
-
-export const getMaintenancePlanDetails = (plan, equipment = []) => {
-  const rooms = plan.room_ids || [];
-  const categories = plan.category_ids || [];
-  const roomIds = rooms.map(getId);
-  const categoryIds = categories.map(getId);
-  const roomNames = rooms
-    .map((room) => typeof room === 'object' && room !== null ? room.code || room.name : '')
-    .filter(Boolean);
-  const categoryNames = categories
-    .map((category) => typeof category === 'object' && category !== null ? category.name : '')
-    .filter(Boolean);
-  const equipmentCount = equipment.filter((item) => {
-    const roomId = getId(item.room_id);
-    const categoryId = getId(item.category_id);
-    return roomIds.includes(roomId) && (!categoryIds.length || categoryIds.includes(categoryId));
-  }).length;
-
-  return {
-    roomNames,
-    roomLabel: roomNames.length ? roomNames.join(', ') : `${rooms.length} phòng`,
-    categoryNames,
-    categoryLabel: categoryNames.length ? categoryNames.join(', ') : 'Tất cả loại thiết bị',
-    equipmentCount
-  };
-};
