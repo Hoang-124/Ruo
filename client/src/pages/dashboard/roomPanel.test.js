@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveRoomEquipments, resolveRoomStatus, summarizeRoomEquipment } from './roomPanel';
+import { resolveRoomEquipments, resolveRoomProfile, resolveRoomStatus, summarizeRoomEquipment } from './roomPanel';
 
 const sampleRoom = { code: 'A1-202', name: 'PH 202', equipments: ['Máy chiếu', 'Điều hòa'], statusOverride: undefined };
 
@@ -59,5 +59,73 @@ describe('summarizeRoomEquipment', () => {
     expect(summarizeRoomEquipment([{ status: 'in_use' }, { status: 'broken' }, { status: 'repairing' }])).toBe('3 thiết bị • 2 hỏng');
     expect(summarizeRoomEquipment([{ status: 'in_use' }])).toBe('1 thiết bị');
     expect(summarizeRoomEquipment()).toBe('0 thiết bị');
+  });
+});
+
+describe('resolveRoomProfile', () => {
+  it('merges architectural function, spatial zone, and accurate type for PH 213 instead of generic office', () => {
+    const pod = {
+      code: 'A1-213',
+      name: 'PH 213',
+      floor: 2,
+      room_type: 'office',
+      capacity: 50,
+      area: 65,
+      description: ''
+    };
+    expect(resolveRoomProfile({ code: 'A1-213' }, pod, 2)).toEqual({
+      code: 'A1-213',
+      building: 'A1',
+      floor: 2,
+      name: 'PH 213',
+      zoneLabel: 'Góc Đông Nam',
+      functionLabel: 'Đồ Án Tốt Nghiệp',
+      typeLabel: 'Nghiên cứu & Đồ án',
+      capacityLabel: '50 chỗ',
+      areaLabel: '65 m²'
+    });
+  });
+
+  it('classifies restrooms and medical rooms accurately without showing 0 capacity', () => {
+    const wcPod = { code: 'A1-WC-NU-T2', name: 'NVS Nữ', floor: 2, room_type: 'warehouse', capacity: 0, area: 25 };
+    expect(resolveRoomProfile({ code: 'A1-WC-NU-T2' }, wcPod, 2)).toMatchObject({
+      typeLabel: 'Khu vệ sinh',
+      zoneLabel: 'Cánh Đông',
+      functionLabel: 'Khu vệ sinh nữ Tầng 2',
+      capacityLabel: 'Không xếp chỗ',
+      areaLabel: '25 m²'
+    });
+
+    const medicalPod = { code: 'A1-YT-T3', name: 'Phòng Y Tế', floor: 3, room_type: 'warehouse', capacity: 15, area: 78 };
+    expect(resolveRoomProfile({ code: 'A1-YT-T3' }, medicalPod, 3)).toMatchObject({
+      typeLabel: 'Y tế học đường',
+      zoneLabel: 'Dãy Nam Trung Tâm',
+      functionLabel: 'Trạm Y Tế & Sơ Cấp Cứu',
+      capacityLabel: '15 chỗ',
+      areaLabel: '78 m²'
+    });
+  });
+
+  it('honors custom database descriptions and unmapped rooms created via UC-2.2', () => {
+    const customPod = {
+      code: 'A1-601',
+      name: 'Lab IoT Mới',
+      floor: 6,
+      room_type: 'lab',
+      capacity: 40,
+      area: 70,
+      description: 'Phòng Lab IoT & Hệ thống nhúng'
+    };
+    expect(resolveRoomProfile({ code: 'A1-601' }, customPod, 6)).toEqual({
+      code: 'A1-601',
+      building: 'A1',
+      floor: 6,
+      name: 'Lab IoT Mới',
+      zoneLabel: 'Tòa A1 • Tầng 6',
+      functionLabel: 'Phòng Lab IoT & Hệ thống nhúng',
+      typeLabel: 'Thực hành / Phòng Lab',
+      capacityLabel: '40 chỗ',
+      areaLabel: '70 m²'
+    });
   });
 });

@@ -52,7 +52,7 @@ export const FLOOR_PLAN_ROOMS = [
   { code: "A1-306", name: "PH 306", floor: 3, room_type: "office", capacity: 50, area: 65 },
   { code: "A1-315", name: "PH 315", floor: 3, room_type: "lecture", capacity: 50, area: 65 },
   { code: "A1-316", name: "PH 316", floor: 3, room_type: "lecture", capacity: 50, area: 65 },
-  { code: "A1-YT-T3", name: "Phòng Y Tế", floor: 3, room_type: "warehouse", capacity: 15, area: 78 },
+  { code: "A1-YT-T3", name: "Phòng Y Tế", floor: 3, room_type: "office", capacity: 15, area: 78 },
   { code: "A1-319", name: "PH 319 (Phòng Học)", floor: 3, room_type: "lecture", capacity: 45, area: 78 },
   { code: "A1-317", name: "PH 317", floor: 3, room_type: "lecture", capacity: 50, area: 65 },
   { code: "A1-318", name: "PH 318", floor: 3, room_type: "lecture", capacity: 50, area: 65 },

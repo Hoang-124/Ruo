@@ -67,7 +67,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.2,
         image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=600&q=80',
-        equipments: ['65 bàn ghế đơn module di động', 'Máy chiếu Full HD & Bảng trượt 3 lớp', 'Hệ thống điều hòa Inverter 2 chiều', 'Trạm cắm sạc laptop thông minh'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: [{ start: 420, end: 1080, title: 'Học tập & Tự học sinh viên liên khóa', user: 'Sinh viên & Giảng viên' }]
       },
       {
@@ -81,7 +81,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 3.0,
         image: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=600&q=80',
-        equipments: ['250 khoang đọc sách & tự học yên tĩnh', 'Hệ thống tra cứu số OPAC', 'Wifi chuyên dụng 500 kết nối đồng thời', 'Kệ sách chuyên ngành & quầy mượn trả RFID'],
+        equipments: ['4x Điều hòa âm trần Cassette 4 hướng thổi 4HP', '2x Đầu đọc mã vạch / RFID mượn trả sách & kho', '2x Kiosk tra cứu thông tin cảm ứng 32" chân đứng', 'Thiết bị lưu trữ mạng tập trung học liệu (NAS)', 'Màn hình quảng cáo & thông báo điện tử Standee 55"', '3x Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: [{ start: 420, end: 1260, title: 'Mở cửa phục vụ bạn đọc tự do', user: 'Sinh viên & Giảng viên toàn trường' }]
       },
       {
@@ -95,7 +95,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.9,
         image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Kệ chứa phụ tùng & linh kiện thay thế', 'Tủ bảo mật tài liệu kỹ thuật', 'Hệ thống cảm biến nhiệt & PCCC tự động'],
+        equipments: ['Router cân bằng tải & Tường lửa bảo mật', 'Switch mạng 24 cổng Gigabit PoE', 'Tủ mạng Rack 27U đứng kèm PDU', 'Đầu ghi hình mạng NVR 32 kênh kèm ổ cứng giám sát', 'Bộ khóa từ & đầu đọc thẻ từ / vân tay / khuôn mặt', 'Kệ sắt tải nặng Selective 4 tầng chứa thiết bị kho'],
         occupiedAt: []
       },
       {
@@ -109,7 +109,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.9,
         image: 'https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Kệ pallet chịu lực công nghiệp', 'Dụng cụ sửa chữa cơ điện chuyên dụng', 'Bình bọt chữa cháy khí CO2'],
+        equipments: ['Tủ điện phân phối tầng (DB) kèm công tơ đo đếm thông minh', '2x Kệ sắt tải nặng Selective 4 tầng chứa thiết bị kho', 'Quạt thông gió âm trần nối ống', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng', 'Cụm đầu báo khói quang học, chuông & nút nhấn khẩn cấp', 'Bình chữa cháy bột khô ABC 4kg (MFZL4)'],
         occupiedAt: []
       }
     ],
@@ -125,7 +125,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 2.0,
         image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=600&q=80',
-        equipments: ['120 chỗ ngồi bàn dài chống lóa cao cấp', 'Trạm cắm điện & cổng Type-C âm bàn', 'Hệ thống đèn LED quang thông 500 Lux', 'Máy lọc không khí công suất lớn'],
+        equipments: ['2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', '2x Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Cây nước nóng lạnh / Máy lọc nước uống công cộng', '2x Bộ đèn Panel LED 600x600 chiếu sáng phòng', 'Cụm đầu báo khói quang học, chuông & nút nhấn khẩn cấp'],
         occupiedAt: [{ start: 420, end: 1320, title: 'Khu tự học mở 24/7 cho sinh viên', user: 'Sinh viên toàn trường' }]
       },
       {
@@ -139,7 +139,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Thang nhôm rút chữ A cách điện', 'Bộ đồ nghề cơ điện bảo dưỡng nhanh', 'Bình cứu hỏa dự phòng tiêu chuẩn'],
+        equipments: ['Kệ sắt tải nặng Selective 4 tầng chứa thiết bị kho', 'Quạt thông gió âm trần nối ống', 'Camera IP thân trụ hồng ngoại xa 40m hành lang', 'Đèn chiếu sáng sự cố 2 mắt & Đèn chỉ dẫn EXIT', 'Tủ họng nước chữa cháy vách tường (cuộn vòi + lăng phun)', '2x Bình chữa cháy bột khô ABC 4kg (MFZL4)'],
         occupiedAt: []
       },
       {
@@ -153,7 +153,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 2.2,
         image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Cổng từ an ninh kiểm soát thẻ RFID', 'Màn hình LED thông báo lịch trình & bản đồ tầng', 'Hệ thống camera giám sát nhận diện AI'],
+        equipments: ['2x Màn hình quảng cáo & thông báo điện tử Standee 55"', 'Kiosk tra cứu thông tin cảm ứng 32" chân đứng', 'Camera IP Speed Dome quay quét 360° Zoom quang 25x', '2x Camera IP thân trụ hồng ngoại xa 40m hành lang', 'Máy chấm công khuôn mặt & vân tay cán bộ', 'Điện thoại bàn IP nội bộ phòng ban'],
         occupiedAt: [{ start: 360, end: 1380, title: 'Cổng chính & luồng đón tiếp', user: 'Toàn trường & Khách liên hệ' }]
       },
       {
@@ -167,7 +167,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bồn tiểu cảm ứng xả tự động', 'Lavabo vòi nước thông minh', 'Máy sấy tay siêu tốc diệt khuẩn'],
+        equipments: ['2x Quạt thông gió âm trần nối ống', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -181,7 +181,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Cabin vệ sinh khép kín tiêu chuẩn', 'Lavabo cảm ứng & gương đèn LED', 'Hệ thống xịt thơm & khử khuẩn liên tục'],
+        equipments: ['2x Quạt thông gió âm trần nối ống', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -195,7 +195,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 2.0,
         image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80',
-        equipments: ['120 bàn ghế học viên tiêu chuẩn', '2 máy chiếu Laser kép & màn chiếu 150 inch', 'Micro không dây & giàn loa treo tường', 'Điều hòa trung tâm Daikin VRV'],
+        equipments: ['2x Máy chiếu siêu gần giảng đường', '2x Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', '2x Loa âm trần thông báo hành lang & thư viện', '2x Bộ phát Wi-Fi 6 ốp trần chịu tải cao', '2x Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: [{ start: 450, end: 1050, title: 'Giảng dạy lý thuyết chuyên ngành', user: 'Khoa Kinh tế & QTKD' }]
       }
     ]
@@ -211,14 +211,14 @@ export const CAMPUS_FLOORS = {
         id: 'R_201',
         code: 'A1-201',
         name: 'PH 201',
-        subName: 'Góc Tây Bắc • Lý thuyết',
+        subName: 'Góc Tây Bắc • Lab Thực Hành Mạng',
         floor: 2,
         capacity: 50,
         area: 65,
-        category: 'academic',
+        category: 'lab',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Laser 4K Sony', '2x Điều hòa Inverter Daikin 18.000 BTU', 'Micro không dây Shure', 'Bảng từ chống lóa'],
+        equipments: ['6x Bộ máy tính trạm thực hành sinh viên (PC + Màn 24")', 'Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', '2x Quạt thông gió âm trần nối ống', '2x Switch mạng 24 cổng Gigabit PoE'],
         occupiedAt: [{ start: 450, end: 690, title: 'Giải Tích 1 • Toán Cao Cấp', user: 'PGS. TS. Trần Đình Hưng • 07:30 - 11:30' }]
       },
       {
@@ -232,7 +232,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Full HD', 'Hệ thống âm thanh trợ giảng', 'Điều hòa 2 chiều'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: [{ start: 780, end: 1020, title: 'Vật Lý Đại Cương', user: 'TS. Lê Đức Anh • 13:00 - 17:00' }]
       },
       {
@@ -246,7 +246,7 @@ export const CAMPUS_FLOORS = {
         category: 'lab',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=600&q=80',
-        equipments: ['60 bộ PC Core i7 màn hình 27 inch', 'Máy chiếu tương tác thông minh', 'Tai nghe học tiếng Anh chuyên dụng', 'Điều hòa trung tâm'],
+        equipments: ['6x Bộ máy tính trạm thực hành sinh viên (PC + Màn 24")', 'Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', '2x Quạt thông gió âm trần nối ống', '2x Switch mạng 24 cổng Gigabit PoE'],
         occupiedAt: [{ start: 540, end: 720, title: 'Thực Hành Tin Học Đại Cương', user: 'ThS. Lê Hoàng Long • 09:00 - 12:00' }]
       },
       {
@@ -260,7 +260,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu 4K Laser', 'Bảng chống lóa 3 cánh', 'Hệ thống mic hội thảo đa hướng', '2 điều hòa Inverter'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: [{ start: 480, end: 700, title: 'Seminar Trí Tuệ Nhân Tạo Ứng Dụng', user: 'PGS. TS. Trần Đình Hưng • 08:00 - 11:40' }]
       },
       {
@@ -274,7 +274,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Laser siêu nét', 'Bàn hội đồng chữ U bọc da', 'Màn hình trình chiếu phụ', 'Hệ thống quạt thông gió'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: []
       },
       {
@@ -288,7 +288,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Màn hình LED Wall 100 inch', 'Bục giảng điện tử cảm ứng', 'Hệ thống âm thanh vòm hội nghị', 'Điều hòa 24.000 BTU'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: []
       },
       {
@@ -302,7 +302,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Laser 4K', 'Mic không dây kép Shure', 'Hệ thống cabin dịch đồng thời', 'Điều hòa Inverter'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: [{ start: 600, end: 750, title: 'Workshop Design System & AI', user: 'Chuyên gia Google • 10:00 - 12:30' }]
       },
       {
@@ -316,7 +316,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Sony 4K', 'Bục giảng đa phương tiện', 'Bảng trượt liên hoàn'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: [{ start: 780, end: 1020, title: 'Tiếng Anh Học Thuật 2', user: 'ThS. Hoàng Thu Thủy • 13:00 - 17:00' }]
       },
       {
@@ -330,7 +330,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu 4K', 'Bảng từ chống lóa', 'Hệ thống quạt thông gió'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -344,7 +344,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 2.0,
         image: 'https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Hệ thống Workstation tính toán mô phỏng GPU', 'Bảng kính tương tác 98 inch', 'Kính hiển vi quang học & đo lường laser', 'Điều hòa trung tâm & tủ lưu trữ mẫu thí nghiệm'],
+        equipments: ['2x Bộ máy tính trạm thực hành sinh viên (PC + Màn 24")', '2x Bộ Kit thực hành Mạng nhúng – Vi điều khiển – IoT', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Bộ khóa từ & đầu đọc thẻ từ / vân tay / khuôn mặt'],
         occupiedAt: [{ start: 480, end: 720, title: 'Dự án Nghiên Cứu AI & Big Data', user: 'Viện Nghiên Cứu Khoa Học • 08:00 - 12:00' }]
       },
       {
@@ -358,7 +358,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Cabin vệ sinh khép kín tiêu chuẩn', 'Gương đèn LED & lavabo tự động', 'Hệ thống xịt thơm khử mùi tự động'],
+        equipments: ['2x Quạt thông gió âm trần nối ống', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       }
     ],
@@ -374,7 +374,7 @@ export const CAMPUS_FLOORS = {
         category: 'lab',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80',
-        equipments: ['60 máy trạm Workstation GPU RTX 4080', 'Bảng vẽ điện tử Wacom Pro', 'Máy chiếu Full HD kép', 'Điều hòa 2 chiều'],
+        equipments: ['6x Bộ máy tính trạm thực hành sinh viên (PC + Màn 24")', 'Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', '2x Quạt thông gió âm trần nối ống', '2x Switch mạng 24 cổng Gigabit PoE'],
         occupiedAt: [{ start: 780, end: 1020, title: 'Thực Hành Thị Giác Máy Tính', user: 'TS. Lê Đức Anh • 13:00 - 17:00' }]
       },
       {
@@ -388,7 +388,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bàn làm việc module cá nhân', 'Máy chiếu tương tác thông minh', 'Mic cổ ngỗng bục giảng', 'Bàn ghế học sinh viên chuẩn ergonomic'],
+        equipments: ['Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Bộ Kit thực hành Mạng nhúng – Vi điều khiển – IoT', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng', 'Cụm đầu báo khói quang học, chuông & nút nhấn khẩn cấp'],
         occupiedAt: []
       },
       {
@@ -400,10 +400,9 @@ export const CAMPUS_FLOORS = {
         capacity: 50,
         area: 65,
         category: 'admin',
-        statusOverride: 'maintenance',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu 4K Laser (đang thay bóng đèn)', 'Bảng chống lóa 3 cánh', '2 điều hòa Inverter'],
+        equipments: ['Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng', 'Cụm đầu báo khói quang học, chuông & nút nhấn khẩn cấp', '2x Bộ bàn ghế sinh viên 2–4 chỗ khung thép mặt gỗ Melamine'],
         occupiedAt: []
       },
       {
@@ -417,7 +416,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Màn hình cảm ứng tương tác 86 inch', 'Hệ thống tracking camera giảng viên tự động', 'Bục giảng điện tử', 'Điều hòa 24.000 BTU'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Camera hội nghị truyền hình trực tuyến PTZ', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: [{ start: 510, end: 705, title: 'Học Trực Tuyến Tương Tác Quốc Tế', user: 'Khoa CNTT • 08:30 - 11:45' }]
       },
       {
@@ -431,7 +430,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Màn hình tương tác thông minh 75 inch', 'Bàn ghế module di động ghép nhóm', 'Hệ thống quạt thông gió'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Camera hội nghị truyền hình trực tuyến PTZ', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: []
       },
       {
@@ -445,7 +444,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Laser 4K', 'Mic không dây Shure', 'Hệ thống bảng từ di động', 'Điều hòa Inverter'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Camera hội nghị truyền hình trực tuyến PTZ', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: []
       },
       {
@@ -459,7 +458,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Sony 4K', 'Bục giảng đa phương tiện', 'Bảng trượt liên hoàn'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Camera hội nghị truyền hình trực tuyến PTZ', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: []
       },
       {
@@ -473,7 +472,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 2.0,
         image: 'https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Dàn máy trạm tính toán song song Cluster', 'Bàn nghiên cứu module chống rung', 'Hệ thống thiết bị đo kiểm vi mạch', 'Hệ thống quạt hút lọc khí phòng sạch'],
+        equipments: ['2x Bộ máy tính trạm thực hành sinh viên (PC + Màn 24")', '2x Bộ Kit thực hành Mạng nhúng – Vi điều khiển – IoT', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Quạt thông gió âm trần nối ống', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: []
       },
       {
@@ -487,7 +486,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy in 3D & thiết bị đo kiểm', 'Máy chiếu Full HD', 'Hệ thống âm thanh trợ giảng', 'Điều hòa 2 chiều'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Bộ Kit thực hành Mạng nhúng – Vi điều khiển – IoT', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -501,7 +500,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Ghế lười & bàn làm việc nhóm linh hoạt', 'Máy chiếu Laser siêu nét', 'Bảng kính viết tường', 'Hệ thống quạt thông gió'],
+        equipments: ['Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng', 'Cụm đầu báo khói quang học, chuông & nút nhấn khẩn cấp', '2x Bộ bàn ghế sinh viên 2–4 chỗ khung thép mặt gỗ Melamine'],
         occupiedAt: []
       },
       {
@@ -515,7 +514,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Cabin vệ sinh khép kín tiêu chuẩn', 'Lavabo cảm ứng & gương đèn LED', 'Hệ thống xịt thơm & khử khuẩn liên tục'],
+        equipments: ['2x Quạt thông gió âm trần nối ống', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       }
     ]
@@ -538,7 +537,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Laser 4K Sony', '2x Điều hòa Inverter Daikin 18.000 BTU', 'Micro không dây Shure', 'Bảng từ chống lóa'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: [{ start: 450, end: 690, title: 'Hóa Sinh Học Đại Cương', user: 'PGS. TS. Trần Bảo Ngọc • 07:30 - 11:30' }]
       },
       {
@@ -552,7 +551,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Full HD', 'Hệ thống âm thanh trợ giảng', 'Điều hòa 2 chiều'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -566,7 +565,7 @@ export const CAMPUS_FLOORS = {
         category: 'lab',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bộ thí nghiệm quang học Laser', 'Bàn thí nghiệm từ trường & điện xoay chiều', 'Máy hiện sóng Tektronix', 'Điều hòa trung tâm'],
+        equipments: ['6x Bộ máy tính trạm thực hành sinh viên (PC + Màn 24")', 'Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', '2x Quạt thông gió âm trần nối ống', '2x Switch mạng 24 cổng Gigabit PoE'],
         occupiedAt: [{ start: 780, end: 1020, title: 'Thực Hành Vật Lý Quang & Điện Từ', user: 'ThS. Đỗ Tuấn Anh • 13:00 - 17:00' }]
       },
       {
@@ -580,7 +579,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu 4K Laser', 'Bảng chống lóa 3 cánh', 'Hệ thống mic hội thảo đa hướng', '2 điều hòa Inverter'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: [{ start: 480, end: 700, title: 'Seminar Công Nghệ Sinh Học & Y Sinh', user: 'TS. Vũ Phương Thảo • 08:00 - 11:40' }]
       },
       {
@@ -594,7 +593,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Màn hình trình chiếu 85 inch', 'Bàn hội đồng đánh giá luận văn', 'Hệ thống camera ghi hình', 'Điều hòa 24.000 BTU'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: []
       },
       {
@@ -608,7 +607,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 2.0,
         image: 'https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Hệ thống Workstation tính toán mô phỏng GPU', 'Bảng kính tương tác 98 inch', 'Kính hiển vi quang học Olympus & đo lường laser', 'Tủ sấy tiệt trùng vi sinh'],
+        equipments: ['2x Bộ máy tính trạm thực hành sinh viên (PC + Màn 24")', '2x Bộ Kit thực hành Mạng nhúng – Vi điều khiển – IoT', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Bộ khóa từ & đầu đọc thẻ từ / vân tay / khuôn mặt'],
         occupiedAt: [{ start: 480, end: 720, title: 'Nghiên Cứu Y Sinh & Vi Mạch', user: 'Viện Nghiên Cứu Khoa Học • 08:00 - 12:00' }]
       },
       {
@@ -622,7 +621,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Hệ thống micro không dây đa vùng', 'Máy chiếu tương tác Epson', 'Hệ thống quạt thông gió'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: []
       },
       {
@@ -636,7 +635,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bàn ghế xếp nhóm linh hoạt', 'Bảng lật Flipchart & bảng từ', 'Máy chiếu Full HD'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: [{ start: 840, end: 1020, title: 'Workshop Đổi Mới Sáng Tạo', user: 'CLB Khởi Nghiệp Sinh Viên • 14:00 - 17:00' }]
       },
       {
@@ -650,7 +649,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Sony 4K', 'Bục giảng đa phương tiện', 'Bảng trượt liên hoàn'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -664,7 +663,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu 4K', 'Bảng từ chống lóa', 'Hệ thống quạt thông gió'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -678,7 +677,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Cabin vệ sinh khép kín tiêu chuẩn', 'Gương đèn LED & lavabo tự động', 'Hệ thống xịt thơm khử mùi tự động'],
+        equipments: ['2x Quạt thông gió âm trần nối ống', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       }
     ],
@@ -694,7 +693,7 @@ export const CAMPUS_FLOORS = {
         category: 'lab',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=600&q=80',
-        equipments: ['60 bộ PC Core i7 / 16GB RAM / SSD', 'Hệ thống Switch Cisco chia VLAN', 'Đường truyền cáp quang Gigabit'],
+        equipments: ['6x Bộ máy tính trạm thực hành sinh viên (PC + Màn 24")', 'Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', '2x Quạt thông gió âm trần nối ống', '2x Switch mạng 24 cổng Gigabit PoE'],
         occupiedAt: [{ start: 450, end: 690, title: 'Thực Hành Cơ Sở Dữ Liệu SQL', user: 'TS. Bùi Quốc Toàn • 07:30 - 11:30' }]
       },
       {
@@ -708,7 +707,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bàn làm việc module cá nhân', 'Máy chiếu tương tác thông minh', 'Mic cổ ngỗng bục giảng', 'Bàn ghế học sinh viên ergonomic'],
+        equipments: ['Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Bộ Kit thực hành Mạng nhúng – Vi điều khiển – IoT', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng', 'Cụm đầu báo khói quang học, chuông & nút nhấn khẩn cấp'],
         occupiedAt: []
       },
       {
@@ -722,7 +721,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bàn tròn thảo luận nhóm', 'Bảng di động 2 mặt', 'Ổ cắm điện âm sàn từng bàn', '2 điều hòa Inverter'],
+        equipments: ['Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng', 'Cụm đầu báo khói quang học, chuông & nút nhấn khẩn cấp', '2x Bộ bàn ghế sinh viên 2–4 chỗ khung thép mặt gỗ Melamine'],
         occupiedAt: []
       },
       {
@@ -736,7 +735,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Màn hình cảm ứng tương tác 86 inch', 'Hệ thống tracking camera giảng viên tự động', 'Bục giảng điện tử', 'Điều hòa 24.000 BTU'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Camera hội nghị truyền hình trực tuyến PTZ', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: [{ start: 510, end: 705, title: 'Học Trực Tuyến Tương Tác Quốc Tế', user: 'Khoa Ngoại Ngữ • 08:30 - 11:45' }]
       },
       {
@@ -750,7 +749,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Màn hình tương tác thông minh 75 inch', 'Bàn ghế module di động ghép nhóm', 'Hệ thống quạt thông gió'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Camera hội nghị truyền hình trực tuyến PTZ', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: []
       },
       {
@@ -764,14 +763,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=600&q=80',
-        equipments: [
-          'Giường bệnh sơ cấp cứu lưu bệnh nhân',
-          'Tủ thuốc y tế & băng gạc vô trùng',
-          'Bình oxy thở y tế khẩn cấp',
-          'Máy đo huyết áp điện tử & nhiệt kế Omron',
-          'Cáng cứu thương & nẹp cố định chấn thương',
-          'Bàn làm việc y bác sĩ & hồ sơ sức khỏe'
-        ],
+        equipments: ['2x Giường bệnh inox nâng đầu kèm đệm y tế & tủ đầu giường', 'Tủ thuốc y tế inox kính 2 buồng & Xe tiêm sơ cứu', 'Bộ thiết bị khám sơ cứu (Máy đo huyết áp, SpO2, Nhiệt kế, Cân)', 'Máy sốc tim tự động ngoài lồng ngực (AED) cấp cứu', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Quạt thông gió âm trần nối ống'],
         occupiedAt: [
           { start: 450, end: 1020, title: 'Trực Trạm Y Tế • Chăm Sóc Sức Khỏe Học Đường', user: 'BS. Nguyễn Phương Mai • 07:30 - 17:00' }
         ]
@@ -787,13 +779,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80',
-        equipments: [
-          'Máy chiếu Laser 4K Sony',
-          'Hệ thống âm thanh trợ giảng & micro không dây',
-          'Điều hòa trung tâm 2 chiều Inverter',
-          'Bảng từ chống lóa cao cấp',
-          '45 bộ bàn ghế học viên tiêu chuẩn'
-        ],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: [
           { start: 450, end: 690, title: 'Lập Trình Web Full-Stack', user: 'ThS. Đặng Thị Lan • 07:30 - 11:30' }
         ]
@@ -809,7 +795,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Laser 4K', 'Mic không dây Shure', 'Hệ thống bảng từ di động', 'Điều hòa Inverter'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Camera hội nghị truyền hình trực tuyến PTZ', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: []
       },
       {
@@ -823,7 +809,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Sony 4K', 'Bục giảng đa phương tiện', 'Bảng trượt liên hoàn'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Camera hội nghị truyền hình trực tuyến PTZ', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: []
       },
       {
@@ -837,7 +823,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy in 3D & thiết bị đo kiểm', 'Máy chiếu Full HD', 'Hệ thống âm thanh trợ giảng', 'Điều hòa 2 chiều'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Bộ Kit thực hành Mạng nhúng – Vi điều khiển – IoT', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -851,7 +837,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Ghế lười & bàn làm việc nhóm linh hoạt', 'Máy chiếu Laser siêu nét', 'Bảng kính viết tường', 'Hệ thống quạt thông gió'],
+        equipments: ['Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng', 'Cụm đầu báo khói quang học, chuông & nút nhấn khẩn cấp', '2x Bộ bàn ghế sinh viên 2–4 chỗ khung thép mặt gỗ Melamine'],
         occupiedAt: []
       },
       {
@@ -865,7 +851,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Cabin vệ sinh khép kín tiêu chuẩn', 'Lavabo cảm ứng & gương đèn LED', 'Hệ thống xịt thơm & khử khuẩn liên tục'],
+        equipments: ['2x Quạt thông gió âm trần nối ống', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       }
     ]
@@ -888,7 +874,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Laser 4K Sony', '2x Điều hòa Inverter Daikin 18.000 BTU', 'Micro không dây Shure', 'Bảng từ chống lóa'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: [{ start: 450, end: 690, title: 'Kiến Trúc Phần Mềm & Hệ Phân Tán', user: 'PGS. TS. Nguyễn Minh Đức • 07:30 - 11:30' }]
       },
       {
@@ -902,7 +888,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Full HD', 'Hệ thống âm thanh bục giảng', 'Điều hòa 2 chiều'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: [{ start: 780, end: 1020, title: 'Thương Mại Điện Tử & Marketing Số', user: 'TS. Lê Thị Mai • 13:00 - 17:00' }]
       },
       {
@@ -916,7 +902,7 @@ export const CAMPUS_FLOORS = {
         category: 'lab',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80',
-        equipments: ['60 bộ PC Core i7 / 32GB RAM', 'Tủ Rack Router & Switch Cisco Layer 3', 'Máy chiếu tương tác thông minh', 'Điều hòa trung tâm'],
+        equipments: ['6x Bộ máy tính trạm thực hành sinh viên (PC + Màn 24")', 'Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', '2x Quạt thông gió âm trần nối ống', '2x Switch mạng 24 cổng Gigabit PoE'],
         occupiedAt: [{ start: 480, end: 720, title: 'Thực Hành Quản Trị Mạng & Cloud AWS', user: 'ThS. Phạm Quốc Huy • 08:00 - 12:00' }]
       },
       {
@@ -930,7 +916,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu 4K Laser', 'Bảng chống lóa 3 cánh', 'Hệ thống mic hội thảo đa hướng', '2 điều hòa Inverter'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: []
       },
       {
@@ -944,7 +930,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Màn hình trình chiếu 86 inch', 'Bàn hội đồng chữ U', 'Camera ghi hình bảo vệ khóa luận', 'Điều hòa 24.000 BTU'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: [{ start: 480, end: 700, title: 'Hội Đồng Chấm Khóa Luận Tốt Nghiệp CNTT', user: 'Hội Đồng Khoa CNTT • 08:00 - 11:40' }]
       },
       {
@@ -958,7 +944,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 2.0,
         image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Hệ thống máy trạm quản lý tín chỉ & học vụ', 'Máy in phôi văn bằng bảo mật', 'Tủ hồ sơ lưu trữ điểm thi', 'Điều hòa trung tâm Daikin'],
+        equipments: ['Máy photocopy đa chức năng A3/A4 tốc độ cao', 'Máy in Laser mạng LAN in đảo mặt tự động', 'Máy quét tài liệu hai mặt tốc độ cao (ADF)', 'Máy hủy tài liệu giấy vụn bảo mật', 'Máy chấm công khuôn mặt & vân tay cán bộ', '2x Điện thoại bàn IP nội bộ phòng ban'],
         occupiedAt: [{ start: 450, end: 1050, title: 'Điều phối lịch giảng dạy & xét tốt nghiệp', user: 'Phòng Quản Lý Đào Tạo • 07:30 - 17:30' }]
       },
       {
@@ -972,7 +958,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1431540015161-0bf868a2d407?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bàn họp hội đồng 40 chỗ', 'Micro hội nghị đa hướng', 'Smart TV 75 inch trình chiếu báo cáo'],
+        equipments: ['Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Camera hội nghị truyền hình trực tuyến PTZ', 'Bộ chia / Ma trận chuyển mạch tín hiệu HDMI 4x4', 'Điện thoại bàn IP nội bộ phòng ban', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: [{ start: 510, end: 690, title: 'Họp giao ban chuyên môn liên Khoa', user: 'Ban Chủ Nhiệm Các Khoa' }]
       },
       {
@@ -986,7 +972,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Laser 4K', 'Hệ thống họp trực tuyến Polycom', 'Điều hòa Inverter'],
+        equipments: ['Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Camera hội nghị truyền hình trực tuyến PTZ', 'Bộ chia / Ma trận chuyển mạch tín hiệu HDMI 4x4', 'Điện thoại bàn IP nội bộ phòng ban', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: []
       },
       {
@@ -1000,7 +986,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Sony 4K', 'Bục giảng đa phương tiện', 'Bảng trượt liên hoàn'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -1014,7 +1000,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu 4K', 'Bảng từ chống lóa', 'Hệ thống quạt thông gió'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: [{ start: 780, end: 1020, title: 'Tài Chính Doanh Nghiệp Nâng Cao', user: 'PGS. TS. Vũ Đình Hải • 13:00 - 17:00' }]
       },
       {
@@ -1028,7 +1014,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Cabin vệ sinh khép kín tiêu chuẩn', 'Gương đèn LED & lavabo tự động', 'Hệ thống sấy tay tự động'],
+        equipments: ['2x Quạt thông gió âm trần nối ống', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       }
     ],
@@ -1044,7 +1030,7 @@ export const CAMPUS_FLOORS = {
         category: 'lab',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=600&q=80',
-        equipments: ['60 máy trạm diễn tập Cyber Range SOC', 'Tường lửa cứng Fortinet thực hành', 'Màn hình giám sát trung tâm', 'Điều hòa 2 chiều'],
+        equipments: ['6x Bộ máy tính trạm thực hành sinh viên (PC + Màn 24")', 'Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', '2x Quạt thông gió âm trần nối ống', '2x Switch mạng 24 cổng Gigabit PoE'],
         occupiedAt: [{ start: 780, end: 1020, title: 'Thực Hành An Ninh Mạng & Kiểm Thử Xâm Nhập', user: 'TS. Hoàng Minh Quân • 13:00 - 17:00' }]
       },
       {
@@ -1058,7 +1044,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bàn làm việc Ban Chủ Nhiệm Khoa CNTT', 'Khu tiếp giảng viên & sinh viên', 'Tủ hồ sơ chuyên môn & máy in mạng'],
+        equipments: ['Thiết bị lưu trữ mạng tập trung học liệu (NAS)', 'Máy in Laser mạng LAN in đảo mặt tự động', 'Máy hủy tài liệu giấy vụn bảo mật', 'Điện thoại bàn IP nội bộ phòng ban', 'Cây nước nóng lạnh / Máy lọc nước uống công cộng', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP'],
         occupiedAt: [{ start: 450, end: 1020, title: 'Điều hành công tác đào tạo Khoa CNTT', user: 'Văn Phòng Khoa CNTT' }]
       },
       {
@@ -1072,7 +1058,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bàn làm việc cán bộ Khoa Kinh tế', 'Bàn họp bộ môn', 'Tủ lưu trữ đề tài nghiên cứu'],
+        equipments: ['Máy in Laser mạng LAN in đảo mặt tự động', 'Máy hủy tài liệu giấy vụn bảo mật', 'Điện thoại bàn IP nội bộ phòng ban', 'Cây nước nóng lạnh / Máy lọc nước uống công cộng', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: [{ start: 450, end: 1020, title: 'Trực hành chính Khoa Kinh Tế', user: 'Văn Phòng Khoa Kinh Tế' }]
       },
       {
@@ -1086,7 +1072,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Quầy một cửa giải quyết thủ tục học vụ', 'Kiosk lấy số thứ tự tự động', 'Màn hình hiển thị thông báo', 'Điều hòa Inverter'],
+        equipments: ['Hệ thống lấy số thứ tự & màn hình LED gọi quầy', 'Kiosk tra cứu thông tin cảm ứng 32" chân đứng', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Máy in Laser mạng LAN in đảo mặt tự động', 'Điện thoại bàn IP nội bộ phòng ban', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: [{ start: 450, end: 1020, title: 'Tiếp nhận hồ sơ học vụ một cửa', user: 'Tổ Công Tác Sinh Viên' }]
       },
       {
@@ -1100,7 +1086,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bàn tư vấn học tập & học bổng', 'Máy tính tra cứu hồ sơ sinh viên', 'Hệ thống quạt thông gió'],
+        equipments: ['Hệ thống lấy số thứ tự & màn hình LED gọi quầy', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Máy in Laser mạng LAN in đảo mặt tự động', 'Điện thoại bàn IP nội bộ phòng ban', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP'],
         occupiedAt: []
       },
       {
@@ -1114,7 +1100,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 2.0,
         image: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Màn hình LED hội thảo 130 inch', 'Dàn âm thanh hội nghị JBL & 6 micro cổ ngỗng', 'Bục phát biểu số tích hợp cảm ứng', 'Điều hòa trung tâm VRV'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Bàn trộn âm thanh Digital / Analog 16 kênh', 'Cục đẩy công suất âm thanh hội trường', 'Bộ chia / Ma trận chuyển mạch tín hiệu HDMI 4x4'],
         occupiedAt: [{ start: 810, end: 1050, title: 'Hội Thảo Khoa Học Công Nghệ & Đổi Mới Sáng Tạo', user: 'Viện Đào Tạo & Doanh Nghiệp Đối Tác' }]
       },
       {
@@ -1128,7 +1114,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Khu tư vấn cố vấn học tập', 'Bảng thông tin học kỳ', 'Điều hòa Inverter'],
+        equipments: ['Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Điện thoại bàn IP nội bộ phòng ban', 'Cây nước nóng lạnh / Máy lọc nước uống công cộng', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -1142,7 +1128,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Quầy thu học phí & thanh toán học bổng', 'Két sắt bảo mật chứng từ', 'Máy đếm tiền & máy in hóa đơn'],
+        equipments: ['Máy in Laser mạng LAN in đảo mặt tự động', 'Máy quét tài liệu hai mặt tốc độ cao (ADF)', 'Máy hủy tài liệu giấy vụn bảo mật', 'Bộ khóa từ & đầu đọc thẻ từ / vân tay / khuôn mặt', '2x Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Điện thoại bàn IP nội bộ phòng ban'],
         occupiedAt: [{ start: 480, end: 1020, title: 'Giải quyết học phí & chế độ chính sách SV', user: 'Phòng Tài Chính - Kế Toán' }]
       },
       {
@@ -1156,7 +1142,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bàn làm việc giảng viên Khoa Ngoại ngữ', 'Tủ quản lý học liệu quốc tế', 'Máy photocopy đa chức năng'],
+        equipments: ['Máy photocopy đa chức năng A3/A4 tốc độ cao', 'Máy in Laser mạng LAN in đảo mặt tự động', 'Điện thoại bàn IP nội bộ phòng ban', 'Cây nước nóng lạnh / Máy lọc nước uống công cộng', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: []
       },
       {
@@ -1170,7 +1156,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chấm thi trắc nghiệm tốc độ cao', 'Tủ niêm phong đề thi bảo mật', 'Camera giám sát lưu trữ 24/7'],
+        equipments: ['Máy in Laser mạng LAN in đảo mặt tự động', 'Máy quét tài liệu hai mặt tốc độ cao (ADF)', 'Máy hủy tài liệu giấy vụn bảo mật', 'Bộ khóa từ & đầu đọc thẻ từ / vân tay / khuôn mặt', '2x Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Điện thoại bàn IP nội bộ phòng ban'],
         occupiedAt: []
       },
       {
@@ -1184,7 +1170,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Cabin vệ sinh khép kín tiêu chuẩn', 'Lavabo cảm ứng & gương đèn LED', 'Hệ thống khử mùi tự động'],
+        equipments: ['2x Quạt thông gió âm trần nối ống', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       }
     ]
@@ -1207,7 +1193,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 1.8,
         image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Sofa lounge & bàn trà trò chuyện nhóm', 'Quầy nước tự phục vụ & tủ sách mở', 'Màn hình giải trí 75 inch', 'Hệ thống điều hòa âm trần Inverter'],
+        equipments: ['Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Loa kéo di động công suất lớn kèm 2 micro', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Cây nước nóng lạnh / Máy lọc nước uống công cộng', '2x Giá sách sắt thư viện 2 mặt 5 tầng sơn tĩnh điện'],
         occupiedAt: [{ start: 960, end: 1140, title: 'Giao lưu & trò chuyện sinh viên sau giờ học', user: 'Không Gian Sinh Viên Tự Quản • 16:00 - 19:00' }]
       },
       {
@@ -1221,7 +1207,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.2,
         image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu 4K Laser', 'Bàn ghế ghép nhóm linh hoạt', 'Hệ thống micro không dây kép', '2 điều hòa 24.000 BTU'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Loa kéo di động công suất lớn kèm 2 micro', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)'],
         occupiedAt: []
       },
       {
@@ -1235,7 +1221,7 @@ export const CAMPUS_FLOORS = {
         category: 'academic',
         flexSpan: 2.5,
         image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80',
-        equipments: ['180 bàn ghế giảng đường bậc thang tiêu âm', 'Màn hình LED P2.5 khổ rộng 200 inch & 2 máy chiếu phụ', 'Dàn âm thanh hội trường & micro cổ ngỗng', 'Điều hòa trung tâm VRV'],
+        equipments: ['2x Máy chiếu siêu gần giảng đường', '2x Màn chiếu điện tự động 120" (kèm remote)', '2x Cục đẩy công suất âm thanh hội trường', 'Bàn trộn âm thanh Digital / Analog 16 kênh', 'Hệ thống đèn sân khấu Par LED + Moving Head + Bàn DMX', 'Bộ chia / Ma trận chuyển mạch tín hiệu HDMI 4x4'],
         occupiedAt: [{ start: 450, end: 690, title: 'Chuyên Đề Liên Khoa & Bài Giảng Đại Cương Lớn', user: 'Khối Giảng Đường Trung Tâm • 07:30 - 11:30' }]
       },
       {
@@ -1249,7 +1235,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bàn họp bầu dục 20 ghế bọc da', 'Màn hình hội nghị trực tuyến 86 inch', 'Hệ thống micro đa hướng thu âm cuộc họp'],
+        equipments: ['Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Camera hội nghị truyền hình trực tuyến PTZ', 'Bộ chia / Ma trận chuyển mạch tín hiệu HDMI 4x4', 'Điện thoại bàn IP nội bộ phòng ban', 'Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao'],
         occupiedAt: []
       },
       {
@@ -1263,7 +1249,7 @@ export const CAMPUS_FLOORS = {
         category: 'admin',
         flexSpan: 1.6,
         image: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Module bàn làm việc cá nhân giảng viên', 'Tủ hồ sơ giáo án & máy photocopy tốc độ cao', 'Khu vực tiếp sinh viên & pha trà', '2 điều hòa Inverter'],
+        equipments: ['Máy photocopy đa chức năng A3/A4 tốc độ cao', 'Máy in Laser mạng LAN in đảo mặt tự động', 'Máy chấm công khuôn mặt & vân tay cán bộ', 'Điện thoại bàn IP nội bộ phòng ban', 'Cây nước nóng lạnh / Máy lọc nước uống công cộng', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP'],
         occupiedAt: [{ start: 450, end: 1020, title: 'Trực chuyên môn & chuẩn bị học liệu giảng dạy', user: 'Hội Đồng Giảng Viên' }]
       },
       {
@@ -1277,7 +1263,7 @@ export const CAMPUS_FLOORS = {
         category: 'lab',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Bàn nguội chế tác mô hình kiến trúc & mỹ thuật', 'Tủ dụng cụ thủ công, máy cắt laser mini & in 3D', 'Hệ thống hút bụi cục bộ & bồn rửa dụng cụ'],
+        equipments: ['2x Quạt thông gió âm trần nối ống', '2x Kệ sắt tải nặng Selective 4 tầng chứa thiết bị kho', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Camera IP Dome hồng ngoại 4MP ốp trần (có mic)', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng', 'Cụm đầu báo khói quang học, chuông & nút nhấn khẩn cấp'],
         occupiedAt: []
       },
       {
@@ -1291,7 +1277,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Cabin vệ sinh khép kín tiêu chuẩn', 'Gương đèn LED & lavabo tự động', 'Hệ thống sấy tay tự động'],
+        equipments: ['2x Quạt thông gió âm trần nối ống', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -1305,7 +1291,7 @@ export const CAMPUS_FLOORS = {
         category: 'lab',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Vách tiêu âm phòng thu chuẩn Broadcast', 'Micro thu âm Shure SM7B & bàn trộn Rodecaster', 'Hệ thống đèn Key Light & phông xanh E-learning'],
+        equipments: ['Bàn trộn âm thanh Digital / Analog 16 kênh', 'Hệ thống đèn sân khấu Par LED + Moving Head + Bàn DMX', 'Smart Tivi 4K 65" treo tường (kèm cáp HDMI truyền hình ảnh)', 'Bộ chia / Ma trận chuyển mạch tín hiệu HDMI 4x4', 'Camera hội nghị truyền hình trực tuyến PTZ', 'Bộ khóa từ & đầu đọc thẻ từ / vân tay / khuôn mặt'],
         occupiedAt: [{ start: 510, end: 690, title: 'Sản Xuất Học Liệu Số & Podcast Sinh Viên', user: 'Trung Tâm Truyền Thông Số • 08:30 - 11:30' }]
       }
     ],
@@ -1321,7 +1307,7 @@ export const CAMPUS_FLOORS = {
         category: 'event',
         flexSpan: 1.0,
         image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Máy chiếu Cinema Laser 4K HDR & màn bạc 180 inch', 'Hệ thống âm thanh vòm Dolby Atmos 7.1', '45 ghế rạp bọc nỉ tiêu âm bậc thang'],
+        equipments: ['Máy chiếu siêu gần giảng đường', 'Màn chiếu điện tự động 120" (kèm remote)', 'Cục đẩy công suất âm thanh hội trường', 'Bộ chia / Ma trận chuyển mạch tín hiệu HDMI 4x4', '2x Điều hòa âm trần Cassette 4 hướng thổi 4HP', 'Quạt thông gió âm trần nối ống'],
         occupiedAt: [{ start: 840, end: 1050, title: 'Chiếu phim tư liệu nghệ thuật & phân tích điện ảnh', user: 'CLB Điện Ảnh & Truyền Thông • 14:00 - 17:30' }]
       },
       {
@@ -1335,7 +1321,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Cabin vệ sinh khép kín tiêu chuẩn', 'Lavabo cảm ứng & gương đèn LED', 'Hệ thống khử mùi tự động'],
+        equipments: ['2x Quạt thông gió âm trần nối ống', 'Bộ đèn Panel LED 600x600 chiếu sáng phòng'],
         occupiedAt: []
       },
       {
@@ -1349,7 +1335,7 @@ export const CAMPUS_FLOORS = {
         category: 'utility',
         flexSpan: 0.8,
         image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Kệ thép chịu tải lưu trữ thiết bị sự kiện', 'Tủ chống ẩm bảo quản máy quay & âm thanh', 'Xe đẩy vận chuyển học cụ đa năng'],
+        equipments: ['Tủ điện phân phối tầng (DB) kèm công tơ đo đếm thông minh', 'Switch mạng 24 cổng Gigabit PoE', 'Tủ mạng Rack 27U đứng kèm PDU', '2x Kệ sắt tải nặng Selective 4 tầng chứa thiết bị kho', 'Bộ khóa từ & đầu đọc thẻ từ / vân tay / khuôn mặt', 'Quạt thông gió âm trần nối ống'],
         occupiedAt: []
       },
       {
@@ -1363,7 +1349,7 @@ export const CAMPUS_FLOORS = {
         category: 'public_service',
         flexSpan: 3.0,
         image: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80',
-        equipments: ['Hệ thống lan can kính & thép an toàn tiêu chuẩn', 'Ghế băng gỗ ngoài trời & bồn cây cảnh quan', 'Đèn chiếu sáng cảnh quan ban công LED chống nước'],
+        equipments: ['Màn hình quảng cáo & thông báo điện tử Standee 55"', '2x Camera IP thân trụ hồng ngoại xa 40m hành lang', '2x Loa âm trần thông báo hành lang & thư viện', 'Bộ phát Wi-Fi 6 ốp trần chịu tải cao', 'Cây nước nóng lạnh / Máy lọc nước uống công cộng', '2x Đèn chiếu sáng sự cố 2 mắt & Đèn chỉ dẫn EXIT'],
         occupiedAt: []
       }
     ]

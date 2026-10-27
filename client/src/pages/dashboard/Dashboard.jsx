@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useOptionalToast } from '../../context/ToastContext';
 import { isSameUser } from '../../config/navigation';
 import { Icons } from '../../components/common/SvgIcons';
 import { FloorPlan2D } from '../../components/common/FloorPlan2D';
-import { CAMPUS_FLOORS, ROOM_CATEGORIES } from '../../mock/campusBuildingData';
+import { CAMPUS_FLOORS } from '../../mock/campusBuildingData';
 import { equipmentApi, movementApi, repairApi, disposalApi, auditApi, facilityApi } from '../../lib/api';
 import { DashboardAnalytics } from './DashboardAnalytics';
-import { buildRoomPodIndex, getRoomPod, getPodStatus } from '../../components/common/roomPod';
-import { resolveRoomEquipments, resolveRoomStatus, summarizeRoomEquipment } from './roomPanel';
+import { buildRoomPodIndex, getRoomPod } from '../../components/common/roomPod';
+import { resolveRoomEquipments, resolveRoomProfile, resolveRoomStatus, summarizeRoomEquipment } from './roomPanel';
 import { Button, Card, KPI, StatusBadge, EmptyState } from '../../components/ui/Primitives';
 import { RoomDetailModal } from '../../components/ui/RoomDetailModal';
 
@@ -16,6 +17,7 @@ import { RoomDetailModal } from '../../components/ui/RoomDetailModal';
  */
 export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
   const { currentUser, currentRoleKey } = useAuth();
+  const optionalToast = useOptionalToast();
 
   const role = currentUser?.role || currentRoleKey;
   const isAdmin = role === 'admin';
@@ -61,11 +63,14 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
   // Classroom Floor Plan State
   const [selectedFloor, setSelectedFloor] = useState(1);
 
-  // Live CAD data (GET /facilities/cad-canvas) for the selected floor -> room pods (UC-2.7)
+  // Live CAD data (GET /facilities/cad-canvas) for the selected floor -> room pods & cross-floor alerts
   const [cadRooms, setCadRooms] = useState([]);
+  const [floorAlerts, setFloorAlerts] = useState({});
   const [cadRefreshKey, setCadRefreshKey] = useState(0);
   const [cadError, setCadError] = useState('');
   const [cadLoading, setCadLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState('');
   const roomPods = useMemo(() => buildRoomPodIndex(cadRooms), [cadRooms]);
 
   // Pre-select first room of selected floor by default
@@ -73,6 +78,15 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
     return CAMPUS_FLOORS[1]?.topRooms?.[0] || null;
   });
   const [detailRoomCode, setDetailRoomCode] = useState(null);
+
+  const userIdentity = useMemo(
+    () => ({
+      _id: currentUser?._id,
+      code: currentUser?.code,
+      email: currentUser?.email
+    }),
+    [currentUser?._id, currentUser?.code, currentUser?.email]
+  );
 
   const fetchDashboardData = useCallback(async (isInitialMount = false) => {
     setLoading(true);
@@ -92,18 +106,24 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
             eqPromise,
             repairApi.list()
           ]);
-          const eqList = eqRes?.items || eqRes?.equipments || [];
-          setEquipmentsList(eqList);
+          setEquipmentsList(eqRes?.items || eqRes?.equipments || []);
           const allRepairs = repRes.repairs || repRes.data || [];
-          
-          const myTix = allRepairs.filter(r => isSameUser(r.reported_by, currentUser));
-          // An empty personal history must not fall back to other users' tickets.
-          const displayTix = myTix;
-          setLecturerTickets(displayTix);
 
-          const repairing = myTix.filter(r => ['reported', 'assigned', 'in_progress'].includes(r.status)).length;
-          const pendingFb = myTix.filter(r => ['closed', 'repaired', 'resolved'].includes(r.status) && (!r.feedback_rating || r.feedback_rating === 0));
-          const completed = myTix.filter(r => ['closed', 'repaired', 'resolved'].includes(r.status)).length;
+          // An empty personal history must not fall back to other users' tickets.
+          const myTix = allRepairs.filter((r) => isSameUser(r.reported_by, userIdentity));
+          setLecturerTickets(myTix);
+
+          let repairing = 0;
+          let completed = 0;
+          const pendingFb = [];
+          for (const r of myTix) {
+            if (['reported', 'assigned', 'in_progress'].includes(r.status)) {
+              repairing += 1;
+            } else if (['closed', 'repaired', 'resolved'].includes(r.status)) {
+              completed += 1;
+              if (!r.feedback_rating || r.feedback_rating === 0) pendingFb.push(r);
+            }
+          }
 
           setLecturerStats({
             totalTickets: myTix.length,
@@ -111,12 +131,7 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
             pendingFeedbackTickets: pendingFb.length,
             completedTickets: completed
           });
-
-          if (pendingFb.length > 0) {
-            setFeedbackTicket(pendingFb[0]);
-          } else {
-            setFeedbackTicket(null);
-          }
+          setFeedbackTicket(pendingFb[0] || null);
         } catch (e) {
           console.warn('Lecturer tickets fetch error:', e.message);
         }
@@ -127,23 +142,22 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
             repairApi.list(),
             movementApi.list()
           ]);
-          const eqList = eqRes?.items || eqRes?.equipments || [];
-          setEquipmentsList(eqList);
+          setEquipmentsList(eqRes?.items || eqRes?.equipments || []);
           const allRepairs = repRes.repairs || repRes.data || [];
-          const allMovs = (movRes.movements || movRes.data || []).filter(movement =>
+          const allMovs = (movRes.movements || movRes.data || []).filter((movement) =>
             ['approved', 'pending'].includes(movement.status) &&
-            (!movement.assigned_to || isSameUser(movement.assigned_to, currentUser))
+            (!movement.assigned_to || isSameUser(movement.assigned_to, userIdentity))
           );
 
-          const assigned = allRepairs.filter(r => isSameUser(r.assigned_to, currentUser));
+          const assigned = allRepairs.filter((r) => isSameUser(r.assigned_to, userIdentity));
 
           setTechTasks(assigned);
           setTechMovements(allMovs);
           setTechStats({
             assignedTasks: assigned.length,
-            inProgressTasks: assigned.filter(r => r.status === 'in_progress').length,
+            inProgressTasks: assigned.filter((r) => r.status === 'in_progress').length,
             pendingMovements: allMovs.length,
-            resolvedTasks: assigned.filter(r => ['closed', 'repaired', 'resolved'].includes(r.status)).length
+            resolvedTasks: assigned.filter((r) => ['closed', 'repaired', 'resolved'].includes(r.status)).length
           });
         } catch (e) {
           console.warn('Tech data fetch error:', e.message);
@@ -155,12 +169,11 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
             repairApi.list(),
             movementApi.list()
           ]);
-          const eqList = eqRes?.items || eqRes?.equipments || [];
-          setEquipmentsList(eqList);
+          setEquipmentsList(eqRes?.items || eqRes?.equipments || []);
           const allRepairs = repRes.repairs || repRes.data || [];
           const allMovs = movRes.movements || movRes.data || [];
 
-          setFmTickets(allRepairs.filter(r => r.status === 'reported'));
+          setFmTickets(allRepairs.filter((r) => r.status === 'reported'));
           setFmMovs(allMovs.slice(0, 5));
         } catch (e) {
           console.warn('FM data fetch error:', e.message);
@@ -173,13 +186,12 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
             auditApi.getLogs({ limit: 6 }),
             auditApi.verifyChain()
           ]);
-          const eqList = eqRes?.items || eqRes?.equipments || [];
-          setEquipmentsList(eqList);
+          setEquipmentsList(eqRes?.items || eqRes?.equipments || []);
           const allDisposals = dispRes.proposals || dispRes.data || [];
 
-          setAdminDisposals(allDisposals.filter(d => d.status === 'hc_approved'));
+          setAdminDisposals(allDisposals.filter((d) => d.status === 'hc_approved'));
           setRecentAudits(audRes.logs || audRes.data || []);
-          if (chainRes && chainRes.verification) {
+          if (chainRes?.verification) {
             setAuditChainValid(chainRes.verification.isValid);
           }
         } catch (e) {
@@ -189,7 +201,7 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
     } finally {
       setLoading(false);
     }
-  }, [isLecturer, isTech, isFM, isAdmin, currentUser?._id, currentUser?.code, currentUser?.email]);
+  }, [isLecturer, isTech, isFM, isAdmin, userIdentity]);
 
   const handleQuickRate = async (ticketId) => {
     if (!ticketId) return;
@@ -212,27 +224,64 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
     fetchDashboardData(true);
   }, [fetchDashboardData]);
 
-  // Reload the pods whenever the floor changes or the dashboard is refreshed.
-  useEffect(() => {
-    let ignore = false;
+  const loadCadFloor = useCallback(async (floorNum, { clearBeforeLoad = false, isCancelled = () => false } = {}) => {
     setCadLoading(true);
-    setCadRooms([]);
+    if (clearBeforeLoad) setCadRooms([]);
     setCadError('');
-    facilityApi.getCadCanvas('A1', selectedFloor)
-      .then((res) => {
-        if (ignore) return;
-        setCadRooms(res.rooms || []);
-        setCadError('');
-      })
-      .catch((e) => {
-        console.warn('CAD canvas fetch error:', e.message);
-        if (ignore) return;
+    try {
+      const res = await facilityApi.getCadCanvas('A1', floorNum);
+      if (isCancelled()) return { ok: true };
+      setCadRooms(res?.rooms || []);
+      if (res?.floorAlerts) setFloorAlerts(res.floorAlerts);
+      setCadError('');
+      return { ok: true };
+    } catch (e) {
+      console.warn('CAD canvas fetch error:', e.message);
+      if (!isCancelled()) {
         setCadRooms([]);
         setCadError(e.message || 'Không tải được dữ liệu thiết bị trực tiếp.');
-      })
-      .finally(() => { if (!ignore) setCadLoading(false); });
+      }
+      return { ok: false, message: e.message };
+    } finally {
+      if (!isCancelled()) setCadLoading(false);
+    }
+  }, []);
+
+  // Reload the pods whenever the floor changes.
+  useEffect(() => {
+    let ignore = false;
+    loadCadFloor(selectedFloor, { clearBeforeLoad: true, isCancelled: () => ignore });
     return () => { ignore = true; };
-  }, [selectedFloor, cadRefreshKey]);
+  }, [selectedFloor, loadCadFloor]);
+
+  const handleManualRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    setCadRefreshKey((key) => key + 1);
+    try {
+      const [, cadResult] = await Promise.all([
+        fetchDashboardData(true),
+        loadCadFloor(selectedFloor),
+        new Promise((resolve) => setTimeout(resolve, 260))
+      ]);
+      const nowText = new Date().toLocaleTimeString('vi-VN', { hour12: false });
+      setLastSyncedAt(nowText);
+      if (cadResult?.ok !== false) {
+        optionalToast?.toast?.success(
+          `Đã đồng bộ sơ đồ 5 tầng và trạng thái báo cáo sự cố lúc ${nowText}.`,
+          'Cập Nhật Thành Công',
+          2400
+        );
+      } else {
+        optionalToast?.toast?.error(
+          cadResult.message || 'Không thể tải dữ liệu mặt bằng mới nhất.',
+          'Cập Nhật Chưa Hoàn Tất'
+        );
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshing, fetchDashboardData, loadCadFloor, selectedFloor, optionalToast]);
 
   // Synchronize default selected room when switching floors
   const handleFloorChange = (floorNum) => {
@@ -243,23 +292,21 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
     }
   };
 
-  const getRoomSimulatedStatus = useCallback((room) => {
-    const pod = getRoomPod(roomPods, room?.code);
-    const status = pod?.effectiveStatus || 'unknown';
-    const meta = getPodStatus(status);
-    return { status, ...meta, bg: 'transparent', border: meta.color };
-  }, [roomPods]);
-
-  // Live room (database) wins over the equipment list and the architectural sample data
+  // Live room (database) wins over the equipment list and merges cleanly with architectural room metadata
   const selectedPod = selectedRoom ? getRoomPod(roomPods, selectedRoom.code) : undefined;
-  const selectedRoomInfo = selectedPod || selectedRoom;
-  const roomCapacity = selectedPod?.capacity ?? selectedRoom?.capacity;
-  const roomArea = selectedPod?.area ?? selectedRoom?.area;
+  const roomProfile = useMemo(
+    () => resolveRoomProfile(selectedRoom, selectedPod, selectedFloor),
+    [selectedRoom, selectedPod, selectedFloor]
+  );
   const roomEquipmentView = useMemo(
     () => resolveRoomEquipments(selectedRoom, selectedPod, equipmentsList),
     [selectedRoom, selectedPod, equipmentsList]
   );
   const roomEquipments = roomEquipmentView.items;
+  const brokenEquipCount = useMemo(
+    () => roomEquipments.filter((eq) => eq.status === 'broken' || eq.status === 'repairing').length,
+    [roomEquipments]
+  );
   const roomStatusView = resolveRoomStatus(selectedRoom, selectedPod);
 
   return (
@@ -282,18 +329,20 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
             onChangeFloor={handleFloorChange}
             selectedRoom={selectedRoom}
             onSelectRoom={(room) => setSelectedRoom(room)}
-            getRoomSimulatedStatus={getRoomSimulatedStatus}
             roomPods={roomPods}
+            floorAlerts={floorAlerts}
             headerActions={
               <Button
+                id="dashboard-refresh-btn"
                 size="sm"
                 variant="secondary"
-                icon={Icons.Clock}
-                loading={loading}
-                onClick={() => fetchDashboardData()}
+                icon={Icons.RefreshCw}
+                loading={refreshing || loading}
+                onClick={handleManualRefresh}
+                title={lastSyncedAt ? `Đã đồng bộ lần cuối lúc ${lastSyncedAt}` : 'Làm mới dữ liệu mặt bằng & báo cáo sự cố'}
                 style={{ height: '27px', padding: '0 9px', fontSize: '11px' }}
               >
-                Cập Nhật
+                {refreshing ? 'Đang tải...' : 'Cập Nhật'}
               </Button>
             }
           />
@@ -302,19 +351,30 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
         {/* Right Column: Room Detail & Equipment Inspector Panel */}
         <Card
           className="ruo-card-compact"
-          title={selectedRoomInfo?.name || 'Thông Tin Phòng Học'}
-          subtitle={selectedRoom ? `Tầng ${selectedFloor} • ${ROOM_CATEGORIES[selectedRoom.category]?.name || 'Phòng học'}` : "Chọn một phòng trên sơ đồ bên trái"}
+          title={roomProfile?.name || 'Thông Tin Phòng Học'}
+          subtitle={roomProfile ? `Tòa ${roomProfile.building} • Tầng ${roomProfile.floor} • ${roomProfile.zoneLabel}` : 'Chọn một phòng trên sơ đồ bên trái'}
           action={
-            selectedRoom && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '11px', color: 'var(--blueprint-400)', fontFamily: 'var(--font-mono)' }}>
-                  TẦNG {selectedFloor} • {selectedRoom.code?.replace(/^A1-/, '')}
+            roomProfile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: 'var(--blueprint-400)',
+                    fontFamily: 'var(--font-mono)',
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: '6px',
+                    padding: '3px 7px'
+                  }}
+                >
+                  {roomProfile.code}
                 </span>
                 {selectedPod && (
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => setDetailRoomCode(selectedRoom.code)}
+                    onClick={() => setDetailRoomCode(roomProfile.code)}
                   >
                     Chi Tiết
                   </Button>
@@ -323,49 +383,95 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
             )
           }
         >
-          {selectedRoom ? (
-            <div key={selectedRoom.code || selectedRoom.id} className="ruo-view-enter" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Room Top Specs Grid */}
+          {selectedRoom && roomProfile ? (
+            <div key={roomProfile.code || selectedRoom.id} className="ruo-view-enter" style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
+              {/* Room Primary Function Banner (Moved from 2D CAD Map) */}
+              <div
+                style={{
+                  background: 'var(--cad-room-selected-bg, rgba(242, 101, 34, 0.06))',
+                  border: '1px solid var(--cad-room-border, rgba(242, 101, 34, 0.24))',
+                  borderLeft: '3px solid var(--cad-accent, #EA580C)',
+                  borderRadius: '8px',
+                  padding: '8px 11px'
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'var(--cad-accent, #EA580C)',
+                    display: 'block',
+                    marginBottom: '2px'
+                  }}
+                >
+                  Chức năng sử dụng
+                </span>
+                <strong style={{ fontSize: '12.5px', color: 'var(--ink-primary)', display: 'block', lineHeight: 1.35 }}>
+                  {roomProfile.functionLabel}
+                </strong>
+              </div>
+
+              {/* Room Complete Specs Grid */}
               <div
                 style={{
                   background: 'var(--surface-2)',
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-default)',
-                  padding: '12px 14px',
+                  padding: '10px 12px',
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: '10px',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: '8px 12px',
                   fontSize: '12px'
                 }}
               >
                 <div>
-                  <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Phân loại:</span>
-                  <strong style={{ color: 'var(--ink-primary)' }}>
-                    {{ lecture: 'Phòng học', lab: 'Phòng thực hành', office: 'Văn phòng', warehouse: 'Kho' }[selectedPod?.room_type] || ROOM_CATEGORIES[selectedRoom.category]?.name || 'Chưa rõ'}
+                  <span style={{ color: 'var(--ink-muted)', fontSize: '10.5px', display: 'block' }}>Mã phòng:</span>
+                  <strong style={{ color: 'var(--ink-primary)', fontFamily: 'var(--font-mono)' }}>
+                    {roomProfile.code}
                   </strong>
                 </div>
                 <div>
-                  <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Trạng thái:</span>
-                  <span style={{ color: roomStatusView.color, fontWeight: 700 }}>
-                    ● {roomStatusView.label}
-                  </span>
+                  <span style={{ color: 'var(--ink-muted)', fontSize: '10.5px', display: 'block' }}>Trạng thái:</span>
+                  {selectedPod?.openReportCount > 0 ? (
+                    <span style={{ color: '#E5484D', fontWeight: 700 }}>
+                      ● {selectedPod.openReportCount} báo cáo sự cố
+                    </span>
+                  ) : (
+                    <span style={{ color: roomStatusView.color, fontWeight: 700 }}>
+                      ● {roomStatusView.label}
+                    </span>
+                  )}
                 </div>
                 <div>
-                  <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Sức chứa:</span>
+                  <span style={{ color: 'var(--ink-muted)', fontSize: '10.5px', display: 'block' }}>Phân loại:</span>
                   <strong style={{ color: 'var(--ink-primary)' }}>
-                    {roomCapacity != null ? `${roomCapacity} chỗ` : 'Chưa rõ'}
+                    {roomProfile.typeLabel}
                   </strong>
                 </div>
                 <div>
-                  <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Diện tích sàn:</span>
+                  <span style={{ color: 'var(--ink-muted)', fontSize: '10.5px', display: 'block' }}>Vị trí mặt bằng:</span>
                   <strong style={{ color: 'var(--ink-primary)' }}>
-                    {roomArea != null ? `${roomArea} m²` : 'Chưa rõ'}
+                    {roomProfile.zoneLabel}
+                  </strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--ink-muted)', fontSize: '10.5px', display: 'block' }}>Sức chứa:</span>
+                  <strong style={{ color: 'var(--ink-primary)' }}>
+                    {roomProfile.capacityLabel}
+                  </strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--ink-muted)', fontSize: '10.5px', display: 'block' }}>Diện tích sàn:</span>
+                  <strong style={{ color: 'var(--ink-primary)' }}>
+                    {roomProfile.areaLabel}
                   </strong>
                 </div>
               </div>
 
               {/* Quick Operational Action Buttons */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isLecturer ? '1fr' : 'repeat(2, 1fr)', gap: '8px' }}>
                 {isLecturer ? (
                   <>
                     <Button
@@ -442,23 +548,38 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
 
               {/* Equipment Inventory in This Room */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Thiết Bị Tại Phòng ({roomEquipments.length})
                   </span>
-                  <span style={{ fontSize: '10.5px', color: 'var(--blueprint-400)', fontFamily: 'var(--font-mono)' }}>
-                    TẦNG {selectedFloor}
-                  </span>
+                  {roomEquipmentView.source === 'live' && (
+                    <span
+                      style={{
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        padding: '2px 7px',
+                        borderRadius: '999px',
+                        color: (selectedPod?.openReportCount > 0 || brokenEquipCount > 0) ? '#E5484D' : '#10B981',
+                        background: (selectedPod?.openReportCount > 0 || brokenEquipCount > 0) ? 'rgba(229, 72, 77, 0.12)' : 'rgba(16, 185, 129, 0.12)'
+                      }}
+                    >
+                      {selectedPod?.openReportCount > 0
+                        ? `${selectedPod.openReportCount} báo cáo đang mở`
+                        : brokenEquipCount > 0
+                          ? `${brokenEquipCount} cần xử lý`
+                          : 'Ổn định'}
+                    </span>
+                  )}
                 </div>
 
                 {roomEquipmentView.source === 'live' && (
-                  <div id="room-equipment-summary" style={{ marginBottom: '8px', fontSize: '11.5px', color: 'var(--ink-secondary)' }}>
+                  <div id="room-equipment-summary" style={{ marginBottom: '6px', fontSize: '11.5px', color: 'var(--ink-secondary)' }}>
                     {summarizeRoomEquipment(roomEquipments)} • dữ liệu trực tiếp
                   </div>
                 )}
                 {cadError && <p role="alert">Không tải được dữ liệu phòng: {cadError}</p>}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: 'calc(100dvh - 420px)', minHeight: '110px', overflowY: 'auto', paddingRight: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: 'calc(100dvh - 510px)', minHeight: '78px', overflowY: 'auto', paddingRight: '4px' }}>
                   {roomEquipments.map((eq, idx) => (
                     <div
                       key={eq._id || idx}
@@ -568,8 +689,8 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
             <>
               <KPI
                 label="Phòng Học Đang Xem"
-                value={selectedRoom ? (selectedRoom.name || `Phòng ${selectedRoom.code?.replace(/^A1-/, '')}`) : 'Chưa Chọn'}
-                subtext={`Tầng ${selectedFloor} • ${selectedRoom ? ROOM_CATEGORIES[selectedRoom.category]?.name || 'Giảng đường' : 'Chọn trên sơ đồ'}`}
+                value={roomProfile ? roomProfile.name : 'Chưa Chọn'}
+                subtext={roomProfile ? `Tầng ${roomProfile.floor} • ${roomProfile.functionLabel}` : 'Chọn trên sơ đồ'}
                 icon={Icons.Room}
                 color="#10B981"
               />

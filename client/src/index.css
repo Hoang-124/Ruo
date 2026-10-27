@@ -8,6 +8,11 @@
    Strict Native SVG Only • Asymmetric Architecture • Zero Generic Slop
    ========================================================================== */
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 :root,
 [data-theme="light"] {
   /* High-Contrast Warm Architectural Sandstone & Solar Orange Ledger (Default) */

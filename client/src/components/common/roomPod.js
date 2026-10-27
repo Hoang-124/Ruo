@@ -66,6 +66,38 @@ export const buildRoomPodIndex = (rooms = []) =>
       ])
   );
 
+/**
+ * Returns alert dot metadata ONLY when a room has an active incident report,
+ * broken/repairing equipment, or scheduled maintenance. Normal rooms return null (no dot).
+ */
+export const getRoomAlertDot = (pod) => {
+  if (!pod) return null;
+  const openReportCount = pod.openReportCount ?? 0;
+  const brokenCount = pod.brokenCount ?? 0;
+  const hasReportOrBroken = openReportCount > 0 || brokenCount > 0;
+  const isMaintenance = pod.status === 'maintenance' || (!hasReportOrBroken && pod.effectiveStatus === 'maintenance');
+  const severity = pod.alertSeverity ?? (hasReportOrBroken ? 'report' : (isMaintenance ? 'maintenance' : null));
+  const hasAlert = pod.hasAlert ?? Boolean(severity);
+
+  if (!hasAlert) return null;
+  if (severity === 'report') {
+    return {
+      color: POD_BROKEN_COLOR,
+      ring: 'rgba(229, 72, 77, 0.24)',
+      severity: 'report',
+      label: openReportCount > 0
+        ? `${openReportCount} báo cáo sự cố`
+        : `${brokenCount} thiết bị hỏng`
+    };
+  }
+  return {
+    color: '#F59E0B',
+    ring: 'rgba(245, 158, 11, 0.24)',
+    severity: 'maintenance',
+    label: 'Đang bảo trì'
+  };
+};
+
 const estimateChipWidth = (text) => Math.ceil(text.length * POD_CHAR_WIDTH + POD_CHIP_PADDING);
 
 /**

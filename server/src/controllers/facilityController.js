@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Building, Floor, Room } from '../models/Room.js';
+import { Building, Room } from '../models/Room.js';
 import { Equipment } from '../models/Equipment.js';
 import { Repair } from '../models/Repair.js';
 import { PreventiveMaintenance } from '../models/PreventiveMaintenance.js';
@@ -49,7 +49,7 @@ export const getBuildings = async (req, res) => {
       success: true,
       buildings
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ success: false, message: 'Lỗi khi tải danh sách tòa nhà.' });
   }
 };
@@ -63,13 +63,15 @@ export const getAllRooms = async (req, res) => {
       return res.status(400).json({ success: false, message: Object.values(errors)[0], errors });
     }
 
-    const total = await Room.countDocuments(filter);
-
     let cursor = Room.find(filter)
       .populate('required_equipment.category_id', 'code name')
       .sort({ code: 1 });
     if (paginated) cursor = cursor.skip((page - 1) * limit).limit(limit);
-    const rooms = await cursor;
+
+    const [total, rooms] = await Promise.all([
+      Room.countDocuments(filter),
+      cursor
+    ]);
 
     res.json({
       success: true,
@@ -79,7 +81,7 @@ export const getAllRooms = async (req, res) => {
       totalPages: paginated ? Math.max(1, Math.ceil(total / limit)) : 1,
       rooms
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ success: false, message: 'Lỗi khi tải danh sách phòng.' });
   }
 };
@@ -247,7 +249,7 @@ export const deactivateRoom = async (req, res) => {
       message: `Đã ngừng sử dụng phòng ${room.code}.`,
       room
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ success: false, message: 'Không thể ngừng sử dụng phòng.' });
   }
 };
@@ -302,12 +304,12 @@ export const updateRoomStatus = async (req, res) => {
       previousStatus,
       room
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ success: false, message: 'Không thể cập nhật trạng thái phòng.' });
   }
 };
 
-// @desc    Get rooms by building and floor for CAD Canvas
+// @desc    Get rooms by building and floor for CAD Canvas (plus building-wide floor alert dots)
 // @route   GET /api/facilities/cad-canvas
 export const getCadCanvasRooms = async (req, res) => {
   try {
@@ -317,35 +319,118 @@ export const getCadCanvasRooms = async (req, res) => {
     }
     const { buildingCode, floorNumber } = query;
 
-    const rooms = await Room.find({ building: buildingCode, floor: floorNumber });
-    const roomIds = rooms.map(r => r._id);
+    const allBuildingRooms = await Room.find({ building: buildingCode }).lean();
+    const allRoomIds = allBuildingRooms.map((r) => r._id);
 
-    // Group equipments count by room
-    const equipments = await Equipment.find({ 
-      room_id: { $in: roomIds }, 
-      status: { $ne: EQUIPMENT_STATUSES.DISPOSED } 
-    }).select('code name status room_id');
+    // Group active equipments across the building so we can compute both the selected floor's
+    // room details AND per-floor alert dots across all 5 floors in one lean query pass.
+    const equipments = allRoomIds.length
+      ? await Equipment.find({
+          room_id: { $in: allRoomIds },
+          status: { $ne: EQUIPMENT_STATUSES.DISPOSED }
+        }).select('code name status room_id').lean()
+      : [];
 
     const eqMap = new Map();
-    equipments.forEach(eq => {
+    const eqRoomMap = new Map();
+    const eqIds = [];
+    for (const eq of equipments) {
       const rId = eq.room_id ? eq.room_id.toString() : '';
-      if (!eqMap.has(rId)) eqMap.set(rId, []);
-      eqMap.get(rId).push(eq);
+      eqIds.push(eq._id);
+      eqRoomMap.set(eq._id.toString(), rId);
+      if (!rId) continue;
+      let list = eqMap.get(rId);
+      if (!list) {
+        list = [];
+        eqMap.set(rId, list);
+      }
+      list.push(eq);
+    }
+
+    // Open incident reports (reported / assigned / in_progress) linked by room_id or equipment_id
+    const openRepairs = (allRoomIds.length || eqIds.length)
+      ? await Repair.find({
+          status: { $in: OPEN_REPAIR_STATUSES },
+          $or: [
+            { room_id: { $in: allRoomIds } },
+            { equipment_id: { $in: eqIds } }
+          ]
+        }).select('ticket_code status damage_level room_id equipment_id').lean()
+      : [];
+
+    const repairCountByRoom = new Map();
+    for (const rep of openRepairs) {
+      const rId = rep.room_id
+        ? rep.room_id.toString()
+        : (rep.equipment_id ? eqRoomMap.get(rep.equipment_id.toString()) || '' : '');
+      if (rId) {
+        repairCountByRoom.set(rId, (repairCountByRoom.get(rId) || 0) + 1);
+      }
+    }
+
+    const createEmptyFloorAlert = () => ({
+      hasAlert: false,
+      alertRoomCount: 0,
+      openReportCount: 0,
+      brokenCount: 0,
+      maintenanceRoomCount: 0,
+      severity: null
     });
 
-    const enrichedRooms = rooms.map(room => ({
-      ...room.toObject(),
-      ...summarizeCadRoom(room, eqMap.get(room._id.toString()) || [])
-    }));
+    const floorAlerts = {
+      1: createEmptyFloorAlert(),
+      2: createEmptyFloorAlert(),
+      3: createEmptyFloorAlert(),
+      4: createEmptyFloorAlert(),
+      5: createEmptyFloorAlert()
+    };
+
+    const targetFloor = Number(floorNumber);
+    const enrichedRooms = [];
+    for (const room of allBuildingRooms) {
+      const rId = room._id.toString();
+      const summary = summarizeCadRoom(room, eqMap.get(rId) || []);
+      const openReportCount = repairCountByRoom.get(rId) || 0;
+      const hasReportOrBroken = openReportCount > 0 || summary.brokenCount > 0;
+      const isMaintenance = room.status === ROOM_STATUSES.MAINTENANCE;
+      const hasAlert = hasReportOrBroken || isMaintenance;
+      const alertSeverity = hasReportOrBroken ? 'report' : (isMaintenance ? 'maintenance' : null);
+
+      const fl = Number(room.floor) || 1;
+      if (!floorAlerts[fl]) floorAlerts[fl] = createEmptyFloorAlert();
+      if (hasAlert) {
+        floorAlerts[fl].hasAlert = true;
+        floorAlerts[fl].alertRoomCount += 1;
+        floorAlerts[fl].openReportCount += openReportCount;
+        floorAlerts[fl].brokenCount += summary.brokenCount;
+        if (isMaintenance) floorAlerts[fl].maintenanceRoomCount += 1;
+        if (hasReportOrBroken) {
+          floorAlerts[fl].severity = 'report';
+        } else if (!floorAlerts[fl].severity) {
+          floorAlerts[fl].severity = 'maintenance';
+        }
+      }
+
+      if (fl === targetFloor) {
+        enrichedRooms.push({
+          ...room,
+          ...summary,
+          openReportCount,
+          hasAlert,
+          alertSeverity
+        });
+      }
+    }
 
     res.json({
       success: true,
       buildingCode,
-      floorNumber: Number(floorNumber),
+      floorNumber: targetFloor,
       totalRooms: enrichedRooms.length,
-      rooms: enrichedRooms
+      rooms: enrichedRooms,
+      floorAlerts
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ success: false, message: 'Lỗi khi tải dữ liệu CAD mặt bằng phòng.' });
   }
 };
@@ -368,27 +453,28 @@ export const getRoomByCode = async (req, res) => {
       .populate('supplier_id', 'code name')
       .sort({ code: 1 });
     const equipmentIds = equipments.map((eq) => eq._id);
-    const openRepairs = equipmentIds.length ? await Repair.countDocuments({
-      equipment_id: { $in: equipmentIds }, status: { $in: OPEN_REPAIR_STATUSES }
-    }) : 0;
 
-    // Maintenance history: repair tickets of the equipment currently in the room
-    const maintenanceHistory = equipmentIds.length === 0 ? [] : await Repair.find({ equipment_id: { $in: equipmentIds } })
-      .sort({ reported_at: -1 })
-      .limit(HISTORY_LIMIT)
-      .populate('equipment_id', 'code name serial_number')
-      .populate('assigned_to', 'full_name code');
-
-    // Movement history: every transfer / replacement / repair move into or out of this room
-    const movementHistory = await EquipmentMovement.find({
-      $or: [{ from_room_id: room._id }, { to_room_id: room._id }]
-    })
-      .sort({ created_at: -1 })
-      .limit(HISTORY_LIMIT)
-      .populate('equipment_id', 'code name serial_number')
-      .populate('from_room_id', 'code name')
-      .populate('to_room_id', 'code name')
-      .populate('ordered_by', 'full_name code');
+    const [openRepairs, maintenanceHistory, movementHistory] = await Promise.all([
+      equipmentIds.length
+        ? Repair.countDocuments({ equipment_id: { $in: equipmentIds }, status: { $in: OPEN_REPAIR_STATUSES } })
+        : 0,
+      equipmentIds.length
+        ? Repair.find({ equipment_id: { $in: equipmentIds } })
+            .sort({ reported_at: -1 })
+            .limit(HISTORY_LIMIT)
+            .populate('equipment_id', 'code name serial_number')
+            .populate('assigned_to', 'full_name code')
+        : [],
+      EquipmentMovement.find({
+        $or: [{ from_room_id: room._id }, { to_room_id: room._id }]
+      })
+        .sort({ created_at: -1 })
+        .limit(HISTORY_LIMIT)
+        .populate('equipment_id', 'code name serial_number')
+        .populate('from_room_id', 'code name')
+        .populate('to_room_id', 'code name')
+        .populate('ordered_by', 'full_name code')
+    ]);
 
     res.json({
       success: true,
@@ -399,7 +485,7 @@ export const getRoomByCode = async (req, res) => {
       historyLimit: HISTORY_LIMIT,
       summary: { ...summarizeRoomEquipment(equipments, maintenanceHistory), openRepairs }
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ success: false, message: 'Lỗi khi tải thông tin chi tiết phòng.' });
   }
 };
@@ -441,43 +527,57 @@ export const getRoomMaintenanceHistory = async (req, res) => {
   }
 };
 
+const computeRoomQuotaShortages = (room, countByCategory = {}) => {
+  const shortages = (room.required_equipment || []).map((reqItem) => {
+    const catId = reqItem.category_id ? (reqItem.category_id._id || reqItem.category_id).toString() : '';
+    const actualCount = countByCategory[catId] || 0;
+    const requiredCount = reqItem.quantity || 1;
+    const missingCount = Math.max(0, requiredCount - actualCount);
+    return {
+      category: reqItem.category_id,
+      category_name: reqItem.category_id?.name || 'Chủng loại',
+      requiredCount,
+      required_qty: requiredCount,
+      actualCount,
+      actual_qty: actualCount,
+      missingCount,
+      missing_qty: missingCount,
+      diff: missingCount,
+      isSufficient: missingCount === 0
+    };
+  });
+  const missingShortages = shortages.filter((s) => !s.isSufficient);
+  return {
+    shortages,
+    missingShortages,
+    isFullySufficient: missingShortages.length === 0
+  };
+};
+
 // @desc    Check Room Shortage compared to required_equipment quota (UC: View room shortage)
 // @route   GET /api/facilities/rooms/:id/shortage
 export const getRoomShortage = async (req, res) => {
   try {
-    const room = await Room.findById(req.params.id).populate('required_equipment.category_id', 'code name');
+    const room = await Room.findById(req.params.id)
+      .populate('required_equipment.category_id', 'code name')
+      .lean();
     if (!room) {
       return res.status(404).json({ success: false, message: 'Phòng không tồn tại.' });
     }
 
-    // Equipment in room currently in_use
     const currentEquipments = await Equipment.find({
       room_id: room._id,
       status: EQUIPMENT_STATUSES.IN_USE
-    });
+    }).select('category_id').lean();
 
-    // Count equipment by category
     const countByCategory = {};
-    currentEquipments.forEach(eq => {
+    for (const eq of currentEquipments) {
+      if (!eq.category_id) continue;
       const catId = eq.category_id.toString();
       countByCategory[catId] = (countByCategory[catId] || 0) + 1;
-    });
+    }
 
-    const shortages = (room.required_equipment || []).map(reqItem => {
-      const catId = reqItem.category_id ? reqItem.category_id._id.toString() : '';
-      const actualCount = countByCategory[catId] || 0;
-      const requiredCount = reqItem.quantity || 1;
-      const missingCount = Math.max(0, requiredCount - actualCount);
-      return {
-        category: reqItem.category_id,
-        requiredCount,
-        actualCount,
-        missingCount,
-        isSufficient: missingCount === 0
-      };
-    });
-
-    const isFullySufficient = shortages.every(s => s.isSufficient);
+    const { shortages, missingShortages, isFullySufficient } = computeRoomQuotaShortages(room, countByCategory);
 
     res.json({
       success: true,
@@ -488,36 +588,90 @@ export const getRoomShortage = async (req, res) => {
         room_type: room.room_type
       },
       isFullySufficient,
-      shortages
+      shortages,
+      missingShortages
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ success: false, message: 'Lỗi khi đối soát định mức phòng.' });
   }
 };
 
-// @desc    Get Warehouse Stock (UC: View warehouse stock)
+// @desc    Get Warehouse Stock & Building-Wide Quota Shortages in One Batch
 // @route   GET /api/facilities/warehouse/stock
 export const getWarehouseStock = async (req, res) => {
   try {
-    // Find rooms designated as warehouse
-    const warehouses = await Room.find({ room_type: ROOM_TYPES.WAREHOUSE });
-    const warehouseIds = warehouses.map(w => w._id);
+    const [warehouses, quotaRooms, activeCategoryCounts] = await Promise.all([
+      Room.find({
+        room_type: ROOM_TYPES.WAREHOUSE,
+        code: { $not: /WC|NVS/i }
+      }).lean(),
+      Room.find({
+        room_type: { $ne: ROOM_TYPES.WAREHOUSE },
+        'required_equipment.0': { $exists: true }
+      })
+        .populate('required_equipment.category_id', 'code name')
+        .sort({ code: 1 })
+        .lean(),
+      Equipment.aggregate([
+        { $match: { status: EQUIPMENT_STATUSES.IN_USE, room_id: { $ne: null } } },
+        {
+          $group: {
+            _id: { room_id: '$room_id', category_id: '$category_id' },
+            count: { $sum: 1 }
+          }
+        }
+      ])
+    ]);
 
-    // Find equipment that is in_stock
+    const warehouseIds = warehouses.map((w) => w._id);
     const stockItems = await Equipment.find({
-      $or: [
-        { status: EQUIPMENT_STATUSES.IN_STOCK },
-        { room_id: { $in: warehouseIds }, status: { $nin: [EQUIPMENT_STATUSES.DISPOSED, EQUIPMENT_STATUSES.LOST] } }
-      ]
-    }).populate('category_id', 'code name').populate('room_id', 'code name');
+      status: EQUIPMENT_STATUSES.IN_STOCK,
+      ...(warehouseIds.length ? { $or: [{ room_id: { $in: warehouseIds } }, { room_id: null }] } : {})
+    })
+      .populate('category_id', 'code name')
+      .populate('room_id', 'code name')
+      .sort({ code: 1 })
+      .lean();
+
+    const roomCatMap = new Map();
+    for (const row of activeCategoryCounts) {
+      const rId = row._id?.room_id?.toString();
+      const cId = row._id?.category_id?.toString();
+      if (!rId || !cId) continue;
+      let counts = roomCatMap.get(rId);
+      if (!counts) {
+        counts = {};
+        roomCatMap.set(rId, counts);
+      }
+      counts[cId] = row.count;
+    }
+
+    const roomShortages = [];
+    for (const rm of quotaRooms) {
+      const { missingShortages } = computeRoomQuotaShortages(rm, roomCatMap.get(rm._id.toString()) || {});
+      if (missingShortages.length > 0) {
+        roomShortages.push({
+          room: {
+            _id: rm._id,
+            code: rm.code,
+            name: rm.name,
+            building: rm.building,
+            floor: rm.floor,
+            room_type: rm.room_type
+          },
+          shortages: missingShortages
+        });
+      }
+    }
 
     res.json({
       success: true,
       total: stockItems.length,
       warehouses,
-      stockItems
+      stockItems,
+      roomShortages
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ success: false, message: 'Lỗi khi tải dữ liệu kho dự phòng.' });
   }
 };

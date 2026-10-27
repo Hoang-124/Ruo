@@ -12,15 +12,22 @@ const ToastItem = ({ toast, onDismiss }) => {
   const [isExiting, setIsExiting] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const remainingTimeRef = useRef(toast.duration || 3500);
-  const startTimeRef = useRef(Date.now());
+  const startTimeRef = useRef(0);
   const timerRef = useRef(null);
+
+  const handleClose = useCallback(() => {
+    setIsExiting(true);
+    setTimeout(() => {
+      onDismiss(toast.id);
+    }, 280);
+  }, [onDismiss, toast.id]);
 
   const startTimer = useCallback(() => {
     startTimeRef.current = Date.now();
     timerRef.current = setTimeout(() => {
       handleClose();
     }, remainingTimeRef.current);
-  }, [remainingTimeRef.current]);
+  }, [handleClose]);
 
   const pauseTimer = useCallback(() => {
     if (timerRef.current) {
@@ -39,13 +46,6 @@ const ToastItem = ({ toast, onDismiss }) => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [isPaused, startTimer]);
-
-  const handleClose = () => {
-    setIsExiting(true);
-    setTimeout(() => {
-      onDismiss(toast.id);
-    }, 280);
-  };
 
   // Color & Icon Configuration based on Type
   const getConfig = () => {
@@ -197,3 +197,5 @@ export const useToast = () => {
   }
   return context;
 };
+
+export const useOptionalToast = () => useContext(ToastContext);

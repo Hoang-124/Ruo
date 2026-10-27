@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
-import { masterDataApi, equipmentApi, sparePartApi } from '../../lib/api';
+import { masterDataApi, sparePartApi } from '../../lib/api';
 
 export const WarehouseStockPage = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('warehouse'); // 'warehouse' | 'shortages' | 'parts'
+  const [activeTab, setActiveTab] = useState('warehouse');
 
   const [warehouseEquipments, setWarehouseEquipments] = useState([]);
-  const [rooms, setRooms] = useState([]);
   const [shortages, setShortages] = useState([]);
   const [spareParts, setSpareParts] = useState([]);
 
@@ -18,42 +17,19 @@ export const WarehouseStockPage = () => {
   const [newStockVal, setNewStockVal] = useState(0);
   const [submittingStock, setSubmittingStock] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [eqRes, roomRes, partsRes] = await Promise.all([
-        equipmentApi.list({ status: 'in_stock', limit: 100 }),
-        masterDataApi.getRooms({ limit: 100 }),
+      const [stockRes, partsRes] = await Promise.all([
+        masterDataApi.getWarehouseStock(),
         sparePartApi.list()
       ]);
 
-      if (eqRes && eqRes.success) {
-        setWarehouseEquipments(eqRes.equipments || []);
+      if (stockRes?.success) {
+        setWarehouseEquipments(stockRes.stockItems || []);
+        setShortages(stockRes.roomShortages || []);
       }
-      if (roomRes && roomRes.success) {
-        const allRooms = roomRes.rooms || [];
-        setRooms(allRooms);
-
-        // Calculate shortages across lecture/lab rooms
-        const roomShortageList = [];
-        for (const rm of allRooms.filter(r => (r.room_type || r.type) !== 'warehouse')) {
-          if (rm.required_equipment && rm.required_equipment.length > 0) {
-            try {
-              const shortRes = await masterDataApi.getRoomShortage(rm._id);
-              if (shortRes && shortRes.success && shortRes.shortages && shortRes.shortages.length > 0) {
-                roomShortageList.push({
-                  room: rm,
-                  shortages: shortRes.shortages
-                });
-              }
-            } catch (e) {
-              // Soft fail individual shortage calculation
-            }
-          }
-        }
-        setShortages(roomShortageList);
-      }
-      if (partsRes && partsRes.success) {
+      if (partsRes?.success) {
         setSpareParts(partsRes.parts || []);
       }
     } catch (err) {
@@ -61,11 +37,11 @@ export const WarehouseStockPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const openStockModal = (part) => {
     setSelectedPart(part);
@@ -88,6 +64,12 @@ export const WarehouseStockPage = () => {
       setSubmittingStock(false);
     }
   };
+
+  const tabs = [
+    { key: 'warehouse', label: `Thiết Bị Lưu Kho KHO-01 (${warehouseEquipments.length})` },
+    { key: 'shortages', label: `Phòng Thiếu Hụt Định Mức (${shortages.length})` },
+    { key: 'parts', label: `Linh Kiện & Cập Nhật Tồn Kho (${spareParts.length})` }
+  ];
 
   return (
     <div>
@@ -136,59 +118,29 @@ export const WarehouseStockPage = () => {
 
       {/* Navigation Tabs */}
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--hairline-medium)', marginBottom: '20px' }}>
-        <button
-          onClick={() => setActiveTab('warehouse')}
-          style={{
-            padding: '10px 18px',
-            fontSize: '13px',
-            fontWeight: activeTab === 'warehouse' ? 700 : 500,
-            color: activeTab === 'warehouse' ? 'var(--laser-cyan)' : 'var(--ink-muted)',
-            borderBottom: activeTab === 'warehouse' ? '2px solid var(--laser-cyan)' : '2px solid transparent',
-            background: 'none',
-            borderTop: 'none',
-            borderLeft: 'none',
-            borderRight: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          Thiết Bị Lưu Kho KHO-01 ({warehouseEquipments.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('shortages')}
-          style={{
-            padding: '10px 18px',
-            fontSize: '13px',
-            fontWeight: activeTab === 'shortages' ? 700 : 500,
-            color: activeTab === 'shortages' ? 'var(--laser-cyan)' : 'var(--ink-muted)',
-            borderBottom: activeTab === 'shortages' ? '2px solid var(--laser-cyan)' : '2px solid transparent',
-            background: 'none',
-            borderTop: 'none',
-            borderLeft: 'none',
-            borderRight: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          Phòng Thiếu Hụt Định Mức ({shortages.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('parts')}
-          style={{
-            padding: '10px 18px',
-            fontSize: '13px',
-            fontWeight: activeTab === 'parts' ? 700 : 500,
-            color: activeTab === 'parts' ? 'var(--laser-cyan)' : 'var(--ink-muted)',
-            borderBottom: activeTab === 'parts' ? '2px solid var(--laser-cyan)' : '2px solid transparent',
-            background: 'none',
-            borderTop: 'none',
-            borderLeft: 'none',
-            borderRight: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          Linh Kiện & Cập Nhật Tồn Kho ({spareParts.length})
-        </button>
+        {tabs.map((tab) => {
+          const active = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '10px 18px',
+                fontSize: '13px',
+                fontWeight: active ? 700 : 500,
+                color: active ? 'var(--laser-cyan)' : 'var(--ink-muted)',
+                borderBottom: active ? '2px solid var(--laser-cyan)' : '2px solid transparent',
+                background: 'none',
+                borderTop: 'none',
+                borderLeft: 'none',
+                borderRight: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab 1: Warehouse Stock */}
@@ -218,7 +170,7 @@ export const WarehouseStockPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {warehouseEquipments.map(eq => (
+                {warehouseEquipments.map((eq) => (
                   <tr key={eq._id} style={{ borderBottom: '1px solid var(--hairline-soft)' }}>
                     <td style={{ padding: '12px 18px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--laser-cyan)' }}>
                       {eq.code}
@@ -231,7 +183,7 @@ export const WarehouseStockPage = () => {
                       {eq.category_id?.name || 'Chung'}
                     </td>
                     <td style={{ padding: '12px 18px', color: 'var(--ink-pure)' }}>
-                      {eq.brand || 'N/A'}
+                      {eq.brand || '—'}
                     </td>
                     <td style={{ padding: '12px 18px', fontWeight: 600, color: 'var(--ink-pure)' }}>
                       {(eq.price || 0).toLocaleString('vi-VN')} đ
@@ -269,8 +221,8 @@ export const WarehouseStockPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {shortages.map((item, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid var(--hairline-soft)' }}>
+                {shortages.map((item) => (
+                  <tr key={item.room._id || item.room.code} style={{ borderBottom: '1px solid var(--hairline-soft)' }}>
                     <td style={{ padding: '12px 18px', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '14px', color: 'var(--ink-pure)' }}>
                       {item.room.code}
                     </td>
@@ -281,7 +233,7 @@ export const WarehouseStockPage = () => {
                     <td style={{ padding: '12px 18px' }}>
                       {item.shortages.map((s, sIdx) => (
                         <div key={sIdx} style={{ fontSize: '12.5px', color: '#EF4444', marginBottom: '2px' }}>
-                          • Thiếu <strong>{s.missing_qty || s.diff}</strong> món {s.category_name} (Hiện có {s.actual_qty}/{s.required_qty})
+                          • Thiếu <strong>{s.missing_qty ?? s.missingCount ?? s.diff}</strong> món {s.category_name || s.category?.name || 'Thiết bị'} (Hiện có {s.actual_qty ?? s.actualCount ?? 0}/{s.required_qty ?? s.requiredCount ?? 1})
                         </div>
                       ))}
                     </td>
@@ -312,8 +264,9 @@ export const WarehouseStockPage = () => {
               </tr>
             </thead>
             <tbody>
-              {spareParts.map(part => {
-                const isLow = part.stock <= (part.min_stock || 5);
+              {spareParts.map((part) => {
+                const minStock = part.min_stock ?? 5;
+                const isLow = part.stock <= minStock;
                 return (
                   <tr key={part._id} style={{ borderBottom: '1px solid var(--hairline-soft)' }}>
                     <td style={{ padding: '12px 18px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--laser-cyan)' }}>
@@ -321,7 +274,7 @@ export const WarehouseStockPage = () => {
                     </td>
                     <td style={{ padding: '12px 18px' }}>
                       <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{part.name}</div>
-                      <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>{part.description || 'Linh kiện thay thế chuẩn'}</div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>{part.description || `Đơn vị tính: ${part.unit || 'Đơn vị'}`}</div>
                     </td>
                     <td style={{ padding: '12px 18px' }}>
                       <span style={{ fontSize: '14px', fontWeight: 800, color: isLow ? '#EF4444' : '#10B981' }}>
@@ -329,7 +282,7 @@ export const WarehouseStockPage = () => {
                       </span>
                     </td>
                     <td style={{ padding: '12px 18px', color: 'var(--ink-muted)', fontSize: '12px' }}>
-                      {part.min_stock || 5} đơn vị
+                      {minStock} {part.unit || 'đơn vị'}
                     </td>
                     <td style={{ padding: '12px 18px', textAlign: 'right' }}>
                       <button

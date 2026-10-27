@@ -29,11 +29,16 @@ describe('<FloorPlan2D /> interactive CAD rooms & live data binding', () => {
       );
       const expectedRooms = roomsOfFloor(floor);
       expect(container.querySelectorAll('[data-testid^="room-pod-"]')).toHaveLength(0);
+      expect(container.querySelectorAll('[data-testid^="room-alert-dot-"]')).toHaveLength(0);
+      expect(container.querySelectorAll('[data-testid^="floor-alert-dot-"]')).toHaveLength(0);
       expect(container.querySelectorAll('[data-testid^="cad-room-"]').length).toBe(expectedRooms.length);
 
       for (const room of expectedRooms) {
         const roomEl = getByTestId(`cad-room-${room.code}`);
         expect(roomEl).toBeTruthy();
+        expect(roomEl.querySelectorAll('text[fill="var(--ink-muted)"]')).toHaveLength(0);
+        expect(roomEl.querySelectorAll('text').length).toBeGreaterThanOrEqual(1);
+        expect(roomEl.querySelectorAll('text').length).toBeLessThanOrEqual(2);
         fireEvent.click(roomEl);
         expect(select).toHaveBeenLastCalledWith(
           expect.objectContaining({ code: room.code, equipmentCount: 6, brokenCount: 0 })
@@ -71,8 +76,71 @@ describe('<FloorPlan2D /> interactive CAD rooms & live data binding', () => {
     expect(select).toHaveBeenCalledWith(expect.objectContaining({ code: 'P101', name: 'Phòng mới' }));
   });
 
+  it('shows alert dots ONLY on rooms and floors with active incident reports or broken equipment', () => {
+    const [reportedRoom, healthyRoom] = roomsOfFloor(2);
+    const roomPods = buildRoomPodIndex([
+      { code: reportedRoom.code, floor: 2, status: 'available', effectiveStatus: 'maintenance', equipmentCount: 4, brokenCount: 1, openReportCount: 2 },
+      { code: healthyRoom.code, floor: 2, status: 'available', effectiveStatus: 'available', equipmentCount: 5, brokenCount: 0, openReportCount: 0 }
+    ]);
+    const floorAlerts = {
+      1: { hasAlert: false, alertRoomCount: 0, severity: null },
+      2: { hasAlert: true, alertRoomCount: 1, openReportCount: 2, brokenCount: 1, severity: 'report' },
+      3: { hasAlert: true, alertRoomCount: 2, openReportCount: 1, brokenCount: 1, severity: 'report' },
+      4: { hasAlert: false, alertRoomCount: 0, severity: null },
+      5: { hasAlert: false, alertRoomCount: 0, severity: null }
+    };
+
+    const { queryByTestId } = render(
+      <FloorPlan2D selectedFloor={2} roomPods={roomPods} floorAlerts={floorAlerts} />
+    );
+
+    expect(queryByTestId(`room-alert-dot-${reportedRoom.code}`)).toBeTruthy();
+    expect(queryByTestId(`room-alert-dot-${healthyRoom.code}`)).toBeNull();
+    expect(queryByTestId('floor-alert-dot-2')).toBeTruthy();
+    expect(queryByTestId('floor-alert-dot-3')).toBeTruthy();
+    expect(queryByTestId('floor-alert-dot-1')).toBeNull();
+    expect(queryByTestId('floor-alert-dot-4')).toBeNull();
+  });
+
   it('keeps room codes unique across architectural floors', () => {
     const codes = [1, 2, 3, 4, 5].flatMap(floor => roomsOfFloor(floor).map(room => room.code));
     expect(new Set(codes).size).toBe(codes.length);
+  });
+
+  it('synchronizes Central Atrium Void, WC shafts, and Stairwells to identical coordinates across all 5 floors', () => {
+    const wcCodesByFloor = {
+      1: { nu: 'A1-WC-NU', nam: 'A1-WC-NAM' },
+      2: { nu: 'A1-WC-NU-T2', nam: 'A1-WC-NAM-T2' },
+      3: { nu: 'A1-WC-NU-T3', nam: 'A1-WC-NAM-T3' },
+      4: { nu: 'A1-WC-NU-T4', nam: 'A1-WC-NAM-T4' },
+      5: { nu: 'A1-WC-NU-T5', nam: 'A1-WC-NAM-T5' }
+    };
+
+    const readBox = (rectEl) => ({
+      x: rectEl?.getAttribute('x'),
+      y: rectEl?.getAttribute('y'),
+      width: rectEl?.getAttribute('width'),
+      height: rectEl?.getAttribute('height')
+    });
+
+    for (const floor of [1, 2, 3, 4, 5]) {
+      const { container, getByTestId } = render(<FloorPlan2D selectedFloor={floor} roomPods={podsFor(floor)} />);
+
+      const atriumRect = getByTestId('central-atrium-outer-rect');
+      expect(readBox(atriumRect)).toEqual({ x: '236', y: '162', width: '488', height: '228' });
+
+      const wcNuRect = getByTestId(`cad-room-${wcCodesByFloor[floor].nu}`).querySelector('rect');
+      expect(readBox(wcNuRect)).toEqual({ x: '796', y: '162', width: '140', height: '66' });
+
+      const wcNamRect = getByTestId(`cad-room-${wcCodesByFloor[floor].nam}`).querySelector('rect');
+      expect(readBox(wcNamRect)).toEqual({ x: '796', y: '324', width: '140', height: '66' });
+
+      const westStairRect = container.querySelector(`#f${floor}-west-stairwell > rect`);
+      const eastStairRect = container.querySelector(`#f${floor}-east-stairwell > rect`);
+      expect(readBox(westStairRect)).toEqual({ x: '24', y: '232', width: '140', height: '88' });
+      expect(readBox(eastStairRect)).toEqual({ x: '796', y: '232', width: '140', height: '88' });
+
+      cleanup();
+    }
   });
 });
