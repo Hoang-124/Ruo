@@ -118,6 +118,28 @@ test('cost aggregation honors Vietnam year/quarter boundaries and never re-adds 
   for (const query of ['year=oops', 'period=week', 'year[$gt]=2020']) assert.equal((await request(`/api/dashboard/repair-cost?${query}`)).status, 400);
 });
 
+test('UC-8.6 frequency groups actual failures by category and historic room, including legacy records', async () => {
+  const result = await request('/api/reports/repair-frequency?year=2026');
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.summary, { failureCount: 26, legacyRoomCount: 26, affectedEquipment: 25 });
+  assert.equal(result.body.byCategory[0].failureCount, 26);
+  assert.equal(result.body.byRoom[0].code, 'P101');
+  assert.equal(result.body.byRoom[0].incidentsPerEquipment, 1.04);
+  const incident = await Repair.create({ equipment_id: equipment[0]._id, room_id: emptyRoom._id,
+    reported_by: users[0]._id, incident_description: 'Historic room test', reported_at: new Date('2026-02-02') });
+  try {
+    const changed = await request('/api/reports/repair-frequency?year=2026');
+    assert.equal(changed.body.byRoom.find(row => row.code === 'P102').failureCount, 1);
+    assert.equal(changed.body.summary.affectedEquipment, 25);
+    assert.equal((await request('/api/reports/repair-frequency?year=2026', 'technician')).status, 403);
+    assert.equal((await request('/api/reports/repair-frequency?year=2026', 'lecturer')).status, 403);
+    assert.equal((await request('/api/reports/repair-frequency?year=2026', null)).status, 401);
+    assert.equal((await request('/api/reports/repair-frequency?year=2026', 'facility_manager')).status, 200);
+    assert.equal((await request('/api/reports/repair-frequency?year[$gt]=2000')).status, 400);
+    assert.equal((await request('/api/reports/repair-frequency?year=2000')).body.summary.failureCount, 0);
+  } finally { await Repair.deleteOne({ _id: incident._id }); }
+});
+
 test('health score counts incident records rather than stale repair_count; paginates all active assets', async () => {
   const { status, body } = await request('/api/dashboard/health-score?limit=10');
   assert.equal(status, 200);

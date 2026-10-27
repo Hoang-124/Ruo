@@ -1,6 +1,47 @@
 import { Equipment } from '../models/Equipment.js';
 import { Repair } from '../models/Repair.js';
+import { Room } from '../models/Room.js';
+import { Category } from '../models/Category.js';
+import { parseCostQuery, REPORT_TIMEZONE } from '../services/dashboardAnalytics.js';
 export { getKpi as getDashboardMetrics } from './dashboardController.js';
+
+export const getRepairFrequency = async (req, res) => {
+  const query = parseCostQuery(req.query);
+  if (!query.valid) return res.status(400).json({ success: false, message: query.message });
+  try {
+    const now = new Date();
+    const groupBy = (field, collection) => [
+      { $group: { _id: field, failureCount: { $sum: 1 }, equipmentIds: { $addToSet: '$equipment_id' } } },
+      { $lookup: { from: collection, localField: '_id', foreignField: '_id', as: 'label' } },
+      { $project: { failureCount: 1, affectedEquipment: { $size: '$equipmentIds' },
+        code: { $ifNull: [{ $arrayElemAt: ['$label.code', 0] }, '—'] },
+        name: { $ifNull: [{ $arrayElemAt: ['$label.name', 0] }, 'Chưa xác định'] } } },
+      { $sort: { failureCount: -1, code: 1, _id: 1 } }
+    ];
+    const [result] = await Repair.aggregate([
+      { $match: { reported_at: { $gte: query.start, $lt: query.end, $lte: now } } },
+      { $lookup: { from: Equipment.collection.name, localField: 'equipment_id', foreignField: '_id', as: 'equipment' } },
+      { $set: { category: { $ifNull: [{ $arrayElemAt: ['$equipment.category_id', 0] }, null] },
+        reportRoom: { $ifNull: ['$room_id', { $ifNull: [{ $arrayElemAt: ['$equipment.room_id', 0] }, null] }] } } },
+      { $facet: {
+        byCategory: groupBy('$category', Category.collection.name),
+        byRoom: groupBy('$reportRoom', Room.collection.name),
+        summary: [
+          { $group: { _id: null, failureCount: { $sum: 1 }, equipmentIds: { $addToSet: '$equipment_id' },
+            legacyRoomCount: { $sum: { $cond: [{ $eq: [{ $ifNull: ['$room_id', null] }, null] }, 1, 0] } } } },
+          { $project: { _id: 0, failureCount: 1, legacyRoomCount: 1, affectedEquipment: { $size: '$equipmentIds' } } }
+        ]
+      } }
+    ]);
+    const withFrequency = rows => rows.map(row => ({ ...row,
+      incidentsPerEquipment: row.affectedEquipment ? Math.round(row.failureCount / row.affectedEquipment * 100) / 100 : 0 }));
+    res.json({ success: true, year: query.year, timezone: REPORT_TIMEZONE, generatedAt: now,
+      summary: result?.summary[0] || { failureCount: 0, affectedEquipment: 0, legacyRoomCount: 0 },
+      byCategory: withFrequency(result?.byCategory || []), byRoom: withFrequency(result?.byRoom || []) });
+  } catch {
+    res.status(500).json({ success: false, message: 'Không tải được báo cáo tần suất hỏng.' });
+  }
+};
 
 // @desc    View statistical report (Admin)
 // @route   GET /api/reports/statistics

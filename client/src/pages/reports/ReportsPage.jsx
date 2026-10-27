@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/Primitives';
 import { Icons } from '../../components/common/SvgIcons';
 import { RoomReport } from './RoomReport';
 import { StatusReport } from './StatusReport';
+import { FrequencyReport } from './FrequencyReport';
 import '../dashboard/dashboardAnalytics.css';
 import './reports.css';
 
@@ -15,10 +16,11 @@ export function ReportsPage() {
       <Button variant="secondary" icon={Icons.RefreshCw} onClick={() => setRefreshKey(value => value + 1)}>Làm mới báo cáo</Button>
     </div>
     <nav className="reports-tabs" aria-label="Loại báo cáo">
-      {[['room', 'Theo phòng'], ['status', 'Theo trạng thái']].map(([key, label]) =>
+      {[['room', 'Theo phòng'], ['status', 'Theo trạng thái'], ['frequency', 'Tần suất hỏng']].map(([key, label]) =>
         <Button key={key} variant={active === key ? 'primary' : 'secondary'} aria-pressed={active === key} onClick={() => setActive(key)}>{label}</Button>)}
     </nav>
     {active === 'room' && <RoomReport refreshKey={refreshKey} />}
     {active === 'status' && <StatusReport refreshKey={refreshKey} />}
+    {active === 'frequency' && <FrequencyReport refreshKey={refreshKey} />}
   </section>;
 }
