@@ -3,9 +3,31 @@ import { Repair } from '../models/Repair.js';
 import { Room } from '../models/Room.js';
 import { Category } from '../models/Category.js';
 import { parseCostQuery, REPORT_TIMEZONE, ACTIVE_EQUIPMENT_FILTER } from '../services/dashboardAnalytics.js';
-import { parseWarrantyQuery, warrantyDaysRemaining } from '../services/reportAnalytics.js';
+import { parseWarrantyQuery, warrantyDaysRemaining, parseOverdueQuery } from '../services/reportAnalytics.js';
 import '../models/Supplier.js';
+import '../models/User.js';
+import '../models/RepairUnit.js';
 export { getKpi as getDashboardMetrics } from './dashboardController.js';
+
+export const getOverdueRepairs = async (req, res) => {
+  const now = new Date();
+  const query = parseOverdueQuery(req.query, now);
+  if (!query.valid) return res.status(400).json({ success: false, message: query.message });
+  try {
+    const [repairs, total] = await Promise.all([
+      Repair.find(query.filter).select('ticket_code equipment_id room_id assigned_to repair_unit_id damage_level status deadline reported_at incident_description')
+        .populate('equipment_id', 'code name').populate('room_id', 'code name')
+        .populate('assigned_to', 'code full_name').populate('repair_unit_id', 'code name')
+        .sort({ deadline: 1, _id: 1 }).skip(query.skip).limit(query.limit).lean(),
+      Repair.countDocuments(query.filter)
+    ]);
+    res.json({ success: true, generatedAt: now, page: query.page, limit: query.limit,
+      total, totalPages: Math.max(1, Math.ceil(total / query.limit)),
+      repairs: repairs.map(item => ({ ...item, overdueMinutes: Math.ceil((now - item.deadline) / 60000) })) });
+  } catch {
+    res.status(500).json({ success: false, message: 'Không tải được báo cáo quá hạn SLA.' });
+  }
+};
 
 export const getWarrantyExpiring = async (req, res) => {
   const now = new Date();

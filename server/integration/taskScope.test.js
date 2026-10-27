@@ -177,6 +177,26 @@ test('UC-8.7 warranty uses inclusive Vietnam calendar days, excludes void/dispos
   }
 });
 
+test('UC-8.8 overdue report agrees with KPI and excludes finished, future and undated repairs', async () => {
+  const result = await request('/api/reports/overdue-repairs?limit=2');
+  const kpi = await request('/api/dashboard/kpi');
+  assert.equal(result.status, 200);
+  assert.equal(result.body.total, kpi.body.metrics.overdueRepairs);
+  assert.equal(result.body.total, 3);
+  assert.equal(result.body.repairs.length, 2);
+  assert.ok(result.body.repairs.every(row => row.overdueMinutes > 0 && row.status === 'reported'));
+  assert.equal((await request('/api/reports/overdue-repairs?limit=2&page=2', 'facility_manager')).body.repairs.length, 1);
+  assert.equal((await request('/api/reports/overdue-repairs?severity=critical')).body.total, 0);
+  for (const query of ['page=0', 'severity=invalid', 'limit=101']) assert.equal((await request(`/api/reports/overdue-repairs?${query}`)).status, 400);
+  for (const role of ['lecturer', 'technician']) assert.equal((await request('/api/reports/overdue-repairs', role)).status, 403);
+  const extra = await Repair.insertMany(['resolved', 'unrepairable', 'in_progress'].map(status => ({
+    equipment_id: equipment[0]._id, reported_by: users[0]._id, incident_description: 'Excluded from overdue', status,
+    deadline: new Date(Date.now() + (status === 'in_progress' ? 86400000 : -86400000))
+  })));
+  try { assert.equal((await request('/api/reports/overdue-repairs')).body.total, 3); }
+  finally { await Repair.deleteMany({ _id: { $in: extra.map(row => row._id) } }); }
+});
+
 test('CAD, room detail and reports agree on equipment and include serial/QR/history', async () => {
   const cad = await request('/api/facilities/cad-canvas?floorNumber=1');
   assert.equal(cad.body.rooms.find(item => item.code === 'P101').equipmentCount, 200);

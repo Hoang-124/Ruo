@@ -1,3 +1,6 @@
+import { DAMAGE_LEVELS } from '../config/constants.js';
+import { OPEN_REPAIR_STATUSES } from './dashboardAnalytics.js';
+
 export const DAY_MS = 86400000;
 const VIETNAM_OFFSET = 7 * 3600000;
 const integerParam = (value, fallback, min, max) => {
@@ -24,3 +27,12 @@ export const parseWarrantyQuery = (query = {}, now = new Date()) => {
   return { ...pagination, days, start, end: new Date(start.getTime() + (days + 1) * DAY_MS) };
 };
 export const warrantyDaysRemaining = (expiry, start) => Math.round((vietnamDayStart(expiry) - start.getTime()) / DAY_MS);
+
+export const parseOverdueQuery = (query = {}, now = new Date()) => {
+  const pagination = parseReportPagination(query);
+  if (!pagination.valid) return pagination;
+  const severity = query.severity ?? 'all';
+  if (!['all', ...Object.values(DAMAGE_LEVELS)].includes(severity)) return { valid: false, message: 'Mức độ hỏng không hợp lệ.' };
+  return { ...pagination, filter: { status: { $in: OPEN_REPAIR_STATUSES }, deadline: { $ne: null, $lt: now },
+    ...(severity === 'all' ? {} : { damage_level: severity }) } };
+};
