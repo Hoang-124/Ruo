@@ -23,9 +23,9 @@ export function OverdueReport({ refreshKey }) {
         <div className="dashboard-report-table"><table>
           <thead><tr><th scope="col">Phiếu / Thiết bị</th><th scope="col">Phòng</th><th scope="col">Người xử lý</th><th scope="col">Mức độ / Trạng thái</th><th scope="col">Hạn cam kết</th><th scope="col">Thời gian trễ</th></tr></thead>
           <tbody>{data.repairs.map(item => <tr key={item._id}>
-            <td><strong>{item.ticket_code}</strong><br />{item.equipment_id?.code} · {item.equipment_id?.name || 'Thiết bị không còn tồn tại'}</td>
+            <td><strong>{item.ticket_code}</strong><br />{item.equipment_id ? `${item.equipment_id.code} · ${item.equipment_id.name}` : 'Thiết bị không còn tồn tại'}</td>
             <td>{item.room_id?.code || 'Chưa lưu phòng phát sinh'}</td><td>{item.assigned_to?.full_name || item.repair_unit_id?.name || 'Chưa giao việc'}</td>
-            <td>{severityLabels[item.damage_level]}<br />{statusLabels[item.status]}</td>
+            <td>{severityLabels[item.damage_level] || item.damage_level || '—'}<br />{statusLabels[item.status] || item.status || '—'}</td>
             <td>{new Date(item.deadline).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td><td>{elapsed(item.overdueMinutes)}</td>
           </tr>)}</tbody>
         </table></div>

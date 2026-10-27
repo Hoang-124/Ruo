@@ -21,7 +21,7 @@ export const getKpi = async (req, res) => {
         ] } } } }
       ]),
       SparePart.aggregate([{ $group: { _id: null, value: { $sum: { $multiply: ['$stock', '$price'] } } } }]),
-      Room.countDocuments(), Disposal.countDocuments({ status: DISPOSAL_STATUSES.PROPOSED })
+      Room.countDocuments(), Disposal.countDocuments({ status: { $in: [DISPOSAL_STATUSES.PROPOSED, DISPOSAL_STATUSES.HC_APPROVED] } })
     ]);
     res.json({ success: true, generatedAt: now, metrics: { ...summarizeKpi(groups, repairGroups[0], stock[0]?.value), totalRooms, pendingDisposals } });
   } catch {

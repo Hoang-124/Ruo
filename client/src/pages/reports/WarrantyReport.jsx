@@ -21,7 +21,7 @@ export function WarrantyReport({ refreshKey }) {
           <tbody>{data.equipment.map(item => <tr key={item._id}>
             <td><strong>{item.code}</strong><br />{item.name}</td><td>{item.room_id?.code || 'Chưa gán phòng'}<br />{item.category_id?.name || '—'}</td>
             <td>{reportDate(item.warranty_expiry)}</td><td>{item.daysRemaining === 0 ? 'Hôm nay' : `${item.daysRemaining} ngày`}</td>
-            <td>{item.supplier_id?.name || 'Chưa có nhà cung cấp'}<br />{item.supplier_id?.contact}<br />{item.supplier_id?.phone}<br />{item.supplier_id?.email}</td>
+            <td>{[item.supplier_id?.name || 'Chưa có nhà cung cấp', item.supplier_id?.contact, item.supplier_id?.phone, item.supplier_id?.email].filter(Boolean).map((line, idx) => <React.Fragment key={idx}>{idx > 0 && <br />}{line}</React.Fragment>)}</td>
           </tr>)}</tbody>
         </table></div>
         {data.equipment.length === 0 && <p>Không có thiết bị sắp hết bảo hành trong trang này.</p>}

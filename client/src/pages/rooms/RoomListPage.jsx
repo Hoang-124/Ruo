@@ -31,13 +31,10 @@ const filterLabel = { display: 'block', fontSize: '11px', fontWeight: 700, color
  * name-or-code search and server-side pagination.
  */
 export const RoomListPage = () => {
-  const { currentUser, hasPermission } = useAuth();
+  const { currentUser } = useAuth();
   const { toast } = useToast();
   const isAdmin = currentUser?.role === 'admin';
-  const canUpdateRoomStatus =
-    isAdmin ||
-    currentUser?.role === 'facility_manager' ||
-    (typeof hasPermission === 'function' && hasPermission('room:status:update'));
+  const canUpdateRoomStatus = isAdmin;
 
   const [filters, setFilters] = useState(EMPTY_ROOM_FILTERS);
   const [debouncedQuery, setDebouncedQuery] = useState('');

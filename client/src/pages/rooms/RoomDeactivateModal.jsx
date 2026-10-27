@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { facilityApi } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import {
   DEACTIVATION_REASON_MAX,
@@ -13,16 +14,33 @@ import { EquipmentTransferModal } from './EquipmentTransferModal';
 const labelStyle = { display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px', color: 'var(--ink-secondary)' };
 const errorStyle = { margin: '6px 0 0', fontSize: '12px', color: 'var(--crimson-500)' };
 
+const formatPendingTransferLabel = (pending) => {
+  if (!pending) return '';
+  const prefix = pending.status === 'awaiting_approval' ? 'Chờ CSVC duyệt' : 'Chờ KTV';
+  return pending.toRoomCode ? `${prefix} → ${pending.toRoomCode}` : prefix;
+};
+
 /**
  * Equipment that must be transferred out before a room can become INACTIVE (HTTP 409 payload).
- * When `room` is given each item can be ordered out directly from here (Admin can issue transfer orders).
+ * Under RACI, Facility Managers and Technicians request/execute transfers while Admin is read-only on transfers.
  */
 export const EquipmentBlockerList = ({ items, room = null }) => {
+  const { currentUser } = useAuth();
+  const canOrderTransfer = ['facility_manager', 'technician'].includes(currentUser?.role);
   const [transferItem, setTransferItem] = useState(null);
-  const [orderedIds, setOrderedIds] = useState(() => new Set());
+  const [orderedByEqId, setOrderedByEqId] = useState(() => new Map());
 
-  const markOrdered = (equipment) => setOrderedIds((prev) => new Set(prev).add(equipment._id));
-  const hasAnyOrdered = orderedIds.size > 0 || items.some((item) => Boolean(item.pendingMovement));
+  const markOrdered = (equipment, movement, destination) => {
+    setOrderedByEqId((prev) => {
+      const next = new Map(prev);
+      next.set(equipment._id, {
+        status: movement?.status || 'awaiting_approval',
+        toRoomCode: destination?.code || ''
+      });
+      return next;
+    });
+  };
+  const hasAnyOrdered = orderedByEqId.size > 0 || items.some((item) => Boolean(item.pendingMovement));
 
   return (
     <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
@@ -31,8 +49,7 @@ export const EquipmentBlockerList = ({ items, room = null }) => {
       </div>
       <ul id="room-deactivate-blockers" style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: '220px', overflowY: 'auto' }}>
         {items.map((item) => {
-          const ordered = orderedIds.has(item._id) || Boolean(item.pendingMovement);
-          const pendingTarget = item.pendingMovement?.toRoomCode;
+          const pending = orderedByEqId.get(item._id) || item.pendingMovement;
           return (
             <li key={item._id || item.code} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', fontSize: '12.5px' }}>
               <span>
@@ -41,11 +58,11 @@ export const EquipmentBlockerList = ({ items, room = null }) => {
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap' }}>
                 <span style={{ color: 'var(--ink-muted)' }}>{getEquipmentStatusLabel(item.status)}</span>
-                {room && (ordered ? (
+                {pending ? (
                   <span style={{ fontSize: '11px', fontWeight: 700, color: '#E5A33B' }}>
-                    {pendingTarget ? `Chờ KTV → ${pendingTarget}` : 'Chờ KTV'}
+                    {formatPendingTransferLabel(pending)}
                   </span>
-                ) : (
+                ) : room && canOrderTransfer ? (
                   <button
                     type="button"
                     id={`room-transfer-${item.code}`}
@@ -54,15 +71,21 @@ export const EquipmentBlockerList = ({ items, room = null }) => {
                   >
                     <Icons.RefreshCw size={12} /> Điều chuyển
                   </button>
-                ))}
+                ) : (
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#E5484D' }}>
+                    Cần điều chuyển
+                  </span>
+                )}
               </span>
             </li>
           );
         })}
       </ul>
-      {room && hasAnyOrdered && (
+      {room && (hasAnyOrdered || !canOrderTransfer) && (
         <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', background: 'var(--surface-2)', fontSize: '11.5px', color: 'var(--ink-muted)', lineHeight: 1.5 }}>
-          Thiết bị chỉ rời khỏi phòng sau khi Kỹ thuật viên xác nhận lệnh điều chuyển thực địa. Khi đã chuyển hết, hãy thực hiện lại thao tác này.
+          {!canOrderTransfer
+            ? 'Theo phân quyền RACI, Quản lý CSVC và Kỹ thuật viên thực hiện điều chuyển toàn bộ thiết bị ra khỏi phòng trước khi Admin ngừng sử dụng phòng.'
+            : 'Thiết bị chỉ rời khỏi phòng sau khi Quản lý CSVC phê duyệt và Kỹ thuật viên xác nhận hoàn tất điều chuyển thực địa.'}
         </div>
       )}
       {transferItem && (

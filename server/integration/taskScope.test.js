@@ -270,6 +270,7 @@ test('room lifecycle validates input, rejects duplicates, audits edits, blocks o
   assert.equal(audit.new_value.capacity, 40);
   assert.equal((await request(`/api/facilities/rooms/${room._id}/deactivate`, 'admin', 'PUT', {})).status, 409);
   assert.equal((await request(`/api/facilities/rooms/${room._id}/status`, 'admin', 'PUT', { status: ' inactive ' })).status, 409);
+  assert.equal((await request(`/api/facilities/rooms/${room._id}/status`, 'facility_manager', 'PUT', { status: 'maintenance' })).status, 403);
   assert.equal((await request(`/api/facilities/rooms/${id}/deactivate`, 'admin', 'PUT', {})).status, 200);
   assert.equal((await request(`/api/facilities/rooms/${id}/status`, 'admin', 'PUT', { status: 'available' })).status, 200);
   const list = await request('/api/facilities/rooms?floor=1&room_type=lecture&status=available&q=T%C3%AAn&page=1&limit=1');

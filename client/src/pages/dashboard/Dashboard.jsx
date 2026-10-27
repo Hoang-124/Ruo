@@ -9,6 +9,7 @@ import { DashboardAnalytics } from './DashboardAnalytics';
 import { buildRoomPodIndex, getRoomPod, getPodStatus } from '../../components/common/roomPod';
 import { resolveRoomEquipments, resolveRoomStatus, summarizeRoomEquipment } from './roomPanel';
 import { Button, Card, KPI, StatusBadge, EmptyState } from '../../components/ui/Primitives';
+import { RoomDetailModal } from '../../components/ui/RoomDetailModal';
 
 /**
  * Dashboard - UEMS Operational Command Center
@@ -71,6 +72,7 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
   const [selectedRoom, setSelectedRoom] = useState(() => {
     return CAMPUS_FLOORS[1]?.topRooms?.[0] || null;
   });
+  const [detailRoomCode, setDetailRoomCode] = useState(null);
 
   const fetchDashboardData = useCallback(async (isInitialMount = false) => {
     setLoading(true);
@@ -175,7 +177,7 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
           setEquipmentsList(eqList);
           const allDisposals = dispRes.proposals || dispRes.data || [];
 
-          setAdminDisposals(allDisposals.filter(d => d.status === 'proposed'));
+          setAdminDisposals(allDisposals.filter(d => d.status === 'hc_approved'));
           setRecentAudits(audRes.logs || audRes.data || []);
           if (chainRes && chainRes.verification) {
             setAuditChainValid(chainRes.verification.isValid);
@@ -251,6 +253,8 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
   // Live room (database) wins over the equipment list and the architectural sample data
   const selectedPod = selectedRoom ? getRoomPod(roomPods, selectedRoom.code) : undefined;
   const selectedRoomInfo = selectedPod || selectedRoom;
+  const roomCapacity = selectedPod?.capacity ?? selectedRoom?.capacity;
+  const roomArea = selectedPod?.area ?? selectedRoom?.area;
   const roomEquipmentView = useMemo(
     () => resolveRoomEquipments(selectedRoom, selectedPod, equipmentsList),
     [selectedRoom, selectedPod, equipmentsList]
@@ -336,7 +340,7 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
               </Button>
             </>
           )}
-          <Button size="sm" variant="primary" icon={Icons.Clock} loading={loading} onClick={fetchDashboardData}>
+          <Button size="sm" variant="primary" icon={Icons.Clock} loading={loading} onClick={() => fetchDashboardData()}>
             Cập Nhật
           </Button>
         </div>
@@ -372,9 +376,20 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
           subtitle={selectedRoom ? `Tầng ${selectedFloor} • ${ROOM_CATEGORIES[selectedRoom.category]?.name || 'Phòng học'}` : "Chọn một phòng trên sơ đồ bên trái"}
           action={
             selectedRoom && (
-              <span style={{ fontSize: '11px', color: 'var(--blueprint-400)', fontFamily: 'var(--font-mono)' }}>
-                TẦNG {selectedFloor} • {selectedRoom.code?.replace(/^A1-/, '')}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--blueprint-400)', fontFamily: 'var(--font-mono)' }}>
+                  TẦNG {selectedFloor} • {selectedRoom.code?.replace(/^A1-/, '')}
+                </span>
+                {selectedPod && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setDetailRoomCode(selectedRoom.code)}
+                  >
+                    Chi Tiết
+                  </Button>
+                )}
+              </div>
             )
           }
         >
@@ -408,13 +423,13 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
                 <div>
                   <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Sức chứa:</span>
                   <strong style={{ color: 'var(--ink-primary)' }}>
-                    {selectedRoomInfo.capacity != null ? `${selectedRoomInfo.capacity} chỗ` : 'Chưa rõ'}
+                    {roomCapacity != null ? `${roomCapacity} chỗ` : 'Chưa rõ'}
                   </strong>
                 </div>
                 <div>
                   <span style={{ color: 'var(--ink-muted)', fontSize: '11px', display: 'block' }}>Diện tích sàn:</span>
                   <strong style={{ color: 'var(--ink-primary)' }}>
-                    {selectedRoomInfo.area ?? 'Chưa rõ'} m²
+                    {roomArea != null ? `${roomArea} m²` : 'Chưa rõ'}
                   </strong>
                 </div>
               </div>
@@ -1255,6 +1270,9 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
           </>
         )}
       </div>
+      {detailRoomCode && (
+        <RoomDetailModal roomCode={detailRoomCode} onClose={() => setDetailRoomCode(null)} />
+      )}
     </div>
   );
 };

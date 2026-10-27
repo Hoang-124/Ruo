@@ -30,7 +30,7 @@ const attachPendingMovements = async (equipments = []) => {
   const pendingByEqId = new Map(
     pendingMoves.map((m) => [
       m.equipment_id.toString(),
-      { movementId: m._id, toRoomCode: m.to_room_id?.code || 'Kho/Phòng đích' }
+      { movementId: m._id, status: m.status, toRoomCode: m.to_room_id?.code || 'Kho/Phòng đích' }
     ])
   );
   return equipments.map((eq) => {

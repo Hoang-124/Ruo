@@ -65,8 +65,11 @@ const MOVEMENT_TYPE_LABELS = {
 };
 
 const MOVEMENT_STATUS_LABELS = {
+  awaiting_approval: 'Chờ phê duyệt',
+  approved: 'Đã duyệt (Chờ KTV)',
   pending: 'Chờ thực hiện',
   completed: 'Hoàn thành',
+  rejected: 'Đã từ chối',
   cancelled: 'Đã hủy'
 };
 
