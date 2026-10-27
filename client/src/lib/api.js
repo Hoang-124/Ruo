@@ -277,19 +277,10 @@ export const disposalApi = {
   hcApprove: (id, review_note = '') => api.put(`/disposals/${id}/hc-approve`, { review_note }),
   hcReject: (id, reject_reason) => api.put(`/disposals/${id}/hc-reject`, { reject_reason }),
   approve: (id, decision_number, recovery_value) => api.put(`/disposals/${id}/approve`, { decision_number, recovery_value }),
-<<<<<<< HEAD
-  reject: (id, reject_reason) => api.put(`/disposals/${id}/reject`, { reject_reason }),
-  hcApprove: (id, review_note = '') => api.put(`/disposals/${id}/hc-approve`, { review_note }),
-  hcReject: (id, reject_reason) => api.put(`/disposals/${id}/hc-reject`, { reject_reason }),
-  bghApprove: (id, decision_number, recovery_value) => api.put(`/disposals/${id}/bgh-approve`, { decision_number, recovery_value }),
-  procurement: (id, data) => api.put(`/disposals/${id}/procurement`, data),
-  receipt: (id, data) => api.put(`/disposals/${id}/receipt`, data)
-=======
   bghApprove: (id, decision_number, recovery_value) => api.put(`/disposals/${id}/bgh-approve`, { decision_number, recovery_value }),
   reject: (id, reject_reason) => api.put(`/disposals/${id}/reject`, { reject_reason }),
   planProcurement: (id, data) => api.put(`/disposals/${id}/procurement`, data),
   completeReceipt: (id, data) => api.put(`/disposals/${id}/receipt`, data)
->>>>>>> ca8534b9d0c45dffa087463b90f8f23c2ae02c73
 };
 
 export const inventoryApi = {
