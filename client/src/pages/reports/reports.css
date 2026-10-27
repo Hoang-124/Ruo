@@ -8,3 +8,5 @@
 .reports-caption { text-align: left; color: var(--ink-muted); padding-bottom: 12px; }
 .reports-page > * { min-width: 0; }
 .reports-page td { font-variant-numeric: tabular-nums; }
+.reports-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.reports-status-chart { display: block; width: 100%; max-width: 900px; color: var(--ink-primary); margin: 24px 0; }

@@ -5,12 +5,33 @@ import { reportApi } from '../../lib/api';
 import { ReportsPage } from './ReportsPage';
 import { isTabAllowedForRole } from '../../config/navigation';
 
-vi.mock('../../lib/api', () => ({ reportApi: { getByRoom: vi.fn() } }));
+vi.mock('../../lib/api', () => ({ reportApi: { getByRoom: vi.fn(), getByStatus: vi.fn() } }));
 beforeEach(() => {
+  reportApi.getByStatus.mockResolvedValue({ groups: [
+    { status: 'in_use', count: 3, value: 300 }, { status: 'repairing', count: 1, value: 100 },
+    { status: 'pending_disposal', count: 0, value: 0 }, { status: 'disposed', count: 2, value: 200 }
+  ] });
   reportApi.getByRoom.mockResolvedValue({ rooms: [
     { _id: 'r1', code: 'P101', name: 'Phòng học 101', floor: 1, count: 2, value: 2000000, brokenCount: 1 },
     { _id: 'r2', code: 'P201', name: 'Phòng trống', floor: 2, count: 0, value: 0, brokenCount: 0 }
   ], unassigned: { count: 1, value: 500000 } });
+});
+
+describe('UC-8.5 report by status', () => {
+  it('switches to the status chart and renders zero counts and disposed assets', async () => {
+    render(<ReportsPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Theo trạng thái' }));
+    expect(await screen.findByRole('img', { name: 'Phân bổ thiết bị theo trạng thái' })).toBeTruthy();
+    expect(screen.getByRole('cell', { name: 'Chờ thanh lý' })).toBeTruthy();
+    expect(screen.getByRole('cell', { name: 'Đã thanh lý' })).toBeTruthy();
+    expect(screen.getByText('600 đ')).toBeTruthy();
+  });
+  it('handles an empty asset register', async () => {
+    reportApi.getByStatus.mockResolvedValue({ groups: [] });
+    render(<ReportsPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Theo trạng thái' }));
+    expect(await screen.findByText('Chưa có tài sản để thống kê trạng thái.')).toBeTruthy();
+  });
 });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
