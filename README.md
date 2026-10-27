@@ -265,7 +265,9 @@ Hệ thống bao gồm **21 Mongoose Models** tại `server/src/models/`, phân 
 - `GET /api/parts-requests`, `POST /api/parts-requests` & `PUT /api/parts-requests/:id/approve` — Lập phiếu xin lĩnh và duyệt xuất kho linh kiện (`UC-5.10`, `UC-5.11`)
 
 ### 7.6. Báo Cáo, Thông Báo & Kiểm Toán SHA-256 (`/api/reports`, `/api/notifications`, `/api/audit`)
-- `GET /api/reports/dashboard` | `/by-room` | `/by-status` | `/repair-frequency` | `/export/csv` — Hệ thống thống kê KPI & xuất báo cáo (`UC-8.1` – `UC-8.9`)
+- `GET /api/dashboard/kpi`, `/api/dashboard/repair-cost?year=2026&period=month|quarter`, `/api/dashboard/health-score` — KPI, chi phí và MTBF (`UC-8.1` – `UC-8.3`).
+- `GET /api/reports/by-room`, `/by-status`, `/repair-frequency?year=2026`, `/warranty-expiring?days=30`, `/overdue-repairs` — Báo cáo trên menu **Báo Cáo**, dành cho Manager/Admin (`UC-8.4` – `UC-8.8`).
+- `GET /api/reports/export?type=equipment&format=csv|print`; kiểm kê dùng `type=inventory&sessionId=<id>` — CSV mở bằng Excel hoặc bản in lưu PDF (`UC-8.9`). Cấu hình tiêu đề trường qua `REPORT_INSTITUTION_NAME`. [Chi tiết nghiệm thu UC-8.1–UC-8.9](docs/uc8-review-2026-10-27.md).
 - `GET /api/notifications`, `PUT /api/notifications/:id/read` & `PUT /api/notifications/read-all` — Trung tâm thông báo nội bộ (`UC-9.1`, `UC-9.2`)
 - `GET /api/audit/logs`, `GET /api/audit/verify-chain` & `GET /api/audit/export/csv` — Tra cứu, đối soát chuỗi băm SHA-256 và xuất sổ cái kiểm toán (`UC-13.1`, `UC-13.2`)
 

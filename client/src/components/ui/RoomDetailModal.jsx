@@ -28,7 +28,7 @@ const Pill = ({ children, tone = '#8A93A3' }) => (
 const EMPTY_TONE = '#8A93A3';
 const EQUIPMENT_TONES = { in_use: '#2FB37A', in_stock: '#3E7BFA', broken: '#E5484D', repairing: '#E5A33B', pending_disposal: '#E5A33B', disposed: EMPTY_TONE, lost: '#E5484D' };
 const REPAIR_TONES = { reported: '#E5A33B', assigned: '#3E7BFA', in_progress: '#3E7BFA', resolved: '#2FB37A', closed: EMPTY_TONE, unrepairable: '#E5484D' };
-const MOVEMENT_TONES = { pending: '#E5A33B', completed: '#2FB37A', cancelled: EMPTY_TONE };
+const MOVEMENT_TONES = { awaiting_approval: '#E5A33B', approved: '#3E7BFA', pending: '#E5A33B', completed: '#2FB37A', rejected: '#E5484D', cancelled: EMPTY_TONE };
 
 const Stat = ({ label, value, tone }) => (
   <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>

@@ -59,6 +59,10 @@ export const Badge = ({ children, variant = 'neutral', size = 'md', className = 
 
 export const StatusBadge = ({ status, label: customLabel }) => {
   const map = {
+    // Equipment statuses
+    in_use: { label: 'Đang sử dụng', variant: 'active', dot: '#2FB37A' },
+    in_stock: { label: 'Trong kho', variant: 'transferring', dot: '#3E7BFA' },
+    broken: { label: 'Hỏng', variant: 'danger', dot: '#E5484D' },
     active: { label: 'Đang hoạt động', variant: 'active', dot: '#2FB37A' },
     available: { label: 'Sẵn sàng cấp phát', variant: 'active', dot: '#2FB37A' },
     repairing: { label: 'Đang sửa chữa', variant: 'repairing', dot: '#E5A33B' },
@@ -67,10 +71,16 @@ export const StatusBadge = ({ status, label: customLabel }) => {
     disposed: { label: 'Đã thanh lý', variant: 'disposed', dot: '#71717A' },
     lost: { label: 'Thất thoát / Mất', variant: 'disposed', dot: '#71717A' },
     // Transfer statuses
-    pending: { label: 'Chờ Quản lý duyệt', variant: 'repairing', dot: '#E5A33B' },
+    awaiting_approval: { label: 'Chờ Quản lý duyệt', variant: 'repairing', dot: '#E5A33B' },
+    pending: { label: 'Chờ thực hiện', variant: 'repairing', dot: '#E5A33B' },
     approved: { label: 'Đã duyệt (Chờ bàn giao)', variant: 'transferring', dot: '#3E7BFA' },
     completed: { label: 'Đã hoàn tất', variant: 'active', dot: '#2FB37A' },
     rejected: { label: 'Đã từ chối', variant: 'danger', dot: '#E5484D' },
+    cancelled: { label: 'Đã hủy', variant: 'disposed', dot: '#71717A' },
+    // Disposal statuses
+    proposed: { label: 'Chờ CSVC thẩm định', variant: 'repairing', dot: '#E5A33B' },
+    hc_approved: { label: 'Chờ BGH phê duyệt', variant: 'transferring', dot: '#3E7BFA' },
+    bgh_approved: { label: 'BGH đã phê duyệt', variant: 'active', dot: '#2FB37A' },
     // SLA statuses
     on_track: { label: 'Đúng hạn SLA', variant: 'active', dot: '#2FB37A' },
     at_risk: { label: 'Nguy cơ quá hạn', variant: 'repairing', dot: '#E5A33B' },
@@ -79,7 +89,9 @@ export const StatusBadge = ({ status, label: customLabel }) => {
     reported: { label: 'Chờ tiếp nhận', variant: 'repairing', dot: '#EF4444' },
     assigned: { label: 'Đã giao KTV', variant: 'transferring', dot: '#0EA5E9' },
     in_progress: { label: 'Đang sửa chữa', variant: 'repairing', dot: '#F59E0B' },
+    resolved: { label: 'Đã sửa xong', variant: 'active', dot: '#10B981' },
     repaired: { label: 'Đã sửa xong (Chờ nghiệm thu)', variant: 'active', dot: '#10B981' },
+    unrepairable: { label: 'Không thể sửa', variant: 'danger', dot: '#E5484D' },
     closed: { label: 'Đã hoàn tất', variant: 'active', dot: '#2FB37A' }
   };
 

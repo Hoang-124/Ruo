@@ -22,6 +22,7 @@ const MovementTasksPage = lazy(() => import('./pages/technician/MovementTasksPag
 const QRScannerPage = lazy(() => import('./pages/technician/QRScannerPage').then(m => ({ default: m.QRScannerPage })));
 
 // Facility Manager Module Pages
+const ReportsPage = lazy(() => import('./pages/reports/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const TicketKanbanPage = lazy(() => import('./pages/incidents/TicketKanbanPage').then(m => ({ default: m.TicketKanbanPage })));
 const WarehouseStockPage = lazy(() => import('./pages/facility/WarehouseStockPage').then(m => ({ default: m.WarehouseStockPage })));
 const MovementsPage = lazy(() => import('./pages/facility/MovementsPage').then(m => ({ default: m.MovementsPage })));
@@ -191,6 +192,9 @@ const MainAppContent = () => {
         );
 
       // 4. Facility Manager Views
+      case 'reports':
+        return renderSubPageWrapper('Báo Cáo Tài Sản & Vận Hành', 'BÁO CÁO QUẢN TRỊ', <ReportsPage />);
+
       case 'tickets_kanban':
       case 'tickets':
       case 'repairs':

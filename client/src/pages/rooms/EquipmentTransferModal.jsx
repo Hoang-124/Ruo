@@ -15,9 +15,9 @@ const labelStyle = { display: 'block', fontSize: '12px', fontWeight: 700, margin
 const errorStyle = { margin: '6px 0 0', fontSize: '12px', color: 'var(--crimson-500)' };
 
 /**
- * Admin dialog to order one piece of equipment out of a room that is being closed (UC-2.5 / UC-2.6).
- * It creates a pending movement order (POST /movements); the equipment only leaves the room once a
- * Technician confirms the order on site.
+ * Operational dialog to request transferring one piece of equipment out of a room (UC-2.5 / UC-2.6).
+ * Creates an awaiting-approval transfer request (POST /api/transfers); the equipment leaves the room
+ * once approved by Facility Management and confirmed on site by a Technician.
  */
 export const EquipmentTransferModal = ({ equipment, room, onClose, onOrdered }) => {
   const { toast } = useToast();
@@ -31,7 +31,7 @@ export const EquipmentTransferModal = ({ equipment, room, onClose, onOrdered }) 
 
   useEffect(() => {
     let ignore = false;
-    facilityApi.getAllRooms({ limit: 100 })
+    facilityApi.getAllRooms()
       .then((res) => {
         if (ignore) return;
         const options = getTransferDestinations(res.rooms || [], room._id);
@@ -69,8 +69,8 @@ export const EquipmentTransferModal = ({ equipment, room, onClose, onOrdered }) 
         reason,
         roomCode: room.code
       }));
-      toast.success(res.message || `Đã lập lệnh điều chuyển ${equipment.code}.`);
-      onOrdered?.(equipment, res.movement);
+      toast.success(res.message || `Đã gửi phiếu điều chuyển ${equipment.code}.`);
+      onOrdered?.(equipment, res.movement, destination);
       onClose();
     } catch (err) {
       setSubmitError(err.data?.message || err.message || 'Không thể lập lệnh điều chuyển.');
@@ -85,7 +85,7 @@ export const EquipmentTransferModal = ({ equipment, room, onClose, onOrdered }) 
         <div className="ruo-drawer-header">
           <div>
             <h2 id="equipment-transfer-title" className="ruo-drawer-title">Điều Chuyển Thiết Bị</h2>
-            <p className="ruo-drawer-subtitle">Chuyển khỏi phòng {room.code} • cần KTV xác nhận thực địa</p>
+            <p className="ruo-drawer-subtitle">Chuyển khỏi phòng {room.code} • chờ CSVC duyệt & KTV xác nhận</p>
           </div>
           <button type="button" onClick={onClose} className="ruo-drawer-close-btn" aria-label="Đóng"><Icons.Close size={18} /></button>
         </div>

@@ -122,6 +122,9 @@ describe('room detail helpers (UC-2.3)', () => {
     expect(getEquipmentStatusLabel('???')).toBe('???');
     expect(getRepairStatusLabel('in_progress')).toBe('Đang sửa');
     expect(getMovementTypeLabel('to_stock')).toBe('Nhập kho');
+    expect(getMovementStatusLabel('awaiting_approval')).toBe('Chờ phê duyệt');
+    expect(getMovementStatusLabel('approved')).toBe('Đã duyệt (Chờ KTV)');
+    expect(getMovementStatusLabel('rejected')).toBe('Đã từ chối');
     expect(getMovementStatusLabel('pending')).toBe('Chờ thực hiện');
     expect(getMovementStatusLabel(undefined)).toBe('—');
   });

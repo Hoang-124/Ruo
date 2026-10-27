@@ -20,6 +20,9 @@ import { SparePart } from '../src/models/SparePart.js';
 import { PartsRequest } from '../src/models/PartsRequest.js';
 import { EquipmentMovement } from '../src/models/EquipmentMovement.js';
 import { AuditLog } from '../src/models/AuditLog.js';
+import { parseWarrantyQuery } from '../src/services/reportAnalytics.js';
+import { InventorySession } from '../src/models/InventorySession.js';
+import { InventoryLog } from '../src/models/InventoryLog.js';
 
 // Only the randomly named database created by this test is dropped. Never seed application data.
 const uri = process.env.TEST_MONGO_URI || 'mongodb://127.0.0.1:27028';
@@ -118,6 +121,28 @@ test('cost aggregation honors Vietnam year/quarter boundaries and never re-adds 
   for (const query of ['year=oops', 'period=week', 'year[$gt]=2020']) assert.equal((await request(`/api/dashboard/repair-cost?${query}`)).status, 400);
 });
 
+test('UC-8.6 frequency groups actual failures by category and historic room, including legacy records', async () => {
+  const result = await request('/api/reports/repair-frequency?year=2026');
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.summary, { failureCount: 26, legacyRoomCount: 26, affectedEquipment: 25 });
+  assert.equal(result.body.byCategory[0].failureCount, 26);
+  assert.equal(result.body.byRoom[0].code, 'P101');
+  assert.equal(result.body.byRoom[0].incidentsPerEquipment, 1.04);
+  const incident = await Repair.create({ equipment_id: equipment[0]._id, room_id: emptyRoom._id,
+    reported_by: users[0]._id, incident_description: 'Historic room test', reported_at: new Date('2026-02-02') });
+  try {
+    const changed = await request('/api/reports/repair-frequency?year=2026');
+    assert.equal(changed.body.byRoom.find(row => row.code === 'P102').failureCount, 1);
+    assert.equal(changed.body.summary.affectedEquipment, 25);
+    assert.equal((await request('/api/reports/repair-frequency?year=2026', 'technician')).status, 403);
+    assert.equal((await request('/api/reports/repair-frequency?year=2026', 'lecturer')).status, 403);
+    assert.equal((await request('/api/reports/repair-frequency?year=2026', null)).status, 401);
+    assert.equal((await request('/api/reports/repair-frequency?year=2026', 'facility_manager')).status, 200);
+    assert.equal((await request('/api/reports/repair-frequency?year[$gt]=2000')).status, 400);
+    assert.equal((await request('/api/reports/repair-frequency?year=2000')).body.summary.failureCount, 0);
+  } finally { await Repair.deleteOne({ _id: incident._id }); }
+});
+
 test('health score counts incident records rather than stale repair_count; paginates all active assets', async () => {
   const { status, body } = await request('/api/dashboard/health-score?limit=10');
   assert.equal(status, 200);
@@ -128,6 +153,92 @@ test('health score counts incident records rather than stale repair_count; pagin
   assert.equal(first.failureCount, 2);
   assert.ok(Math.abs(first.mtbfDays - first.ageDays / 2) < 0.02);
   assert.equal((await request('/api/dashboard/health-score?page=-1')).status, 400);
+});
+
+test('UC-8.7 warranty uses inclusive Vietnam calendar days, excludes void/disposed and paginates', async () => {
+  const { start, end } = parseWarrantyQuery({ days: '30' });
+  const changed = equipment.slice(0, 6);
+  try {
+    const expires = [start, new Date(end - 1), new Date(start - 1), end, start, start];
+    for (let index = 0; index < changed.length; index++) {
+      await Equipment.updateOne({ _id: changed[index]._id }, { warranty_expiry: expires[index],
+        ...(index === 4 ? { warranty_status: 'void' } : {}), ...(index === 5 ? { status: 'disposed' } : {}) });
+    }
+    const result = await request('/api/reports/warranty-expiring?days=30&limit=1');
+    assert.equal(result.status, 200);
+    assert.equal(result.body.total, 2);
+    assert.equal(result.body.totalPages, 2);
+    assert.equal(result.body.equipment[0].daysRemaining, 0);
+    const second = await request('/api/reports/warranty-expiring?days=30&limit=1&page=2', 'facility_manager');
+    assert.equal(second.body.equipment[0].daysRemaining, 30);
+    assert.equal((await request('/api/reports/warranty-expiring?days=-1')).status, 400);
+    assert.equal((await request('/api/reports/warranty-expiring?days=30&days=60')).status, 400);
+    for (const role of ['lecturer', 'technician']) assert.equal((await request('/api/reports/warranty-expiring', role)).status, 403);
+  } finally {
+    await Equipment.updateMany({ _id: { $in: changed.map(item => item._id) } }, { warranty_expiry: null, warranty_status: 'active', status: 'in_use' });
+  }
+});
+
+test('UC-8.8 overdue report agrees with KPI and excludes finished, future and undated repairs', async () => {
+  const result = await request('/api/reports/overdue-repairs?limit=2');
+  const kpi = await request('/api/dashboard/kpi');
+  assert.equal(result.status, 200);
+  assert.equal(result.body.total, kpi.body.metrics.overdueRepairs);
+  assert.equal(result.body.total, 3);
+  assert.equal(result.body.repairs.length, 2);
+  assert.ok(result.body.repairs.every(row => row.overdueMinutes > 0 && row.status === 'reported'));
+  assert.equal((await request('/api/reports/overdue-repairs?limit=2&page=2', 'facility_manager')).body.repairs.length, 1);
+  assert.equal((await request('/api/reports/overdue-repairs?severity=critical')).body.total, 0);
+  for (const query of ['page=0', 'severity=invalid', 'limit=101']) assert.equal((await request(`/api/reports/overdue-repairs?${query}`)).status, 400);
+  for (const role of ['lecturer', 'technician']) assert.equal((await request('/api/reports/overdue-repairs', role)).status, 403);
+  const extra = await Repair.insertMany(['resolved', 'unrepairable', 'in_progress'].map(status => ({
+    equipment_id: equipment[0]._id, reported_by: users[0]._id, incident_description: 'Excluded from overdue', status,
+    deadline: new Date(Date.now() + (status === 'in_progress' ? 86400000 : -86400000))
+  })));
+  try { assert.equal((await request('/api/reports/overdue-repairs')).body.total, 3); }
+  finally { await Repair.deleteMany({ _id: { $in: extra.map(row => row._id) } }); }
+});
+
+test('UC-8.9 exports complete asset data and scoped inventory, validates requests and enforces roles', async () => {
+  const download = (query, role = 'admin') => fetch(`${base}/api/reports/export?${query}`, {
+    headers: role ? { Authorization: `Bearer ${tokens[role]}` } : {}
+  });
+  const csvResponse = await download('type=equipment');
+  assert.equal(csvResponse.status, 200);
+  assert.match(csvResponse.headers.get('content-type'), /text\/csv/);
+  const bytes = new Uint8Array(await csvResponse.arrayBuffer());
+  assert.deepEqual([...bytes.slice(0, 3)], [239, 187, 191]);
+  const csv = new TextDecoder().decode(bytes);
+  assert.ok(csv.includes('"E259"'));
+  assert.ok(csv.includes('Tổng tài sản: 260'));
+  for (const role of ['lecturer', 'technician']) assert.equal((await download('type=equipment', role)).status, 403);
+  assert.equal((await download('type=equipment', null)).status, 401);
+  for (const query of ['type=nope', 'format=pdf', 'type=inventory', 'type=inventory&sessionId=invalid']) assert.equal((await download(query)).status, 400);
+  assert.equal((await download(`type=inventory&sessionId=${new mongoose.Types.ObjectId()}`)).status, 404);
+  const session = await InventorySession.create({ name: 'Đợt <kiểm kê>', scope_type: 'room', scope_ids: [emptyRoom._id], created_by: users[0]._id });
+  const items = await Equipment.insertMany(['A', 'B', 'C'].map(code => ({ code: `EXPORT-${code}`, qr_code: `EXPORT-${code}`,
+    name: code === 'A' ? '=SUM(1,2)' : 'Máy <chiếu>', category_id: category._id, room_id: emptyRoom._id, status: 'in_use', price: 500 })));
+  try {
+    await InventoryLog.create({ session_id: session._id, equipment_id: items[0]._id, scanned_room_id: emptyRoom._id,
+      scanned_by: users[0]._id, status: 'matched', note: '<script>alert(1)</script>' });
+    const inventoryCsv = await (await download(`type=inventory&sessionId=${session._id}`, 'facility_manager')).text();
+    assert.ok(inventoryCsv.includes('"\'=SUM(1,2)"'));
+    assert.ok(inventoryCsv.includes('Chưa kiểm tra: 2'));
+    assert.ok(inventoryCsv.includes('"EXPORT-C"'));
+    assert.ok(!inventoryCsv.includes('"E0"'));
+    const printResponse = await download(`type=inventory&sessionId=${session._id}&format=print`);
+    assert.match(printResponse.headers.get('content-type'), /text\/html/);
+    const html = await printResponse.text();
+    assert.ok(html.includes('Đợt &lt;kiểm kê&gt;'));
+    assert.ok(!html.includes('<script>'));
+    assert.ok(html.includes('TRƯỜNG ĐẠI HỌC'));
+    assert.ok(html.includes('BÁO CÁO KIỂM KÊ TÀI SẢN'));
+    assert.ok(html.includes('Chưa kiểm tra'));
+  } finally {
+    await InventoryLog.deleteMany({ session_id: session._id });
+    await InventorySession.deleteOne({ _id: session._id });
+    await Equipment.deleteMany({ _id: { $in: items.map(item => item._id) } });
+  }
 });
 
 test('CAD, room detail and reports agree on equipment and include serial/QR/history', async () => {
@@ -159,6 +270,7 @@ test('room lifecycle validates input, rejects duplicates, audits edits, blocks o
   assert.equal(audit.new_value.capacity, 40);
   assert.equal((await request(`/api/facilities/rooms/${room._id}/deactivate`, 'admin', 'PUT', {})).status, 409);
   assert.equal((await request(`/api/facilities/rooms/${room._id}/status`, 'admin', 'PUT', { status: ' inactive ' })).status, 409);
+  assert.equal((await request(`/api/facilities/rooms/${room._id}/status`, 'facility_manager', 'PUT', { status: 'maintenance' })).status, 403);
   assert.equal((await request(`/api/facilities/rooms/${id}/deactivate`, 'admin', 'PUT', {})).status, 200);
   assert.equal((await request(`/api/facilities/rooms/${id}/status`, 'admin', 'PUT', { status: 'available' })).status, 200);
   const list = await request('/api/facilities/rooms?floor=1&room_type=lecture&status=available&q=T%C3%AAn&page=1&limit=1');

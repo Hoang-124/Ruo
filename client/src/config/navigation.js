@@ -79,6 +79,14 @@ export const ALL_NAV_ITEMS = {
   },
 
   // Lecturer Module
+  reports: {
+    id: 'reports',
+    label: 'Báo Cáo Tài Sản & Vận Hành',
+    short: 'Báo Cáo',
+    icon: Icons.FileText,
+    roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER]
+  },
+
   report_issue: {
     id: 'report_issue',
     label: 'Báo Hỏng Thiết Bị',
