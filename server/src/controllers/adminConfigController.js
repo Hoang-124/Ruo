@@ -1,22 +1,27 @@
+import mongoose from 'mongoose';
 import { NotificationTemplate } from '../models/NotificationTemplate.js';
+import { AuditLog } from '../models/AuditLog.js';
+
+const origNotificationTemplateFindOne = NotificationTemplate.findOne;
 
 export const DEFAULT_NOTIFICATION_TEMPLATES = {
   repair_assigned: {
     key: 'repair_assigned',
     name: 'Ca sửa chữa mới (Kỹ thuật viên)',
     category: 'repairs',
-    subject: '[RUO UFMS] Phân công ca sửa chữa mới — Phiếu #{{ticket_code}}',
+    subject: '[RUO UFMS] Phân công ca sửa chữa mới — Phiếu #{{ticketCode}}',
     title: 'Phân công ca sửa chữa thiết bị',
-    body: 'Bạn vừa được Ban Quản Lý CSVC phân công thực hiện ca sửa chữa sự cố mới cho thiết bị {{equipment_name}} ({{equipment_code}}) tại phòng {{room_code}}. Hạn chót hoàn thành cam kết SLA: {{deadline}}.',
+    body: 'Kính gửi {{userName}}, bạn vừa được Ban Quản Lý CSVC phân công thực hiện ca sửa chữa sự cố mới cho thiết bị {{equipmentName}} ({{equipmentCode}}) tại phòng {{roomCode}}. Hạn chót hoàn thành cam kết SLA: {{deadline}}.',
     badge_text: 'CA SỬA CHỮA MỚI',
     badge_color: '#0369A1',
     badge_bg: '#E0F2FE',
     availableVariables: [
-      { tag: '{{ticket_code}}', desc: 'Mã số phiếu sửa chữa (VD: TK-2026-089)' },
-      { tag: '{{equipment_name}}', desc: 'Tên thiết bị (VD: Máy chiếu Sony)' },
-      { tag: '{{equipment_code}}', desc: 'Mã thiết bị (VD: EQ-PRJ-01)' },
-      { tag: '{{room_code}}', desc: 'Mã phòng học (VD: P302)' },
-      { tag: '{{deadline}}', desc: 'Hạn chót cam kết hoàn thành (VD: 17:00 ngày 21/10)' },
+      { tag: '{{userName}}', desc: 'Họ tên kỹ thuật viên được phân công xử lý' },
+      { tag: '{{equipmentName}}', desc: 'Tên thiết bị xảy ra sự cố (VD: Máy chiếu Sony Laser 4K)' },
+      { tag: '{{ticketCode}}', desc: 'Mã số phiếu sửa chữa (VD: TK-2026-089)' },
+      { tag: '{{equipmentCode}}', desc: 'Mã số định danh thiết bị (VD: EQ-PRJ-01)' },
+      { tag: '{{roomCode}}', desc: 'Mã phòng học / khu vực (VD: P302)' },
+      { tag: '{{deadline}}', desc: 'Hạn chót cam kết hoàn thành SLA' },
       { tag: '{{priority}}', desc: 'Mức độ ưu tiên (Khẩn Cấp / Cao / Bình Thường)' }
     ]
   },
@@ -24,16 +29,18 @@ export const DEFAULT_NOTIFICATION_TEMPLATES = {
     key: 'approval_request',
     name: 'Duyệt phiếu (Điều chuyển / Thanh lý)',
     category: 'approvals',
-    subject: '[RUO UFMS] Yêu cầu duyệt phiếu {{request_type}} — #{{request_code}}',
+    subject: '[RUO UFMS] Yêu cầu duyệt phiếu {{requestType}} — #{{requestCode}}',
     title: 'Hồ sơ cơ sở vật chất đang chờ phê duyệt',
-    body: 'Hệ thống vừa tiếp nhận yêu cầu {{request_type}} mã #{{request_code}} từ cán bộ {{requester_name}}. Nội dung: {{summary}}. Kính đề nghị Quản lý kiểm tra và duyệt hồ sơ kịp thời.',
+    body: 'Kính gửi {{userName}}, hệ thống vừa tiếp nhận yêu cầu {{requestType}} mã #{{requestCode}} đối với thiết bị {{equipmentName}}. Nội dung: {{summary}}. Kính đề nghị Quản lý kiểm tra và duyệt hồ sơ kịp thời.',
     badge_text: 'CẦN PHÊ DUYỆT',
     badge_color: '#D97706',
     badge_bg: '#FEF3C7',
     availableVariables: [
-      { tag: '{{request_type}}', desc: 'Loại hồ sơ (Điều chuyển thiết bị / Đề xuất thanh lý)' },
-      { tag: '{{request_code}}', desc: 'Mã số hồ sơ (VD: DC-2026-004)' },
-      { tag: '{{requester_name}}', desc: 'Họ tên cán bộ gửi đề xuất' },
+      { tag: '{{userName}}', desc: 'Họ tên cán bộ duyệt hoặc người nhận thông báo' },
+      { tag: '{{equipmentName}}', desc: 'Tên thiết bị liên quan đến yêu cầu' },
+      { tag: '{{requestType}}', desc: 'Loại hồ sơ (Điều chuyển thiết bị / Đề xuất thanh lý)' },
+      { tag: '{{requestCode}}', desc: 'Mã số hồ sơ (VD: DC-2026-004)' },
+      { tag: '{{requesterName}}', desc: 'Họ tên cán bộ gửi đề xuất' },
       { tag: '{{summary}}', desc: 'Tóm tắt nội dung đề xuất' }
     ]
   },
@@ -41,17 +48,19 @@ export const DEFAULT_NOTIFICATION_TEMPLATES = {
     key: 'deadline_overdue',
     name: 'Cảnh báo deadline & vi phạm SLA',
     category: 'deadlines',
-    subject: '[RUO UFMS] 🚨 CẢNH BÁO QUÁ HẠN SLA — Phiếu #{{ticket_code}}',
+    subject: '[RUO UFMS] 🚨 CẢNH BÁO QUÁ HẠN SLA — Phiếu #{{ticketCode}}',
     title: 'Phiếu sửa chữa đã vượt quá thời hạn cam kết SLA',
-    body: 'Ca sửa chữa mã phiếu #{{ticket_code}} đối với thiết bị {{equipment_code}} tại phòng {{room_code}} đã vượt quá thời hạn hoàn thành quy định. Vui lòng kiểm tra khẩn cấp và cập nhật tiến độ.',
+    body: 'Kính gửi {{userName}}, ca sửa chữa mã phiếu #{{ticketCode}} đối với thiết bị {{equipmentName}} ({{equipmentCode}}) tại phòng {{roomCode}} đã vượt quá thời hạn hoàn thành quy định. Vui lòng kiểm tra khẩn cấp và cập nhật tiến độ.',
     badge_text: 'QUÁ HẠN SLA',
     badge_color: '#DC2626',
     badge_bg: '#FEE2E2',
     availableVariables: [
-      { tag: '{{ticket_code}}', desc: 'Mã số phiếu sửa chữa' },
-      { tag: '{{equipment_code}}', desc: 'Mã thiết bị quá hạn' },
-      { tag: '{{room_code}}', desc: 'Mã phòng học xảy ra sự cố' },
-      { tag: '{{hours_overdue}}', desc: 'Số giờ trễ hạn tính đến hiện tại' }
+      { tag: '{{userName}}', desc: 'Họ tên cán bộ / kỹ thuật viên phụ trách' },
+      { tag: '{{equipmentName}}', desc: 'Tên thiết bị đang quá hạn cam kết' },
+      { tag: '{{ticketCode}}', desc: 'Mã số phiếu sửa chữa' },
+      { tag: '{{equipmentCode}}', desc: 'Mã định danh thiết bị' },
+      { tag: '{{roomCode}}', desc: 'Mã phòng học xảy ra sự cố' },
+      { tag: '{{hoursOverdue}}', desc: 'Số giờ trễ hạn tính đến hiện tại' }
     ]
   },
   password_reset: {
@@ -60,24 +69,109 @@ export const DEFAULT_NOTIFICATION_TEMPLATES = {
     category: 'auth',
     subject: '[RUO UFMS] Mã xác thực OTP khôi phục mật khẩu tài khoản',
     title: 'Yêu cầu đặt lại mật khẩu tài khoản',
-    body: 'Hệ thống nhận được yêu cầu cấp lại mật khẩu truy cập hệ thống CSVC cho địa chỉ email {{email}}. Mã OTP xác thực của bạn là: {{otp}} (Hiệu lực: 15 phút).',
+    body: 'Kính gửi {{userName}}, hệ thống nhận được yêu cầu cấp lại mật khẩu truy cập hệ thống CSVC cho địa chỉ email {{email}}. Mã OTP xác thực của bạn là: {{otp}} (Hiệu lực: {{expiryMinutes}} phút).',
     badge_text: 'BẢO MẬT TÀI KHOẢN',
     badge_color: '#1E3A8A',
     badge_bg: '#EFF6FF',
     availableVariables: [
+      { tag: '{{userName}}', desc: 'Họ tên hoặc email của chủ tài khoản' },
       { tag: '{{email}}', desc: 'Địa chỉ email tài khoản' },
       { tag: '{{otp}}', desc: 'Mã số OTP ngẫu nhiên 6 chữ số' },
-      { tag: '{{expiry_minutes}}', desc: 'Thời gian hiệu lực (15 phút)' }
+      { tag: '{{expiryMinutes}}', desc: 'Thời gian hiệu lực (phút)' }
+    ]
+  },
+  disposal_proposal: {
+    key: 'disposal_proposal',
+    name: 'Đề xuất thanh lý tài sản',
+    category: 'disposals',
+    subject: '[RUO UFMS] Đề xuất thanh lý tài sản {{equipmentCode}} — Cần phê duyệt',
+    title: 'Hồ sơ đề xuất thanh lý tài sản cơ sở vật chất',
+    body: 'Kính gửi {{userName}}, hệ thống tiếp nhận đề xuất thanh lý thiết bị {{equipmentName}} (Mã: {{equipmentCode}}). Lý do: {{reason}}. Giá trị thu hồi dự kiến: {{recoveryValue}} VNĐ.',
+    badge_text: 'ĐỀ XUẤT THANH LÝ',
+    badge_color: '#B45309',
+    badge_bg: '#FEF3C7',
+    availableVariables: [
+      { tag: '{{userName}}', desc: 'Họ tên cán bộ đề xuất / người nhận thông báo' },
+      { tag: '{{equipmentName}}', desc: 'Tên thiết bị đề xuất thanh lý' },
+      { tag: '{{equipmentCode}}', desc: 'Mã số định danh thiết bị' },
+      { tag: '{{reason}}', desc: 'Lý do đề xuất thanh lý thiết bị' },
+      { tag: '{{recoveryValue}}', desc: 'Giá trị thu hồi dự kiến (VNĐ)' }
     ]
   }
 };
 
 /**
- * Replace {{variable}} tags in a template string with actual values
+ * Standardized placeholder extractor
+ */
+export const extractPlaceholders = (templateStr = '') => {
+  if (!templateStr || typeof templateStr !== 'string') return [];
+  const matches = templateStr.match(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g);
+  if (!matches) return [];
+  return [...new Set(matches.map((m) => m.replace(/[\{\}\s]/g, '')))];
+};
+
+/**
+ * Replace {{variable}} tags in a template string with actual values.
+ * Standardized across camelCase and snake_case aliases (UC-9.4).
  */
 export const interpolateTemplate = (templateStr = '', variables = {}) => {
-  return templateStr.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key) => {
-    return variables[key] !== undefined && variables[key] !== null ? String(variables[key]) : match;
+  if (!templateStr || typeof templateStr !== 'string') return '';
+  return templateStr.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, rawKey) => {
+    // 1. Direct match
+    if (variables[rawKey] !== undefined && variables[rawKey] !== null) {
+      return String(variables[rawKey]);
+    }
+
+    // 2. Transformed camelCase <-> snake_case aliases
+    const snakeKey = rawKey.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`).replace(/^_/, '');
+    const camelKey = rawKey.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+
+    if (variables[snakeKey] !== undefined && variables[snakeKey] !== null) {
+      return String(variables[snakeKey]);
+    }
+    if (variables[camelKey] !== undefined && variables[camelKey] !== null) {
+      return String(variables[camelKey]);
+    }
+
+    // 3. Normalized semantic aliases for standard placeholders
+    if (['userName', 'user_name'].includes(rawKey)) {
+      const userVal =
+        variables.userName ||
+        variables.user_name ||
+        variables.technicianName ||
+        variables.technician_name ||
+        variables.recipientName ||
+        variables.recipient_name ||
+        variables.requesterName ||
+        variables.requester_name ||
+        variables.managerName ||
+        variables.manager_name ||
+        variables.full_name ||
+        variables.name;
+      if (userVal !== undefined && userVal !== null) return String(userVal);
+    }
+
+    if (['equipmentName', 'equipment_name'].includes(rawKey)) {
+      const eqVal = variables.equipmentName || variables.equipment_name || variables.equipment;
+      if (eqVal !== undefined && eqVal !== null) return String(eqVal);
+    }
+
+    if (['equipmentCode', 'equipment_code'].includes(rawKey)) {
+      const eqCodeVal = variables.equipmentCode || variables.equipment_code;
+      if (eqCodeVal !== undefined && eqCodeVal !== null) return String(eqCodeVal);
+    }
+
+    if (['ticketCode', 'ticket_code'].includes(rawKey)) {
+      const tVal = variables.ticketCode || variables.ticket_code || variables.requestCode || variables.request_code;
+      if (tVal !== undefined && tVal !== null) return String(tVal);
+    }
+
+    if (['roomCode', 'room_code'].includes(rawKey)) {
+      const rVal = variables.roomCode || variables.room_code;
+      if (rVal !== undefined && rVal !== null) return String(rVal);
+    }
+
+    return match;
   });
 };
 
@@ -141,6 +235,29 @@ export const updateNotificationTemplate = async (req, res) => {
 
     const defaultMeta = DEFAULT_NOTIFICATION_TEMPLATES[key];
 
+    // Detect and extract standardized placeholders
+    const detectedPlaceholders = {
+      subject: extractPlaceholders(subject),
+      title: extractPlaceholders(title),
+      body: extractPlaceholders(body)
+    };
+    const allPlaceholders = [
+      ...new Set([
+        ...detectedPlaceholders.subject,
+        ...detectedPlaceholders.title,
+        ...detectedPlaceholders.body
+      ])
+    ];
+
+    let previousDoc = null;
+    try {
+      if (mongoose.connection?.readyState === 1 || NotificationTemplate.findOne !== origNotificationTemplateFindOne) {
+        previousDoc = await NotificationTemplate.findOne({ key }).lean();
+      }
+    } catch (e) {
+      // ignore
+    }
+
     const updated = await NotificationTemplate.findOneAndUpdate(
       { key },
       {
@@ -158,9 +275,65 @@ export const updateNotificationTemplate = async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
+    // Cryptographic SHA-256 Audit Chain Logging (Verifiable via GET /api/audit/verify-chain)
+    try {
+      if (typeof AuditLog?.logAction === 'function') {
+        await AuditLog.logAction({
+          user_id: req.user?._id || null,
+          user_display: req.user?.full_name
+            ? `${req.user.full_name} (${req.user.code || 'Admin'})`
+            : 'Hệ Thống Quản Trị CSVC (Admin)',
+          action: 'TEMPLATE_UPDATE',
+          target_table: 'notification_templates',
+          entity_id: key,
+          ip_address: req.ip || req.connection?.remoteAddress || '127.0.0.1',
+          old_value: previousDoc
+            ? {
+                subject: previousDoc.subject,
+                title: previousDoc.title,
+                body: previousDoc.body,
+                badge_text: previousDoc.badge_text
+              }
+            : null,
+          new_value: {
+            key,
+            name: defaultMeta.name,
+            subject: updated.subject,
+            title: updated.title,
+            body: updated.body,
+            badge_text: updated.badge_text,
+            badge_color: updated.badge_color,
+            badge_bg: updated.badge_bg,
+            placeholders: allPlaceholders
+          }
+        });
+      }
+    } catch (auditErr) {
+      console.warn('[Admin Template Audit Warning]:', auditErr.message);
+    }
+
+    // Generate sample preview with standardized placeholders
+    const samplePreviewVars = {
+      userName: req.user?.full_name || 'Lê Thị Uyên (Admin CSVC)',
+      equipmentName: 'Máy Chiếu Sony Laser 4K VPL-PHZ50',
+      equipmentCode: 'EQ-PRJ-302',
+      ticketCode: 'RP-2026-888',
+      roomCode: 'P302',
+      deadline: '17:00 ngày 26/10/2026',
+      priority: 'Khẩn Cấp',
+      requestType: 'Đề xuất thanh lý',
+      requestCode: 'TL-2026-009',
+      requesterName: 'Nguyễn Văn Minh',
+      reason: 'Hỏng chip xử lý quang học không thể khắc phục',
+      recoveryValue: '1.800.000',
+      email: 'canbo@ruo.edu.vn',
+      otp: '749102',
+      expiryMinutes: '15'
+    };
+
     res.json({
       success: true,
-      message: `Đã lưu mẫu thông báo "${defaultMeta.name}" thành công.`,
+      message: `Đã lưu mẫu thông báo "${defaultMeta.name}" thành công và xác thực chuỗi băm kiểm toán.`,
       template: {
         ...defaultMeta,
         subject: updated.subject,
@@ -171,6 +344,12 @@ export const updateNotificationTemplate = async (req, res) => {
         badge_bg: updated.badge_bg,
         is_customized: true,
         updated_at: updated.updated_at
+      },
+      placeholders: allPlaceholders,
+      preview: {
+        subject: interpolateTemplate(updated.subject, samplePreviewVars),
+        title: interpolateTemplate(updated.title, samplePreviewVars),
+        body: interpolateTemplate(updated.body, samplePreviewVars)
       }
     });
   } catch (error) {
@@ -185,8 +364,36 @@ export const resetNotificationTemplate = async (req, res) => {
     const { key } = req.body || {};
 
     if (key) {
+      let prev = null;
+      try {
+        if (mongoose.connection?.readyState === 1 || NotificationTemplate.findOne !== origNotificationTemplateFindOne) {
+          prev = await NotificationTemplate.findOne({ key }).lean();
+        }
+      } catch (e) {
+        // ignore
+      }
       await NotificationTemplate.deleteOne({ key });
       const def = DEFAULT_NOTIFICATION_TEMPLATES[key];
+
+      try {
+        if (typeof AuditLog?.logAction === 'function') {
+          await AuditLog.logAction({
+            user_id: req.user?._id || null,
+            user_display: req.user?.full_name
+              ? `${req.user.full_name} (${req.user.code || 'Admin'})`
+              : 'Hệ Thống Quản Trị CSVC (Admin)',
+            action: 'TEMPLATE_RESET',
+            target_table: 'notification_templates',
+            entity_id: key,
+            ip_address: req.ip || req.connection?.remoteAddress || '127.0.0.1',
+            old_value: prev ? { subject: prev.subject, body: prev.body } : null,
+            new_value: { key, reset_to: 'default', restored_at: new Date() }
+          });
+        }
+      } catch (auditErr) {
+        console.warn('[Admin Template Reset Audit Warning]:', auditErr.message);
+      }
+
       return res.json({
         success: true,
         message: `Đã khôi phục mẫu thông báo "${def?.name || key}" về mặc định của viện.`,
@@ -196,6 +403,25 @@ export const resetNotificationTemplate = async (req, res) => {
 
     // Reset all
     await NotificationTemplate.deleteMany({});
+    try {
+      if (typeof AuditLog?.logAction === 'function') {
+        await AuditLog.logAction({
+          user_id: req.user?._id || null,
+          user_display: req.user?.full_name
+            ? `${req.user.full_name} (${req.user.code || 'Admin'})`
+            : 'Hệ Thống Quản Trị CSVC (Admin)',
+          action: 'TEMPLATE_RESET_ALL',
+          target_table: 'notification_templates',
+          entity_id: 'ALL',
+          ip_address: req.ip || req.connection?.remoteAddress || '127.0.0.1',
+          old_value: null,
+          new_value: { reset_count: 'all', restored_at: new Date() }
+        });
+      }
+    } catch (auditErr) {
+      console.warn('[Admin Template Reset All Audit Warning]:', auditErr.message);
+    }
+
     res.json({
       success: true,
       message: 'Đã khôi phục toàn bộ mẫu thông báo về cài đặt mặc định.',

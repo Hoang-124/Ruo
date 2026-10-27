@@ -287,6 +287,8 @@ export const AuditLogPage = () => {
               style={{ height: '34px', fontSize: '12px', padding: '0 10px' }}
             >
               <option value="ALL">Tất cả bảng</option>
+              <option value="notification_templates">notification_templates (Mẫu thông báo / email)</option>
+              <option value="audit_logs">audit_logs (Email & xác thực OTP)</option>
               <option value="users">users</option>
               <option value="roles">roles</option>
               <option value="equipments">equipments</option>

@@ -351,7 +351,8 @@ export const adminConfigApi = {
   getTemplates: () => api.get('/admin/config/templates'),
   updateTemplate: (data) => api.put('/admin/config/templates', data),
   resetTemplate: (key) => api.post('/admin/config/templates/reset', { key }),
-  resetAllTemplates: () => api.post('/admin/config/templates/reset', {})
+  resetAllTemplates: () => api.post('/admin/config/templates/reset', {}),
+  verifyChain: () => api.get('/audit/verify-chain')
 };
 
 // Backward compatibility alias for transferApi

@@ -14,7 +14,7 @@ const notificationTemplateSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['repairs', 'approvals', 'deadlines', 'auth', 'general'],
+      enum: ['repairs', 'approvals', 'deadlines', 'auth', 'disposals', 'general'],
       default: 'general'
     },
     subject: {
