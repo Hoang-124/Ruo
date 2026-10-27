@@ -21,6 +21,8 @@ import { PartsRequest } from '../src/models/PartsRequest.js';
 import { EquipmentMovement } from '../src/models/EquipmentMovement.js';
 import { AuditLog } from '../src/models/AuditLog.js';
 import { parseWarrantyQuery } from '../src/services/reportAnalytics.js';
+import { InventorySession } from '../src/models/InventorySession.js';
+import { InventoryLog } from '../src/models/InventoryLog.js';
 
 // Only the randomly named database created by this test is dropped. Never seed application data.
 const uri = process.env.TEST_MONGO_URI || 'mongodb://127.0.0.1:27028';
@@ -195,6 +197,48 @@ test('UC-8.8 overdue report agrees with KPI and excludes finished, future and un
   })));
   try { assert.equal((await request('/api/reports/overdue-repairs')).body.total, 3); }
   finally { await Repair.deleteMany({ _id: { $in: extra.map(row => row._id) } }); }
+});
+
+test('UC-8.9 exports complete asset data and scoped inventory, validates requests and enforces roles', async () => {
+  const download = (query, role = 'admin') => fetch(`${base}/api/reports/export?${query}`, {
+    headers: role ? { Authorization: `Bearer ${tokens[role]}` } : {}
+  });
+  const csvResponse = await download('type=equipment');
+  assert.equal(csvResponse.status, 200);
+  assert.match(csvResponse.headers.get('content-type'), /text\/csv/);
+  const bytes = new Uint8Array(await csvResponse.arrayBuffer());
+  assert.deepEqual([...bytes.slice(0, 3)], [239, 187, 191]);
+  const csv = new TextDecoder().decode(bytes);
+  assert.ok(csv.includes('"E259"'));
+  assert.ok(csv.includes('Tổng tài sản: 260'));
+  for (const role of ['lecturer', 'technician']) assert.equal((await download('type=equipment', role)).status, 403);
+  assert.equal((await download('type=equipment', null)).status, 401);
+  for (const query of ['type=nope', 'format=pdf', 'type=inventory', 'type=inventory&sessionId=invalid']) assert.equal((await download(query)).status, 400);
+  assert.equal((await download(`type=inventory&sessionId=${new mongoose.Types.ObjectId()}`)).status, 404);
+  const session = await InventorySession.create({ name: 'Đợt <kiểm kê>', scope_type: 'room', scope_ids: [emptyRoom._id], created_by: users[0]._id });
+  const items = await Equipment.insertMany(['A', 'B', 'C'].map(code => ({ code: `EXPORT-${code}`, qr_code: `EXPORT-${code}`,
+    name: code === 'A' ? '=SUM(1,2)' : 'Máy <chiếu>', category_id: category._id, room_id: emptyRoom._id, status: 'in_use', price: 500 })));
+  try {
+    await InventoryLog.create({ session_id: session._id, equipment_id: items[0]._id, scanned_room_id: emptyRoom._id,
+      scanned_by: users[0]._id, status: 'matched', note: '<script>alert(1)</script>' });
+    const inventoryCsv = await (await download(`type=inventory&sessionId=${session._id}`, 'facility_manager')).text();
+    assert.ok(inventoryCsv.includes('"\'=SUM(1,2)"'));
+    assert.ok(inventoryCsv.includes('Chưa kiểm tra: 2'));
+    assert.ok(inventoryCsv.includes('"EXPORT-C"'));
+    assert.ok(!inventoryCsv.includes('"E0"'));
+    const printResponse = await download(`type=inventory&sessionId=${session._id}&format=print`);
+    assert.match(printResponse.headers.get('content-type'), /text\/html/);
+    const html = await printResponse.text();
+    assert.ok(html.includes('Đợt &lt;kiểm kê&gt;'));
+    assert.ok(!html.includes('<script>'));
+    assert.ok(html.includes('TRƯỜNG ĐẠI HỌC'));
+    assert.ok(html.includes('BÁO CÁO KIỂM KÊ TÀI SẢN'));
+    assert.ok(html.includes('Chưa kiểm tra'));
+  } finally {
+    await InventoryLog.deleteMany({ session_id: session._id });
+    await InventorySession.deleteOne({ _id: session._id });
+    await Equipment.deleteMany({ _id: { $in: items.map(item => item._id) } });
+  }
 });
 
 test('CAD, room detail and reports agree on equipment and include serial/QR/history', async () => {

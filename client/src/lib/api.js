@@ -43,6 +43,7 @@ export const clearStoredTokens = () => {
  * Core fetch wrapper with auto-retry and single-flight token refresh
  */
 export async function apiRequest(endpoint, options = {}) {
+  const { responseType = 'json', ...fetchOptions } = options;
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
   const headers = {
     'Content-Type': 'application/json',
@@ -56,7 +57,7 @@ export async function apiRequest(endpoint, options = {}) {
 
   try {
     let response = await fetch(url, {
-      ...options,
+      ...fetchOptions,
       headers
     });
 
@@ -75,7 +76,7 @@ export async function apiRequest(endpoint, options = {}) {
           refreshQueue.push({ resolve, reject });
         });
         headers.Authorization = `Bearer ${newToken}`;
-        response = await fetch(url, { ...options, headers });
+        response = await fetch(url, { ...fetchOptions, headers });
       } else {
         isRefreshing = true;
         try {
@@ -101,7 +102,7 @@ export async function apiRequest(endpoint, options = {}) {
 
           // Retry the original request with new token
           headers.Authorization = `Bearer ${newToken}`;
-          response = await fetch(url, { ...options, headers });
+          response = await fetch(url, { ...fetchOptions, headers });
         } catch (refreshErr) {
           clearStoredTokens();
           processQueue(refreshErr, null);
@@ -112,6 +113,8 @@ export async function apiRequest(endpoint, options = {}) {
       }
     }
 
+    if (response.ok && responseType === 'blob') return response.blob();
+    if (response.ok && responseType === 'text') return response.text();
     const data = await response.json();
     if (!response.ok) {
       const error = new Error(data.message || `Lỗi yêu cầu máy chủ: ${response.status}`);
@@ -327,6 +330,8 @@ export const reportApi = {
   getRepairFrequency: (params) => api.get('/reports/repair-frequency', params),
   getWarrantyExpiring: (params) => api.get('/reports/warranty-expiring', params),
   getOverdueRepairs: (params) => api.get('/reports/overdue-repairs', params),
+  exportFile: (params) => apiRequest(`/reports/export?${new URLSearchParams({ ...params, format: 'csv' })}`, { responseType: 'blob' }),
+  getPrintReport: (params) => apiRequest(`/reports/export?${new URLSearchParams({ ...params, format: 'print' })}`, { responseType: 'text' }),
   getDashboard: () => api.get('/dashboard/kpi'),
   getEquipmentHealth: (params) => api.get('/dashboard/health-score', params),
   getRepairCosts: (params) => api.get('/dashboard/repair-cost', params),

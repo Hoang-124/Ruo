@@ -7,6 +7,8 @@ import { parseWarrantyQuery, warrantyDaysRemaining, parseOverdueQuery } from '..
 import '../models/Supplier.js';
 import '../models/User.js';
 import '../models/RepairUnit.js';
+import { parseExportQuery, renderReportCsv, renderReportHtml } from '../services/reportExport.js';
+import { loadExportReport } from '../services/reportExportData.js';
 export { getKpi as getDashboardMetrics } from './dashboardController.js';
 
 export const getOverdueRepairs = async (req, res) => {
@@ -127,32 +129,26 @@ export const getStatisticalReport = async (req, res) => {
   }
 };
 
-// @desc    Export statistical report as CSV (Admin Only - Zero dependencies)
+// @desc    Export asset/inventory CSV or printable HTML (Manager/Admin)
 // @route   GET /api/reports/export
 export const exportStatisticalReport = async (req, res) => {
+  const query = parseExportQuery(req.query);
+  if (!query.valid) return res.status(400).json({ success: false, message: query.message });
   try {
-    const equipments = await Equipment.find()
-      .populate('category_id', 'code name')
-      .populate('room_id', 'code name building floor')
-      .sort({ code: 1 });
-
-    const headers = ['Mã Tài Sản', 'Tên Thiết Bị', 'Chủng Loại', 'Phòng', 'Tình Trạng', 'Nguyên Giá (VNĐ)', 'Hạn Bảo Hành'];
-    const rows = equipments.map(eq => [
-      `"${eq.code}"`,
-      `"${(eq.name || '').replace(/"/g, '""')}"`,
-      `"${eq.category_id ? eq.category_id.name : ''}"`,
-      `"${eq.room_id ? eq.room_id.code : 'Kho'}"`,
-      `"${eq.status}"`,
-      eq.price || 0,
-      `"${eq.warranty_expiry ? new Date(eq.warranty_expiry).toISOString().slice(0, 10) : ''}"`
-    ]);
-
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-
+    const now = new Date();
+    const report = await loadExportReport(query, req.user, now);
+    if (!report) return res.status(404).json({ success: false, message: 'Không tìm thấy đợt kiểm kê.' });
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (query.format === 'print') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'self'");
+      return res.send(renderReportHtml(report));
+    }
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="ruo_equipment_report_${Date.now()}.csv"`);
-    res.send(csvContent);
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.setHeader('Content-Disposition', `attachment; filename="ruo_${query.type}_${now.toISOString().slice(0, 10)}.csv"`);
+    res.send(renderReportCsv(report));
+  } catch {
+    res.status(500).json({ success: false, message: 'Không xuất được báo cáo. Vui lòng thử lại.' });
   }
 };
