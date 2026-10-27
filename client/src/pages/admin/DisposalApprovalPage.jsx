@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { disposalApi } from '../../lib/api';
@@ -20,9 +20,8 @@ export const DisposalApprovalPage = () => {
   const [recoveryValue, setRecoveryValue] = useState(0);
   const [rejectReason, setRejectReason] = useState('');
 
-  const fetchDisposals = async () => {
+  const fetchDisposals = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await disposalApi.list();
       if (res && res.success) {
         setProposals(res.proposals || []);
@@ -32,11 +31,11 @@ export const DisposalApprovalPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
-    fetchDisposals();
-  }, []);
+    void fetchDisposals();
+  }, [fetchDisposals]);
 
   const openApprove = (p) => {
     setSelectedProposal(p);
@@ -61,9 +60,9 @@ export const DisposalApprovalPage = () => {
 
     try {
       setSubmitting(true);
-      const res = await disposalApi.approve(selectedProposal._id, decisionNumber.trim(), Number(recoveryValue) || 0);
+      const res = await disposalApi.bghApprove(selectedProposal._id, decisionNumber.trim(), Number(recoveryValue) || 0);
       if (res && res.success) {
-        toast.success(`Đã phê duyệt thanh lý thành công theo Quyết định ${decisionNumber}!`);
+        toast.success(`Đã ký Quyết định ${decisionNumber}; hồ sơ chuyển sang bước dự trù mua sắm.`);
         setShowApproveModal(false);
         await fetchDisposals();
       }
@@ -85,7 +84,7 @@ export const DisposalApprovalPage = () => {
       setSubmitting(true);
       const res = await disposalApi.reject(selectedProposal._id, rejectReason.trim());
       if (res && res.success) {
-        toast.success('Đã từ chối hồ sơ thanh lý thành công. Thiết bị được giữ lại.');
+        toast.success('Đã từ chối hồ sơ. Thiết bị được hoàn về trạng thái trước khi đề xuất.');
         setShowRejectModal(false);
         await fetchDisposals();
       }
@@ -98,14 +97,14 @@ export const DisposalApprovalPage = () => {
 
   const filtered = proposals.filter((p) => {
     if (filterStatus === 'ALL') return true;
-    if (filterStatus === 'PENDING') return p.status === 'proposed';
-    if (filterStatus === 'APPROVED') return p.status === 'approved' || p.status === 'completed';
+    if (filterStatus === 'PENDING') return p.status === 'hc_approved';
+    if (filterStatus === 'APPROVED') return ['bgh_approved', 'procurement_planned', 'approved', 'completed'].includes(p.status);
     if (filterStatus === 'REJECTED') return p.status === 'rejected';
     return true;
   });
 
-  const countPending = proposals.filter((p) => p.status === 'proposed').length;
-  const countApproved = proposals.filter((p) => p.status === 'approved' || p.status === 'completed').length;
+  const countPending = proposals.filter((p) => p.status === 'hc_approved').length;
+  const countApproved = proposals.filter((p) => ['bgh_approved', 'procurement_planned', 'approved', 'completed'].includes(p.status)).length;
   const countRejected = proposals.filter((p) => p.status === 'rejected').length;
 
   return (
@@ -121,7 +120,7 @@ export const DisposalApprovalPage = () => {
             Phê Duyệt Hồ Sơ Thanh Lý Thiết Bị
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
-            Xem xét các hồ sơ thanh lý thiết bị hỏng / không thể sửa chữa do Quản lý CSVC đề xuất và ban hành Quyết định thanh lý.
+            Xem xét các hồ sơ đã được Quản lý CSVC thẩm định; phê duyệt tại đây chưa kết thúc hồ sơ hay thanh lý thiết bị ngay.
           </p>
         </div>
 
@@ -203,8 +202,8 @@ export const DisposalApprovalPage = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {filtered.map((p) => {
             const eq = p.equipment_id || {};
-            const isPending = p.status === 'proposed';
-            const isApproved = p.status === 'approved' || p.status === 'completed';
+            const isPending = p.status === 'hc_approved';
+            const isApproved = ['bgh_approved', 'procurement_planned', 'approved', 'completed'].includes(p.status);
             const isRejected = p.status === 'rejected';
 
             return (
@@ -240,7 +239,7 @@ export const DisposalApprovalPage = () => {
                         color: isPending ? '#F59E0B' : isApproved ? '#10B981' : '#EF4444'
                       }}
                     >
-                      {isPending ? 'CHỜ PHÊ DUYỆT' : isApproved ? `ĐÃ PHÊ DUYỆT (${p.decision_number || 'QD-OK'})` : 'ĐÃ TỪ CHỐI'}
+                      {isPending ? 'CHỜ BGH PHÊ DUYỆT' : isApproved ? (p.status === 'completed' ? 'ĐÃ HOÀN TẤT' : `ĐÃ KÝ (${p.decision_number || 'QĐ'})`) : isRejected ? 'ĐÃ TỪ CHỐI' : 'ĐANG XỬ LÝ BƯỚC KHÁC'}
                     </span>
                   </div>
 
@@ -271,7 +270,7 @@ export const DisposalApprovalPage = () => {
                   )}
 
                   <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '8px' }}>
-                    Người đề xuất: <strong>{p.proposed_by?.full_name || 'Quản lý CSVC'}</strong> ({p.proposed_by?.code}) • Ngày: {new Date(p.created_at).toLocaleString('vi-VN')}
+                    Người đề xuất: <strong>{p.proposed_by?.full_name || 'Kỹ thuật viên'}</strong> ({p.proposed_by?.code}) • Ngày: {new Date(p.created_at).toLocaleString('vi-VN')}
                   </div>
                 </div>
 
@@ -319,7 +318,7 @@ export const DisposalApprovalPage = () => {
             <form onSubmit={handleApproveSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', color: '#10B981' }}>
-                  Hành động này xác nhận Ban Giám Hiệu đồng ý thanh lý thiết bị. Trạng thái thiết bị sẽ được chuyển thành <strong>ĐÃ THANH LÝ (disposed)</strong> và đưa ra khỏi danh mục tài sản hoạt động.
+                  Hành động này ký quyết định BGH. Hồ sơ tiếp tục sang bước dự trù mua sắm; tài sản cũ chỉ chuyển sang <strong>ĐÃ THANH LÝ</strong> sau khi KTV ghi nhận thiết bị thay thế.
                 </div>
 
                 <div>

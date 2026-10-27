@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   getCalendarDateKey,
   getMaintenanceCalendarDays,
-  getMaintenanceOccurrencesForMonth
+  getMaintenanceOccurrencesForMonth,
+  getMaintenancePlanDetails
 } from './maintenanceCalendar';
 
 describe('preventive maintenance calendar', () => {
@@ -35,5 +36,41 @@ describe('preventive maintenance calendar', () => {
     expect(getMaintenanceOccurrencesForMonth([plan], 2025, 11).size).toBe(0);
     expect(getMaintenanceOccurrencesForMonth([plan], 2026, 1).get('2026-02-28')).toEqual([plan]);
     expect(getMaintenanceOccurrencesForMonth([plan], 2026, 2).get('2026-03-31')).toEqual([plan]);
+  });
+
+  it('summarizes building scope, exact rooms, equipment categories, and matching equipment count', () => {
+    const plan = {
+      building: 'A1',
+      floor: 2,
+      room_ids: [
+        { _id: 'room-1', code: 'P201' },
+        { _id: 'room-2', code: 'P202' }
+      ],
+      category_ids: [{ _id: 'category-1', name: 'Máy chiếu' }]
+    };
+    const equipment = [
+      { room_id: { _id: 'room-1' }, category_id: { _id: 'category-1' } },
+      { room_id: { _id: 'room-2' }, category_id: { _id: 'category-1' } },
+      { room_id: { _id: 'room-2' }, category_id: { _id: 'category-2' } },
+      { room_id: { _id: 'room-3' }, category_id: { _id: 'category-1' } }
+    ];
+
+    expect(getMaintenancePlanDetails(plan, equipment)).toEqual({
+      roomNames: ['P201', 'P202'],
+      roomLabel: 'P201, P202',
+      categoryNames: ['Máy chiếu'],
+      categoryLabel: 'Máy chiếu',
+      equipmentCount: 2
+    });
+  });
+
+  it('labels an unfiltered plan as covering all equipment categories', () => {
+    const details = getMaintenancePlanDetails({
+      room_ids: [{ _id: 'room-1', code: 'P101' }],
+      category_ids: []
+    });
+
+    expect(details.roomLabel).toBe('P101');
+    expect(details.categoryLabel).toBe('Tất cả loại thiết bị');
   });
 });

@@ -80,11 +80,8 @@ export const useRouter = () => {
     if (base === 'inventory') {
       return { tab: 'inventory', params: {} };
     }
-    if (base === 'disposals' || base === 'disposal_propose') {
+    if (base === 'disposals' || base === 'disposal_propose' || base === 'disposal_approval') {
       return { tab: 'disposal_propose', params: {} };
-    }
-    if (base === 'disposal_approval') {
-      return { tab: 'disposal_approval', params: {} };
     }
     if (base === 'map') {
       return { tab: 'dashboard', params: {} };
@@ -112,7 +109,7 @@ export const useRouter = () => {
       maintenance: '#/maintenance',
       inventory: '#/inventory',
       disposal_propose: '#/disposal_propose',
-      disposal_approval: '#/disposal_approval',
+      disposal_approval: '#/disposal_propose',
       disposal_calc: '#/disposal_propose',
       map: '#/map',
       users: '#/admin/users',

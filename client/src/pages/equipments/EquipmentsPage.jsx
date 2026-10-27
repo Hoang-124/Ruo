@@ -52,7 +52,7 @@ const NativeQrMatrixSvg = ({ value = 'QR-EQ-2026-001', size = 148 }) => {
   );
 };
 
-export const EquipmentsPage = () => {
+export const EquipmentsPage = ({ onNavigateTab }) => {
   const { toast } = useToast();
   const { currentUser, hasPermission } = useAuth();
 
@@ -60,9 +60,10 @@ export const EquipmentsPage = () => {
   const canCreateOrUpdate = typeof hasPermission === 'function'
     ? (hasPermission('equipment:create') || hasPermission('equipment:update'))
     : ['admin', 'facility_manager', 'technician'].includes(userRole);
-  const canImportOrDispose = typeof hasPermission === 'function'
-    ? (hasPermission('equipment:import') || hasPermission('equipment:dispose'))
+  const canImport = typeof hasPermission === 'function'
+    ? hasPermission('equipment:import')
     : ['admin', 'facility_manager'].includes(userRole);
+  const canOpenDisposalWorkflow = ['admin', 'facility_manager', 'technician'].includes(userRole);
 
   const [loading, setLoading] = useState(true);
   const [equipments, setEquipments] = useState([]);
@@ -99,7 +100,6 @@ export const EquipmentsPage = () => {
   const [showWarrantyModal, setShowWarrantyModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
-  const [showDisposeModal, setShowDisposeModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Form states (UC-3.1 & UC-3.4)
@@ -123,13 +123,6 @@ export const EquipmentsPage = () => {
   const [warrantyData, setWarrantyData] = useState({
     warranty_expiry: '',
     warranty_status: 'active'
-  });
-
-  // Disposal Form state (UC-3.8)
-  const [disposeData, setDisposeData] = useState({
-    decision_number: '',
-    acceptance_report: '',
-    recovery_value: 0
   });
 
   // Batch Import & Validation states (UC-3.6 & UC-3.7)
@@ -350,16 +343,6 @@ export const EquipmentsPage = () => {
     setShowQrModal(true);
   };
 
-  const openDispose = (eq) => {
-    setSelectedEq(eq);
-    setDisposeData({
-      decision_number: `QĐ-BGH-2026-${Math.floor(100 + Math.random() * 900)}`,
-      acceptance_report: `Biên bản nghiệm thu thanh lý tài sản [${eq.code}] ${eq.name} tại Tòa nhà A1 do hết khấu hao / hư hỏng nặng.`,
-      recovery_value: Math.round((eq.price || 0) * 0.05)
-    });
-    setShowDisposeModal(true);
-  };
-
   const openDetail = async (eq) => {
     setSelectedEq(eq);
     setActiveTab('overview');
@@ -486,32 +469,6 @@ export const EquipmentsPage = () => {
       }
     } catch (err) {
       toast.error('Lỗi khi cập nhật bảo hành: ' + err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDisposeSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedEq) return;
-    try {
-      setSubmitting(true);
-      const res = await equipmentApi.dispose(selectedEq._id, {
-        decision_number: disposeData.decision_number,
-        acceptance_report: disposeData.acceptance_report,
-        reason: disposeData.acceptance_report,
-        recovery_value: Number(disposeData.recovery_value) || 0
-      });
-      if (res && res.success) {
-        toast.success(res.message || `Đã thanh lý thiết bị [${selectedEq.code}] (DISPOSED)!`);
-        setShowDisposeModal(false);
-        fetchEquipments();
-        if (detailData) {
-          openDetail(res.equipment || selectedEq);
-        }
-      }
-    } catch (err) {
-      toast.error('Lỗi khi thanh lý thiết bị: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -1064,7 +1021,7 @@ export const EquipmentsPage = () => {
             </button>
           </form>
 
-          {canImportOrDispose && (
+          {canImport && (
             <button
               onClick={() => {
                 setShowBatchModal(true);
@@ -1618,14 +1575,14 @@ export const EquipmentsPage = () => {
                               </button>
                             </>
                           )}
-                          {canImportOrDispose && eq.status !== 'disposed' && (
+                          {canOpenDisposalWorkflow && eq.status !== 'disposed' && (
                             <button
-                              onClick={() => openDispose(eq)}
+                              onClick={() => onNavigateTab?.('disposal_propose')}
                               className="laser-btn laser-btn-secondary"
                               style={{ padding: '6px 10px', borderRadius: '6px', background: 'var(--status-overdue-bg)', border: '1.5px solid var(--status-overdue-border)', color: 'var(--status-overdue-color)', fontSize: '11.5px', fontWeight: 800 }}
-                              title="Thanh lý tài sản theo QĐ BGH (UC-3.8)"
+                              title="Mở quy trình thanh lý RACI"
                             >
-                              Thanh lý
+                              Quy trình RACI
                             </button>
                           )}
                         </div>
@@ -2040,13 +1997,13 @@ export const EquipmentsPage = () => {
 
             <div className="ruo-drawer-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
               <div>
-                {canImportOrDispose && selectedEq.status !== 'disposed' && (
+                {canOpenDisposalWorkflow && selectedEq.status !== 'disposed' && (
                   <button
-                    onClick={() => openDispose(selectedEq)}
+                    onClick={() => onNavigateTab?.('disposal_propose')}
                     className="laser-btn laser-btn-secondary"
                     style={{ padding: '8px 14px', borderRadius: 'var(--radius-md)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.4)', fontWeight: 700 }}
                   >
-                    Thanh Lý Tài Sản (UC-3.8)
+                    Mở Quy Trình Thanh Lý RACI
                   </button>
                 )}
               </div>
@@ -2422,92 +2379,6 @@ export const EquipmentsPage = () => {
         </div>
       )}
 
-      {/* Asset Disposal Modal (UC-3.8: Chuyển trạng thái DISPOSED, số quyết định BGH, biên bản nghiệm thu thanh lý) */}
-      {showDisposeModal && selectedEq && (
-        <div className="ruo-drawer-backdrop" onClick={() => setShowDisposeModal(false)}>
-          <div className="ruo-drawer-panel" style={{ width: '520px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="ruo-drawer-header">
-              <div>
-                <h2 className="ruo-drawer-title" style={{ color: '#EF4444' }}>Ghi Nhận Thanh Lý Tài Sản (UC-3.8)</h2>
-                <p className="ruo-drawer-subtitle">{selectedEq.name} ({selectedEq.code})</p>
-              </div>
-              <button onClick={() => setShowDisposeModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
-            </div>
-
-            <form onSubmit={handleDisposeSubmit}>
-              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '12px', color: 'var(--ink-secondary)' }}>
-                  Thao tác này sẽ chuyển trạng thái tài sản sang <strong>ĐÃ THANH LÝ (DISPOSED)</strong>, thu hồi khỏi phòng học Tòa A1 và lưu vết vào Sổ cái kiểm toán SHA-256.
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
-                    Số Quyết Định Thanh Lý Của Ban Giám Hiệu *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="VD: QĐ-BGH-2026-089"
-                    value={disposeData.decision_number}
-                    onChange={(e) => setDisposeData({ ...disposeData, decision_number: e.target.value })}
-                    className="ruo-portal-input"
-                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontWeight: 700 }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
-                    Biên Bản Nghiệm Thu Thanh Lý & Lý Do *
-                  </label>
-                  <textarea
-                    required
-                    rows={4}
-                    placeholder="Nhập nội dung biên bản nghiệm thu thanh lý, hội đồng thẩm định..."
-                    value={disposeData.acceptance_report}
-                    onChange={(e) => setDisposeData({ ...disposeData, acceptance_report: e.target.value })}
-                    className="ruo-portal-input"
-                    style={{ width: '100%', fontSize: '12.5px' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
-                    Giá Trị Thu Hồi Thanh Lý (VNĐ)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="50000"
-                    value={disposeData.recovery_value}
-                    onChange={(e) => setDisposeData({ ...disposeData, recovery_value: e.target.value })}
-                    className="ruo-portal-input"
-                    style={{ width: '100%' }}
-                  />
-                </div>
-              </div>
-
-              <div className="ruo-drawer-footer">
-                <button type="button" onClick={() => setShowDisposeModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{
-                    background: '#EF4444',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '8px 20px',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  {submitting ? 'Đang Ghi Nhận...' : 'Xác Nhận Thanh Lý (DISPOSED)'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Warranty Modal */}
       {showWarrantyModal && selectedEq && (

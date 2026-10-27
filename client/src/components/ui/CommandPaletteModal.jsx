@@ -129,11 +129,11 @@ const ALL_MODULES = [
   },
   {
     id: 'disposal_propose',
-    label: 'Đề Xuất Thanh Lý Thiết Bị (Hao mòn R ≥ 60%)',
+    label: 'Quy Trình Thanh Lý Tài Sản',
     cat: 'TÀI SẢN • THANH LÝ',
     icon: Icons.Sliders,
-    desc: 'Lọc thiết bị hư hỏng quá hạn khấu hao và lập hồ sơ đề xuất thanh lý kèm giá thu hồi',
-    roles: ['facility_manager']
+    desc: 'KTV đề xuất, Quản lý CSVC thẩm định/dự trù, Admin ký duyệt và KTV tiếp nhận tài sản thay thế',
+    roles: ['facility_manager', 'technician', 'admin']
   },
   // Admin
   {
@@ -158,14 +158,6 @@ const ALL_MODULES = [
     cat: 'QUẢN TRỊ • DANH MỤC',
     icon: Icons.Settings,
     desc: 'Quản lý Loại thiết bị, Nhà cung cấp, Đơn vị sửa chữa và Danh mục phòng học',
-    roles: ['admin']
-  },
-  {
-    id: 'disposal_approval',
-    label: 'Phê Duyệt Thanh Lý (BGH - Quyết Định QĐ-TL)',
-    cat: 'QUẢN TRỊ • PHÊ DUYỆT',
-    icon: Icons.CheckCircle,
-    desc: 'Ban Giám Hiệu xem xét hồ sơ, phê duyệt với số quyết định thanh lý hoặc từ chối',
     roles: ['admin']
   },
   {

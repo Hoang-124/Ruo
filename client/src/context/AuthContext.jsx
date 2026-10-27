@@ -364,7 +364,8 @@ export const AuthProvider = ({ children }) => {
         'user:profile:read', 'room:read', 'equipment:read', 'equipment:create',
         'equipment:update', 'equipment:qr:scan', 'warranty:read', 'warranty:update',
         'movement:confirm', 'incident:create', 'repair:read_assigned', 'repair:accept',
-        'repair:log', 'repair:report_outcome', 'parts:request', 'inventory:scan', 'inventory:export'
+        'repair:log', 'repair:report_outcome', 'parts:request', 'inventory:scan', 'inventory:export',
+        'disposal:propose'
       ],
       [USER_ROLES.FACILITY_MANAGER]: [
         'user:profile:read', 'room:read', 'equipment:read', 'equipment:create',

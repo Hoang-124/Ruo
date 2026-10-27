@@ -273,7 +273,12 @@ export const disposalApi = {
   list: () => api.get('/disposals'),
   propose: (data) => api.post('/disposals', data),
   approve: (id, decision_number, recovery_value) => api.put(`/disposals/${id}/approve`, { decision_number, recovery_value }),
-  reject: (id, reject_reason) => api.put(`/disposals/${id}/reject`, { reject_reason })
+  reject: (id, reject_reason) => api.put(`/disposals/${id}/reject`, { reject_reason }),
+  hcApprove: (id, review_note = '') => api.put(`/disposals/${id}/hc-approve`, { review_note }),
+  hcReject: (id, reject_reason) => api.put(`/disposals/${id}/hc-reject`, { reject_reason }),
+  bghApprove: (id, decision_number, recovery_value) => api.put(`/disposals/${id}/bgh-approve`, { decision_number, recovery_value }),
+  procurement: (id, data) => api.put(`/disposals/${id}/procurement`, data),
+  receipt: (id, data) => api.put(`/disposals/${id}/receipt`, data)
 };
 
 export const inventoryApi = {
