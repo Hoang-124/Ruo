@@ -2,7 +2,8 @@ import React, { useCallback, useRef, useState } from 'react';
 import { inventoryApi, reportApi } from '../../lib/api';
 import { Button, Card } from '../../components/ui/Primitives';
 import { Icons } from '../../components/common/SvgIcons';
-import { reportDate, ReportState, useReport } from './reportShared';
+import { ReportState } from './reportShared';
+import { reportDate, useReport } from './reportUtils';
 
 function InventoryChoice({ refreshKey, sessionId, onChange }) {
   const sessions = useReport(useCallback(() => inventoryApi.getSessions(), []), refreshKey);

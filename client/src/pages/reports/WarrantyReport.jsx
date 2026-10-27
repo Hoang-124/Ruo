@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { reportApi } from '../../lib/api';
 import { Card } from '../../components/ui/Primitives';
-import { reportDate, ReportPagination, ReportState, useReport } from './reportShared';
+import { ReportPagination, ReportState } from './reportShared';
+import { reportDate, useReport } from './reportUtils';
 
 export function WarrantyReport({ refreshKey }) {
   const [days, setDays] = useState('30');

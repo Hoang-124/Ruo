@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { reportApi } from '../../lib/api';
 import { Card } from '../../components/ui/Primitives';
-import { ReportState, useReport } from './reportShared';
+import { ReportState } from './reportShared';
+import { useReport } from './reportUtils';
 
 function FrequencyTable({ title, rows }) {
   return <div className="dashboard-report-table"><table>

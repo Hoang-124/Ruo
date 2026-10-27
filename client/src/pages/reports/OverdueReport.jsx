@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { reportApi } from '../../lib/api';
 import { Card } from '../../components/ui/Primitives';
-import { ReportPagination, ReportState, useReport } from './reportShared';
+import { ReportPagination, ReportState } from './reportShared';
+import { useReport } from './reportUtils';
 
 const severityLabels = { minor: 'Nhẹ', major: 'Nặng', critical: 'Nghiêm trọng' };
 const statusLabels = { reported: 'Chờ tiếp nhận', assigned: 'Đã giao việc', in_progress: 'Đang sửa chữa' };

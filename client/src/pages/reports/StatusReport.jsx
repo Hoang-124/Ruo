@@ -1,9 +1,10 @@
 import React, { useCallback } from 'react';
 import { reportApi } from '../../lib/api';
 import { Card } from '../../components/ui/Primitives';
-import { money, ReportState, useReport } from './reportShared';
+import { ReportState } from './reportShared';
+import { money, useReport } from './reportUtils';
 
-export const EQUIPMENT_LABELS = {
+const EQUIPMENT_LABELS = {
   in_use: 'Đang sử dụng', in_stock: 'Trong kho', broken: 'Hỏng', repairing: 'Đang sửa chữa',
   pending_disposal: 'Chờ thanh lý', disposed: 'Đã thanh lý', lost: 'Thất lạc'
 };

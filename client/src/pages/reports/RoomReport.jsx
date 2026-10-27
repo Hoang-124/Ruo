@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
 import { reportApi } from '../../lib/api';
 import { Card } from '../../components/ui/Primitives';
-import { money, ReportState, useReport } from './reportShared';
+import { ReportState } from './reportShared';
+import { money, useReport } from './reportUtils';
 
 export function RoomReport({ refreshKey }) {
   const report = useReport(useCallback(() => reportApi.getByRoom(), []), refreshKey);
