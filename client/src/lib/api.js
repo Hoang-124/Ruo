@@ -322,6 +322,7 @@ export const roleApi = {
 };
 
 export const reportApi = {
+  getByRoom: () => api.get('/reports/by-room'),
   getDashboard: () => api.get('/dashboard/kpi'),
   getEquipmentHealth: (params) => api.get('/dashboard/health-score', params),
   getRepairCosts: (params) => api.get('/dashboard/repair-cost', params),
