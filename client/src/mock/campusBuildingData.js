@@ -8,44 +8,44 @@ export const ROOM_CATEGORIES = {
   academic: {
     id: 'academic',
     name: 'Học tập • Lý thuyết',
-    color: '#0284C7', // Sky / Cobalt Blue
-    badgeBg: 'rgba(2, 132, 199, 0.12)',
-    border: 'rgba(2, 132, 199, 0.45)'
+    color: 'var(--cad-room-accent)',
+    badgeBg: 'var(--cad-room-bg)',
+    border: 'var(--cad-room-border)'
   },
   lab: {
     id: 'lab',
     name: 'Thí nghiệm / Thực hành',
-    color: '#059669', // Emerald Green
-    badgeBg: 'rgba(5, 150, 105, 0.12)',
-    border: 'rgba(5, 150, 105, 0.45)'
+    color: 'var(--cad-room-accent)',
+    badgeBg: 'var(--cad-room-bg)',
+    border: 'var(--cad-room-border)'
   },
   admin: {
     id: 'admin',
     name: 'Nghiên cứu / Sáng tạo',
-    color: '#7C3AED', // Royal Purple / Violet
-    badgeBg: 'rgba(124, 58, 237, 0.12)',
-    border: 'rgba(124, 58, 237, 0.45)'
+    color: 'var(--cad-room-accent)',
+    badgeBg: 'var(--cad-room-bg)',
+    border: 'var(--cad-room-border)'
   },
   event: {
     id: 'event',
     name: 'Hội thảo / Seminar',
-    color: '#D97706', // Warm Amber Orange
-    badgeBg: 'rgba(217, 119, 6, 0.12)',
-    border: 'rgba(217, 119, 6, 0.45)'
+    color: 'var(--cad-room-accent)',
+    badgeBg: 'var(--cad-room-bg)',
+    border: 'var(--cad-room-border)'
   },
   public_service: {
     id: 'public_service',
     name: 'Smart Classroom / Tương tác',
-    color: '#0D9488', // Deep Teal
-    badgeBg: 'rgba(13, 148, 136, 0.12)',
-    border: 'rgba(13, 148, 136, 0.45)'
+    color: 'var(--cad-room-accent)',
+    badgeBg: 'var(--cad-room-bg)',
+    border: 'var(--cad-room-border)'
   },
   utility: {
     id: 'utility',
     name: 'Khu vệ sinh & Tiện ích',
-    color: '#64748B', // Slate
-    badgeBg: 'rgba(100, 116, 139, 0.12)',
-    border: 'rgba(100, 116, 139, 0.45)'
+    color: 'var(--cad-utility-accent)',
+    badgeBg: 'var(--cad-utility-bg)',
+    border: 'var(--cad-utility-border)'
   }
 };
 

@@ -189,6 +189,34 @@
   /* Technical Architectural Grid */
   --blueprint-grid: radial-gradient(rgba(234, 88, 12, 0.14) 1px, transparent 1px);
 
+  /* Unified 2D Architectural Floor Plan Palette (All 5 Floors) */
+  --cad-canvas-bg: #F3EFE8;
+  --cad-shell-stroke: #1C1917;
+  --cad-shell-inner: #CFC7BC;
+  --cad-window-stroke: #EA580C;
+  --cad-corridor-bg: #E7E0D5;
+  --cad-corridor-stroke: #CFC7BC;
+  --cad-corridor-dash: rgba(120, 113, 108, 0.48);
+  --cad-corridor-ink: #57534E;
+  --cad-void-bg: #F7F4EE;
+  --cad-void-stroke: #CFC7BC;
+  --cad-void-dash: rgba(234, 88, 12, 0.42);
+  --cad-wall-fill: #D6CFC4;
+  --cad-wall-stroke: #78716C;
+  --cad-stair-bg: #EFEAE1;
+  --cad-stair-landing: #E2DAD0;
+  --cad-stair-tread-stroke: #A8A29E;
+  --cad-stair-arrow-up: #EA580C;
+  --cad-stair-arrow-down: #57534E;
+  --cad-room-bg: #FFFFFF;
+  --cad-room-border: #D6C7B8;
+  --cad-room-accent: #EA580C;
+  --cad-room-selected-bg: #FFF7ED;
+  --cad-room-selected-glow: rgba(234, 88, 12, 0.28);
+  --cad-utility-bg: #F6F3EC;
+  --cad-utility-border: #D6CFC4;
+  --cad-utility-accent: #78716C;
+
   /* Legacy & Surface Compatibility Aliases */
   --surface-primary: #FFFFFF;
   --surface-input: #FAF8F5;
@@ -293,6 +321,34 @@
   --shadow-drawer: -14px 0 42px rgba(0, 0, 0, 0.82);
 
   --blueprint-grid: radial-gradient(rgba(251, 146, 60, 0.14) 1px, transparent 1px);
+
+  /* Unified 2D Architectural Floor Plan Palette — Dark Studio */
+  --cad-canvas-bg: #120F0D;
+  --cad-shell-stroke: #F5F5F4;
+  --cad-shell-inner: #443B35;
+  --cad-window-stroke: #FB923C;
+  --cad-corridor-bg: #1A1613;
+  --cad-corridor-stroke: #3A312B;
+  --cad-corridor-dash: rgba(168, 162, 158, 0.35);
+  --cad-corridor-ink: #A8A29E;
+  --cad-void-bg: #151210;
+  --cad-void-stroke: #3A312B;
+  --cad-void-dash: rgba(251, 146, 60, 0.45);
+  --cad-wall-fill: #3A312B;
+  --cad-wall-stroke: #695B52;
+  --cad-stair-bg: #1F1A17;
+  --cad-stair-landing: #2B2420;
+  --cad-stair-tread-stroke: #574C44;
+  --cad-stair-arrow-up: #FB923C;
+  --cad-stair-arrow-down: #A8A29E;
+  --cad-room-bg: #231E1B;
+  --cad-room-border: #4D4038;
+  --cad-room-accent: #FB923C;
+  --cad-room-selected-bg: #332218;
+  --cad-room-selected-glow: rgba(251, 146, 60, 0.32);
+  --cad-utility-bg: #1B1715;
+  --cad-utility-border: #3A312B;
+  --cad-utility-accent: #8C827A;
 
   --surface-primary: #171412;
   --surface-input: #211D1A;

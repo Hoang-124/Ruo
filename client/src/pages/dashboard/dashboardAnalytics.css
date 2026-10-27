@@ -17,5 +17,5 @@
 .dashboard-report-table th, .dashboard-report-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border-default); }
 .dashboard-report-table th { white-space: nowrap; color: var(--ink-muted); }
 .dashboard-report-note { color: var(--ink-muted); font-size: 12px; line-height: 1.6; }
-.dashboard-cad-grid { display: grid; grid-template-columns: minmax(0, 1.62fr) minmax(320px, 1fr); gap: 12px; align-items: start; }
+.dashboard-cad-grid { display: grid; grid-template-columns: minmax(0, 1.72fr) minmax(310px, 0.96fr); gap: 12px; align-items: start; }
 @media (max-width: 1050px) { .dashboard-cad-grid { grid-template-columns: minmax(0, 1fr); } }

@@ -318,6 +318,20 @@ const rawIcons = {
       <circle cx="12" cy="19" r="1" />
     </SvgIcon>
   ),
+  MoreHorizontal: (props) => (
+    <SvgIcon {...props}>
+      <circle cx="12" cy="12" r="1.25" />
+      <circle cx="5" cy="12" r="1.25" />
+      <circle cx="19" cy="12" r="1.25" />
+    </SvgIcon>
+  ),
+  Menu: (props) => (
+    <SvgIcon {...props}>
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+    </SvgIcon>
+  ),
   Upload: (props) => (
     <SvgIcon {...props}>
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />

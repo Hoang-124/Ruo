@@ -20,39 +20,45 @@ const podsFor = (floor, overrides = {}) =>
     }))
   );
 
-describe('<FloorPlan2D /> room pods (UC-2.7)', () => {
+describe('<FloorPlan2D /> interactive CAD rooms & live data binding', () => {
   for (const floor of [1, 2, 3, 4, 5]) {
-    it(`draws a pod on every single architectural room of floor ${floor}`, () => {
+    it(`renders every architectural room cleanly without bottom-right pod clutter on floor ${floor}`, () => {
       const select = vi.fn();
       const { container, getByTestId } = render(
         <FloorPlan2D selectedFloor={floor} roomPods={podsFor(floor)} onSelectRoom={select} />
       );
       const expectedRooms = roomsOfFloor(floor);
-      const pods = container.querySelectorAll('[data-testid^="room-pod-"]');
-      expect(pods.length).toBe(expectedRooms.length);
+      expect(container.querySelectorAll('[data-testid^="room-pod-"]')).toHaveLength(0);
+      expect(container.querySelectorAll('[data-testid^="cad-room-"]').length).toBe(expectedRooms.length);
 
       for (const room of expectedRooms) {
-        const podEl = getByTestId(`room-pod-${room.code}`);
-        expect(podEl).toBeTruthy();
-        fireEvent.click(podEl.parentElement);
-        expect(select).toHaveBeenLastCalledWith(expect.objectContaining({ code: room.code }));
+        const roomEl = getByTestId(`cad-room-${room.code}`);
+        expect(roomEl).toBeTruthy();
+        fireEvent.click(roomEl);
+        expect(select).toHaveBeenLastCalledWith(
+          expect.objectContaining({ code: room.code, equipmentCount: 6, brokenCount: 0 })
+        );
       }
     });
   }
 
-  it('shows broken counts and the status colour for a room', () => {
+  it('merges live maintenance and broken equipment counts into selected room payload without drawing pod badges', () => {
+    const select = vi.fn();
     const [room] = roomsOfFloor(1);
     const roomPods = buildRoomPodIndex([
       { code: room.code, status: 'available', effectiveStatus: 'maintenance', equipmentCount: 9, brokenCount: 3 }
     ]);
-    const { getByTestId } = render(<FloorPlan2D selectedFloor={1} roomPods={roomPods} />);
-    const pod = getByTestId(`room-pod-${room.code}`);
-    expect(pod.getAttribute('data-status')).toBe('maintenance');
-    expect(pod.textContent).toMatch(/9/);
-    expect(pod.textContent).toMatch(/3/);
+    const { container, getByTestId } = render(
+      <FloorPlan2D selectedFloor={1} roomPods={roomPods} onSelectRoom={select} />
+    );
+    expect(container.querySelectorAll('[data-testid^="room-pod-"]')).toHaveLength(0);
+    fireEvent.click(getByTestId(`cad-room-${room.code}`));
+    expect(select).toHaveBeenCalledWith(
+      expect.objectContaining({ code: room.code, effectiveStatus: 'maintenance', equipmentCount: 9, brokenCount: 3 })
+    );
   });
 
-  it('draws no pods when no live data is supplied', () => {
+  it('renders cleanly when no live data is supplied', () => {
     const { container } = render(<FloorPlan2D selectedFloor={2} />);
     expect(container.querySelectorAll('[data-testid^="room-pod-"]')).toHaveLength(0);
   });
