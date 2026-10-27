@@ -13,6 +13,7 @@ export const SparePartsPage = () => {
     currentUser?.role === 'admin'
   );
   const canManageParts = Boolean(
+    hasPermission?.('spare_part:update') ||
     hasPermission?.('parts:manage') ||
     currentUser?.role === 'facility_manager' ||
     currentUser?.role === 'admin'
@@ -162,9 +163,9 @@ export const SparePartsPage = () => {
         code: createForm.code.trim(),
         name: createForm.name.trim(),
         unit: createForm.unit.trim() || 'Cái',
-        price: Number(createForm.price) || 0,
-        stock: Number(createForm.stock) || 0,
-        min_stock: Number(createForm.min_stock) || 5
+        price: Number.isFinite(Number(createForm.price)) ? Number(createForm.price) : 0,
+        stock: Number.isFinite(Number(createForm.stock)) ? Number(createForm.stock) : 0,
+        min_stock: createForm.min_stock !== '' && Number.isFinite(Number(createForm.min_stock)) ? Number(createForm.min_stock) : 5
       });
       if (res && res.success) {
         toast.success(`Đã thêm mã linh kiện [${res.part?.code || createForm.code}] thành công!`);
@@ -184,9 +185,9 @@ export const SparePartsPage = () => {
       code: part.code || part.part_code || '',
       name: part.name || '',
       unit: part.unit || 'Cái',
-      price: part.price || 0,
-      stock: part.stock || 0,
-      min_stock: part.min_stock || 5
+      price: part.price ?? 0,
+      stock: part.stock ?? 0,
+      min_stock: part.min_stock ?? 5
     });
     setShowEditModal(true);
   };
@@ -202,9 +203,9 @@ export const SparePartsPage = () => {
       const res = await sparePartApi.update(editForm._id, {
         name: editForm.name.trim(),
         unit: editForm.unit.trim() || 'Cái',
-        price: Number(editForm.price) || 0,
-        stock: Number(editForm.stock) || 0,
-        min_stock: Number(editForm.min_stock) || 5
+        price: Number.isFinite(Number(editForm.price)) ? Number(editForm.price) : 0,
+        stock: Number.isFinite(Number(editForm.stock)) ? Number(editForm.stock) : 0,
+        min_stock: editForm.min_stock !== '' && Number.isFinite(Number(editForm.min_stock)) ? Number(editForm.min_stock) : 5
       });
       if (res && res.success) {
         toast.success(`Đã cập nhật linh kiện [${editForm.code}] thành công!`);
@@ -235,7 +236,7 @@ export const SparePartsPage = () => {
     }
   };
 
-  const lowStockCount = parts.filter(p => p.stock <= (p.min_stock || 5)).length;
+  const lowStockCount = parts.filter(p => p.stock <= (p.min_stock ?? 5)).length;
 
   return (
     <div>

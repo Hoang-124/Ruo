@@ -48,7 +48,7 @@ export const createSparePart = async (req, res) => {
     const numMinStock = Number(min_stock);
     const numPrice = Number(price);
 
-    if (numStock < 0 || numMinStock < 0 || numPrice < 0) {
+    if (!Number.isFinite(numStock) || !Number.isFinite(numMinStock) || !Number.isFinite(numPrice) || numStock < 0 || numMinStock < 0 || numPrice < 0) {
       return res.status(400).json({ success: false, message: 'Số lượng tồn kho, định mức tối thiểu và đơn giá phải là số không âm.' });
     }
 
@@ -101,17 +101,17 @@ export const updateSparePart = async (req, res) => {
     if (name !== undefined && String(name).trim()) part.name = String(name).trim();
     if (stock !== undefined) {
       const numStock = Number(stock);
-      if (numStock < 0) return res.status(400).json({ success: false, message: 'Số lượng tồn kho không được âm.' });
+      if (!Number.isFinite(numStock) || numStock < 0) return res.status(400).json({ success: false, message: 'Số lượng tồn kho không được âm.' });
       part.stock = numStock;
     }
     if (min_stock !== undefined) {
       const numMinStock = Number(min_stock);
-      if (numMinStock < 0) return res.status(400).json({ success: false, message: 'Định mức tối thiểu không được âm.' });
+      if (!Number.isFinite(numMinStock) || numMinStock < 0) return res.status(400).json({ success: false, message: 'Định mức tối thiểu không được âm.' });
       part.min_stock = numMinStock;
     }
     if (price !== undefined) {
       const numPrice = Number(price);
-      if (numPrice < 0) return res.status(400).json({ success: false, message: 'Đơn giá không được âm.' });
+      if (!Number.isFinite(numPrice) || numPrice < 0) return res.status(400).json({ success: false, message: 'Đơn giá không được âm.' });
       part.price = numPrice;
     }
     if (unit !== undefined && String(unit).trim()) part.unit = String(unit).trim();

@@ -109,6 +109,27 @@ describe('RBAC Navigation & Tab Isolation (4 Canonical Roles)', () => {
     expect(isTabAllowedForRole(USER_ROLES.ADMIN, 'assigned_tasks', hasPerm)).toBe(false);
   });
 
+  it('prioritizes core role tabs immediately after dashboard for all 4 roles', () => {
+    const adminTabs = getNavItemsForRole(USER_ROLES.ADMIN, makeHasPermission(USER_ROLES.ADMIN)).map((i) => i.id);
+    expect(adminTabs.slice(0, 6)).toEqual([
+      'dashboard',
+      'users',
+      'rbac',
+      'master_data',
+      'disposal_approval',
+      'audit_log'
+    ]);
+
+    const lecturerTabs = getNavItemsForRole(USER_ROLES.LECTURER, makeHasPermission(USER_ROLES.LECTURER)).map((i) => i.id);
+    expect(lecturerTabs.slice(0, 3)).toEqual(['dashboard', 'report_issue', 'my_tickets']);
+
+    const fmTabs = getNavItemsForRole(USER_ROLES.FACILITY_MANAGER, makeHasPermission(USER_ROLES.FACILITY_MANAGER)).map((i) => i.id);
+    expect(fmTabs.slice(0, 2)).toEqual(['dashboard', 'tickets_kanban']);
+
+    const techTabs = getNavItemsForRole(USER_ROLES.TECHNICIAN, makeHasPermission(USER_ROLES.TECHNICIAN)).map((i) => i.id);
+    expect(techTabs.slice(0, 3)).toEqual(['dashboard', 'assigned_tasks', 'movement_tasks']);
+  });
+
   it('safely matches populated user objects and raw IDs without matching undefined/guest', () => {
     const user = { _id: '67a001', id: '67a001', code: 'GV001', email: 'gv@ruo.edu.vn' };
     expect(isSameUser({ _id: '67a001' }, user)).toBe(true);

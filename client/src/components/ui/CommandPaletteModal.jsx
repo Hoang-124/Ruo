@@ -120,6 +120,14 @@ const ALL_MODULES = [
     roles: ['admin', 'facility_manager', 'technician', 'lecturer']
   },
   {
+    id: 'reports',
+    label: 'Báo Cáo Tài Sản & Vận Hành (CSV / PDF)',
+    cat: 'QUẢN TRỊ • BÁO CÁO',
+    icon: Icons.FileText,
+    desc: 'Thống kê tài sản theo phòng, trạng thái, tần suất hỏng, hạn bảo hành, SLA quá hạn và xuất CSV/PDF',
+    roles: ['admin', 'facility_manager']
+  },
+  {
     id: 'inventory',
     label: 'Kiểm Kê CSVC & Đối Soát Mã QR Thực Địa',
     cat: 'TÀI SẢN • KIỂM KÊ',
@@ -181,26 +189,10 @@ const ALL_MODULES = [
 export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
   const { currentUser, isTabAllowed } = useAuth();
   const [query, setQuery] = useState('');
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        if (isOpen) {
-          onClose();
-        }
-      } else if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   const userRole = String(currentUser?.role || '').toLowerCase();
-  const allowedModules = ALL_MODULES.filter(m =>
+  const allowedModules = ALL_MODULES.filter((m) =>
     typeof isTabAllowed === 'function' ? isTabAllowed(m.id) : (!m.roles || m.roles.includes(userRole))
   );
 
@@ -211,6 +203,43 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
       m.desc.toLowerCase().includes(query.toLowerCase())
   );
 
+  const handleClose = () => {
+    setQuery('');
+    setSelectedIndex(0);
+    onClose();
+  };
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setQuery('');
+        setSelectedIndex(0);
+        onClose();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (filtered.length > 0 ? (prev + 1) % filtered.length : 0));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (filtered.length > 0 ? (prev - 1 + filtered.length) % filtered.length : 0));
+      } else if (e.key === 'Enter' && filtered.length > 0) {
+        e.preventDefault();
+        const target = filtered[Math.min(selectedIndex, filtered.length - 1)];
+        if (target) {
+          setQuery('');
+          setSelectedIndex(0);
+          onSelectModule(target.id);
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, onSelectModule, filtered, selectedIndex]);
+
+  if (!isOpen) return null;
+
   return (
     <div
       className="ruo-modal-backdrop-smooth"
@@ -218,9 +247,10 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
         alignItems: 'flex-start',
         paddingTop: '10vh'
       }}
-      onClick={onClose}
+      onClick={handleClose}
       role="dialog"
       aria-modal="true"
+      aria-label="Bảng điều hướng nhanh"
     >
       <div
         className="ruo-modal-card-smooth"
@@ -252,9 +282,12 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
           <Icons.Search size={18} color="var(--laser-cyan)" />
           <input
             type="text"
-            placeholder="Tìm kiếm phân hệ, tính năng 95 Use Cases (CSP, SLA, QR)..."
+            placeholder="Tìm kiếm phân hệ, phòng học, thiết bị, sự cố..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedIndex(0);
+            }}
             autoFocus
             style={{
               flex: 1,
@@ -315,8 +348,9 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
               Không tìm thấy phân hệ nào phù hợp với từ khóa "{query}"
             </div>
           ) : (
-            filtered.map((m) => {
+            filtered.map((m, idx) => {
               const IconComp = m.icon;
+              const isSelected = idx === selectedIndex;
               return (
                 <div
                   key={m.id}
@@ -324,17 +358,18 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
                     onSelectModule(m.id);
                     onClose();
                   }}
+                  onMouseEnter={() => setSelectedIndex(idx)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '14px',
-                    padding: '12px 14px',
+                    padding: '10px 14px',
                     borderRadius: 'var(--radius-sm)',
                     cursor: 'pointer',
-                    transition: 'background-color var(--transition-fast)'
+                    backgroundColor: isSelected ? 'var(--surface-panel-hover)' : 'transparent',
+                    border: isSelected ? '1px solid var(--hairline-medium)' : '1px solid transparent',
+                    transition: 'background-color var(--transition-fast), border-color var(--transition-fast)'
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--surface-panel-hover)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
                   <div
                     style={{
@@ -363,8 +398,8 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
                           fontSize: '10px',
                           fontWeight: 700,
                           padding: '1px 6px',
-                          borderRadius: '3px',
-                          background: 'rgba(59, 130, 246, 0.12)',
+                          borderRadius: '4px',
+                          background: 'rgba(234, 88, 12, 0.1)',
                           color: 'var(--laser-cyan)'
                         }}
                       >
@@ -384,7 +419,7 @@ export const CommandPaletteModal = ({ isOpen, onClose, onSelectModule }) => {
                     </div>
                   </div>
 
-                  <Icons.ChevronRight size={14} color="var(--ink-muted)'" />
+                  <Icons.ChevronRight size={14} color={isSelected ? 'var(--laser-cyan)' : 'var(--ink-muted)'} />
                 </div>
               );
             })

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { connectDB } from './config/db.js';
 import { notFound, errorHandler } from './middlewares/errorMiddleware.js';
 import { securityHeaders } from './middlewares/securityMiddleware.js';
@@ -90,6 +91,7 @@ const startSlaBackgroundWorker = () => {
 
   slaInitialTimeout = setTimeout(async () => {
     try {
+      if (mongoose.connection?.readyState !== 1) return;
       const res = await checkAndNotifyOverdueRepairs();
       if (res?.overdueCount > 0) {
         console.log(`[Ruo UEMS Server] Initial SLA scan found ${res.overdueCount} overdue tickets, dispatched ${res.notifiedCount} notifications.`);
@@ -98,9 +100,11 @@ const startSlaBackgroundWorker = () => {
       console.warn('[Ruo UEMS Server] Initial SLA scanner warning:', err.message);
     }
   }, 5000);
+  slaInitialTimeout.unref?.();
 
   slaTimer = setInterval(async () => {
     try {
+      if (mongoose.connection?.readyState !== 1) return;
       const res = await checkAndNotifyOverdueRepairs();
       if (res?.overdueCount > 0) {
         console.log(`[Ruo UEMS Server] Periodic SLA scan found ${res.overdueCount} overdue tickets, dispatched ${res.notifiedCount} notifications.`);
@@ -109,6 +113,7 @@ const startSlaBackgroundWorker = () => {
       console.warn('[Ruo UEMS Server] Periodic SLA scanner warning:', err.message);
     }
   }, intervalMs);
+  slaTimer.unref?.();
 };
 
 // Start Server with proper async DB initialization & graceful shutdown

@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { RoomPodCard } from './RoomPodCard';
 import { getRoomPod } from './roomPod';
 import { CAMPUS_FLOORS, ROOM_CATEGORIES } from '../../mock/campusBuildingData';
 
@@ -171,7 +170,7 @@ const OuterCadShell = ({
       height={CAD_H - 24}
       rx="6"
       fill="none"
-      stroke="var(--ink-pure)"
+      stroke="var(--cad-shell-stroke)"
       strokeWidth="2.2"
     />
     <rect
@@ -181,12 +180,12 @@ const OuterCadShell = ({
       height={CAD_H - 32}
       rx="5"
       fill="none"
-      stroke="var(--hairline-medium)"
+      stroke="var(--cad-shell-inner)"
       strokeWidth="0.8"
     />
 
     {westEastWinY.map((wy) => (
-      <g key={`${idPrefix}-win-we-${wy}`} stroke="#0284C7" strokeWidth="3" opacity="0.95">
+      <g key={`${idPrefix}-win-we-${wy}`} stroke="var(--cad-window-stroke)" strokeWidth="3" opacity="0.82">
         <line x1="16" y1={wy} x2="16" y2={wy + westEastWinLen} />
         <line x1={CAD_W - 16} y1={wy} x2={CAD_W - 16} y2={wy + westEastWinLen} />
       </g>
@@ -199,9 +198,9 @@ const OuterCadShell = ({
         y1="12"
         x2={wx + northWinLen}
         y2="12"
-        stroke="#0284C7"
+        stroke="var(--cad-window-stroke)"
         strokeWidth="3"
-        opacity="0.95"
+        opacity="0.82"
       />
     ))}
 
@@ -212,9 +211,9 @@ const OuterCadShell = ({
         y1={CAD_H - 12}
         x2={wx + southWinLen}
         y2={CAD_H - 12}
-        stroke="#0284C7"
+        stroke="var(--cad-window-stroke)"
         strokeWidth="3"
-        opacity="0.95"
+        opacity="0.82"
       />
     ))}
   </g>
@@ -242,38 +241,38 @@ const StairwellPair = ({ idPrefix, y = 232, h = 88 }) => {
           y={y}
           width="140"
           height={h}
-          fill="rgba(248, 250, 252, 0.95)"
-          stroke="#475569"
-          strokeWidth="1.8"
+          fill="var(--cad-stair-bg)"
+          stroke="var(--cad-wall-stroke)"
+          strokeWidth="1.6"
           rx="4"
         />
-        <rect x="24" y={y} width="30" height={h} fill="rgba(203, 213, 225, 0.45)" stroke="#64748B" strokeWidth="1" />
-        <rect x="56" y={upTopY} width="104" height={flightH} fill="var(--surface-panel)" stroke="#CBD5E1" strokeWidth="0.8" />
+        <rect x="24" y={y} width="30" height={h} fill="var(--cad-stair-landing)" stroke="var(--cad-corridor-stroke)" strokeWidth="1" />
+        <rect x="56" y={upTopY} width="104" height={flightH} fill="var(--cad-room-bg)" stroke="var(--cad-corridor-stroke)" strokeWidth="0.8" />
         {STAIR_TICKS_WEST.map((tx) => (
-          <line key={`${idPrefix}-tx-w-up-${tx}`} x1={tx} y1={upTopY} x2={tx} y2={upBotY} stroke="#64748B" strokeWidth="1" />
+          <line key={`${idPrefix}-tx-w-up-${tx}`} x1={tx} y1={upTopY} x2={tx} y2={upBotY} stroke="var(--cad-stair-tread-stroke)" strokeWidth="1" />
         ))}
-        <line x1="150" y1={upMidY} x2="65" y2={upMidY} stroke="#2563EB" strokeWidth="1.8" />
-        <polygon points={`73,${upMidY - 4} 64,${upMidY} 73,${upMidY + 4}`} fill="#2563EB" />
+        <line x1="150" y1={upMidY} x2="65" y2={upMidY} stroke="var(--cad-stair-arrow-up)" strokeWidth="1.8" />
+        <polygon points={`73,${upMidY - 4} 64,${upMidY} 73,${upMidY + 4}`} fill="var(--cad-stair-arrow-up)" />
 
-        <rect x="56" y={labelY} width="104" height="16" rx="3" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
+        <rect x="56" y={labelY} width="104" height="16" rx="3" fill="var(--cad-room-bg)" stroke="var(--cad-corridor-stroke)" strokeWidth="0.8" />
         <text
           x="108"
           y={labelY + 12}
           fontFamily="var(--font-sans)"
           fontSize="10.5"
           fontWeight="800"
-          fill="#334155"
+          fill="var(--ink-secondary)"
           textAnchor="middle"
         >
           THANG TÂY ▲
         </text>
 
-        <rect x="56" y={dnTopY} width="104" height={flightH} fill="var(--surface-panel)" stroke="#CBD5E1" strokeWidth="0.8" />
+        <rect x="56" y={dnTopY} width="104" height={flightH} fill="var(--cad-room-bg)" stroke="var(--cad-corridor-stroke)" strokeWidth="0.8" />
         {STAIR_TICKS_WEST.map((tx) => (
-          <line key={`${idPrefix}-tx-w-dn-${tx}`} x1={tx} y1={dnTopY} x2={tx} y2={dnBotY} stroke="#64748B" strokeWidth="1" />
+          <line key={`${idPrefix}-tx-w-dn-${tx}`} x1={tx} y1={dnTopY} x2={tx} y2={dnBotY} stroke="var(--cad-stair-tread-stroke)" strokeWidth="1" />
         ))}
-        <line x1="65" y1={dnMidY} x2="150" y2={dnMidY} stroke="#059669" strokeWidth="1.8" />
-        <polygon points={`142,${dnMidY - 4} 151,${dnMidY} 142,${dnMidY + 4}`} fill="#059669" />
+        <line x1="65" y1={dnMidY} x2="150" y2={dnMidY} stroke="var(--cad-stair-arrow-down)" strokeWidth="1.8" />
+        <polygon points={`142,${dnMidY - 4} 151,${dnMidY} 142,${dnMidY + 4}`} fill="var(--cad-stair-arrow-down)" />
       </g>
 
       {/* CẦU THANG ĐÔNG (x = 796..936, w = 140) */}
@@ -283,39 +282,39 @@ const StairwellPair = ({ idPrefix, y = 232, h = 88 }) => {
           y={y}
           width="140"
           height={h}
-          fill="rgba(248, 250, 252, 0.95)"
-          stroke="#475569"
-          strokeWidth="1.8"
+          fill="var(--cad-stair-bg)"
+          stroke="var(--cad-wall-stroke)"
+          strokeWidth="1.6"
           rx="4"
         />
-        <rect x="798" y={upTopY} width="104" height={flightH} fill="var(--surface-panel)" stroke="#CBD5E1" strokeWidth="0.8" />
+        <rect x="798" y={upTopY} width="104" height={flightH} fill="var(--cad-room-bg)" stroke="var(--cad-corridor-stroke)" strokeWidth="0.8" />
         {STAIR_TICKS_EAST.map((tx) => (
-          <line key={`${idPrefix}-tx-e-up-${tx}`} x1={tx} y1={upTopY} x2={tx} y2={upBotY} stroke="#64748B" strokeWidth="1" />
+          <line key={`${idPrefix}-tx-e-up-${tx}`} x1={tx} y1={upTopY} x2={tx} y2={upBotY} stroke="var(--cad-stair-tread-stroke)" strokeWidth="1" />
         ))}
-        <line x1="808" y1={upMidY} x2="893" y2={upMidY} stroke="#2563EB" strokeWidth="1.8" />
-        <polygon points={`885,${upMidY - 4} 894,${upMidY} 885,${upMidY + 4}`} fill="#2563EB" />
+        <line x1="808" y1={upMidY} x2="893" y2={upMidY} stroke="var(--cad-stair-arrow-up)" strokeWidth="1.8" />
+        <polygon points={`885,${upMidY - 4} 894,${upMidY} 885,${upMidY + 4}`} fill="var(--cad-stair-arrow-up)" />
 
-        <rect x="798" y={labelY} width="104" height="16" rx="3" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="0.8" />
+        <rect x="798" y={labelY} width="104" height="16" rx="3" fill="var(--cad-room-bg)" stroke="var(--cad-corridor-stroke)" strokeWidth="0.8" />
         <text
           x="850"
           y={labelY + 12}
           fontFamily="var(--font-sans)"
           fontSize="10.5"
           fontWeight="800"
-          fill="#334155"
+          fill="var(--ink-secondary)"
           textAnchor="middle"
         >
           THANG ĐÔNG ▲
         </text>
 
-        <rect x="798" y={dnTopY} width="104" height={flightH} fill="var(--surface-panel)" stroke="#CBD5E1" strokeWidth="0.8" />
+        <rect x="798" y={dnTopY} width="104" height={flightH} fill="var(--cad-room-bg)" stroke="var(--cad-corridor-stroke)" strokeWidth="0.8" />
         {STAIR_TICKS_EAST.map((tx) => (
-          <line key={`${idPrefix}-tx-e-dn-${tx}`} x1={tx} y1={dnTopY} x2={tx} y2={dnBotY} stroke="#64748B" strokeWidth="1" />
+          <line key={`${idPrefix}-tx-e-dn-${tx}`} x1={tx} y1={dnTopY} x2={tx} y2={dnBotY} stroke="var(--cad-stair-tread-stroke)" strokeWidth="1" />
         ))}
-        <line x1="893" y1={dnMidY} x2="808" y2={dnMidY} stroke="#059669" strokeWidth="1.8" />
-        <polygon points={`816,${dnMidY - 4} 807,${dnMidY} 816,${dnMidY + 4}`} fill="#059669" />
+        <line x1="893" y1={dnMidY} x2="808" y2={dnMidY} stroke="var(--cad-stair-arrow-down)" strokeWidth="1.8" />
+        <polygon points={`816,${dnMidY - 4} 807,${dnMidY} 816,${dnMidY + 4}`} fill="var(--cad-stair-arrow-down)" />
 
-        <rect x="906" y={y} width="30" height={h} fill="rgba(203, 213, 225, 0.45)" stroke="#64748B" strokeWidth="1" />
+        <rect x="906" y={y} width="30" height={h} fill="var(--cad-stair-landing)" stroke="var(--cad-corridor-stroke)" strokeWidth="1" />
       </g>
     </g>
   );
@@ -332,9 +331,9 @@ const CentralAtriumVoid = ({ idPrefix }) => (
       width="488"
       height="228"
       rx="6"
-      fill="rgba(248, 250, 252, 0.85)"
-      stroke="rgba(148, 163, 184, 0.55)"
-      strokeWidth="1.6"
+      fill="var(--cad-void-bg)"
+      stroke="var(--cad-void-stroke)"
+      strokeWidth="1.5"
     />
     <rect
       x="242"
@@ -343,12 +342,12 @@ const CentralAtriumVoid = ({ idPrefix }) => (
       height="216"
       rx="4"
       fill="none"
-      stroke="rgba(2, 132, 199, 0.55)"
-      strokeWidth="1.4"
+      stroke="var(--cad-void-dash)"
+      strokeWidth="1.3"
       strokeDasharray="5 3"
     />
-    <line x1="242" y1="168" x2="718" y2="384" stroke="rgba(148, 163, 184, 0.22)" strokeWidth="1" strokeDasharray="4 4" />
-    <line x1="718" y1="168" x2="242" y2="384" stroke="rgba(148, 163, 184, 0.22)" strokeWidth="1" strokeDasharray="4 4" />
+    <line x1="242" y1="168" x2="718" y2="384" stroke="var(--cad-corridor-dash)" strokeWidth="1" strokeDasharray="4 4" opacity="0.55" />
+    <line x1="718" y1="168" x2="242" y2="384" stroke="var(--cad-corridor-dash)" strokeWidth="1" strokeDasharray="4 4" opacity="0.55" />
 
     <g transform="translate(376, 258)">
       <rect
@@ -357,10 +356,10 @@ const CentralAtriumVoid = ({ idPrefix }) => (
         width="208"
         height="36"
         rx="8"
-        fill="var(--surface-panel)"
-        stroke="rgba(2, 132, 199, 0.5)"
+        fill="var(--cad-room-bg)"
+        stroke="var(--cad-room-border)"
         strokeWidth="1.4"
-        style={{ filter: 'drop-shadow(0 2px 10px rgba(2, 132, 199, 0.15))' }}
+        style={{ filter: 'drop-shadow(0 2px 8px rgba(28, 25, 23, 0.08))' }}
       />
       <text
         x="104"
@@ -386,13 +385,13 @@ const CrossCorridorNetwork = ({ idPrefix }) => (
     <path
       d="M 168 18 H 232 V 118 H 728 V 18 H 792 V 118 H 936 V 158 H 792 V 394 H 936 V 434 H 792 V 532 H 728 V 434 H 232 V 532 H 168 V 434 H 24 V 394 H 168 V 158 H 24 V 118 H 168 Z M 232 158 H 728 V 394 H 232 Z"
       fillRule="evenodd"
-      fill="rgba(241, 245, 249, 0.78)"
-      stroke="rgba(203, 213, 225, 0.9)"
+      fill="var(--cad-corridor-bg)"
+      stroke="var(--cad-corridor-stroke)"
       strokeWidth="1.2"
     />
 
     {/* Đường tim trục giao thông đứt nét (tách khoảng sạch quanh nhãn chữ) */}
-    <g stroke="rgba(148, 163, 184, 0.45)" strokeWidth="1" strokeDasharray="7 5">
+    <g stroke="var(--cad-corridor-dash)" strokeWidth="1" strokeDasharray="7 5">
       <line x1="200" y1="26" x2="200" y2="256" />
       <line x1="200" y1="296" x2="200" y2="524" />
       <line x1="760" y1="26" x2="760" y2="256" />
@@ -410,7 +409,7 @@ const CrossCorridorNetwork = ({ idPrefix }) => (
       fontFamily="var(--font-sans)"
       fontSize="10.5"
       fontWeight="800"
-      fill="#475569"
+      fill="var(--cad-corridor-ink)"
       textAnchor="middle"
     >
       HÀNH LANG TRỤC BẮC (TÂY — ĐÔNG)
@@ -422,22 +421,22 @@ const CrossCorridorNetwork = ({ idPrefix }) => (
       fontFamily="var(--font-sans)"
       fontSize="10.5"
       fontWeight="800"
-      fill="#475569"
+      fill="var(--cad-corridor-ink)"
       textAnchor="middle"
     >
       HÀNH LANG TRỤC NAM (TÂY — ĐÔNG)
     </text>
 
     <g transform="translate(172, 264)">
-      <rect x="0" y="0" width="56" height="24" rx="4" fill="var(--surface-panel)" stroke="rgba(148, 163, 184, 0.5)" strokeWidth="0.8" />
-      <text x="28" y="16" fontFamily="var(--font-sans)" fontSize="9.5" fontWeight="800" fill="#475569" textAnchor="middle">
+      <rect x="0" y="0" width="56" height="24" rx="4" fill="var(--cad-room-bg)" stroke="var(--cad-corridor-stroke)" strokeWidth="0.8" />
+      <text x="28" y="16" fontFamily="var(--font-sans)" fontSize="9.5" fontWeight="800" fill="var(--cad-corridor-ink)" textAnchor="middle">
         TRỤC TÂY
       </text>
     </g>
 
     <g transform="translate(732, 264)">
-      <rect x="0" y="0" width="56" height="24" rx="4" fill="var(--surface-panel)" stroke="rgba(148, 163, 184, 0.5)" strokeWidth="0.8" />
-      <text x="28" y="16" fontFamily="var(--font-sans)" fontSize="9.5" fontWeight="800" fill="#475569" textAnchor="middle">
+      <rect x="0" y="0" width="56" height="24" rx="4" fill="var(--cad-room-bg)" stroke="var(--cad-corridor-stroke)" strokeWidth="0.8" />
+      <text x="28" y="16" fontFamily="var(--font-sans)" fontSize="9.5" fontWeight="800" fill="var(--cad-corridor-ink)" textAnchor="middle">
         TRỤC ĐÔNG
       </text>
     </g>
@@ -459,7 +458,8 @@ export const FloorPlan2D = ({
   selectedRoom = null,
   onSelectRoom,
   getRoomSimulatedStatus,
-  roomPods = {}
+  roomPods = {},
+  headerActions = null
 }) => {
   const { currentFloorData, roomByCode, unmappedRooms } = useMemo(() => {
     const template = CAMPUS_FLOORS[selectedFloor] || CAMPUS_FLOORS[1];
@@ -488,11 +488,17 @@ export const FloorPlan2D = ({
     };
   }, [selectedFloor, roomPods]);
 
-  const getCategoryName = (categoryKey) => ROOM_CATEGORIES[categoryKey]?.name || 'Tiện ích';
+  const svgViewportStyle = {
+    width: '100%',
+    height: 'auto',
+    maxHeight: unmappedRooms.length > 0 ? 'calc(100dvh - 256px)' : 'calc(100dvh - 216px)',
+    minHeight: '240px',
+    display: 'block',
+    margin: 0,
+    background: 'var(--cad-canvas-bg)'
+  };
 
-  const renderRoomPod = (room, x, y, w, h) => (
-    <RoomPodCard room={room} pod={getRoomPod(roomPods, room?.code)} x={x} y={y} w={w} h={h} />
-  );
+  const getCategoryName = (categoryKey) => ROOM_CATEGORIES[categoryKey]?.name || 'Tiện ích';
 
   /**
    * Bộ vẽ ô phòng chuẩn CAD dùng chung cho cả 5 tầng:
@@ -517,24 +523,26 @@ export const FloorPlan2D = ({
   }) => {
     if (!room) return null;
     const isSelected = selectedRoom?.code === room.code;
-    const catInfo = ROOM_CATEGORIES[room.category] || {};
-    let catColor = catInfo.color || '#94A3B8';
-    let badgeBg = catInfo.badgeBg || 'rgba(148, 163, 184, 0.15)';
-    let border = catInfo.border || 'rgba(148, 163, 184, 0.5)';
+    const isUtilityRoom =
+      room.category === 'utility' ||
+      FEMALE_WC_CODES.has(room.code) ||
+      MALE_WC_CODES.has(room.code);
 
-    if (FEMALE_WC_CODES.has(room.code)) {
-      catColor = '#F43F5E';
-      badgeBg = 'rgba(244, 63, 94, 0.12)';
-      border = 'rgba(244, 63, 94, 0.45)';
-    } else if (MALE_WC_CODES.has(room.code)) {
-      catColor = '#2563EB';
-      badgeBg = 'rgba(37, 99, 235, 0.12)';
-      border = 'rgba(37, 99, 235, 0.45)';
-    } else if (isMedical || room.code === 'A1-YT-T3') {
-      catColor = '#EF4444';
-      badgeBg = 'rgba(239, 68, 68, 0.12)';
-      border = 'rgba(239, 68, 68, 0.5)';
-    }
+    const catColor = isSelected
+      ? 'var(--cad-room-accent)'
+      : isUtilityRoom
+        ? 'var(--cad-utility-accent)'
+        : 'var(--cad-room-accent)';
+    const roomFill = isSelected
+      ? 'var(--cad-room-selected-bg)'
+      : isUtilityRoom
+        ? 'var(--cad-utility-bg)'
+        : 'var(--cad-room-bg)';
+    const border = isSelected
+      ? 'var(--cad-room-accent)'
+      : isUtilityRoom
+        ? 'var(--cad-utility-border)'
+        : 'var(--cad-room-border)';
 
     const sim = getRoomSimulatedStatus
       ? getRoomSimulatedStatus(room)
@@ -606,6 +614,7 @@ export const FloorPlan2D = ({
     return (
       <g
         key={room.code || room.id}
+        data-testid={`cad-room-${room.code}`}
         onClick={() => onSelectRoom && onSelectRoom(room)}
         style={{ cursor: 'pointer' }}
       >
@@ -617,12 +626,12 @@ export const FloorPlan2D = ({
           width={w}
           height={h}
           rx="5"
-          fill={isSelected ? 'var(--surface-panel)' : badgeBg}
-          stroke={isSelected ? catColor : border}
-          strokeWidth={isSelected ? '2.5' : '1.5'}
+          fill={roomFill}
+          stroke={border}
+          strokeWidth={isSelected ? '2.4' : '1.4'}
           style={{
             transition: 'all 0.15s ease',
-            filter: isSelected ? `drop-shadow(0 4px 14px ${catColor}55)` : 'none'
+            filter: isSelected ? 'drop-shadow(0 4px 14px var(--cad-room-selected-glow))' : 'none'
           }}
         />
 
@@ -643,20 +652,20 @@ export const FloorPlan2D = ({
           cy={dotCy}
           r={isCompact ? 3.5 : (isLarge ? 4.8 : 4)}
           fill={sim.color}
-          stroke="var(--surface-panel)"
+          stroke="var(--cad-room-bg)"
           strokeWidth="1.2"
         />
 
         {(isMedical || room.code === 'A1-YT-T3') && (
-          <g transform={`translate(${dotCx - 20}, ${y + 6})`} pointerEvents="none">
-            <rect x="3.5" y="0" width="3" height="10" rx="1" fill="#EF4444" />
-            <rect x="0" y="3.5" width="10" height="3" rx="1" fill="#EF4444" />
+          <g transform={`translate(${dotCx - 17}, ${y + 7})`} pointerEvents="none">
+            <rect x="2.75" y="0" width="2.5" height="8" rx="0.8" fill="var(--cad-room-accent)" />
+            <rect x="0" y="2.75" width="8" height="2.5" rx="0.8" fill="var(--cad-room-accent)" />
           </g>
         )}
 
         {doorSide === 'left' && (
           <g>
-            <line x1={x} y1={y + dOffset} x2={x} y2={y + dOffset + dWidth} stroke={badgeBg || 'var(--surface-panel)'} strokeWidth="3" />
+            <line x1={x} y1={y + dOffset} x2={x} y2={y + dOffset + dWidth} stroke={roomFill} strokeWidth="3" />
             <line x1={x} y1={y + dOffset} x2={x + dArc} y2={y + dOffset} stroke={catColor} strokeWidth="1.4" />
             <path
               d={`M ${x + dArc} ${y + dOffset} A ${dArc} ${dArc} 0 0 1 ${x} ${y + dOffset + dArc}`}
@@ -670,7 +679,7 @@ export const FloorPlan2D = ({
 
         {doorSide === 'right' && (
           <g>
-            <line x1={x + w} y1={y + dOffset} x2={x + w} y2={y + dOffset + dWidth} stroke={badgeBg || 'var(--surface-panel)'} strokeWidth="3" />
+            <line x1={x + w} y1={y + dOffset} x2={x + w} y2={y + dOffset + dWidth} stroke={roomFill} strokeWidth="3" />
             <line x1={x + w} y1={y + dOffset} x2={x + w - dArc} y2={y + dOffset} stroke={catColor} strokeWidth="1.4" />
             <path
               d={`M ${x + w - dArc} ${y + dOffset} A ${dArc} ${dArc} 0 0 1 ${x + w} ${y + dOffset + dArc}`}
@@ -684,7 +693,7 @@ export const FloorPlan2D = ({
 
         {doorSide === 'top' && (
           <g>
-            <line x1={x + dOffset} y1={y} x2={x + dOffset + dWidth} y2={y} stroke={badgeBg || 'var(--surface-panel)'} strokeWidth="3" />
+            <line x1={x + dOffset} y1={y} x2={x + dOffset + dWidth} y2={y} stroke={roomFill} strokeWidth="3" />
             <line x1={x + dOffset} y1={y} x2={x + dOffset} y2={y + dArc} stroke={catColor} strokeWidth="1.4" />
             <path
               d={`M ${x + dOffset} ${y + dArc} A ${dArc} ${dArc} 0 0 0 ${x + dOffset + dArc} ${y}`}
@@ -698,7 +707,7 @@ export const FloorPlan2D = ({
 
         {doorSide === 'bottom' && (
           <g>
-            <line x1={x + dOffset} y1={y + h} x2={x + dOffset + dWidth} y2={y + h} stroke={badgeBg || 'var(--surface-panel)'} strokeWidth="3" />
+            <line x1={x + dOffset} y1={y + h} x2={x + dOffset + dWidth} y2={y + h} stroke={roomFill} strokeWidth="3" />
             <line x1={x + dOffset} y1={y + h} x2={x + dOffset} y2={y + h - dArc} stroke={catColor} strokeWidth="1.4" />
             <path
               d={`M ${x + dOffset} ${y + h - dArc} A ${dArc} ${dArc} 0 0 1 ${x + dOffset + dArc} ${y + h}`}
@@ -760,8 +769,6 @@ export const FloorPlan2D = ({
             </text>
           )}
         </g>
-
-        {renderRoomPod(room, x, y, w, h)}
       </g>
     );
   };
@@ -772,6 +779,7 @@ export const FloorPlan2D = ({
   const renderFloor1Plan = () => {
     const roomCV = roomByCode['A1-CV'];
     const cvSelected = selectedRoom?.code === 'A1-CV';
+    const ptvSelected = selectedRoom?.code === 'A1-PTV';
     const cvSim = roomCV && getRoomSimulatedStatus
       ? getRoomSimulatedStatus(roomCV)
       : { status: 'available', color: '#10B981', label: 'Trống' };
@@ -779,13 +787,7 @@ export const FloorPlan2D = ({
     return (
       <svg
         viewBox="14 10 932 530"
-        style={{
-          width: '100%',
-          height: 'auto',
-          display: 'block',
-          margin: 0,
-          background: 'var(--canvas-subtle)'
-        }}
+        style={svgViewportStyle}
       >
         <OuterCadShell
           idPrefix="f1"
@@ -817,16 +819,16 @@ export const FloorPlan2D = ({
             y="18"
             width="76"
             height="102"
-            fill="rgba(56, 189, 248, 0.08)"
-            stroke="rgba(56, 189, 248, 0.40)"
-            strokeWidth="1.4"
+            fill="var(--cad-corridor-bg)"
+            stroke="var(--cad-corridor-stroke)"
+            strokeWidth="1.2"
             rx="4"
           />
-          <line x1="168" y1="120" x2="244" y2="120" stroke="rgba(56, 189, 248, 0.15)" strokeWidth="3" />
-          <text x="206" y="62" fontFamily="var(--font-sans)" fontSize="11" fontWeight="800" fill="#0369A1" textAnchor="middle">
+          <line x1="168" y1="120" x2="244" y2="120" stroke="var(--cad-corridor-bg)" strokeWidth="3" />
+          <text x="206" y="62" fontFamily="var(--font-sans)" fontSize="11" fontWeight="800" fill="var(--cad-corridor-ink)" textAnchor="middle">
             HÀNH LANG
           </text>
-          <text x="206" y="76" fontFamily="var(--font-sans)" fontSize="11" fontWeight="800" fill="#0369A1" textAnchor="middle">
+          <text x="206" y="76" fontFamily="var(--font-sans)" fontSize="11" fontWeight="800" fill="var(--cad-corridor-ink)" textAnchor="middle">
             THÔNG
           </text>
         </g>
@@ -846,9 +848,16 @@ export const FloorPlan2D = ({
           doorArc: 16
         })}
         <g pointerEvents="none">
-          <line x1={248 + 320} y1={120} x2={248 + 352} y2={120} stroke="rgba(13, 148, 136, 0.14)" strokeWidth="3" />
-          <line x1={248 + 320} y1={120} x2={248 + 320} y2={104} stroke="#0D9488" strokeWidth="1.4" />
-          <path d={`M ${248 + 320} 104 A 16 16 0 0 1 ${248 + 336} 120`} fill="none" stroke="#0D9488" strokeWidth="1.1" strokeDasharray="2 2" />
+          <line
+            x1={248 + 320}
+            y1={120}
+            x2={248 + 352}
+            y2={120}
+            stroke={ptvSelected ? 'var(--cad-room-selected-bg)' : 'var(--cad-room-bg)'}
+            strokeWidth="3"
+          />
+          <line x1={248 + 320} y1={120} x2={248 + 320} y2={104} stroke="var(--cad-room-accent)" strokeWidth="1.4" />
+          <path d={`M ${248 + 320} 104 A 16 16 0 0 1 ${248 + 336} 120`} fill="none" stroke="var(--cad-room-accent)" strokeWidth="1.1" strokeDasharray="2 2" />
         </g>
 
         {/* Góc Đông Bắc: Kho 1 & Kho 2 */}
@@ -886,12 +895,12 @@ export const FloorPlan2D = ({
             y="126"
             width="140"
             height="40"
-            fill="rgba(241, 245, 249, 0.8)"
-            stroke="rgba(148, 163, 184, 0.55)"
+            fill="var(--cad-corridor-bg)"
+            stroke="var(--cad-corridor-stroke)"
             strokeWidth="1.2"
             rx="4"
           />
-          <text x="866" y="150" fontFamily="var(--font-sans)" fontSize="10.5" fontWeight="800" fill="#334155" textAnchor="middle">
+          <text x="866" y="150" fontFamily="var(--font-sans)" fontSize="10.5" fontWeight="800" fill="var(--cad-corridor-ink)" textAnchor="middle">
             HÀNH LANG NHỎ
           </text>
         </g>
@@ -949,8 +958,8 @@ export const FloorPlan2D = ({
             width="468"
             height="206"
             rx="6"
-            fill="rgba(248, 250, 252, 0.88)"
-            stroke="rgba(148, 163, 184, 0.55)"
+            fill="var(--cad-void-bg)"
+            stroke="var(--cad-void-stroke)"
             strokeWidth="1.5"
           />
           <rect
@@ -960,10 +969,12 @@ export const FloorPlan2D = ({
             height="194"
             rx="4"
             fill="none"
-            stroke="rgba(2, 132, 199, 0.45)"
-            strokeWidth="1.2"
+            stroke="var(--cad-void-dash)"
+            strokeWidth="1.3"
             strokeDasharray="5 3"
           />
+          <line x1="254" y1="132" x2="710" y2="326" stroke="var(--cad-corridor-dash)" strokeWidth="1" strokeDasharray="4 4" opacity="0.55" />
+          <line x1="710" y1="132" x2="254" y2="326" stroke="var(--cad-corridor-dash)" strokeWidth="1" strokeDasharray="4 4" opacity="0.55" />
           <g transform="translate(378, 211)">
             <rect
               x="0"
@@ -971,10 +982,10 @@ export const FloorPlan2D = ({
               width="208"
               height="36"
               rx="8"
-              fill="var(--surface-panel)"
-              stroke="rgba(2, 132, 199, 0.5)"
+              fill="var(--cad-room-bg)"
+              stroke="var(--cad-room-border)"
               strokeWidth="1.4"
-              style={{ filter: 'drop-shadow(0 2px 10px rgba(2, 132, 199, 0.15))' }}
+              style={{ filter: 'drop-shadow(0 2px 8px rgba(28, 25, 23, 0.08))' }}
             />
             <text
               x="104"
@@ -994,6 +1005,7 @@ export const FloorPlan2D = ({
         {roomCV && (
           <g
             id="f1-entrance-plaza"
+            data-testid={`cad-room-${roomCV.code}`}
             onClick={() => onSelectRoom && onSelectRoom(roomCV)}
             style={{ cursor: 'pointer' }}
           >
@@ -1003,25 +1015,24 @@ export const FloorPlan2D = ({
               y="338"
               width="468"
               height="136"
-              fill={cvSelected ? 'var(--surface-panel)' : 'rgba(248, 250, 252, 0.92)'}
-              stroke={cvSelected ? '#0284C7' : 'rgba(148, 163, 184, 0.55)'}
+              fill={cvSelected ? 'var(--cad-room-selected-bg)' : 'var(--cad-room-bg)'}
+              stroke={cvSelected ? 'var(--cad-room-accent)' : 'var(--cad-room-border)'}
               strokeWidth={cvSelected ? '2.4' : '1.4'}
               rx="6"
               style={{
                 transition: 'all 0.15s ease',
-                filter: cvSelected ? 'drop-shadow(0 4px 12px rgba(2, 132, 199, 0.3))' : 'none'
+                filter: cvSelected ? 'drop-shadow(0 4px 12px var(--cad-room-selected-glow))' : 'none'
               }}
             />
-            <circle cx="704" cy="350" r="4.5" fill={cvSim.color} stroke="var(--surface-panel)" strokeWidth="1.2" />
+            <rect x="252" y="344" width="4" height="124" rx="2" fill="var(--cad-room-accent)" />
+            <circle cx="704" cy="350" r="4.5" fill={cvSim.color} stroke="var(--cad-room-bg)" strokeWidth="1.2" />
 
             <g transform="translate(372, 390)" style={{ pointerEvents: 'none' }}>
-              <rect x="0" y="0" width="220" height="32" rx="16" fill="var(--surface-panel)" stroke="var(--hairline-medium)" strokeWidth="1" />
+              <rect x="0" y="0" width="220" height="32" rx="16" fill="var(--cad-void-bg)" stroke="var(--cad-room-border)" strokeWidth="1" />
               <text x="110" y="21" fontFamily="var(--font-sans)" fontSize="12.5" fontWeight="800" fill="var(--ink-pure)" textAnchor="middle">
                 SÂN CỔNG VÀO (CV)
               </text>
             </g>
-
-            {renderRoomPod(roomCV, 248, 338, 468, 136)}
           </g>
         )}
 
@@ -1056,8 +1067,8 @@ export const FloorPlan2D = ({
         {/* Cụm 3 Cổng Vào Chính / Phụ */}
         <g id="f1-entrance-gates">
           <g transform="translate(248, 480)">
-            <rect x="0" y="0" width="110" height="44" rx="5" fill="rgba(148, 163, 184, 0.16)" stroke="rgba(100, 116, 139, 0.45)" strokeWidth="1.4" />
-            <text x="55" y="27" fontFamily="var(--font-sans)" fontSize="11" fontWeight="800" fill="var(--ink-pure)" textAnchor="middle">
+            <rect x="0" y="0" width="110" height="44" rx="5" fill="var(--cad-utility-bg)" stroke="var(--cad-utility-border)" strokeWidth="1.4" />
+            <text x="55" y="27" fontFamily="var(--font-sans)" fontSize="11" fontWeight="800" fill="var(--ink-secondary)" textAnchor="middle">
               CỔNG PHỤ (Trái)
             </text>
           </g>
@@ -1069,19 +1080,19 @@ export const FloorPlan2D = ({
               width="236"
               height="44"
               rx="6"
-              fill="rgba(2, 132, 199, 0.16)"
-              stroke="#0284C7"
+              fill="var(--cad-room-selected-bg)"
+              stroke="var(--cad-room-accent)"
               strokeWidth="2.2"
-              style={{ filter: 'drop-shadow(0 2px 8px rgba(2, 132, 199, 0.22))' }}
+              style={{ filter: 'drop-shadow(0 2px 8px var(--cad-room-selected-glow))' }}
             />
-            <text x="118" y="27" fontFamily="var(--font-sans)" fontSize="12.5" fontWeight="900" fill="#0284C7" textAnchor="middle" letterSpacing="0.8">
+            <text x="118" y="27" fontFamily="var(--font-sans)" fontSize="12.5" fontWeight="900" fill="var(--cad-room-accent)" textAnchor="middle" letterSpacing="0.8">
               ✦ CỔNG CHÍNH ✦
             </text>
           </g>
 
           <g transform="translate(606, 480)">
-            <rect x="0" y="0" width="110" height="44" rx="5" fill="rgba(148, 163, 184, 0.16)" stroke="rgba(100, 116, 139, 0.45)" strokeWidth="1.4" />
-            <text x="55" y="27" fontFamily="var(--font-sans)" fontSize="11" fontWeight="800" fill="var(--ink-pure)" textAnchor="middle">
+            <rect x="0" y="0" width="110" height="44" rx="5" fill="var(--cad-utility-bg)" stroke="var(--cad-utility-border)" strokeWidth="1.4" />
+            <text x="55" y="27" fontFamily="var(--font-sans)" fontSize="11" fontWeight="800" fill="var(--ink-secondary)" textAnchor="middle">
               CỔNG PHỤ (Phải)
             </text>
           </g>
@@ -1111,7 +1122,7 @@ export const FloorPlan2D = ({
           subTitle: spec.sub[topSuffix],
           doorSide
         })}
-        <rect x={x} y={yTop + 45} width={w} height="4" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+        <rect x={x} y={yTop + 45} width={w} height="4" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
         {renderCadRoom({
           room: roomByCode[`A1-${p}${botSuffix}`],
           x,
@@ -1128,13 +1139,7 @@ export const FloorPlan2D = ({
     return (
       <svg
         viewBox="14 10 932 530"
-        style={{
-          width: '100%',
-          height: 'auto',
-          display: 'block',
-          margin: 0,
-          background: 'var(--canvas-subtle)'
-        }}
+        style={svgViewportStyle}
       >
         <OuterCadShell
           idPrefix={idPrefix}
@@ -1197,21 +1202,6 @@ export const FloorPlan2D = ({
             doorWidth: 26,
             doorArc: 14
           })}
-          {spec.northCenter.hasBench && (
-            <rect
-              x="518"
-              y="25"
-              width="56"
-              height="16"
-              rx="2.5"
-              fill="none"
-              stroke="#7C3AED"
-              strokeWidth="1"
-              strokeDasharray="3 2"
-              opacity="0.3"
-              pointerEvents="none"
-            />
-          )}
         </g>
 
         {/* Khối Trung Tâm Nam (x = 364..596, y = 462..532, h = 70) */}
@@ -1230,21 +1220,6 @@ export const FloorPlan2D = ({
               doorWidth: 26,
               doorArc: 14
             })}
-            {spec.southSingle.hasBench && (
-              <rect
-                x="518"
-                y="469"
-                width="56"
-                height="16"
-                rx="2.5"
-                fill="none"
-                stroke="#7C3AED"
-                strokeWidth="1"
-                strokeDasharray="3 2"
-                opacity="0.3"
-                pointerEvents="none"
-              />
-            )}
           </g>
         ) : (
           <g id={`${idPrefix}-central-south-pair`}>
@@ -1262,7 +1237,7 @@ export const FloorPlan2D = ({
               doorArc: 14,
               isMedical: spec.southPairLeft.isMedical
             })}
-            <rect x="478" y="462" width="4" height="70" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+            <rect x="478" y="462" width="4" height="70" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
             {renderCadRoom({
               room: roomByCode[spec.southPairRight.code],
               x: 482,
@@ -1318,8 +1293,9 @@ export const FloorPlan2D = ({
   const renderFloor5Plan = () => {
     const roomSBC = roomByCode['A1-SBC'];
     const sbcSelected = selectedRoom?.code === roomSBC?.code;
-    const sbcCat = ROOM_CATEGORIES[roomSBC?.category || 'public_service'] || {};
-    const sbcColor = sbcCat.color || '#0D9488';
+    const sbcColor = 'var(--cad-room-accent)';
+    const sbcFill = sbcSelected ? 'var(--cad-room-selected-bg)' : 'var(--cad-room-bg)';
+    const sbcBorder = sbcSelected ? 'var(--cad-room-accent)' : 'var(--cad-room-border)';
     const sbcSim = roomSBC && getRoomSimulatedStatus
       ? getRoomSimulatedStatus(roomSBC)
       : { status: 'available', color: '#10B981', label: 'Trống' };
@@ -1327,13 +1303,7 @@ export const FloorPlan2D = ({
     return (
       <svg
         viewBox="14 10 932 530"
-        style={{
-          width: '100%',
-          height: 'auto',
-          display: 'block',
-          margin: 0,
-          background: 'var(--canvas-subtle)'
-        }}
+        style={svgViewportStyle}
       >
         <OuterCadShell
           idPrefix="f5"
@@ -1347,35 +1317,35 @@ export const FloorPlan2D = ({
           <path
             d="M 168 113 H 792 V 439 H 168 Z M 232 158 V 394 H 728 V 158 Z"
             fillRule="evenodd"
-            fill="rgba(241, 245, 249, 0.78)"
-            stroke="rgba(203, 213, 225, 0.9)"
+            fill="var(--cad-corridor-bg)"
+            stroke="var(--cad-corridor-stroke)"
             strokeWidth="1.2"
           />
 
           {/* Đường tim trục hành lang chữ nhật (tách khoảng sạch quanh nhãn chữ) */}
-          <g stroke="rgba(148, 163, 184, 0.45)" strokeWidth="1" strokeDasharray="7 5" fill="none">
+          <g stroke="var(--cad-corridor-dash)" strokeWidth="1" strokeDasharray="7 5" fill="none">
             <path d="M 366 135.5 H 204 Q 200 135.5 200 139.5 V 258" />
             <path d="M 594 135.5 H 756 Q 760 135.5 760 139.5 V 258" />
             <path d="M 200 294 V 412.5 Q 200 416.5 204 416.5 H 366" />
             <path d="M 760 294 V 412.5 Q 760 416.5 756 416.5 H 594" />
           </g>
 
-          <text x="480" y="139.5" fontFamily="var(--font-sans)" fontSize="10.5" fontWeight="800" fill="#475569" textAnchor="middle">
+          <text x="480" y="139.5" fontFamily="var(--font-sans)" fontSize="10.5" fontWeight="800" fill="var(--cad-corridor-ink)" textAnchor="middle">
             HÀNH LANG TRỤC BẮC (TÂY — ĐÔNG)
           </text>
-          <text x="480" y="420.5" fontFamily="var(--font-sans)" fontSize="10.5" fontWeight="800" fill="#475569" textAnchor="middle">
+          <text x="480" y="420.5" fontFamily="var(--font-sans)" fontSize="10.5" fontWeight="800" fill="var(--cad-corridor-ink)" textAnchor="middle">
             HÀNH LANG TRỤC NAM (TÂY — ĐÔNG)
           </text>
 
           <g transform="translate(172, 264)">
-            <rect x="0" y="0" width="56" height="24" rx="4" fill="var(--surface-panel)" stroke="rgba(148, 163, 184, 0.5)" strokeWidth="0.8" />
-            <text x="28" y="16" fontFamily="var(--font-sans)" fontSize="9.5" fontWeight="800" fill="#475569" textAnchor="middle">
+            <rect x="0" y="0" width="56" height="24" rx="4" fill="var(--cad-room-bg)" stroke="var(--cad-corridor-stroke)" strokeWidth="0.8" />
+            <text x="28" y="16" fontFamily="var(--font-sans)" fontSize="9.5" fontWeight="800" fill="var(--cad-corridor-ink)" textAnchor="middle">
               TRỤC TÂY
             </text>
           </g>
           <g transform="translate(732, 264)">
-            <rect x="0" y="0" width="56" height="24" rx="4" fill="var(--surface-panel)" stroke="rgba(148, 163, 184, 0.5)" strokeWidth="0.8" />
-            <text x="28" y="16" fontFamily="var(--font-sans)" fontSize="9.5" fontWeight="800" fill="#475569" textAnchor="middle">
+            <rect x="0" y="0" width="56" height="24" rx="4" fill="var(--cad-room-bg)" stroke="var(--cad-corridor-stroke)" strokeWidth="0.8" />
+            <text x="28" y="16" fontFamily="var(--font-sans)" fontSize="9.5" fontWeight="800" fill="var(--cad-corridor-ink)" textAnchor="middle">
               TRỤC ĐÔNG
             </text>
           </g>
@@ -1400,7 +1370,7 @@ export const FloorPlan2D = ({
             doorWidth: 16,
             doorArc: 12
           })}
-          <rect x="260" y="18" width="4" height="91" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+          <rect x="260" y="18" width="4" height="91" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
 
           {renderCadRoom({
             room: roomByCode['A1-507'],
@@ -1415,7 +1385,7 @@ export const FloorPlan2D = ({
             doorWidth: 18,
             doorArc: 14
           })}
-          <rect x="380" y="18" width="4" height="91" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+          <rect x="380" y="18" width="4" height="91" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
 
           {renderCadRoom({
             room: roomByCode['A1-PHL'],
@@ -1430,7 +1400,7 @@ export const FloorPlan2D = ({
             doorWidth: 26,
             doorArc: 14
           })}
-          <rect x="720" y="18" width="4" height="70" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+          <rect x="720" y="18" width="4" height="70" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
 
           {renderCadRoom({
             room: roomByCode['A1-HOP'],
@@ -1445,7 +1415,7 @@ export const FloorPlan2D = ({
             doorWidth: 16,
             doorArc: 11
           })}
-          <rect x="836" y="18" width="4" height="70" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+          <rect x="836" y="18" width="4" height="70" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
 
           {renderCadRoom({
             room: roomByCode['A1-PGV'],
@@ -1465,7 +1435,7 @@ export const FloorPlan2D = ({
 
         {/* Cánh Tây sát vách */}
         <g id="f5-west-wing">
-          <rect x="24" y="109" width="140" height="4" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+          <rect x="24" y="109" width="140" height="4" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
           {renderCadRoom({
             room: roomByCode['A1-503'],
             x: 24,
@@ -1492,12 +1462,12 @@ export const FloorPlan2D = ({
             doorWidth: 18,
             doorArc: 14
           })}
-          <rect x="24" y="439" width="140" height="4" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+          <rect x="24" y="439" width="140" height="4" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
         </g>
 
         {/* Cánh Đông sát vách & đồng bộ WC 5 tầng */}
         <g id="f5-east-wing">
-          <rect x="840" y="109" width="96" height="4" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+          <rect x="840" y="109" width="96" height="4" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
           {renderCadRoom({
             room: roomByCode['A1-XTC'],
             x: 796,
@@ -1511,7 +1481,7 @@ export const FloorPlan2D = ({
             doorWidth: 16,
             doorArc: 12
           })}
-          <rect x="796" y="158" width="140" height="4" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+          <rect x="796" y="158" width="140" height="4" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
 
           {renderCadRoom({
             room: roomByCode['A1-WC-NU-T5'],
@@ -1536,7 +1506,7 @@ export const FloorPlan2D = ({
             doorSide: 'left',
             doorOffset: 20
           })}
-          <rect x="796" y="390" width="140" height="4" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+          <rect x="796" y="390" width="140" height="4" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
 
           {renderCadRoom({
             room: roomByCode['A1-KHO-T5'],
@@ -1551,13 +1521,14 @@ export const FloorPlan2D = ({
             doorWidth: 16,
             doorArc: 12
           })}
-          <rect x="796" y="439" width="140" height="4" fill="rgba(148, 163, 184, 0.4)" stroke="#64748B" strokeWidth="0.6" />
+          <rect x="796" y="439" width="140" height="4" fill="var(--cad-wall-fill)" stroke="var(--cad-wall-stroke)" strokeWidth="0.6" />
         </g>
 
         {/* Sảnh Ban Công phía Nam */}
         {roomSBC && (
           <g
             id="f5-south-balcony-terrace"
+            data-testid={`cad-room-${roomSBC.code}`}
             onClick={() => onSelectRoom && onSelectRoom(roomSBC)}
             style={{ cursor: 'pointer' }}
           >
@@ -1569,21 +1540,21 @@ export const FloorPlan2D = ({
               width="912"
               height="89"
               rx="5"
-              fill={sbcSelected ? 'var(--surface-panel)' : (sbcCat.badgeBg || 'rgba(13, 148, 136, 0.12)')}
-              stroke={sbcSelected ? sbcColor : (sbcCat.border || 'rgba(13, 148, 136, 0.45)')}
-              strokeWidth={sbcSelected ? '2.5' : '1.5'}
+              fill={sbcFill}
+              stroke={sbcBorder}
+              strokeWidth={sbcSelected ? '2.4' : '1.4'}
               style={{
                 transition: 'all 0.15s ease',
-                filter: sbcSelected ? `drop-shadow(0 4px 14px ${sbcColor}55)` : 'none'
+                filter: sbcSelected ? 'drop-shadow(0 4px 14px var(--cad-room-selected-glow))' : 'none'
               }}
             />
 
             <rect x="28" y="447" width="4" height="81" rx="2" fill={sbcColor} />
-            <circle cx="924" cy="454" r="4.8" fill={sbcSim.color} stroke="var(--surface-panel)" strokeWidth="1.2" />
+            <circle cx="924" cy="454" r="4.8" fill={sbcSim.color} stroke="var(--cad-room-bg)" strokeWidth="1.2" />
 
             {[312, 622].map((dx) => (
               <g key={`f5-sbc-door-${dx}`}>
-                <line x1={dx} y1="443" x2={dx + 26} y2="443" stroke={sbcCat.badgeBg || 'var(--surface-panel)'} strokeWidth="3" />
+                <line x1={dx} y1="443" x2={dx + 26} y2="443" stroke={sbcFill} strokeWidth="3" />
                 <line x1={dx} y1="443" x2={dx} y2="459" stroke={sbcColor} strokeWidth="1.4" />
                 <path
                   d={`M ${dx} 459 A 16 16 0 0 0 ${dx + 16} 443`}
@@ -1595,11 +1566,11 @@ export const FloorPlan2D = ({
               </g>
             ))}
 
-            <g opacity="0.55" pointerEvents="none">
-              <line x1="40" y1="523" x2="844" y2="523" stroke="#0D9488" strokeWidth="1.2" />
-              <line x1="40" y1="528" x2="844" y2="528" stroke="#0D9488" strokeWidth="1.5" />
+            <g opacity="0.42" pointerEvents="none">
+              <line x1="40" y1="523" x2="844" y2="523" stroke="var(--cad-room-accent)" strokeWidth="1.2" />
+              <line x1="40" y1="528" x2="844" y2="528" stroke="var(--cad-room-accent)" strokeWidth="1.5" />
               {Array.from({ length: 29 }, (_, idx) => 44 + idx * 28).map((bx) => (
-                <line key={`f5-baluster-${bx}`} x1={bx} y1="523" x2={bx} y2="528" stroke="#0D9488" strokeWidth="1" />
+                <line key={`f5-baluster-${bx}`} x1={bx} y1="523" x2={bx} y2="528" stroke="var(--cad-room-accent)" strokeWidth="1" />
               ))}
             </g>
 
@@ -1628,8 +1599,6 @@ export const FloorPlan2D = ({
                 Không gian mở &amp; Thư giãn ngoài trời • 120 chỗ
               </text>
             </g>
-
-            {renderRoomPod(roomSBC, 24, 443, 912, 89)}
           </g>
         )}
       </svg>
@@ -1637,8 +1606,8 @@ export const FloorPlan2D = ({
   };
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      {/* 1. HEADER CONTROLS & FLOOR LEVEL SELECTOR */}
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+      {/* 1. UNIFIED HEADER CONTROLS & FLOOR LEVEL SELECTOR */}
       <div
         style={{
           display: 'flex',
@@ -1646,13 +1615,14 @@ export const FloorPlan2D = ({
           justifyContent: 'space-between',
           gap: '8px',
           background: 'var(--surface-panel)',
-          padding: '6px 12px',
+          padding: '4px 10px',
           borderRadius: '8px',
           border: '1px solid var(--hairline-soft)',
-          flexWrap: 'wrap'
+          flexWrap: 'nowrap',
+          minWidth: 0
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 0%', minWidth: 0 }}>
           <span
             style={{
               fontFamily: 'var(--font-sans)',
@@ -1662,17 +1632,29 @@ export const FloorPlan2D = ({
               background: 'rgba(234, 88, 12, 0.12)',
               border: '1px solid rgba(234, 88, 12, 0.28)',
               padding: '2px 8px',
-              borderRadius: '5px'
+              borderRadius: '5px',
+              flexShrink: 0
             }}
           >
             {currentFloorData.floorCode}
           </span>
-          <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--ink-pure)' }}>
+          <span
+            style={{
+              fontSize: '12.5px',
+              fontWeight: 800,
+              color: 'var(--ink-pure)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              minWidth: 0
+            }}
+            title={currentFloorData.title}
+          >
             {currentFloorData.title}
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
           {[1, 2, 3, 4, 5].map((fl) => {
             const isActive = selectedFloor === fl;
             const flData = CAMPUS_FLOORS[fl];
@@ -1683,7 +1665,7 @@ export const FloorPlan2D = ({
                 className="ruo-rbac-toggle-pill"
                 onClick={() => onChangeFloor && onChangeFloor(fl)}
                 style={{
-                  padding: '3.5px 10px',
+                  padding: '3px 9px',
                   borderRadius: '6px',
                   border: isActive ? '1.5px solid var(--blueprint-600)' : '1px solid var(--hairline-medium)',
                   background: isActive ? 'var(--blueprint-600)' : 'var(--canvas-subtle)',
@@ -1691,7 +1673,8 @@ export const FloorPlan2D = ({
                   boxShadow: isActive ? '0 2px 8px rgba(234, 88, 12, 0.28)' : 'none',
                   fontSize: '11px',
                   fontWeight: isActive ? 700 : 500,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
                 }}
                 title={flData?.title}
               >
@@ -1699,6 +1682,12 @@ export const FloorPlan2D = ({
               </button>
             );
           })}
+          {headerActions && (
+            <>
+              <span style={{ width: '1px', height: '16px', background: 'var(--hairline-soft)', margin: '0 2px' }} aria-hidden="true" />
+              {headerActions}
+            </>
+          )}
         </div>
       </div>
 
@@ -1708,8 +1697,8 @@ export const FloorPlan2D = ({
         className="ruo-floor-transition"
         style={{
           width: '100%',
-          overflowX: 'auto',
-          background: 'var(--surface-card)',
+          overflow: 'hidden',
+          background: 'var(--cad-canvas-bg)',
           borderRadius: '8px',
           border: '1px solid var(--hairline-medium)',
           padding: '0px',
@@ -1724,56 +1713,120 @@ export const FloorPlan2D = ({
       </div>
 
       {unmappedRooms.length > 0 && (
-        <section aria-label="Phòng chưa có vị trí trên bản vẽ">
-          <p style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Phòng đã đăng ký, chưa có vị trí trên bản vẽ:</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {unmappedRooms.map((room) => (
-              <button
-                key={room.code}
-                type="button"
-                className="ruo-btn ruo-btn-secondary ruo-btn-sm"
-                onClick={() => onSelectRoom?.(room)}
-                aria-pressed={selectedRoom?.code === room.code}
-              >
-                {room.code} · {room.name} · {room.equipmentCount} thiết bị · {room.brokenCount} hỏng
-              </button>
-            ))}
-          </div>
+        <section
+          aria-label="Phòng chưa có vị trí trên bản vẽ"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'nowrap',
+            overflowX: 'auto',
+            gap: '6px',
+            padding: '4px 10px',
+            background: 'var(--surface-panel)',
+            borderRadius: '7px',
+            border: '1px solid var(--hairline-soft)'
+          }}
+        >
+          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ink-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>Phòng ngoài sơ đồ:</span>
+          {unmappedRooms.map((room) => (
+            <button
+              key={room.code}
+              type="button"
+              className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+              style={{ height: '22px', padding: '0 8px', fontSize: '10.5px', whiteSpace: 'nowrap', flexShrink: 0 }}
+              onClick={() => onSelectRoom?.(room)}
+              aria-pressed={selectedRoom?.code === room.code}
+            >
+              {room.code} · {room.name} · {room.equipmentCount} thiết bị · {room.brokenCount} hỏng
+            </button>
+          ))}
         </section>
       )}
 
-      {/* 3. CATEGORY LEGEND BAR */}
+      {/* 3. ARCHITECTURAL & OPERATIONAL LEGEND BAR */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
+          flexWrap: 'nowrap',
+          gap: '8px',
           background: 'var(--surface-panel)',
-          padding: '10px 18px',
-          borderRadius: '12px',
-          border: '1px solid var(--hairline-soft)'
+          padding: '5px 10px',
+          borderRadius: '8px',
+          border: '1px solid var(--hairline-soft)',
+          minWidth: 0
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '16px', fontSize: '12px' }}>
-          {Object.values(ROOM_CATEGORIES).map((cat) => (
-            <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-              <span
-                style={{
-                  width: '10px',
-                  height: '10px',
-                  borderRadius: '2.5px',
-                  background: cat.color
-                }}
-              />
-              <span style={{ color: 'var(--ink-primary)', fontWeight: 600 }}>{cat.name}</span>
-            </div>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: '10px', fontSize: '11px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span
+              style={{
+                width: '11px',
+                height: '11px',
+                borderRadius: '3px',
+                background: 'var(--cad-room-bg)',
+                border: '1.5px solid var(--cad-room-border)',
+                borderLeft: '3.5px solid var(--cad-room-accent)'
+              }}
+            />
+            <span style={{ color: 'var(--ink-primary)', fontWeight: 600 }}>Phòng chức năng</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span
+              style={{
+                width: '11px',
+                height: '11px',
+                borderRadius: '3px',
+                background: 'var(--cad-utility-bg)',
+                border: '1.5px solid var(--cad-utility-border)',
+                borderLeft: '3.5px solid var(--cad-utility-accent)'
+              }}
+            />
+            <span style={{ color: 'var(--ink-primary)', fontWeight: 600 }}>Phụ trợ (NVS • Kho)</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span
+              style={{
+                width: '11px',
+                height: '11px',
+                borderRadius: '3px',
+                background: 'var(--cad-corridor-bg)',
+                border: '1px solid var(--cad-corridor-stroke)'
+              }}
+            />
+            <span style={{ color: 'var(--ink-primary)', fontWeight: 600 }}>Hành lang</span>
+          </div>
+
+          <span style={{ width: '1px', height: '12px', background: 'var(--hairline-medium)' }} aria-hidden="true" />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ width: '7.5px', height: '7.5px', borderRadius: '50%', background: '#10B981' }} />
+            <span style={{ color: 'var(--ink-muted)', fontWeight: 600 }}>Sẵn sàng</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ width: '7.5px', height: '7.5px', borderRadius: '50%', background: '#F59E0B' }} />
+            <span style={{ color: 'var(--ink-muted)', fontWeight: 600 }}>Bảo trì</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ width: '7.5px', height: '7.5px', borderRadius: '50%', background: '#E5484D' }} />
+            <span style={{ color: 'var(--ink-muted)', fontWeight: 600 }}>Có TB hỏng</span>
+          </div>
         </div>
 
-        <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-          Nhấp vào bất kỳ phòng nào trên sơ đồ để xem trang thiết bị, tình trạng vận hành &amp; điều chuyển
+        <div
+          style={{
+            fontSize: '11px',
+            color: 'var(--ink-muted)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            minWidth: 0
+          }}
+        >
+          Chọn phòng để xem chi tiết thiết bị
         </div>
       </div>
     </div>

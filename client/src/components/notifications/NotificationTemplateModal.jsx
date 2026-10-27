@@ -140,7 +140,7 @@ export const NotificationTemplateModal = ({ isOpen, onClose }) => {
   };
 
   // Cryptographic audit chain verification handler (GET /api/audit/verify-chain)
-  const handleVerifyChain = async () => {
+  const handleVerifyChain = async ({ silent = false } = {}) => {
     setChainStatus((prev) => ({ ...prev, loading: true }));
     try {
       const res = await adminConfigApi.verifyChain();
@@ -153,7 +153,9 @@ export const NotificationTemplateModal = ({ isOpen, onClose }) => {
           message: v.message || 'Chuỗi kiểm toán SHA-256 nguyên vẹn.',
           loading: false
         });
-        toast.success(`Xác minh thành công: ${v.totalLogs || 0} khối kiểm toán SHA-256 nguyên vẹn!`);
+        if (!silent) {
+          toast.success(`Xác minh thành công: ${v.totalLogs || 0} khối kiểm toán SHA-256 nguyên vẹn!`);
+        }
       } else {
         setChainStatus({
           checked: true,
@@ -171,14 +173,16 @@ export const NotificationTemplateModal = ({ isOpen, onClose }) => {
         message: err.message || 'Lỗi khi gọi API kiểm tra chuỗi băm.',
         loading: false
       });
-      toast.error('Lỗi kiểm tra chuỗi SHA-256: ' + (err.message || 'Lỗi mạng'));
+      if (!silent) {
+        toast.error('Lỗi kiểm tra chuỗi SHA-256: ' + (err.message || 'Lỗi mạng'));
+      }
     }
   };
 
   useEffect(() => {
     if (isOpen) {
       fetchTemplates();
-      handleVerifyChain();
+      handleVerifyChain({ silent: true });
     }
   }, [isOpen]);
 
@@ -836,7 +840,11 @@ export const NotificationTemplateModal = ({ isOpen, onClose }) => {
                   fontWeight: 600
                 }}
               >
-                <ModalSvg.CheckCircle size={13} color={chainStatus.isValid ? '#16A34A' : '#DC2626'} />
+                {chainStatus.isValid ? (
+                  <ModalSvg.CheckCircle size={13} color="#16A34A" />
+                ) : (
+                  <ModalSvg.AlertTriangle size={13} color="#DC2626" />
+                )}
                 {chainStatus.isValid
                   ? `Mã băm SHA-256 xác thực toàn vẹn (${chainStatus.totalLogs} blocks)`
                   : 'Phát hiện sai lệch chuỗi băm!'}

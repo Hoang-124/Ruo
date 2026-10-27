@@ -58,7 +58,7 @@ export const ALL_NAV_ITEMS = {
   dashboard: {
     id: 'dashboard',
     label: 'Sơ Đồ Phòng Học',
-    short: 'Sơ Đồ Phòng',
+    short: 'Sơ Đồ Phòng Học',
     icon: Icons.Dashboard,
     roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
   },
@@ -73,7 +73,7 @@ export const ALL_NAV_ITEMS = {
   rooms: {
     id: 'rooms',
     label: 'Danh Mục Phòng Học',
-    short: 'Phòng Học',
+    short: 'Danh Mục Phòng',
     icon: Icons.Room,
     roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
   },
@@ -90,14 +90,14 @@ export const ALL_NAV_ITEMS = {
   report_issue: {
     id: 'report_issue',
     label: 'Báo Hỏng Thiết Bị',
-    short: 'Báo Hỏng',
+    short: 'Báo Hỏng Thiết Bị',
     icon: Icons.AlertTriangle,
     roles: [USER_ROLES.LECTURER]
   },
   my_tickets: {
     id: 'my_tickets',
     label: 'Phiếu Báo Hỏng Của Tôi',
-    short: 'Phiếu Báo Hỏng',
+    short: 'Phiếu Của Tôi',
     icon: Icons.ClipboardCheck,
     roles: [USER_ROLES.LECTURER]
   },
@@ -106,14 +106,14 @@ export const ALL_NAV_ITEMS = {
   assigned_tasks: {
     id: 'assigned_tasks',
     label: 'Nhiệm Vụ Sửa Chữa',
-    short: 'Việc Của Tôi',
+    short: 'Nhiệm Vụ Sửa Chữa',
     icon: Icons.Wrench,
     roles: [USER_ROLES.TECHNICIAN]
   },
   spare_parts: {
     id: 'spare_parts',
     label: 'Kho Linh Kiện & Yêu Cầu',
-    short: 'Linh Kiện',
+    short: 'Kho Linh Kiện',
     icon: Icons.Package,
     permission: 'parts:request',
     altPermission: 'parts:approve',
@@ -130,7 +130,7 @@ export const ALL_NAV_ITEMS = {
   qr_scanner: {
     id: 'qr_scanner',
     label: 'Quét Mã QR Thực Địa',
-    short: 'Quét QR',
+    short: 'Quét Mã QR',
     icon: Icons.QrCode,
     permission: 'equipment:qr:scan',
     roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
@@ -140,7 +140,7 @@ export const ALL_NAV_ITEMS = {
   tickets_kanban: {
     id: 'tickets_kanban',
     label: 'Phiếu Sửa Chữa (Kanban)',
-    short: 'Sửa Chữa',
+    short: 'Phiếu Sửa Chữa',
     icon: Icons.Wrench,
     permission: 'repair:assign',
     roles: [USER_ROLES.FACILITY_MANAGER]
@@ -148,7 +148,7 @@ export const ALL_NAV_ITEMS = {
   maintenance: {
     id: 'maintenance',
     label: 'Bảo Dưỡng Định Kỳ',
-    short: 'Bảo Dưỡng',
+    short: 'Bảo Dưỡng Định Kỳ',
     icon: Icons.Calendar,
     roles: [USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN]
   },
@@ -163,7 +163,7 @@ export const ALL_NAV_ITEMS = {
   movements: {
     id: 'movements',
     label: 'Điều Chuyển Thiết Bị',
-    short: 'Điều Chuyển',
+    short: 'Điều Chuyển TB',
     icon: Icons.RefreshCw,
     permission: 'movement:order',
     altPermission: 'audit:read',
@@ -172,7 +172,7 @@ export const ALL_NAV_ITEMS = {
   equipments: {
     id: 'equipments',
     label: 'Kho Thiết Bị Trường',
-    short: 'Thiết Bị',
+    short: 'Kho Thiết Bị',
     icon: Icons.Equipment,
     permission: 'equipment:read',
     roles: [USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.LECTURER]
@@ -180,7 +180,7 @@ export const ALL_NAV_ITEMS = {
   inventory: {
     id: 'inventory',
     label: 'Kiểm Kê CSVC',
-    short: 'Kiểm Kê',
+    short: 'Kiểm Kê CSVC',
     icon: Icons.CheckCircle,
     permission: 'inventory:scan',
     altPermission: 'inventory:create',
@@ -207,7 +207,7 @@ export const ALL_NAV_ITEMS = {
   rbac: {
     id: 'rbac',
     label: 'Phân Quyền Vai Trò (RBAC)',
-    short: 'Phân Quyền',
+    short: 'Phân Quyền RBAC',
     icon: Icons.Shield,
     permission: 'role:update',
     roles: [USER_ROLES.ADMIN]
@@ -215,7 +215,7 @@ export const ALL_NAV_ITEMS = {
   master_data: {
     id: 'master_data',
     label: 'Danh Mục Hệ Thống',
-    short: 'Danh Mục',
+    short: 'Danh Mục Hệ Thống',
     icon: Icons.Settings,
     permission: 'category:*',
     roles: [USER_ROLES.ADMIN]
@@ -231,7 +231,7 @@ export const ALL_NAV_ITEMS = {
   audit_log: {
     id: 'audit_log',
     label: 'Sổ Cái Kiểm Toán SHA-256',
-    short: 'Audit Log',
+    short: 'Kiểm Toán SHA-256',
     icon: Icons.Audit,
     permission: 'audit:read',
     roles: [USER_ROLES.ADMIN]
@@ -239,13 +239,78 @@ export const ALL_NAV_ITEMS = {
 };
 
 /**
- * Returns navigation tabs specifically permitted for a given role (and optional live permission checker)
+ * Role-specific priority ordering so each actor's daily operational tabs
+ * appear immediately next to 'dashboard' without scrolling or hunting.
+ */
+export const ROLE_TAB_ORDER = {
+  [USER_ROLES.LECTURER]: [
+    'dashboard',
+    'report_issue',
+    'my_tickets',
+    'rooms',
+    'equipments',
+    'qr_scanner',
+    'transfer_history'
+  ],
+  [USER_ROLES.TECHNICIAN]: [
+    'dashboard',
+    'assigned_tasks',
+    'movement_tasks',
+    'spare_parts',
+    'maintenance',
+    'qr_scanner',
+    'inventory',
+    'rooms',
+    'equipments',
+    'transfer_history'
+  ],
+  [USER_ROLES.FACILITY_MANAGER]: [
+    'dashboard',
+    'tickets_kanban',
+    'spare_parts',
+    'maintenance',
+    'warehouse',
+    'movements',
+    'reports',
+    'equipments',
+    'inventory',
+    'disposal_propose',
+    'rooms',
+    'qr_scanner',
+    'transfer_history'
+  ],
+  [USER_ROLES.ADMIN]: [
+    'dashboard',
+    'users',
+    'rbac',
+    'master_data',
+    'disposal_approval',
+    'audit_log',
+    'reports',
+    'rooms',
+    'equipments',
+    'movements',
+    'inventory',
+    'qr_scanner',
+    'transfer_history'
+  ]
+};
+
+/**
+ * Returns navigation tabs specifically permitted for a given role (and optional live permission checker),
+ * ordered by that role's primary operational workflow.
  */
 export function getNavItemsForRole(role, hasPermission) {
   const normalizedRole = String(role || '').toLowerCase();
-  return Object.values(ALL_NAV_ITEMS).filter((item) =>
+  const priorityList = ROLE_TAB_ORDER[normalizedRole] || [];
+  const allowed = Object.values(ALL_NAV_ITEMS).filter((item) =>
     isTabAllowedForRole(normalizedRole, item.id, hasPermission)
   );
+  return allowed.sort((a, b) => {
+    const idxA = priorityList.indexOf(a.id);
+    const idxB = priorityList.indexOf(b.id);
+    return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+  });
 }
 
 /**

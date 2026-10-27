@@ -265,109 +265,39 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {/* ==============================================================
-          1. TOP WELCOME & ROLE BAR (COMPACT COMMAND HEADER)
-          ============================================================== */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '12px',
-        padding: '14px 18px',
-        background: 'linear-gradient(125deg, var(--surface-card) 0%, rgba(234, 88, 12, 0.07) 100%)',
-        border: '1px solid var(--border-default)',
-        borderLeft: '4px solid var(--blueprint-500)',
-        borderRadius: '14px',
-        boxShadow: 'var(--shadow-sm)',
-      }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-            <span style={{
-              display: 'inline-block',
-              width: '7px',
-              height: '7px',
-              borderRadius: '50%',
-              background: '#EA580C',
-              boxShadow: '0 0 8px rgba(234, 88, 12, 0.7)'
-            }} />
-            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--blueprint-400)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              TRUNG TÂM ĐIỀU HÀNH SỐ • DIGITAL TWIN
-            </span>
-          </div>
-          <h1 style={{ margin: 0, fontSize: '19px', fontWeight: 800, color: 'var(--ink-primary)', letterSpacing: '-0.02em' }}>
-            Trung Tâm Vận Hành Cơ Sở Vật Chất (UEMS Operational Command)
-          </h1>
-          <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: 'var(--ink-muted)' }}>
-            Chào mừng <strong style={{ color: 'var(--ink-primary)' }}>{currentUser?.name}</strong> • Vai trò: <span style={{ color: 'var(--blueprint-400)', fontWeight: 700 }}>{currentUser?.roleTitle}</span>
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {isLecturer ? (
-            <>
-              <Button size="sm" variant="secondary" icon={Icons.ClipboardCheck} onClick={() => onNavigateTab('my_tickets')}>
-                Phiếu Báo Hỏng ({lecturerStats.totalTickets})
-              </Button>
-              <Button size="sm" variant="primary" icon={Icons.AlertTriangle} onClick={() => onNavigateTab('report_issue')}>
-                + Báo Hỏng Thiết Bị
-              </Button>
-            </>
-          ) : isTech ? (
-            <>
-              <Button size="sm" variant="secondary" icon={Icons.Wrench} onClick={() => onNavigateTab('assigned_tasks')}>
-                Nhiệm Vụ
-              </Button>
-              <Button size="sm" variant="secondary" icon={Icons.QrCode} onClick={() => onNavigateTab('qr_scanner')}>
-                Quét Mã QR
-              </Button>
-            </>
-          ) : isFM ? (
-            <>
-              <Button size="sm" variant="secondary" icon={Icons.Layers} onClick={() => onNavigateTab('tickets_kanban')}>
-                Kanban SLA
-              </Button>
-              <Button size="sm" variant="secondary" icon={Icons.Equipment} onClick={() => onNavigateTab('equipments')}>
-                Kho CSVC
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button size="sm" variant="secondary" icon={Icons.User} onClick={() => onNavigateTab('users')}>
-                Người Dùng
-              </Button>
-              <Button size="sm" variant="secondary" icon={Icons.Shield} onClick={() => onNavigateTab('rbac')}>
-                Phân Quyền RBAC
-              </Button>
-            </>
-          )}
-          <Button size="sm" variant="primary" icon={Icons.Clock} loading={loading} onClick={() => fetchDashboardData()}>
-            Cập Nhật
-          </Button>
-        </div>
-      </div>
-
-      {/* ==============================================================
-          2. PRIMARY HERO: UNIFIED DIGITAL TWIN CAD WORKSPACE
-          Hợp nhất Sơ đồ phòng học và Bản đồ CAD vào không gian duy nhất
+          1. PRIMARY HERO: UNIFIED ABOVE-THE-FOLD DIGITAL TWIN CAD WORKSPACE
+          Hiển thị trọn vẹn 100% Sơ đồ phòng học ngay khi vào trang chính
           ============================================================== */}
       <div className="dashboard-cad-grid">
-        {/* Left Column: Interactive Architectural Map */}
-        <Card
-          className="ruo-card-compact"
-          title="Sơ Đồ Phòng Học"
-          subtitle={`Sơ đồ kiến trúc tầng ${selectedFloor} • Bấm chọn từng phòng học để xem trang thiết bị & trạng thái vận hành`}
+        {/* Left Column: Full-Viewport Interactive Architectural Map */}
+        <div
+          className="ruo-card"
+          style={{
+            padding: '8px 10px',
+            borderRadius: '12px'
+          }}
         >
-          <div style={{ overflowX: 'auto', borderRadius: '8px' }}>
-            <FloorPlan2D
-              selectedFloor={selectedFloor}
-              onChangeFloor={handleFloorChange}
-              selectedRoom={selectedRoom}
-              onSelectRoom={(room) => setSelectedRoom(room)}
-              getRoomSimulatedStatus={getRoomSimulatedStatus}
-              roomPods={roomPods}
-            />
-          </div>
-        </Card>
+          <FloorPlan2D
+            selectedFloor={selectedFloor}
+            onChangeFloor={handleFloorChange}
+            selectedRoom={selectedRoom}
+            onSelectRoom={(room) => setSelectedRoom(room)}
+            getRoomSimulatedStatus={getRoomSimulatedStatus}
+            roomPods={roomPods}
+            headerActions={
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={Icons.Clock}
+                loading={loading}
+                onClick={() => fetchDashboardData()}
+                style={{ height: '27px', padding: '0 9px', fontSize: '11px' }}
+              >
+                Cập Nhật
+              </Button>
+            }
+          />
+        </div>
 
         {/* Right Column: Room Detail & Equipment Inspector Panel */}
         <Card
@@ -528,7 +458,7 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
                 )}
                 {cadError && <p role="alert">Không tải được dữ liệu phòng: {cadError}</p>}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '230px', overflowY: 'auto', paddingRight: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: 'calc(100dvh - 420px)', minHeight: '110px', overflowY: 'auto', paddingRight: '4px' }}>
                   {roomEquipments.map((eq, idx) => (
                     <div
                       key={eq._id || idx}

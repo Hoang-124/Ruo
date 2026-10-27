@@ -247,6 +247,7 @@ export const sendEmail = async ({
  */
 export const dispatchPasswordResetOtpEmail = async ({
   to,
+  userName = null,
   otp,
   expiryMinutes = 15,
   userId = null,
@@ -264,8 +265,11 @@ export const dispatchPasswordResetOtpEmail = async ({
   }
 
   const variables = {
+    userName: userName || to,
+    user_name: userName || to,
     email: to,
     otp,
+    expiryMinutes,
     expiry_minutes: expiryMinutes
   };
 
@@ -336,9 +340,15 @@ export const dispatchTaskAssignmentEmail = async ({
   }
 
   const variables = {
+    userName: technicianName,
+    user_name: technicianName,
+    ticketCode,
     ticket_code: ticketCode,
+    equipmentCode,
     equipment_code: equipmentCode,
+    equipmentName,
     equipment_name: equipmentName,
+    roomCode,
     room_code: roomCode,
     priority,
     deadline,

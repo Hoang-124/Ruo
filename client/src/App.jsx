@@ -290,7 +290,7 @@ const MainAppContent = () => {
       case 'map':
       default:
         return (
-          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '12px 24px 60px' }}>
+          <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '8px 24px 48px' }}>
             <Dashboard
               onNavigateTab={(tab) => setActiveTab(tab)}
               onOpenQRModal={() => setActiveTab('qr_scanner')}

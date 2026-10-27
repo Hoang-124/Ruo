@@ -21,35 +21,35 @@ const FLOOR_CONFIG = [
     name: 'TẦNG 5',
     title: 'Giảng Đường Lớn & Ban Công',
     highlight: 'PH Học Lớn & Ban công',
-    accent: '#8B5CF6'
+    accent: '#EA580C'
   },
   {
     level: 4,
     name: 'TẦNG 4',
     title: 'Hành Chính & Hội Thảo',
     highlight: 'VP Khoa & Hội thảo',
-    accent: '#3B82F6'
+    accent: '#EA580C'
   },
   {
     level: 3,
     name: 'TẦNG 3',
     title: 'Giảng Đường & Trạm Y Tế',
     highlight: 'Y Tế & PH 301–319',
-    accent: '#0EA5E9'
+    accent: '#EA580C'
   },
   {
     level: 2,
     name: 'TẦNG 2',
     title: 'Giảng Đường & Nghiên Cứu',
     highlight: 'PH 201–218 & Nghiên cứu',
-    accent: '#10B981'
+    accent: '#EA580C'
   },
   {
     level: 1,
     name: 'TẦNG 1',
     title: 'Sảnh Đón Tiếp & Giếng Trời',
     highlight: 'Thư viện & Giếng trời',
-    accent: '#F59E0B'
+    accent: '#EA580C'
   }
 ];
 
@@ -262,7 +262,7 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
                     ${cx - dxLeft},${cy - dyLeft - h * 0.78}
                     ${cx},${cy - h * 0.78}
                   `}
-                  fill="rgba(56, 189, 248, 0.12)"
+                  fill="rgba(234, 88, 12, 0.12)"
                   stroke={isHovered ? highlightColor : 'var(--hairline-soft)'}
                   strokeWidth="0.8"
                 />
@@ -320,8 +320,8 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
                         ${cx - dxLeft * 0.62 + 14},${cy - dyLeft * 0.62 - 24 + 4}
                         ${cx - dxLeft * 0.40 + 14},${cy - dyLeft * 0.40 - 24 + 4}
                       `}
-                      fill="#38BDF8"
-                      fillOpacity="0.5"
+                      fill="#FB923C"
+                      fillOpacity="0.45"
                       stroke="#FFFFFF"
                       strokeWidth="1.2"
                     />
@@ -350,9 +350,9 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
                         ${cx - dxLeft * 0.60},${cy - dyLeft * 0.60 - 22}
                         ${cx - dxLeft * 0.42},${cy - dyLeft * 0.42 - 22}
                       `}
-                      fill="#F59E0B"
-                      fillOpacity="0.28"
-                      stroke="#F59E0B"
+                      fill="#EA580C"
+                      fillOpacity="0.26"
+                      stroke="#EA580C"
                       strokeWidth="1"
                     />
                   </g>
@@ -369,8 +369,8 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
                         ${cx - dxLeft * 0.32},${cy - dyLeft * 0.32 - h - 7}
                         ${cx},${cy - h - 7}
                       `}
-                      fill="rgba(56, 189, 248, 0.22)"
-                      stroke="#38BDF8"
+                      fill="rgba(234, 88, 12, 0.18)"
+                      stroke="#EA580C"
                       strokeWidth="0.9"
                     />
                     {/* Top chrome handrail */}
@@ -382,10 +382,10 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
                       stroke="#FFFFFF"
                       strokeWidth="1.2"
                     />
-                    {/* Miniature green eco shrubs on terrace */}
-                    <circle cx={cx - dxLeft * 0.08} cy={cy - dyLeft * 0.08 - h - 3} r="3" fill="#10B981" fillOpacity="0.9" />
-                    <circle cx={cx - dxLeft * 0.16} cy={cy - dyLeft * 0.16 - h - 3.5} r="3.5" fill="#059669" fillOpacity="0.9" />
-                    <circle cx={cx - dxLeft * 0.24} cy={cy - dyLeft * 0.24 - h - 3} r="2.8" fill="#10B981" fillOpacity="0.9" />
+                    {/* Miniature architectural terrace shrubs */}
+                    <circle cx={cx - dxLeft * 0.08} cy={cy - dyLeft * 0.08 - h - 3} r="3" fill="#5E6249" fillOpacity="0.9" />
+                    <circle cx={cx - dxLeft * 0.16} cy={cy - dyLeft * 0.16 - h - 3.5} r="3.5" fill="#4D513B" fillOpacity="0.9" />
+                    <circle cx={cx - dxLeft * 0.24} cy={cy - dyLeft * 0.24 - h - 3} r="2.8" fill="#5E6249" fillOpacity="0.9" />
                   </g>
                 )}
 
@@ -418,8 +418,8 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
                     ${cx + dxRight * 0.70},${cy - dyRight * 0.70 - h + 4}
                     ${cx + dxRight * 0.30},${cy - dyRight * 0.30 - h + 4}
                   `}
-                  fill="rgba(56, 189, 248, 0.18)"
-                  stroke={isHovered ? highlightColor : 'rgba(56, 189, 248, 0.45)'}
+                  fill="rgba(251, 146, 60, 0.16)"
+                  stroke={isHovered ? highlightColor : 'rgba(251, 146, 60, 0.42)'}
                   strokeWidth="0.9"
                 />
 
@@ -631,7 +631,7 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
               GIẾNG TRỜI THÔNG TẦNG (CENTRAL ATRIUM SKYLIGHT)
               Căn đúng trọng tâm giếng trời 180x74m từ FloorPlan2D
               ============================================================== */}
-          <g id="rooftop-central-atrium" style={{ filter: 'drop-shadow(0 4px 12px rgba(56, 189, 248, 0.35))' }}>
+          <g id="rooftop-central-atrium" style={{ filter: 'drop-shadow(0 4px 12px rgba(234, 88, 12, 0.28))' }}>
             {/* 1. Atrium Raised Concrete Curb Base (Bệ đỡ giếng trời) */}
             <polygon
               points={`
@@ -653,7 +653,7 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
                 ${atriumMidX - aDxL},${atriumMidY - 2 - aDyL}
                 ${atriumMidX},${atriumMidY - 2}
               `}
-              fill="#1E293B"
+              fill="#443B35"
               stroke="var(--hairline-medium)"
               strokeWidth="0.8"
             />
@@ -664,7 +664,7 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
                 ${atriumMidX + aDxR},${atriumMidY - 2 - aDyR}
                 ${atriumMidX},${atriumMidY - 2}
               `}
-              fill="#0F172A"
+              fill="#292524"
               stroke="var(--hairline-medium)"
               strokeWidth="0.8"
             />
@@ -699,7 +699,7 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
                 ${atriumMidX - aDxL + aDxR},${atriumMidY - 2 - aDyL - aDyR}
                 ${atriumMidX - aDxL * 0.15 + aDxR * 0.15},${atriumMidY - 16}
               `}
-              fill="#0369A1"
+              fill="#9A3412"
               fillOpacity="0.45"
               stroke="rgba(255,255,255,0.4)"
               strokeWidth="0.8"
@@ -710,7 +710,7 @@ export const Building2DIso = ({ activeFloor = null, onSelectFloor }) => {
                 ${atriumMidX - aDxL + aDxR},${atriumMidY - 2 - aDyL - aDyR}
                 ${atriumMidX - aDxL * 0.15 + aDxR * 0.15},${atriumMidY - 16}
               `}
-              fill="#0284C7"
+              fill="#C2410C"
               fillOpacity="0.4"
               stroke="rgba(255,255,255,0.4)"
               strokeWidth="0.8"
