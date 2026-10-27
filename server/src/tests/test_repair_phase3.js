@@ -17,7 +17,10 @@ import {
 import {
   requestSpareParts,
   approvePartsRequest,
-  updateSparePartStock
+  updateSparePartStock,
+  createSparePart,
+  updateSparePart,
+  deleteSparePart
 } from '../controllers/sparePartController.js';
 import {
   getWarrantyExpiringEquipments,
@@ -523,6 +526,11 @@ async function runWorkstream2Tests() {
     assert.strictEqual(sentNotifs.length, 2);
     assert.strictEqual(sentNotifs[0].type, 'deadline_overdue', 'Loại thông báo là deadline_overdue');
     console.log(`✓ PASS: Đã quét phát hiện phiếu trễ hạn, tạo ${sentNotifs.length} thông báo cảnh báo SLA tới KTV và Manager thành công!`);
+
+    // UC-7.2: Background Timer Runner execution without HTTP context
+    const backgroundResult = await checkAndNotifyOverdueRepairs();
+    assert.strictEqual(backgroundResult.overdueCount, 1, 'Background runner phát hiện đúng 1 ca quá hạn');
+    console.log(`✓ PASS (UC-7.2): Background Timer Scanner chạy ngầm thành công không cần HTTP context.`);
   }
 
   console.log('\n============================================================');
@@ -641,27 +649,142 @@ async function runWorkstream3Tests() {
   console.log(`✓ PASS: Chống xuất âm kho: Yêu cầu 25 > 17 cái bị từ chối 400 chuẩn mực`);
 
   // ----------------------------------------------------
-  // TEST 13: UC-5.12 - Update Spare Part Stock & Minimum Threshold
+  // TEST 14: UC-5.12 - Create Spare Part (POST /api/spare-parts)
   // ----------------------------------------------------
-  console.log('\n[Test 13] UC-5.12: Điều chỉnh định mức tối thiểu & tồn kho linh kiện (updateSparePartStock)');
-  const req13 = {
-    user: { _id: managerId, role: USER_ROLES.FACILITY_MANAGER },
-    params: { id: partId },
-    body: { stock: 30, min_stock: 8, price: 1300000 }
+  console.log('\n[Test 14] UC-5.12: Thêm mới mã linh kiện vào kho (createSparePart)');
+  const newPartId = new mongoose.Types.ObjectId().toString();
+  let createdPartDoc = null;
+  SparePart.findOne = async (filter) => {
+    if (filter?.code === 'PART-RAM-DDR5') return null;
+    if (filter?.code === 'PART-DUPLICATE') return { code: 'PART-DUPLICATE' };
+    return null;
   };
-  let json13 = null;
-  const res13 = {
-    status: (code) => res13,
-    json: (data) => { json13 = data; }
+  SparePart.create = async (doc) => {
+    createdPartDoc = {
+      _id: newPartId,
+      ...doc,
+      save: async function () { return this; }
+    };
+    return createdPartDoc;
   };
-  await updateSparePartStock(req13, res13);
-  assert.ok(json13.success, 'Cập nhật kho phải thành công');
-  assert.strictEqual(mockPart.stock, 30);
-  assert.strictEqual(mockPart.min_stock, 8);
-  console.log(`✓ PASS: Cập nhật định mức linh kiện thành công: Tồn kho = ${mockPart.stock}, Định mức tối thiểu = ${mockPart.min_stock}`);
+
+  const req14 = {
+    user: { _id: managerId, full_name: 'Quản Lý CSVC', code: 'MGR-01', role: USER_ROLES.FACILITY_MANAGER },
+    body: {
+      code: 'PART-RAM-DDR5',
+      name: 'RAM DDR5 16GB Kingston Fury 5200MHz',
+      unit: 'Thanh',
+      price: 1850000,
+      stock: 15,
+      min_stock: 4
+    }
+  };
+  let json14 = null;
+  const res14 = {
+    status: (code) => { res14.statusCode = code; return res14; },
+    json: (data) => { json14 = data; }
+  };
+  await createSparePart(req14, res14);
+  assert.strictEqual(res14.statusCode, 201, 'Tạo mã linh kiện mới phải trả về 201');
+  assert.strictEqual(json14.part.code, 'PART-RAM-DDR5');
+  assert.strictEqual(json14.part.unit, 'Thanh');
+  assert.strictEqual(json14.part.stock, 15);
+  console.log(`✓ PASS: Thêm mã linh kiện mới thành công: [${json14.part.code}] ${json14.part.name}, Tồn kho = ${json14.part.stock}`);
+
+  // Test 14.1: Duplicate code rejection (HTTP 409)
+  const req14Dup = {
+    user: { _id: managerId, full_name: 'Quản Lý CSVC', code: 'MGR-01', role: USER_ROLES.FACILITY_MANAGER },
+    body: { code: 'PART-DUPLICATE', name: 'Linh kiện trùng mã' }
+  };
+  let json14Dup = null;
+  const res14Dup = {
+    status: (code) => { res14Dup.statusCode = code; return res14Dup; },
+    json: (data) => { json14Dup = data; }
+  };
+  await createSparePart(req14Dup, res14Dup);
+  assert.strictEqual(res14Dup.statusCode, 409, 'Trùng mã linh kiện phải trả về HTTP 409 Conflict');
+  console.log('✓ PASS: Chống trùng mã linh kiện: Bị từ chối HTTP 409 chuẩn mực');
+
+  // ----------------------------------------------------
+  // TEST 15: UC-5.12 - Update Spare Part Details (PUT /api/spare-parts/:id)
+  // ----------------------------------------------------
+  console.log('\n[Test 15] UC-5.12: Cập nhật thông tin chi tiết linh kiện (updateSparePart)');
+  SparePart.findById = async (id) => {
+    if (id && id.toString() === newPartId) return createdPartDoc;
+    if (id && id.toString() === partId) return mockPart;
+    return null;
+  };
+
+  const req15 = {
+    user: { _id: managerId, full_name: 'Quản Lý CSVC', code: 'MGR-01', role: USER_ROLES.FACILITY_MANAGER },
+    params: { id: newPartId },
+    body: {
+      name: 'RAM DDR5 16GB Kingston Fury Beast 5600MHz (Đã nâng cấp)',
+      price: 1950000,
+      stock: 25,
+      min_stock: 6
+    }
+  };
+  let json15 = null;
+  const res15 = {
+    status: (code) => { res15.statusCode = code; return res15; },
+    json: (data) => { json15 = data; }
+  };
+  await updateSparePart(req15, res15);
+  assert.ok(json15.success, 'Cập nhật linh kiện phải thành công');
+  assert.strictEqual(createdPartDoc.price, 1950000);
+  assert.strictEqual(createdPartDoc.stock, 25);
+  assert.strictEqual(createdPartDoc.min_stock, 6);
+  console.log(`✓ PASS: Cập nhật thông tin linh kiện thành công: Đơn giá mới = ${createdPartDoc.price} đ, Tồn kho = ${createdPartDoc.stock}`);
+
+  // ----------------------------------------------------
+  // TEST 16: UC-5.12 - Delete Spare Part with Safety Constraints (DELETE /api/spare-parts/:id)
+  // ----------------------------------------------------
+  console.log('\n[Test 16] UC-5.12: Xóa mã linh kiện & Ràng buộc toàn vẹn lịch sử cấp phát (deleteSparePart)');
+  
+  // 16.1 Block deletion if part has history in parts requests (HTTP 409)
+  PartsRequest.exists = async (query) => {
+    if (query?.['items.part_id']?.toString() === partId) return true;
+    return false;
+  };
+
+  const req16Blocked = {
+    user: { _id: managerId, full_name: 'Quản Lý CSVC', code: 'MGR-01', role: USER_ROLES.FACILITY_MANAGER },
+    params: { id: partId }
+  };
+  let json16Blocked = null;
+  const res16Blocked = {
+    status: (code) => { res16Blocked.statusCode = code; return res16Blocked; },
+    json: (data) => { json16Blocked = data; }
+  };
+  await deleteSparePart(req16Blocked, res16Blocked);
+  assert.strictEqual(res16Blocked.statusCode, 409, 'Phải chặn xóa linh kiện đã có trong phiếu cấp phát (HTTP 409)');
+  assert.ok(json16Blocked.message.includes('Không thể xóa linh kiện'), 'Thông báo phải giải thích rõ ràng');
+  console.log('✓ PASS: Chặn xóa linh kiện đã phát sinh trong lịch sử cấp phát: HTTP 409 Conflict chuẩn mực');
+
+  // 16.2 Allow deletion if part has NO history in parts requests (HTTP 200)
+  let deletedId = null;
+  SparePart.findByIdAndDelete = async (id) => {
+    deletedId = id;
+    return createdPartDoc;
+  };
+
+  const req16Success = {
+    user: { _id: managerId, full_name: 'Quản Lý CSVC', code: 'MGR-01', role: USER_ROLES.FACILITY_MANAGER },
+    params: { id: newPartId }
+  };
+  let json16Success = null;
+  const res16Success = {
+    status: (code) => { res16Success.statusCode = code; return res16Success; },
+    json: (data) => { json16Success = data; }
+  };
+  await deleteSparePart(req16Success, res16Success);
+  assert.ok(json16Success.success, 'Xóa linh kiện chưa dùng phải thành công');
+  assert.strictEqual(deletedId.toString(), newPartId, 'Mã linh kiện đã được xóa khỏi DB');
+  console.log(`✓ PASS: Xóa mã linh kiện chưa phát sinh yêu cầu thành công.`);
 
   console.log('\n============================================================');
-  console.log('TẤT CẢ 3/3 TESTS CHO WORKSTREAM 3 (UC-5.10 → UC-5.12) ĐÃ ĐẠT 100%!');
+  console.log('TẤT CẢ 6/6 TESTS CHO WORKSTREAM 3 (UC-5.10 → UC-5.12) ĐÃ ĐẠT 100%!');
   console.log('============================================================\n');
 }
 

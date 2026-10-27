@@ -73,14 +73,50 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/master', masterDataRoutes);
 app.use('/api/master-data', masterDataRoutes);
 
+import { checkAndNotifyOverdueRepairs } from './controllers/repairController.js';
+
 // Error Handling
 app.use(notFound);
 app.use(errorHandler);
+
+// Background Worker: UC-7.2 SLA Overdue Scanner
+let slaTimer = null;
+let slaInitialTimeout = null;
+
+const startSlaBackgroundWorker = () => {
+  if (process.env.NODE_ENV === 'test') return;
+  const intervalMs = Number(process.env.SLA_SCAN_INTERVAL_MS) || 10 * 60 * 1000;
+  console.log(`[Ruo UEMS Server] SLA overdue scanner worker initialized (Interval: ${intervalMs / 1000}s)`);
+
+  slaInitialTimeout = setTimeout(async () => {
+    try {
+      const res = await checkAndNotifyOverdueRepairs();
+      if (res?.overdueCount > 0) {
+        console.log(`[Ruo UEMS Server] Initial SLA scan found ${res.overdueCount} overdue tickets, dispatched ${res.notifiedCount} notifications.`);
+      }
+    } catch (err) {
+      console.warn('[Ruo UEMS Server] Initial SLA scanner warning:', err.message);
+    }
+  }, 5000);
+
+  slaTimer = setInterval(async () => {
+    try {
+      const res = await checkAndNotifyOverdueRepairs();
+      if (res?.overdueCount > 0) {
+        console.log(`[Ruo UEMS Server] Periodic SLA scan found ${res.overdueCount} overdue tickets, dispatched ${res.notifiedCount} notifications.`);
+      }
+    } catch (err) {
+      console.warn('[Ruo UEMS Server] Periodic SLA scanner warning:', err.message);
+    }
+  }, intervalMs);
+};
 
 // Start Server with proper async DB initialization & graceful shutdown
 const startServer = async () => {
   try {
     await connectDB();
+    startSlaBackgroundWorker();
+
     const server = app.listen(PORT, () => {
       console.log(`[Ruo UEMS Server] Running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
       console.log(`[Ruo UEMS Server] Healthcheck: http://localhost:${PORT}/api/health`);
@@ -96,6 +132,8 @@ const startServer = async () => {
     });
 
     const shutdownGracefully = (signal) => {
+      if (slaInitialTimeout) clearTimeout(slaInitialTimeout);
+      if (slaTimer) clearInterval(slaTimer);
       server.close(() => {
         if (signal === 'SIGUSR2') {
           process.kill(process.pid, 'SIGUSR2');

@@ -12,15 +12,42 @@ export const SparePartsPage = () => {
     currentUser?.role === 'facility_manager' ||
     currentUser?.role === 'admin'
   );
+  const canManageParts = Boolean(
+    hasPermission?.('parts:manage') ||
+    currentUser?.role === 'facility_manager' ||
+    currentUser?.role === 'admin'
+  );
   const [loading, setLoading] = useState(true);
   const [parts, setParts] = useState([]);
   const [requests, setRequests] = useState([]);
   const [activeRepairs, setActiveRepairs] = useState([]);
   const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'requests'
 
-  // Modal
+  // Modals & Forms
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const [createForm, setCreateForm] = useState({
+    code: '',
+    name: '',
+    unit: 'Cái',
+    price: 0,
+    stock: 0,
+    min_stock: 5
+  });
+
+  const [editForm, setEditForm] = useState({
+    _id: '',
+    code: '',
+    name: '',
+    unit: 'Cái',
+    price: 0,
+    stock: 0,
+    min_stock: 5
+  });
+
   const [requestForm, setRequestForm] = useState({
     repair_id: '',
     part_id: '',
@@ -107,6 +134,107 @@ export const SparePartsPage = () => {
     }
   };
 
+  const openCreateModal = () => {
+    setCreateForm({
+      code: '',
+      name: '',
+      unit: 'Cái',
+      price: 0,
+      stock: 0,
+      min_stock: 5
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    if (!createForm.code.trim()) {
+      toast.error('Vui lòng nhập mã linh kiện (VD: PRT-RAM-8GB).');
+      return;
+    }
+    if (!createForm.name.trim()) {
+      toast.error('Vui lòng nhập tên linh kiện.');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const res = await sparePartApi.create({
+        code: createForm.code.trim(),
+        name: createForm.name.trim(),
+        unit: createForm.unit.trim() || 'Cái',
+        price: Number(createForm.price) || 0,
+        stock: Number(createForm.stock) || 0,
+        min_stock: Number(createForm.min_stock) || 5
+      });
+      if (res && res.success) {
+        toast.success(`Đã thêm mã linh kiện [${res.part?.code || createForm.code}] thành công!`);
+        setShowCreateModal(false);
+        await fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi thêm linh kiện: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openEditModal = (part) => {
+    setEditForm({
+      _id: part._id,
+      code: part.code || part.part_code || '',
+      name: part.name || '',
+      unit: part.unit || 'Cái',
+      price: part.price || 0,
+      stock: part.stock || 0,
+      min_stock: part.min_stock || 5
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editForm.name.trim()) {
+      toast.error('Vui lòng nhập tên linh kiện.');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const res = await sparePartApi.update(editForm._id, {
+        name: editForm.name.trim(),
+        unit: editForm.unit.trim() || 'Cái',
+        price: Number(editForm.price) || 0,
+        stock: Number(editForm.stock) || 0,
+        min_stock: Number(editForm.min_stock) || 5
+      });
+      if (res && res.success) {
+        toast.success(`Đã cập nhật linh kiện [${editForm.code}] thành công!`);
+        setShowEditModal(false);
+        await fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi cập nhật linh kiện: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeletePart = async (part) => {
+    const confirmDelete = window.confirm(`Bạn có chắc chắn muốn xóa mã linh kiện [${part.code || part.part_code}] ${part.name}?`);
+    if (!confirmDelete) return;
+    try {
+      setSubmitting(true);
+      const res = await sparePartApi.delete(part._id);
+      if (res && res.success) {
+        toast.success(`Đã xóa linh kiện [${part.code || part.part_code}] thành công.`);
+        await fetchData();
+      }
+    } catch (err) {
+      toast.error('Lỗi khi xóa linh kiện: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const lowStockCount = parts.filter(p => p.stock <= (p.min_stock || 5)).length;
 
   return (
@@ -128,14 +256,27 @@ export const SparePartsPage = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => openRequest()}
-          className="laser-btn laser-btn-primary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
-        >
-          <Icons.Plus size={16} />
-          <span>Yêu Cầu Linh Kiện Mới</span>
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {canManageParts && (
+            <button
+              onClick={openCreateModal}
+              className="laser-btn laser-btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
+            >
+              <Icons.Plus size={16} />
+              <span>Thêm Mã Linh Kiện Mới</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => openRequest()}
+            className={canManageParts ? "laser-btn laser-btn-secondary" : "laser-btn laser-btn-primary"}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
+          >
+            <Icons.Plus size={16} />
+            <span>Yêu Cầu Cấp Cho Ca Sửa</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Stats */}
@@ -214,7 +355,8 @@ export const SparePartsPage = () => {
                 <tr style={{ background: 'var(--surface-panel)', borderBottom: '1px solid var(--hairline-medium)' }}>
                   <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Mã Linh Kiện</th>
                   <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Tên Linh Kiện & Thông Số</th>
-                  <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Chủng Loại Thiết Bị</th>
+                  <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Đơn Vị</th>
+                  <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Đơn Giá (VNĐ)</th>
                   <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Tồn Kho Thực Tế</th>
                   <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Định Mức Tối Thiểu</th>
                   <th style={{ padding: '12px 18px', textAlign: 'right', color: 'var(--ink-pure)', fontWeight: 700 }}>Thao Tác</th>
@@ -226,14 +368,21 @@ export const SparePartsPage = () => {
                   return (
                     <tr key={p._id} style={{ borderBottom: '1px solid var(--hairline-soft)' }}>
                       <td style={{ padding: '12px 18px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--laser-cyan)' }}>
-                        {p.part_code || p.code || 'PRT'}
+                        {p.code || p.part_code || 'PRT'}
                       </td>
                       <td style={{ padding: '12px 18px' }}>
                         <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{p.name}</div>
-                        <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>{p.description || 'Linh kiện thay thế chuẩn'}</div>
+                        {p.supplier_id?.name ? (
+                          <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>NCC: {p.supplier_id.name}</div>
+                        ) : (
+                          <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>{p.description || 'Linh kiện thay thế chuẩn'}</div>
+                        )}
                       </td>
                       <td style={{ padding: '12px 18px', color: 'var(--ink-secondary)' }}>
-                        {p.category_id?.name || 'Chung'}
+                        {p.unit || 'Cái'}
+                      </td>
+                      <td style={{ padding: '12px 18px', fontWeight: 600, color: 'var(--ink-pure)' }}>
+                        {(p.price || 0).toLocaleString('vi-VN')} đ
                       </td>
                       <td style={{ padding: '12px 18px' }}>
                         <span style={{ fontSize: '14px', fontWeight: 800, color: isLow ? '#EF4444' : '#10B981' }}>
@@ -246,17 +395,41 @@ export const SparePartsPage = () => {
                         )}
                       </td>
                       <td style={{ padding: '12px 18px', color: 'var(--ink-muted)', fontSize: '12px' }}>
-                        {p.min_stock || 5} đơn vị
+                        {p.min_stock || 5} {p.unit || 'đơn vị'}
                       </td>
                       <td style={{ padding: '12px 18px', textAlign: 'right' }}>
-                        <button
-                          onClick={() => openRequest(p)}
-                          className="laser-btn laser-btn-secondary"
-                          style={{ padding: '5px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                        >
-                          <Icons.Plus size={13} />
-                          <span>Yêu Cầu Cấp</span>
-                        </button>
+                        <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+                          <button
+                            onClick={() => openRequest(p)}
+                            className="laser-btn laser-btn-secondary"
+                            style={{ padding: '5px 10px', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            title="Lập phiếu xin cấp linh kiện cho ca sửa"
+                          >
+                            <Icons.Plus size={13} />
+                            <span>Xin Cấp</span>
+                          </button>
+                          {canManageParts && (
+                            <>
+                              <button
+                                onClick={() => openEditModal(p)}
+                                className="laser-btn laser-btn-secondary"
+                                style={{ padding: '5px 10px', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                title="Sửa thông tin hoặc điều chỉnh tồn kho / định mức"
+                              >
+                                <Icons.Edit size={13} />
+                                <span>Sửa / Tồn Kho</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeletePart(p)}
+                                className="laser-btn laser-btn-secondary"
+                                style={{ padding: '5px 8px', fontSize: '11.5px', color: '#EF4444' }}
+                                title="Xóa mã linh kiện"
+                              >
+                                <Icons.Trash size={13} />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -382,7 +555,7 @@ export const SparePartsPage = () => {
 
       {/* Request Modal */}
       {showRequestModal && (
-        <div className="ruo-drawer-backdrop" onClick={() => setShowRequestModal(false)}>
+        <div className="ruo-drawer-backdrop open" style={{ opacity: 1, visibility: 'visible' }} onClick={() => setShowRequestModal(false)}>
           <div className="ruo-drawer-panel" style={{ width: '500px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
@@ -471,6 +644,234 @@ export const SparePartsPage = () => {
                 <button type="button" onClick={() => setShowRequestModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
                 <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
                   {submitting ? 'Đang Gửi...' : 'Gửi Phiếu Yêu Cầu'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Modal */}
+      {showCreateModal && (
+        <div className="ruo-drawer-backdrop open" style={{ opacity: 1, visibility: 'visible' }} onClick={() => setShowCreateModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <div>
+                <h2 className="ruo-drawer-title">Thêm Mã Linh Kiện Mới Vào Kho</h2>
+                <p className="ruo-drawer-subtitle">Đăng ký danh mục vật tư & định mức dự phòng tối thiểu</p>
+              </div>
+              <button onClick={() => setShowCreateModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
+            </div>
+
+            <form onSubmit={handleCreateSubmit}>
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Mã Linh Kiện * (VD: PRT-RAM-8GB)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="VD: PRT-RAM-8GB, PRT-SSD-512GB"
+                    value={createForm.code}
+                    onChange={(e) => setCreateForm({ ...createForm, code: e.target.value.toUpperCase() })}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', height: '38px', fontFamily: 'var(--font-mono)' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Tên Linh Kiện & Thông Số Kỹ Thuật *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="VD: RAM DDR4 8GB Kingston Fury Beast 3200MHz"
+                    value={createForm.name}
+                    onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', height: '38px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                      Đơn Vị Tính
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Cái, Thanh, Cuộn, Bộ..."
+                      value={createForm.unit}
+                      onChange={(e) => setCreateForm({ ...createForm, unit: e.target.value })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', height: '38px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                      Đơn Giá Dự Toán (VNĐ)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={createForm.price}
+                      onChange={(e) => setCreateForm({ ...createForm, price: Math.max(0, parseInt(e.target.value) || 0) })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', height: '38px' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                      Số Lượng Tồn Ban Đầu
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={createForm.stock}
+                      onChange={(e) => setCreateForm({ ...createForm, stock: Math.max(0, parseInt(e.target.value) || 0) })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', height: '38px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                      Định Mức Cảnh Báo (Min Stock)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={createForm.min_stock}
+                      onChange={(e) => setCreateForm({ ...createForm, min_stock: Math.max(0, parseInt(e.target.value) || 0) })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', height: '38px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="ruo-drawer-footer">
+                <button type="button" onClick={() => setShowCreateModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  {submitting ? 'Đang Lưu...' : 'Thêm Linh Kiện'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="ruo-drawer-backdrop open" style={{ opacity: 1, visibility: 'visible' }} onClick={() => setShowEditModal(false)}>
+          <div className="ruo-drawer-panel" style={{ width: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="ruo-drawer-header">
+              <div>
+                <h2 className="ruo-drawer-title">Cập Nhật Linh Kiện [{editForm.code}]</h2>
+                <p className="ruo-drawer-subtitle">Điều chỉnh thông tin, đơn giá và số lượng tồn kho thực tế</p>
+              </div>
+              <button onClick={() => setShowEditModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
+            </div>
+
+            <form onSubmit={handleEditSubmit}>
+              <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Mã Linh Kiện (Mã cố định)
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={editForm.code}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', height: '38px', fontFamily: 'var(--font-mono)', opacity: 0.7 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Tên Linh Kiện & Thông Số Kỹ Thuật *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', height: '38px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                      Đơn Vị Tính
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.unit}
+                      onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', height: '38px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                      Đơn Giá (VNĐ)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editForm.price}
+                      onChange={(e) => setEditForm({ ...editForm, price: Math.max(0, parseInt(e.target.value) || 0) })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', height: '38px' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                      Tồn Kho Thực Tế (Cập nhật trực tiếp)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editForm.stock}
+                      onChange={(e) => setEditForm({ ...editForm, stock: Math.max(0, parseInt(e.target.value) || 0) })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', height: '38px', fontWeight: 700, color: 'var(--laser-cyan)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                      Định Mức Tối Thiểu (Min Stock)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editForm.min_stock}
+                      onChange={(e) => setEditForm({ ...editForm, min_stock: Math.max(0, parseInt(e.target.value) || 0) })}
+                      className="ruo-portal-input"
+                      style={{ width: '100%', height: '38px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="ruo-drawer-footer">
+                <button type="button" onClick={() => setShowEditModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  {submitting ? 'Đang Lưu...' : 'Lưu Thay Đổi'}
                 </button>
               </div>
             </form>
