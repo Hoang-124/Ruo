@@ -240,7 +240,8 @@ export const NotificationDrawer = ({
   const resolveRepairTab = () => {
     if (userRole === 'lecturer') return 'my_tickets';
     if (userRole === 'technician') return 'assigned_tasks';
-    return 'tickets';
+    if (userRole === 'admin') return 'reports';
+    return 'tickets_kanban';
   };
 
   const handleActionNavigate = (item) => {
