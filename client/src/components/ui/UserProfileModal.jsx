@@ -280,7 +280,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
     // 6. Gửi API đổi mật khẩu
     try {
       setPasswordStatus({ loading: true, success: null, error: null });
-      const res = await changePassword(oldPassword, newPassword, logoutOtherDevices);
+      const res = await changePassword({ oldPassword, newPassword, logoutOtherDevices });
       if (res && res.success) {
         setPasswordStatus({ loading: false, success: res.message, error: null });
         setOldPassword('');

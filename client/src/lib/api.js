@@ -344,6 +344,7 @@ export const reportApi = {
 export const auditApi = {
   getLogs: (params) => api.get('/audit/logs', params),
   verifyChain: () => api.get('/audit/verify-chain'),
+  downloadCsv: () => apiRequest('/audit/export', { responseType: 'blob' }),
   exportCsv: () => `${API_BASE}/audit/export`
 };
 

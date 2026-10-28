@@ -400,9 +400,10 @@ export const createEquipment = asyncHandler(async (req, res) => {
     try {
       initialMovement = await EquipmentMovement.create({
         equipment_id: equipment._id,
+        type: MOVEMENT_TYPES.ALLOCATION,
         from_room_id: null,
         to_room_id: roomDoc._id,
-        ordered_by: req.user?._id || null,
+        ordered_by: req.user?._id || equipment._id,
         performed_by: req.user?._id || null,
         status: 'completed',
         reason: 'Tiếp nhận tài sản mới và phân bổ ban đầu về phòng học Tòa A1',

@@ -194,10 +194,17 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // UC-1.0: Register (Enforces lecturer role, requires email OTP)
+  // UC-1.0: Register (Immediate login for Lecturer; pending_approval for Tech/Manager)
   const register = useCallback(async (userData) => {
     try {
       const data = await authApi.register(userData);
+      if (data?.success && data?.token && data?.user?.status === 'active') {
+        setToken(data.token);
+        setRefreshToken(data.refreshToken);
+        setApiUser(data.user);
+        setIsLoggedIn(true);
+        setStoredTokens(data.token, data.refreshToken);
+      }
       return data;
     } catch (error) {
       return {
@@ -271,10 +278,17 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Change Password (UC-10.6: Resolves mandatory password change flag)
-  const changePassword = useCallback(async (passData) => {
+  // Change Password (UC-1.4 & UC-10.6: Resolves mandatory password change flag)
+  const changePassword = useCallback(async (passDataOrOld, maybeNewPassword, maybeLogoutOther) => {
     try {
-      const res = await authApi.changePassword(passData);
+      const payload = (typeof passDataOrOld === 'object' && passDataOrOld !== null)
+        ? passDataOrOld
+        : {
+            oldPassword: passDataOrOld,
+            newPassword: maybeNewPassword,
+            logoutOtherDevices: Boolean(maybeLogoutOther)
+          };
+      const res = await authApi.changePassword(payload);
       if (res && res.success) {
         setApiUser(prev => prev ? { ...prev, force_change_pw: false } : prev);
       }

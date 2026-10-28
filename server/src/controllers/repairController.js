@@ -38,6 +38,7 @@ export const getRepairs = async (req, res) => {
 
     const repairs = await Repair.find(filter)
       .populate('equipment_id', 'code name brand model qr_code room_id price remaining_value estimated_repair_cost')
+      .populate('room_id', 'code name building floor')
       .populate('replacement_equipment_id', 'code name brand model qr_code')
       .populate('reported_by', 'full_name code email role department')
       .populate('assigned_to', 'full_name code email role')
@@ -78,6 +79,7 @@ export const getOverdueRepairs = async (req, res) => {
 
     const repairs = await Repair.find(filter)
       .populate('equipment_id', 'code name brand model qr_code room_id estimated_repair_cost')
+      .populate('room_id', 'code name building floor')
       .populate('reported_by', 'full_name code email role department')
       .populate('assigned_to', 'full_name code email role')
       .sort({ deadline: 1 });
@@ -282,6 +284,7 @@ export const getRepairById = async (req, res) => {
   try {
     const repair = await Repair.findById(req.params.id)
       .populate('equipment_id')
+      .populate('room_id', 'code name building floor')
       .populate('replacement_equipment_id')
       .populate('reported_by', 'full_name code email role department')
       .populate('assigned_to', 'full_name code email role')
@@ -498,9 +501,9 @@ export const assignRepairTask = async (req, res) => {
             equipmentCode: eq?.code || 'EQ-N/A',
             equipmentName: eq?.name || 'Thiết bị cơ sở vật chất',
             roomCode: eq?.room_id?.code || eq?.room_id?.name || 'Phòng học / Khu vực',
-            priority: repair.priority || 'Cao',
+            priority: repair.damage_level || repair.priority || 'Cao',
             deadline: repair.deadline ? new Date(repair.deadline).toLocaleString('vi-VN') : 'Trong vòng 24 giờ',
-            description: repair.issue_description || repair.description || 'Sự cố thiết bị cần xử lý',
+            description: repair.incident_description || repair.issue_description || repair.description || 'Sự cố thiết bị cần xử lý',
             userId: req.user?._id,
             ipAddress: req.ip || req.connection?.remoteAddress || '127.0.0.1'
           }).catch((err) => console.warn('[Repair Email Dispatcher Warning]:', err.message));

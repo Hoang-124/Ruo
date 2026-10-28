@@ -410,20 +410,45 @@ export const dispatchDisposalNotificationEmail = async ({
   userId = null,
   ipAddress = '127.0.0.1'
 }) => {
+  let template = DEFAULT_NOTIFICATION_TEMPLATES.disposal_proposal;
+  if (!isApproved) {
+    try {
+      if (mongoose.connection?.readyState === 1) {
+        const custom = await NotificationTemplate.findOne({ key: 'disposal_proposal' }).lean();
+        if (custom) template = { ...template, ...custom };
+      }
+    } catch (_) {
+      // Fallback to default template
+    }
+  }
+
+  const variables = {
+    userName: recipientName,
+    user_name: recipientName,
+    equipmentCode,
+    equipment_code: equipmentCode,
+    equipmentName,
+    equipment_name: equipmentName,
+    reason,
+    recoveryValue: Number(recoveryValue).toLocaleString('vi-VN'),
+    recovery_value: Number(recoveryValue).toLocaleString('vi-VN'),
+    proposalId
+  };
+
   const subject = isApproved
     ? `[RUO UFMS] Phê duyệt thanh lý thiết bị ${equipmentCode} — Hồ sơ #${proposalId}`
-    : `[RUO UFMS] Đề xuất thanh lý tài sản ${equipmentCode} — Cần phê duyệt`;
+    : interpolateTemplate(template.subject, variables);
 
   const html = buildInstitutionalEmailHtml({
-    title: isApproved ? 'Hồ sơ thanh lý tài sản đã được phê duyệt' : 'Đề xuất thanh lý tài sản cơ sở vật chất',
+    title: isApproved ? 'Hồ sơ thanh lý tài sản đã được phê duyệt' : interpolateTemplate(template.title, variables),
     preheader: `Hồ sơ thanh lý thiết bị ${equipmentCode} (${equipmentName})`,
     badge: isApproved
       ? { text: 'ĐÃ PHÊ DUYỆT THANH LÝ', color: '#15803D', bg: '#DCFCE7' }
-      : { text: 'ĐỀ XUẤT THANH LÝ', color: '#B45309', bg: '#FEF3C7' },
+      : { text: template.badge_text || 'ĐỀ XUẤT THANH LÝ', color: template.badge_color || '#B45309', bg: template.badge_bg || '#FEF3C7' },
     recipientName,
     summaryText: isApproved
       ? `Hồ sơ thanh lý thiết bị <strong>${equipmentCode}</strong> đã được Ban Giám Hiệu/Hội Đồng phê duyệt hoàn tất.`
-      : `Ban Quản Lý CSVC vừa lập hồ sơ đề xuất thanh lý tài sản hư hỏng không thể phục hồi. Kính chuyển Hội đồng thẩm định và phê duyệt.`,
+      : interpolateTemplate(template.body, variables),
     details: [
       { label: 'Mã hồ sơ thanh lý', value: `#${proposalId}` },
       { label: 'Mã số thiết bị', value: equipmentCode },
@@ -433,7 +458,7 @@ export const dispatchDisposalNotificationEmail = async ({
     ],
     actionButton: {
       label: 'Kiểm Tra Hồ Sơ Thanh Lý',
-      url: process.env.CLIENT_URL ? `${process.env.CLIENT_URL}#disposal` : 'http://localhost:5173#disposal'
+      url: process.env.CLIENT_URL ? `${process.env.CLIENT_URL}#/disposal_propose` : 'http://localhost:5173#/disposal_propose'
     }
   });
 

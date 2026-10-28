@@ -11,5 +11,6 @@ router.use(requireRole(USER_ROLES.ADMIN)); // Only Admin can inspect & export au
 router.get('/logs', getAuditLogs);
 router.get('/verify-chain', verifyAuditChain);
 router.get('/export', exportAuditLogs);
+router.get('/export/csv', exportAuditLogs);
 
 export default router;

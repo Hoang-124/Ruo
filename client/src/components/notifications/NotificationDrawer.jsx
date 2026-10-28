@@ -103,6 +103,7 @@ const DrawerSvg = {
 export const NotificationDrawer = ({
   isOpen = false,
   onClose,
+  userRole = '',
   notifications = [],
   unreadCount = 0,
   onMarkRead,
@@ -236,20 +237,29 @@ export const NotificationDrawer = ({
     };
   };
 
+  const resolveRepairTab = () => {
+    if (userRole === 'lecturer') return 'my_tickets';
+    if (userRole === 'technician') return 'assigned_tasks';
+    return 'tickets';
+  };
+
   const handleActionNavigate = (item) => {
     const meta = getCategoryMeta(item);
     if (!onNavigate) return;
+    const typeStr = String(item?.type || item?.reference_type || '').toLowerCase();
 
-    if (meta.key === 'repairs') {
-      onNavigate('repairs', item);
+    if (meta.key === 'repairs' || meta.key === 'deadlines') {
+      onNavigate(resolveRepairTab(), item);
     } else if (meta.key === 'approvals') {
-      if (item.type?.includes('disposal')) {
-        onNavigate('disposal', item);
+      if (typeStr.includes('disposal')) {
+        onNavigate(userRole === 'admin' ? 'disposal_approval' : 'disposal_propose', item);
+      } else if (typeStr.includes('parts')) {
+        onNavigate('spare_parts', item);
+      } else if (typeStr.includes('role') || typeStr.includes('user')) {
+        onNavigate(userRole === 'admin' ? 'users' : 'dashboard', item);
       } else {
-        onNavigate('movements', item);
+        onNavigate(userRole === 'technician' ? 'movement_tasks' : 'movements', item);
       }
-    } else if (meta.key === 'deadlines') {
-      onNavigate('repairs', item);
     } else {
       onNavigate('dashboard', item);
     }
@@ -355,15 +365,17 @@ export const NotificationDrawer = ({
             </button>
           )}
 
-          <button
-            className="ruo-demo-btn"
-            style={{ color: '#0369A1', borderColor: 'rgba(3, 105, 161, 0.3)' }}
-            onClick={() => setIsTemplateModalOpen(true)}
-            title="Quản lý và tùy chỉnh mẫu thông báo & email (UC-9.2/9.3 Template Editor)"
-          >
-            <DrawerSvg.FileText size={11} />
-            <span>Mẫu thông báo</span>
-          </button>
+          {(!userRole || userRole === 'admin') && (
+            <button
+              className="ruo-demo-btn"
+              style={{ color: '#0369A1', borderColor: 'rgba(3, 105, 161, 0.3)' }}
+              onClick={() => setIsTemplateModalOpen(true)}
+              title="Quản lý và tùy chỉnh mẫu thông báo & email (UC-9.4 Template Editor)"
+            >
+              <DrawerSvg.FileText size={11} />
+              <span>Mẫu thông báo</span>
+            </button>
+          )}
         </div>
 
         {/* Category Filter Pills */}

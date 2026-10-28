@@ -2283,10 +2283,15 @@ export const EquipmentsPage = () => {
                         </div>
 
                         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>
-                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Nhà Cung Cấp:</div>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11px' }}>Nhà Cung Cấp &amp; Hotline:</div>
                           <div style={{ fontWeight: 600, color: 'var(--ink-pure)', marginTop: '2px' }}>
                             {selectedEq.supplier_id?.name || 'Kho Thiết Bị Trường'}
                           </div>
+                          {selectedEq.supplier_id?.phone && (
+                            <div style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', marginTop: '2px' }}>
+                              Hotline BH: <strong>{selectedEq.supplier_id.phone}</strong>
+                            </div>
+                          )}
                         </div>
                       </div>
 

@@ -6,12 +6,14 @@ import './MasterDataPage.css';
 
 const EMPTY_FORMS = {
   categories: { code: '', name: '', depreciation_rate: 20, description: '' },
+  buildings: { code: 'A1', name: '', campusZone: 'Khu A', totalFloors: 5, description: '', isActive: true },
   suppliers: { code: '', name: '', contact_person: '', phone: '', email: '', address: '' },
   repair_units: { code: '', name: '', contact_person: '', specialty: '', phone: '', email: '', address: '' }
 };
 
 const TABS = [
   { id: 'categories', label: 'Loại thiết bị' },
+  { id: 'buildings', label: 'Cấu trúc Tòa nhà' },
   { id: 'suppliers', label: 'Nhà cung cấp' },
   { id: 'repair_units', label: 'Đơn vị sửa chữa' }
 ];
@@ -22,6 +24,13 @@ const FORM_FIELDS = {
     ['name', 'Tên loại thiết bị', 'text', true],
     ['depreciation_rate', 'Khấu hao (%/năm)', 'number', true],
     ['description', 'Mô tả', 'textarea']
+  ],
+  buildings: [
+    ['code', 'Mã tòa nhà', 'text', true],
+    ['name', 'Tên tòa nhà', 'text', true],
+    ['campusZone', 'Khuôn viên', 'text'],
+    ['totalFloors', 'Số tầng (Tòa thí điểm: 5)', 'number', true],
+    ['description', 'Mô tả phân bổ tầng chức năng', 'textarea']
   ],
   suppliers: [
     ['code', 'Mã nhà cung cấp', 'text', true],
@@ -44,6 +53,7 @@ const FORM_FIELDS = {
 
 const TITLE = {
   categories: 'Loại thiết bị',
+  buildings: 'Tòa nhà & cấu trúc tầng',
   suppliers: 'Nhà cung cấp',
   repair_units: 'Đơn vị sửa chữa'
 };
@@ -65,12 +75,14 @@ export const MasterDataPage = () => {
     try {
       const loaders = {
         categories: masterDataApi.getAdminCategories,
+        buildings: masterDataApi.getBuildings,
         suppliers: masterDataApi.getAdminSuppliers,
         repair_units: masterDataApi.getAdminRepairUnits
       };
       const result = await loaders[tab]();
       const keys = {
         categories: 'categories',
+        buildings: 'buildings',
         suppliers: 'suppliers',
         repair_units: 'repairUnits'
       };
@@ -128,6 +140,9 @@ export const MasterDataPage = () => {
           .filter((field) => !editingRecord || field !== 'code')
           .map((field) => [field, form[field]])
       );
+      if (modalType === 'buildings' && editingRecord && typeof form.isActive === 'boolean') {
+        payload.isActive = form.isActive;
+      }
       if (editingRecord) {
         await masterDataApi.update(modalType, editingRecord._id, payload);
       } else {
@@ -164,6 +179,9 @@ export const MasterDataPage = () => {
     if (activeTab === 'categories') return <>
       <td>{record.code}</td><td>{record.name}</td><td>{record.depreciation_rate ?? 20}%</td><td>{record.description || '—'}</td>
     </>;
+    if (activeTab === 'buildings') return <>
+      <td>{record.code}</td><td>{record.name}</td><td>{record.campusZone || 'Khu A'}</td><td>{record.totalFloors ?? 5} tầng (T1–T5)</td><td>{record.description || '—'}</td>
+    </>;
     if (activeTab === 'suppliers') return <>
       <td>{record.code}</td><td>{record.name}</td><td>{record.contact || record.contact_person || '—'}</td><td>{record.phone || '—'}<br />{record.email || ''}</td><td>{record.address || '—'}</td>
     </>;
@@ -174,6 +192,7 @@ export const MasterDataPage = () => {
 
   const headers = {
     categories: ['Mã', 'Tên loại', 'Khấu hao / năm', 'Mô tả'],
+    buildings: ['Mã tòa', 'Tên tòa nhà', 'Khuôn viên', 'Quy mô tầng', 'Mô tả chức năng'],
     suppliers: ['Mã', 'Nhà cung cấp', 'Người liên hệ', 'Liên lạc', 'Địa chỉ'],
     repair_units: ['Mã', 'Đơn vị sửa chữa', 'Chuyên môn', 'Liên lạc', 'Địa chỉ']
   };
@@ -194,7 +213,7 @@ export const MasterDataPage = () => {
           <button
             type="button"
             className="ruo-btn ruo-btn-secondary"
-            onClick={() => { window.location.hash = 'tab=rooms'; }}
+            onClick={() => { window.location.hash = '#/rooms'; }}
           >
             <Icons.Building size={16} /> Quản lý Phòng & Kho Tòa A1
           </button>

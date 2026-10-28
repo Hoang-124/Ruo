@@ -339,11 +339,12 @@ export const updateDisposalProcurement = async (req, res) => {
 
     const originalEquipment = await Equipment.findById(proposal.equipment_id);
     if (!originalEquipment) return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị trong hồ sơ.' });
+    const targetRoomId = req.body.room_id || originalEquipment.room_id;
     proposal.procurement = {
       budget,
       replacement_name: replacementName,
       category_id: originalEquipment.category_id,
-      room_id: originalEquipment.room_id,
+      room_id: targetRoomId,
       planned_at: new Date(),
       planned_by: req.user._id,
       note: String(req.body.note || '').trim()
