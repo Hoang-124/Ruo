@@ -371,7 +371,7 @@ export const updateDisposalProcurement = async (req, res) => {
 export const completeDisposalReceipt = async (req, res) => {
   try {
     const { code, serial_number = '', brand = '', model = '', price } = req.body;
-    if (!String(code || '').trim() || price === undefined || price === null || String(price).trim() === '' || !Number.isFinite(Number(price)) || Number(price) < 0) {
+    if (!String(code || '').trim() || price === undefined || price === null || String(price).trim() === '' || !Number.isFinite(Number(price)) || Number(price) <= 0) {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập mã tài sản và nguyên giá hợp lệ của thiết bị mới.' });
     }
     const proposal = await Disposal.findById(req.params.id);
@@ -382,7 +382,8 @@ export const completeDisposalReceipt = async (req, res) => {
     if (!proposal.procurement?.category_id) {
       return res.status(409).json({ success: false, message: 'Hồ sơ chưa có thông tin dự trù mua sắm.' });
     }
-    if (Number(price) > Number(proposal.procurement.budget)) {
+    const budget = Number(proposal.procurement.budget);
+    if (!Number.isFinite(budget) || budget < 0 || Number(price) > budget) {
       return res.status(422).json({ success: false, message: 'Nguyên giá thiết bị nhận vượt ngân sách dự trù; cần cập nhật/phê duyệt lại dự trù trước khi tiếp nhận.' });
     }
 

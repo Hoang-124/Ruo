@@ -144,7 +144,7 @@ export const RBACMatrixPage = () => {
         { code: 'inventory:scan', label: 'Quét mã QR kiểm kê & đối soát thực địa', defaultRoles: ['technician'] },
         { code: 'inventory:reconcile', label: 'Chốt số liệu kiểm kê & đối soát chênh lệch tài sản', defaultRoles: ['facility_manager'] },
         { code: 'inventory:export', label: 'Xuất biên bản kiểm kê đầy đủ & ký số SHA-256', defaultRoles: ['facility_manager', 'admin'] },
-        { code: 'disposal:propose', label: 'Lập hồ sơ đề xuất thanh lý khi chỉ số R >= 60%', defaultRoles: ['facility_manager'] },
+        { code: 'disposal:propose', label: 'Đề xuất thanh lý (CSVC) và tiếp nhận tài sản thay thế (KTV)', defaultRoles: ['facility_manager', 'technician'] },
         { code: 'disposal:approve', label: 'Phê duyệt quyết định thanh lý tài sản cuối cùng (BGH)', defaultRoles: ['admin'] }
       ]
     },
@@ -363,7 +363,7 @@ export const RBACMatrixPage = () => {
     try {
       setSaving(true);
 
-      // Persist each role through the live-policy endpoint.
+      // Save the complete matrix in one request to avoid parallel audit-sequence collisions.
       const payload = canonicalRoles.map(r => {
         const activePerms = [];
         allPermissionModules.forEach(mod => {
@@ -381,7 +381,10 @@ export const RBACMatrixPage = () => {
         };
       });
 
-      await Promise.all(payload.map(role => roleApi.update(role.name, role.permissions)));
+      const res = await roleApi.batchUpdate(payload);
+      if (!res?.success) {
+        throw new Error(res?.message || 'Máy chủ không lưu được ma trận phân quyền.');
+      }
       toast.success('Đã lưu cấu hình ma trận phân quyền RBAC thành công vào cơ sở dữ liệu MongoDB!');
       await loadRoles();
       window.dispatchEvent(new CustomEvent('ruo:rbac-updated'));
@@ -1032,7 +1035,7 @@ export const RBACMatrixPage = () => {
       >
         <Icons.Info size={18} color="var(--blueprint-400)" style={{ flexShrink: 0 }} />
         <div>
-          <strong>Lưu ý nghiệp vụ kiểm toán:</strong> Mỗi vai trò được cập nhật qua chính sách trực tiếp (<code>PUT /api/admin/roles/:id/permissions</code>) và ghi nhận thành bản ghi SHA-256 trong sổ kiểm toán với hành động <code>UPDATE_ROLE_PERMISSIONS</code> kèm danh sách quyền cấp thêm/thu hồi.
+          <strong>Lưu ý nghiệp vụ kiểm toán:</strong> Ma trận quyền được lưu trong một lần cập nhật (<code>POST /api/admin/roles/batch-update</code>) và ghi nhận vào sổ kiểm toán SHA-256.
         </div>
       </div>
     </div>
