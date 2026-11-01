@@ -253,8 +253,13 @@ Hệ thống bao gồm **21 Mongoose Models** tại `server/src/models/`, phân 
 - `PUT /api/transfers/:id/approve` & `PUT /api/transfers/:id/reject` — Phê duyệt hoặc từ chối điều chuyển (`UC-4.2`)
 - `PUT /api/transfers/:id/complete` — Kỹ thuật viên xác nhận hoàn tất bàn giao phòng đích (`UC-4.3`)
 - `GET /api/transfers/equipment/:id` — Lịch sử điều chuyển của từng thiết bị (`UC-4.4`)
-- `GET /api/disposals` & `POST /api/disposals` — Danh sách và khởi tạo đề xuất thanh lý thiết bị ($R \ge 60\%$) (`UC-7.7`)
-- `PUT /api/disposals/:id/approve` & `PUT /api/disposals/:id/reject` — Thẩm định và phê duyệt quyết định thanh lý (`UC-7.8`, `UC-7.9`)
+- `GET /api/disposals` & `POST /api/disposals` — Tra cứu hồ sơ và KTV đề xuất thanh lý khi chi phí sửa chữa lũy kế / nguyên giá đạt ít nhất 60% ($R \ge 60\%$), hoặc có phiếu kết luận không thể sửa (`UC-7.7`)
+- `PUT /api/disposals/:id/hc-approve` / `hc-reject` — Quản lý CSVC thẩm định hoặc từ chối hồ sơ (`UC-7.8`)
+- `PUT /api/disposals/:id/bgh-approve` — Admin/BGH ký quyết định, chỉ sau khi CSVC thẩm định (`UC-7.9`)
+- `PUT /api/disposals/:id/procurement` — Quản lý lập ngân sách và kế hoạch thiết bị thay thế (`UC-7.10`)
+- `PUT /api/disposals/:id/receipt` — KTV ghi nhận thiết bị mới; hệ thống tạo tài sản + QR, phân bổ vào phòng cũ và chỉ lúc này mới chuyển thiết bị cũ sang `disposed` (`UC-7.11`)
+- UI: KTV/Quản lý CSVC mở **Đề Xuất Thanh Lý** (`#/disposal_propose`); Admin mở **Phê Duyệt Thanh Lý (BGH)** (`#/disposal_approval`). Các bước được khóa theo trạng thái và vai trò; endpoint cũ `/approve` không bỏ qua thẩm định CSVC.
+- Kiểm tra end-to-end: (1) đăng nhập **Technician** → `#/disposal_propose` → chọn thiết bị đủ điều kiện, gửi đề xuất; (2) **Manager/Quản lý CSVC** tại cùng trang → thẩm định; (3) **Admin/BGH** → `#/disposal_approval` → ký quyết định; (4) Manager lập dự trù ở `#/disposal_propose`; (5) Technician tiếp nhận tại cùng trang. Sau bước 5, hồ sơ hoàn tất, QR tài sản mới được tạo và tài sản cũ chuyển sang `disposed`.
 
 ### 7.5. Sửa Chữa SLA, Linh Kiện & Bảo Hành (`/api/repairs`, `/api/spare-parts`, `/api/parts-requests`)
 - `GET /api/repairs` & `POST /api/repairs` — Danh sách và tạo phiếu báo hỏng thiết bị (`UC-5.1`, `UC-5.2`)

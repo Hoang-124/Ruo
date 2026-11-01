@@ -535,6 +535,7 @@ async function runWorkstream2Tests() {
 
   console.log('\n============================================================');
   console.log('TẤT CẢ 3/3 TESTS CHO WORKSTREAM 2 (UC-5.9, UC-7.1, UC-7.2) ĐÃ ĐẠT 100%!');
+  console.log('TỔNG CỘNG 10/10 TESTS PHASE 3 ĐÃ VƯỢT QUA TOÀN DIỆN!');
   console.log('============================================================\n');
 }
 

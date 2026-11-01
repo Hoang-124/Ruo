@@ -449,6 +449,11 @@ export const QRScannerPage = ({ onNavigateTab }) => {
               <strong style={{ color: 'var(--ink-pure)', fontSize: '13.5px', display: 'block', marginTop: '2px' }}>
                 {(equipment.price || 0).toLocaleString('vi-VN')} đ • {equipment.supplier_id?.name || 'Kho trường'}
               </strong>
+              {equipment.supplier_id?.phone && (
+                <div style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', marginTop: '2px' }}>
+                  Hotline BH: <strong>{equipment.supplier_id.phone}</strong>
+                </div>
+              )}
             </div>
           </div>
 

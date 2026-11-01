@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import crypto from 'crypto';
 import { canonicalJSON } from '../utils/canonicalJson.js';
 
-const GENESIS_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
+export const GENESIS_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
 
 // AuditLog Schema with Cryptographic SHA-256 Tamper-Evident Chain
 const auditLogSchema = new mongoose.Schema({
@@ -86,10 +86,17 @@ auditLogSchema.pre(['find', 'findOne', 'countDocuments'], function () {
   }
 });
 
+auditLogSchema.pre(
+  ['updateOne', 'updateMany', 'findOneAndUpdate', 'replaceOne', 'deleteOne', 'findOneAndDelete'],
+  function () {
+    throw new Error('Bản ghi kiểm toán SHA-256 là bất biến (Append-only), nghiêm cấm chỉnh sửa hoặc xóa.');
+  }
+);
+
 /**
  * Builds the canonical deterministic payload for hashing
  */
-function buildHashPayload(logData) {
+export function buildHashPayload(logData) {
   return canonicalJSON({
     seq: logData.seq,
     previous_hash: logData.previous_hash,

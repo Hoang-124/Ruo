@@ -464,6 +464,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenProfileModal }) => {
       <NotificationDrawer
         isOpen={isNotifDrawerOpen}
         onClose={() => setIsNotifDrawerOpen(false)}
+        userRole={currentUser?.role}
         notifications={notifications}
         unreadCount={unreadCount}
         onMarkRead={markNotificationRead}

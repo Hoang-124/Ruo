@@ -15,6 +15,22 @@ export const TechnicianTasksPage = () => {
   const [tasks, setTasks] = useState([]);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedTask, setSelectedTask] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const openTaskHistory = async (task) => {
+    setSelectedTask(task);
+    setLoadingDetail(true);
+    try {
+      const res = await repairApi.getById(task._id);
+      if (res && res.repair) {
+        setSelectedTask(res.repair);
+      }
+    } catch (_) {
+      // Keep summary fallback if detail fetch fails
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
 
   // Modals
   const [showLogModal, setShowLogModal] = useState(false);
@@ -369,7 +385,7 @@ export const TechnicianTasksPage = () => {
                   )}
 
                   <button
-                    onClick={() => setSelectedTask(t)}
+                    onClick={() => openTaskHistory(t)}
                     className="laser-btn laser-btn-secondary"
                     style={{ padding: '7px 12px', fontSize: '12px' }}
                   >
@@ -398,30 +414,38 @@ export const TechnicianTasksPage = () => {
               <div style={{ background: 'var(--surface-panel)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
                 <div>Trạng thái: {getStatusBadge(selectedTask.status)}</div>
                 <div style={{ marginTop: '4px' }}>Mức độ hư hỏng: <strong>{selectedTask.damage_level}</strong></div>
-                <div style={{ marginTop: '4px' }}>Phòng: <strong>{selectedTask.room_id?.code} - {selectedTask.room_id?.name}</strong></div>
+                <div style={{ marginTop: '4px' }}>Phòng: <strong>{selectedTask.room_id?.code || selectedTask.equipment_id?.room_id?.code || 'Kho / Chưa gán'} {selectedTask.room_id?.name ? `- ${selectedTask.room_id.name}` : ''}</strong></div>
               </div>
 
               <div>
                 <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--ink-muted)', fontWeight: 700, marginBottom: '6px' }}>
                   Nhật Ký Thao Tác Kỹ Thuật (Repair Logs)
                 </div>
-                {(!selectedTask.logs || selectedTask.logs.length === 0) ? (
+                {loadingDetail ? (
+                  <div style={{ padding: '16px', background: 'var(--surface-panel)', borderRadius: 'var(--radius-sm)', fontSize: '12px', color: 'var(--ink-muted)', textAlign: 'center' }}>
+                    Đang tải lịch sử nhật ký thao tác...
+                  </div>
+                ) : (!selectedTask.logs || selectedTask.logs.length === 0) ? (
                   <div style={{ padding: '16px', background: 'var(--surface-panel)', borderRadius: 'var(--radius-sm)', fontSize: '12px', color: 'var(--ink-muted)', textAlign: 'center' }}>
                     Chưa có nhật ký ghi nhận cho nhiệm vụ này.
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {selectedTask.logs.map((log, idx) => (
-                      <div key={idx} style={{ background: 'var(--surface-panel)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', fontSize: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink-muted)', fontSize: '11px', marginBottom: '2px' }}>
-                          <span>{log.logged_by?.full_name || 'Kỹ thuật viên'}</span>
-                          <span>{new Date(log.created_at || Date.now()).toLocaleTimeString('vi-VN')}</span>
+                    {selectedTask.logs.map((log, idx) => {
+                      const actorName = log.performed_by?.full_name || log.logged_by?.full_name || 'Kỹ thuật viên';
+                      const detailNote = log.description || log.notes;
+                      return (
+                        <div key={log._id || idx} style={{ background: 'var(--surface-panel)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', fontSize: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink-muted)', fontSize: '11px', marginBottom: '2px' }}>
+                            <span>{actorName}</span>
+                            <span>{new Date(log.timestamp || log.created_at || Date.now()).toLocaleString('vi-VN')}</span>
+                          </div>
+                          <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{log.action}</div>
+                          {detailNote && <div style={{ color: 'var(--ink-secondary)', marginTop: '2px' }}>{detailNote}</div>}
+                          {log.cost > 0 && <div style={{ color: '#10B981', marginTop: '2px' }}>Chi phí: {log.cost.toLocaleString('vi-VN')} đ</div>}
                         </div>
-                        <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{log.action}</div>
-                        {log.notes && <div style={{ color: 'var(--ink-secondary)', marginTop: '2px' }}>{log.notes}</div>}
-                        {log.cost > 0 && <div style={{ color: '#10B981', marginTop: '2px' }}>Chi phí: {log.cost.toLocaleString('vi-VN')} đ</div>}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

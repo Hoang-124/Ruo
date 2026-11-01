@@ -847,8 +847,8 @@ export const InventoryPage = () => {
                     className="ruo-portal-input"
                     style={{ width: '100%', height: '38px' }}
                   >
-                    <option value="building">Toàn bộ Tòa nhà Đa năng A1 (7 tầng)</option>
-                    <option value="floor">Theo Tầng cụ thể trong Tòa A1 (Tầng 1 – 7)</option>
+                    <option value="building">Toàn bộ Tòa nhà Đa năng A1 (5 tầng)</option>
+                    <option value="floor">Theo Tầng cụ thể trong Tòa A1 (Tầng 1 – 5)</option>
                     <option value="room">Theo Phòng học / Kho cụ thể trong Tòa A1</option>
                   </select>
                 </div>
@@ -864,7 +864,7 @@ export const InventoryPage = () => {
                       className="ruo-portal-input"
                       style={{ width: '100%', height: '38px' }}
                     >
-                      {[1, 2, 3, 4, 5, 6, 7].map((fl) => (
+                      {[1, 2, 3, 4, 5].map((fl) => (
                         <option key={fl} value={String(fl)}>Tầng {fl} — Tòa nhà Đa năng A1</option>
                       ))}
                     </select>

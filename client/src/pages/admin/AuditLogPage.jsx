@@ -12,8 +12,9 @@ export const AuditLogPage = () => {
   const [targetTableFilter, setTargetTableFilter] = useState('ALL');
   const [selectedLog, setSelectedLog] = useState(null);
   
-  // Verification State
+  // Verification & Export State
   const [verifying, setVerifying] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [verificationResult, setVerificationResult] = useState(null);
 
   const fetchLogs = async () => {
@@ -56,6 +57,26 @@ export const AuditLogPage = () => {
       toast.error('Lỗi khi kiểm tra chuỗi kiểm toán: ' + err.message);
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      const blob = await auditApi.downloadCsv();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ruo_audit_log_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Đã xuất tệp CSV sổ cái kiểm toán SHA-256 thành công.');
+    } catch (err) {
+      toast.error('Không thể xuất CSV kiểm toán: ' + err.message);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -186,16 +207,14 @@ export const AuditLogPage = () => {
             Kiểm Tra Toàn Vẹn Chuỗi SHA-256
           </Button>
 
-          <a
-            href={auditApi.exportCsv()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="laser-btn laser-btn-secondary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', textDecoration: 'none' }}
+          <Button
+            variant="secondary"
+            icon={Icons.Download}
+            loading={exporting}
+            onClick={handleExportCsv}
           >
-            <Icons.Download size={16} />
-            <span>Xuất CSV Kiểm Toán</span>
-          </a>
+            Xuất CSV Kiểm Toán
+          </Button>
 
           <Button
             variant="secondary"

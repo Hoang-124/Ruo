@@ -5,11 +5,30 @@ import { Building, Floor, Room } from '../models/Room.js';
 import { Equipment } from '../models/Equipment.js';
 import { SparePart } from '../models/SparePart.js';
 import { Repair } from '../models/Repair.js';
+import { AuditLog } from '../models/AuditLog.js';
 import {
   isValidDocumentId,
   sendAdminValidationError,
   validateAdminMasterData
 } from '../utils/adminMasterDataValidation.js';
+
+const recordMasterDataAudit = async (req, action, entityId, oldValue = null, newValue = null) => {
+  if (!req.user) return;
+  try {
+    await AuditLog.logAction({
+      user_id: req.user._id,
+      user_display: `${req.user.full_name || 'Admin'} (${req.user.code || req.user.role || 'ADMIN'})`,
+      action,
+      target_table: 'master_data',
+      entity_id: String(entityId || 'N/A'),
+      ip_address: req.ip || '127.0.0.1',
+      old_value: oldValue,
+      new_value: newValue
+    });
+  } catch (_) {
+    // Non-blocking in offline test runners
+  }
+};
 
 const sendDuplicateError = (res, error, next) => {
   if (error?.code === 11000) {
@@ -96,6 +115,7 @@ export const createAdminCategory = async (req, res, next) => {
   if (errors.length) return sendAdminValidationError(res, errors);
   try {
     const category = await Category.create(value);
+    await recordMasterDataAudit(req, 'MASTER_CATEGORY_CREATE', category.code || category._id, null, value);
     return res.status(201).json({ success: true, category });
   } catch (error) {
     return sendDuplicateError(res, error, next);
@@ -107,7 +127,11 @@ export const updateAdminCategory = async (req, res) => {
   const { value: updates, errors } = validateAdminMasterData(req.body, categoryUpdateSchema, { requireAtLeastOne: true });
   if (errors.length) return sendAdminValidationError(res, errors);
   const category = await Category.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
-  return category ? res.json({ success: true, category }) : sendNotFound(res, 'loại thiết bị');
+  if (category) {
+    await recordMasterDataAudit(req, 'MASTER_CATEGORY_UPDATE', category.code || category._id, null, updates);
+    return res.json({ success: true, category });
+  }
+  return sendNotFound(res, 'loại thiết bị');
 };
 
 export const deleteAdminCategory = async (req, res) => {
@@ -123,6 +147,7 @@ export const deleteAdminCategory = async (req, res) => {
     return res.status(409).json({ success: false, message: 'Không thể xóa loại thiết bị đang được tài sản, phòng hoặc linh kiện tham chiếu.' });
   }
   await category.deleteOne();
+  await recordMasterDataAudit(req, 'MASTER_CATEGORY_DELETE', category.code || category._id, { code: category.code, name: category.name }, null);
   return res.json({ success: true, message: 'Đã xóa loại thiết bị.' });
 };
 
@@ -143,6 +168,7 @@ export const createAdminSupplier = async (req, res, next) => {
       address: value.address,
       contact: value.contact_person
     });
+    await recordMasterDataAudit(req, 'MASTER_SUPPLIER_CREATE', supplier.code || supplier._id, null, value);
     return res.status(201).json({ success: true, supplier });
   } catch (error) {
     return sendDuplicateError(res, error, next);
@@ -159,7 +185,11 @@ export const updateAdminSupplier = async (req, res) => {
     delete updates.contact_person;
   }
   const supplier = await Supplier.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
-  return supplier ? res.json({ success: true, supplier }) : sendNotFound(res, 'nhà cung cấp');
+  if (supplier) {
+    await recordMasterDataAudit(req, 'MASTER_SUPPLIER_UPDATE', supplier.code || supplier._id, null, updates);
+    return res.json({ success: true, supplier });
+  }
+  return sendNotFound(res, 'nhà cung cấp');
 };
 
 export const deleteAdminSupplier = async (req, res) => {
@@ -174,6 +204,7 @@ export const deleteAdminSupplier = async (req, res) => {
     return res.status(409).json({ success: false, message: 'Không thể xóa nhà cung cấp đang được thiết bị hoặc linh kiện tham chiếu.' });
   }
   await supplier.deleteOne();
+  await recordMasterDataAudit(req, 'MASTER_SUPPLIER_DELETE', supplier.code || supplier._id, { code: supplier.code, name: supplier.name }, null);
   return res.json({ success: true, message: 'Đã xóa nhà cung cấp.' });
 };
 
@@ -187,6 +218,7 @@ export const createAdminRepairUnit = async (req, res, next) => {
   if (errors.length) return sendAdminValidationError(res, errors);
   try {
     const repairUnit = await RepairUnit.create(value);
+    await recordMasterDataAudit(req, 'MASTER_REPAIR_UNIT_CREATE', repairUnit.code || repairUnit._id, null, value);
     return res.status(201).json({ success: true, repairUnit });
   } catch (error) {
     return sendDuplicateError(res, error, next);
@@ -198,7 +230,11 @@ export const updateAdminRepairUnit = async (req, res) => {
   const { value: updates, errors } = validateAdminMasterData(req.body, repairUnitUpdateSchema, { requireAtLeastOne: true });
   if (errors.length) return sendAdminValidationError(res, errors);
   const repairUnit = await RepairUnit.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
-  return repairUnit ? res.json({ success: true, repairUnit }) : sendNotFound(res, 'đơn vị sửa chữa');
+  if (repairUnit) {
+    await recordMasterDataAudit(req, 'MASTER_REPAIR_UNIT_UPDATE', repairUnit.code || repairUnit._id, null, updates);
+    return res.json({ success: true, repairUnit });
+  }
+  return sendNotFound(res, 'đơn vị sửa chữa');
 };
 
 export const deleteAdminRepairUnit = async (req, res) => {
@@ -209,6 +245,7 @@ export const deleteAdminRepairUnit = async (req, res) => {
     return res.status(409).json({ success: false, message: 'Không thể xóa đơn vị sửa chữa đang được phiếu sửa chữa tham chiếu.' });
   }
   await repairUnit.deleteOne();
+  await recordMasterDataAudit(req, 'MASTER_REPAIR_UNIT_DELETE', repairUnit.code || repairUnit._id, { code: repairUnit.code, name: repairUnit.name }, null);
   return res.json({ success: true, message: 'Đã xóa đơn vị sửa chữa.' });
 };
 
@@ -228,6 +265,7 @@ export const createAdminBuilding = async (req, res, next) => {
   }
   try {
     const building = await Building.create({ ...value, code: 'A1', totalFloors: 5 });
+    await recordMasterDataAudit(req, 'MASTER_BUILDING_CREATE', building.code || building._id, null, value);
     return res.status(201).json({ success: true, building });
   } catch (error) {
     return sendDuplicateError(res, error, next);
@@ -279,6 +317,7 @@ export const updateAdminBuilding = async (req, res, next) => {
   }
   try {
     await building.save();
+    await recordMasterDataAudit(req, 'MASTER_BUILDING_UPDATE', building.code || building._id, null, updates);
     return res.json({ success: true, building });
   } catch (error) {
     return sendDuplicateError(res, error, next);

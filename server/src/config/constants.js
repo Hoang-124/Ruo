@@ -53,6 +53,7 @@ export const EQUIPMENT_STATUSES = {
 };
 
 export const MOVEMENT_TYPES = {
+  ALLOCATION: 'allocation',
   TRANSFER: 'transfer',
   REPLACEMENT: 'replacement',
   REPAIR_OUT: 'repair_out',
