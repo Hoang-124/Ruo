@@ -184,11 +184,11 @@ export const logMaintenanceResult = async (req, res) => {
     const plan = await MaintenancePlan.findOne({ _id: id, is_active: true });
     if (!plan) return res.status(404).json({ success: false, message: 'Không tìm thấy kế hoạch đang hoạt động.' });
     const equipment = await Equipment.findById(equipment_id);
-    if (!equipment || !equipment.room_id || !plan.room_ids.some((roomId) => roomId.equals(equipment.room_id))) {
+    if (!equipment || !equipment.room_id || !plan.room_ids.some((roomId) => (roomId?.equals ? roomId.equals(equipment.room_id) : String(roomId) === String(equipment.room_id)))) {
       return res.status(400).json({ success: false, message: 'Thiết bị không thuộc phòng trong kế hoạch bảo dưỡng.' });
     }
     if (equipment.status === EQUIPMENT_STATUSES.DISPOSED
-      || (plan.category_ids.length && !plan.category_ids.some((categoryId) => categoryId.equals(equipment.category_id)))) {
+      || (plan.category_ids.length && !plan.category_ids.some((categoryId) => (categoryId?.equals ? categoryId.equals(equipment.category_id) : String(categoryId) === String(equipment.category_id))))) {
       return res.status(400).json({ success: false, message: 'Thiết bị không thuộc phạm vi loại thiết bị của kế hoạch.' });
     }
     const schedule = getPlanSchedule(plan);
