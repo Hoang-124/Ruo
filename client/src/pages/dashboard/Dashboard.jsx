@@ -11,11 +11,12 @@ import { buildRoomPodIndex, getRoomPod } from '../../components/common/roomPod';
 import { resolveRoomEquipments, resolveRoomProfile, resolveRoomStatus, summarizeRoomEquipment } from './roomPanel';
 import { Button, Card, KPI, StatusBadge, EmptyState } from '../../components/ui/Primitives';
 import { RoomDetailModal } from '../../components/ui/RoomDetailModal';
+import { EquipmentTransferModal } from '../rooms/EquipmentTransferModal';
 
 /**
  * Dashboard - UEMS Operational Command Center
  */
-export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
+export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport, onSelectEquipmentForMovement }) => {
   const { currentUser, currentRoleKey } = useAuth();
   const optionalToast = useOptionalToast();
 
@@ -78,6 +79,7 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
     return CAMPUS_FLOORS[1]?.topRooms?.[0] || null;
   });
   const [detailRoomCode, setDetailRoomCode] = useState(null);
+  const [transferModalTarget, setTransferModalTarget] = useState(null);
 
   const userIdentity = useMemo(
     () => ({
@@ -604,53 +606,86 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
 
                       <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                         <StatusBadge status={eq.status} />
-                        {isLecturer && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (onSelectEquipmentForReport) onSelectEquipmentForReport(eq, selectedRoom);
-                              onNavigateTab('report_issue');
-                            }}
-                            className="ruo-btn ruo-btn-compact"
-                            style={{
-                              fontSize: '10px',
-                              padding: '2px 7px',
-                              borderRadius: '4px',
-                              background: 'rgba(239, 68, 68, 0.12)',
-                              color: '#EF4444',
-                              border: '1px solid rgba(239, 68, 68, 0.3)',
-                              fontWeight: 700,
-                              cursor: 'pointer'
-                            }}
-                            title={`Báo hỏng thiết bị ${eq.code}`}
-                          >
-                            Báo Hỏng
-                          </button>
-                        )}
-                        {isTech && (eq.status === 'repairing' || eq.status === 'broken') && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onNavigateTab('assigned_tasks');
-                            }}
-                            className="ruo-btn ruo-btn-compact"
-                            style={{
-                              fontSize: '10px',
-                              padding: '2px 7px',
-                              borderRadius: '4px',
-                              background: 'rgba(14, 165, 233, 0.12)',
-                              color: '#0EA5E9',
-                              border: '1px solid rgba(14, 165, 233, 0.3)',
-                              fontWeight: 700,
-                              cursor: 'pointer'
-                            }}
-                            title="Xử lý nhiệm vụ sửa chữa"
-                          >
-                            Xử Lý
-                          </button>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {isLecturer && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onSelectEquipmentForReport) onSelectEquipmentForReport(eq, selectedRoom);
+                                onNavigateTab('report_issue');
+                              }}
+                              className="ruo-btn ruo-btn-compact"
+                              style={{
+                                fontSize: '10px',
+                                padding: '2px 7px',
+                                borderRadius: '4px',
+                                background: 'rgba(239, 68, 68, 0.12)',
+                                color: '#EF4444',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                              title={`Báo hỏng thiết bị ${eq.code}`}
+                            >
+                              Báo Hỏng
+                            </button>
+                          )}
+                          {isTech && (eq.status === 'repairing' || eq.status === 'broken') && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onNavigateTab('assigned_tasks');
+                              }}
+                              className="ruo-btn ruo-btn-compact"
+                              style={{
+                                fontSize: '10px',
+                                padding: '2px 7px',
+                                borderRadius: '4px',
+                                background: 'rgba(14, 165, 233, 0.12)',
+                                color: '#0EA5E9',
+                                border: '1px solid rgba(14, 165, 233, 0.3)',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                              title="Xử lý nhiệm vụ sửa chữa"
+                            >
+                              Xử Lý
+                            </button>
+                          )}
+                          {(isTech || isFM) && !['disposed', 'lost'].includes(eq.status) && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const sourceRoom = {
+                                  _id: selectedPod?._id || eq.room_id?._id || eq.room_id || selectedRoom?._id || '',
+                                  code: roomProfile?.code || selectedPod?.code || selectedRoom?.code || 'KHO',
+                                  name: roomProfile?.name || selectedPod?.name || selectedRoom?.name || ''
+                                };
+                                setTransferModalTarget({ equipment: eq, room: sourceRoom });
+                              }}
+                              className="ruo-btn ruo-btn-compact"
+                              style={{
+                                fontSize: '10px',
+                                padding: '2px 7px',
+                                borderRadius: '4px',
+                                background: 'rgba(242, 101, 34, 0.12)',
+                                color: 'var(--cad-accent, #EA580C)',
+                                border: '1px solid rgba(242, 101, 34, 0.3)',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}
+                              title={`Điều chuyển thiết bị ${eq.code} khỏi phòng ${roomProfile?.code || ''}`}
+                            >
+                              ⇄ Điều Chuyển
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1322,7 +1357,26 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
         )}
       </div>
       {detailRoomCode && (
-        <RoomDetailModal roomCode={detailRoomCode} onClose={() => setDetailRoomCode(null)} />
+        <RoomDetailModal
+          roomCode={detailRoomCode}
+          onClose={() => setDetailRoomCode(null)}
+          onTransferEquipment={(eq, room) => {
+            setDetailRoomCode(null);
+            setTransferModalTarget({ equipment: eq, room });
+          }}
+        />
+      )}
+      {transferModalTarget && (
+        <EquipmentTransferModal
+          equipment={transferModalTarget.equipment}
+          room={transferModalTarget.room}
+          onClose={() => setTransferModalTarget(null)}
+          onOrdered={() => {
+            setTransferModalTarget(null);
+            fetchDashboardData();
+            loadCadFloor(selectedFloor);
+          }}
+        />
       )}
     </div>
   );

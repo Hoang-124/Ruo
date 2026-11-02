@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { movementApi, equipmentApi, masterDataApi, authApi } from '../../lib/api';
 
-export const MovementsPage = () => {
+export const MovementsPage = ({ preselectedEquipment = null, preselectedRoom = null, onClearPrefill }) => {
   const { toast } = useToast();
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
@@ -23,6 +23,7 @@ export const MovementsPage = () => {
   const [rejectingMovement, setRejectingMovement] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [sourceRoomFilter, setSourceRoomFilter] = useState('');
   const [orderForm, setOrderForm] = useState({
     equipment_id: '',
     to_room_id: '',
@@ -79,6 +80,36 @@ export const MovementsPage = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (preselectedEquipment && canManageMovements) {
+      const eqRoomId = preselectedEquipment.room_id?._id || preselectedEquipment.room_id || preselectedRoom?._id || '';
+      setSourceRoomFilter(eqRoomId || 'ALL');
+      setOrderForm(prev => ({
+        ...prev,
+        equipment_id: preselectedEquipment._id,
+        to_room_id: rooms.find(r => String(r._id) !== String(eqRoomId) && r.status !== 'inactive')?._id || prev.to_room_id
+      }));
+      setShowOrderModal(true);
+      onClearPrefill?.();
+    }
+  }, [preselectedEquipment, preselectedRoom, rooms, canManageMovements, onClearPrefill]);
+
+  const filteredSourceEquipments = equipments.filter(eq => {
+    if (['disposed', 'lost'].includes(eq.status)) return false;
+    if (!sourceRoomFilter || sourceRoomFilter === 'ALL') return true;
+    if (sourceRoomFilter === 'WAREHOUSE') {
+      return !eq.room_id || eq.room_id?.room_type === 'warehouse';
+    }
+    const eqRoomId = eq.room_id?._id || eq.room_id;
+    return String(eqRoomId) === String(sourceRoomFilter);
+  });
+
+  const selectedEqObj = equipments.find(eq => String(eq._id) === String(orderForm.equipment_id));
+  const currentEqRoomId = selectedEqObj?.room_id?._id || selectedEqObj?.room_id || '';
+  const availableDestinationRooms = rooms.filter(
+    r => r.status !== 'inactive' && String(r._id) !== String(currentEqRoomId)
+  );
 
   const handleApprove = async (movement) => {
     if (!canManageMovements) return;
@@ -139,7 +170,7 @@ export const MovementsPage = () => {
       });
 
       if (res && res.success) {
-        toast.success('Đã gửi phiếu điều chuyển. Phiếu sẽ được thực hiện sau khi Quản lý CSVC phê duyệt.');
+        toast.success(res.message || 'Đã phát hành lệnh điều chuyển. Kỹ thuật viên có thể thực hiện ngay.');
         setShowOrderModal(false);
         setOrderForm({
           equipment_id: equipments[0]?._id || '',
@@ -168,6 +199,8 @@ export const MovementsPage = () => {
 
   const getMovementTypeBadge = (type) => {
     switch (type) {
+      case 'allocation':
+        return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(16,185,129,0.15)', color: '#10B981' }}>Cấp Phát Ban Đầu</span>;
       case 'replacement':
         return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(6,182,212,0.15)', color: 'var(--laser-cyan)' }}>Thay Đồ Dự Phòng</span>;
       case 'transfer':
@@ -181,6 +214,12 @@ export const MovementsPage = () => {
       default:
         return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(255,255,255,0.08)', color: 'var(--ink-muted)' }}>{type}</span>;
     }
+  };
+
+  const formatRoomDisplay = (room) => {
+    if (!room) return 'Kho dự phòng (KHO-01)';
+    if (!room.name || room.name === room.code) return room.code;
+    return `${room.code} (${room.name})`;
   };
 
   return (
@@ -267,8 +306,8 @@ export const MovementsPage = () => {
             <tbody>
               {filteredMovements.map(m => {
                 const eq = m.equipment_id || {};
-                const fromRoom = m.from_room_id ? `${m.from_room_id.code} (${m.from_room_id.name})` : 'Kho dự phòng (null)';
-                const toRoom = m.to_room_id ? `${m.to_room_id.code} (${m.to_room_id.name})` : 'Kho dự phòng (null)';
+                const fromRoom = formatRoomDisplay(m.from_room_id);
+                const toRoom = formatRoomDisplay(m.to_room_id);
                 const canApprove = canManageMovements && m.status === 'awaiting_approval';
                 const canReject = canManageMovements && m.status === 'awaiting_approval';
                 const statusLabels = {
@@ -355,8 +394,8 @@ export const MovementsPage = () => {
           <div className="ruo-drawer-panel" style={{ width: '540px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
-                <h2 className="ruo-drawer-title">Tạo Phiếu Điều Chuyển Thiết Bị</h2>
-                <p className="ruo-drawer-subtitle">Phiếu cần được Quản lý CSVC phê duyệt trước khi kỹ thuật viên thực hiện.</p>
+                <h2 className="ruo-drawer-title">Ra Lệnh Điều Chuyển Thiết Bị</h2>
+                <p className="ruo-drawer-subtitle">Lệnh do Quản lý CSVC phát hành có hiệu lực ngay để Kỹ thuật viên thực hiện.</p>
               </div>
               <button onClick={() => setShowOrderModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
             </div>
@@ -365,22 +404,77 @@ export const MovementsPage = () => {
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
-                    Chọn Thiết Bị Cần Điều Chuyển *
+                    Phòng xuất phát (Lọc thiết bị theo phòng)
                   </label>
                   <select
-                    required
-                    value={orderForm.equipment_id}
-                    onChange={(e) => setOrderForm({ ...orderForm, equipment_id: e.target.value })}
+                    value={sourceRoomFilter}
+                    onChange={(e) => {
+                      const nextRoom = e.target.value;
+                      setSourceRoomFilter(nextRoom);
+                      const matching = equipments.filter(eq => {
+                        if (['disposed', 'lost'].includes(eq.status)) return false;
+                        if (!nextRoom || nextRoom === 'ALL') return true;
+                        if (nextRoom === 'WAREHOUSE') return !eq.room_id || eq.room_id?.room_type === 'warehouse';
+                        return String(eq.room_id?._id || eq.room_id) === String(nextRoom);
+                      });
+                      const firstEq = matching[0];
+                      const firstEqRoomId = firstEq?.room_id?._id || firstEq?.room_id || '';
+                      const nextDest = rooms.find(r => r.status !== 'inactive' && String(r._id) !== String(firstEqRoomId));
+                      setOrderForm(prev => ({
+                        ...prev,
+                        equipment_id: firstEq?._id || '',
+                        to_room_id: nextDest?._id || prev.to_room_id
+                      }));
+                    }}
                     className="ruo-portal-input"
                     style={{ width: '100%', height: '38px', fontSize: '13px' }}
                   >
-                    {equipments.map(eq => (
-                      <option key={eq._id} value={eq._id}>
-                        [{eq.code}] {eq.name} — Vị trí: {eq.room_id?.code || 'Kho dự phòng'} ({eq.status})
+                    <option value="">Tất cả phòng học & kho ({equipments.length} thiết bị)</option>
+                    <option value="WAREHOUSE">[KHO] Kho dự phòng</option>
+                    {rooms.map(r => (
+                      <option key={r._id} value={r._id}>
+                        {(r.room_type || r.type) === 'warehouse' ? `[KHO] ${r.code} - ${r.name}` : `${r.code} - ${r.name}`}
                       </option>
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                    Chọn Thiết Bị Cần Điều Chuyển * ({filteredSourceEquipments.length} thiết bị)
+                  </label>
+                  <select
+                    required
+                    value={orderForm.equipment_id}
+                    onChange={(e) => {
+                      const nextEqId = e.target.value;
+                      const eqObj = equipments.find(item => String(item._id) === String(nextEqId));
+                      const eqRoomId = eqObj?.room_id?._id || eqObj?.room_id || '';
+                      setOrderForm(prev => ({
+                        ...prev,
+                        equipment_id: nextEqId,
+                        to_room_id: String(prev.to_room_id) === String(eqRoomId)
+                          ? (rooms.find(r => r.status !== 'inactive' && String(r._id) !== String(eqRoomId))?._id || '')
+                          : prev.to_room_id
+                      }));
+                    }}
+                    className="ruo-portal-input"
+                    style={{ width: '100%', height: '38px', fontSize: '13px' }}
+                  >
+                    {filteredSourceEquipments.length === 0 && <option value="">Không có thiết bị tại phòng này</option>}
+                    {filteredSourceEquipments.map(eq => (
+                      <option key={eq._id} value={eq._id}>
+                        [{eq.room_id?.code || 'KHO'}] {eq.code} — {eq.name} ({eq.status})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedEqObj && (
+                  <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '8px 12px', fontSize: '12px', color: 'var(--ink-secondary)' }}>
+                    Vị trí hiện tại: <strong style={{ color: 'var(--ink-primary)' }}>{selectedEqObj.room_id ? `${selectedEqObj.room_id.code} — ${selectedEqObj.room_id.name || ''}` : 'Kho dự phòng'}</strong>
+                  </div>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
@@ -394,7 +488,7 @@ export const MovementsPage = () => {
                       className="ruo-portal-input"
                       style={{ width: '100%', height: '38px', fontSize: '13px' }}
                     >
-                      {rooms.map(r => (
+                      {availableDestinationRooms.map(r => (
                         <option key={r._id} value={r._id}>
                           {(r.room_type || r.type) === 'warehouse' ? `[KHO] ${r.code}` : `${r.code} - ${r.name}`}
                         </option>
@@ -459,7 +553,7 @@ export const MovementsPage = () => {
               <div className="ruo-drawer-footer">
                 <button type="button" onClick={() => setShowOrderModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
                 <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
-                  {submitting ? 'Đang Gửi...' : 'Gửi Phiếu Chờ Duyệt'}
+                  {submitting ? 'Đang Phát Hành...' : 'Phát Hành Lệnh Điều Chuyển'}
                 </button>
               </div>
             </form>

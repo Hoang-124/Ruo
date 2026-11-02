@@ -19,14 +19,18 @@ export function OverdueReport({ refreshKey }) {
     </select></label></div>
     <ReportState report={report} label="báo cáo quá hạn SLA">
       {data && <>
-        <p><strong>{data.total}</strong> phiếu quá hạn cần xử lý.</p>
+        <div className="reports-summary">
+          <span>Phiếu quá hạn cần xử lý <strong>{data.total}</strong></span>
+        </div>
         <div className="dashboard-report-table"><table>
           <thead><tr><th scope="col">Phiếu / Thiết bị</th><th scope="col">Phòng</th><th scope="col">Người xử lý</th><th scope="col">Mức độ / Trạng thái</th><th scope="col">Hạn cam kết</th><th scope="col">Thời gian trễ</th></tr></thead>
           <tbody>{data.repairs.map(item => <tr key={item._id}>
-            <td><strong>{item.ticket_code}</strong><br />{item.equipment_id ? `${item.equipment_id.code} · ${item.equipment_id.name}` : 'Thiết bị không còn tồn tại'}</td>
-            <td>{item.room_id?.code || 'Chưa lưu phòng phát sinh'}</td><td>{item.assigned_to?.full_name || item.repair_unit_id?.name || 'Chưa giao việc'}</td>
-            <td>{severityLabels[item.damage_level] || item.damage_level || '—'}<br />{statusLabels[item.status] || item.status || '—'}</td>
-            <td>{new Date(item.deadline).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td><td>{elapsed(item.overdueMinutes)}</td>
+            <td><strong className="reports-code-pill">{item.ticket_code}</strong><br /><span className="reports-room-name">{item.equipment_id ? `${item.equipment_id.code} · ${item.equipment_id.name}` : 'Thiết bị không còn tồn tại'}</span></td>
+            <td style={{ fontWeight: 700 }}>{item.room_id?.code || 'Chưa lưu phòng phát sinh'}</td>
+            <td style={{ fontWeight: 600 }}>{item.assigned_to?.full_name || item.repair_unit_id?.name || 'Chưa giao việc'}</td>
+            <td><strong>{severityLabels[item.damage_level] || item.damage_level || '—'}</strong><br /><span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{statusLabels[item.status] || item.status || '—'}</span></td>
+            <td>{new Date(item.deadline).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
+            <td><span className="reports-broken-pill alert">{elapsed(item.overdueMinutes)}</span></td>
           </tr>)}</tbody>
         </table></div>
         {data.repairs.length === 0 && <p>Không có phiếu quá hạn trong trang này.</p>}

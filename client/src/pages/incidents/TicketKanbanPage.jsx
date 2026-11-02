@@ -35,6 +35,39 @@ export const TicketKanbanPage = () => {
     destination_room_id: ''
   });
 
+  const STATUS_LABELS = {
+    reported: { label: 'Mới tiếp nhận', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
+    assigned: { label: 'Đã giao KTV', color: 'var(--laser-cyan)', bg: 'rgba(6,182,212,0.15)' },
+    in_progress: { label: 'Đang sửa chữa', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)' },
+    resolved: { label: 'Đã khắc phục', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
+    unrepairable: { label: 'Không thể sửa', color: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
+    closed: { label: 'Đã đóng phiếu', color: 'var(--ink-secondary)', bg: 'rgba(100,116,139,0.18)' }
+  };
+
+  const DAMAGE_LABELS = {
+    minor: { label: 'Hỏng nhẹ', short: 'Nhẹ', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
+    major: { label: 'Hỏng nặng', short: 'Nặng', color: '#F59E0B', bg: 'rgba(245,158,11,0.18)' },
+    critical: { label: 'Khẩn cấp', short: 'Khẩn cấp', color: '#EF4444', bg: 'rgba(239,68,68,0.2)' }
+  };
+
+  const getStatusBadge = (status) => {
+    const info = STATUS_LABELS[status] || { label: status, color: 'var(--ink-secondary)', bg: 'var(--surface-panel)' };
+    return (
+      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '4px', fontSize: '11.5px', fontWeight: 700, color: info.color, background: info.bg }}>
+        {info.label}
+      </span>
+    );
+  };
+
+  const getDamageBadge = (level, compact = false) => {
+    const info = DAMAGE_LABELS[level] || { label: level, short: level, color: '#F59E0B', bg: 'rgba(245,158,11,0.18)' };
+    return (
+      <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: '4px', fontSize: compact ? '10.5px' : '11.5px', fontWeight: 700, color: info.color, background: info.bg }}>
+        {compact ? info.short : info.label}
+      </span>
+    );
+  };
+
   const columns = [
     { id: 'reported', title: 'MỚI TIẾP NHẬN', color: '#F59E0B' },
     { id: 'assigned', title: 'ĐÃ GIAO KTV', color: 'var(--laser-cyan)' },
@@ -151,13 +184,19 @@ export const TicketKanbanPage = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
+      const isUnrepairable = selectedTicket.status === 'unrepairable';
       const res = await repairApi.closeTicket(selectedTicket._id, {
-        destination_room_id: closeForm.destination_room_id || null
+        destination_room_id: isUnrepairable ? null : (closeForm.destination_room_id || null)
       });
 
       if (res && res.success) {
-        toast.success(`Đã nghiệm thu và đóng phiếu sửa chữa [${selectedTicket.ticket_code}]!`);
+        toast.success(
+          isUnrepairable
+            ? `Đã đóng phiếu [${selectedTicket.ticket_code}] và chuyển thiết bị sang danh sách chờ thanh lý!`
+            : `Đã nghiệm thu và đóng phiếu sửa chữa [${selectedTicket.ticket_code}]!`
+        );
         setShowCloseModal(false);
+        setSelectedTicket(null);
         await fetchData();
       }
     } catch (err) {
@@ -326,6 +365,7 @@ export const TicketKanbanPage = () => {
                     const room = t.room_id || {};
                     const isReported = t.status === 'reported';
                     const isResolved = t.status === 'resolved';
+                    const isUnrepairable = t.status === 'unrepairable';
 
                     return (
                       <div
@@ -347,9 +387,7 @@ export const TicketKanbanPage = () => {
                           <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 800, color: 'var(--laser-cyan)' }}>
                             {t.ticket_code}
                           </span>
-                          <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 6px', borderRadius: '3px', background: t.damage_level === 'critical' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)', color: t.damage_level === 'critical' ? '#EF4444' : '#F59E0B' }}>
-                            {t.damage_level}
-                          </span>
+                          {getDamageBadge(t.damage_level, true)}
                         </div>
 
                         <div>
@@ -395,6 +433,16 @@ export const TicketKanbanPage = () => {
                               Nghiệm Thu & Đóng Phiếu
                             </button>
                           )}
+
+                          {isUnrepairable && (
+                            <button
+                              onClick={() => openClose(t)}
+                              className="laser-btn"
+                              style={{ width: '100%', padding: '6px', fontSize: '11.5px', fontWeight: 700, background: 'rgba(239,68,68,0.14)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.35)' }}
+                            >
+                              Đóng Phiếu (Chờ Thanh Lý)
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -432,10 +480,16 @@ export const TicketKanbanPage = () => {
                 <DeadlineCountdown deadline={selectedTicket.deadline} status={selectedTicket.status} />
               )}
 
-              <div style={{ background: 'var(--surface-panel)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                <div>Phòng học: <strong>{selectedTicket.room_id?.code}</strong></div>
-                <div>Trạng thái: <strong>{selectedTicket.status}</strong></div>
-                <div>Mức hư hỏng: <strong>{selectedTicket.damage_level}</strong></div>
+              <div style={{ background: 'var(--surface-panel)', padding: '12px 14px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', alignItems: 'center' }}>
+                <div>Phòng học: <strong>{selectedTicket.room_id?.code || 'Chưa gán'}</strong></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <span>Trạng thái:</span>
+                  {getStatusBadge(selectedTicket.status)}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <span>Mức hư hỏng:</span>
+                  {getDamageBadge(selectedTicket.damage_level)}
+                </div>
                 <div>KTV phụ trách: <strong>{selectedTicket.assigned_to?.full_name || 'Chưa giao'}</strong></div>
               </div>
 
@@ -462,7 +516,10 @@ export const TicketKanbanPage = () => {
               )}
             </div>
 
-            <div className="ruo-drawer-footer">
+            <div className="ruo-drawer-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
+              <button onClick={() => setSelectedTicket(null)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>
+                Đóng Cửa Sổ
+              </button>
               {selectedTicket.status === 'reported' && (
                 <button onClick={() => openAssign(selectedTicket)} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
                   Giao Nhiệm Vụ Cho KTV
@@ -472,6 +529,21 @@ export const TicketKanbanPage = () => {
                 <button onClick={() => openClose(selectedTicket)} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
                   Nghiệm Thu & Đóng Phiếu
                 </button>
+              )}
+              {selectedTicket.status === 'unrepairable' && (
+                <>
+                  <a
+                    href="#/disposal_propose"
+                    onClick={() => setSelectedTicket(null)}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '8px 16px', fontWeight: 700, textDecoration: 'none', color: '#EF4444', borderColor: 'rgba(239,68,68,0.4)' }}
+                  >
+                    Lập Đề Xuất Thanh Lý
+                  </a>
+                  <button onClick={() => openClose(selectedTicket)} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                    Xác Nhận & Đóng Phiếu (Chờ Thanh Lý)
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -580,36 +652,53 @@ export const TicketKanbanPage = () => {
           <div className="ruo-drawer-panel" style={{ width: '500px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
-                <h2 className="ruo-drawer-title">Nghiệm Thu & Chọn Nơi Về Sau Sửa</h2>
-                <p className="ruo-drawer-subtitle">{selectedTicket.ticket_code}</p>
+                <h2 className="ruo-drawer-title">
+                  {selectedTicket.status === 'unrepairable'
+                    ? 'Đóng Phiếu Sửa Chữa & Chuyển Chờ Thanh Lý'
+                    : 'Nghiệm Thu & Chọn Nơi Về Sau Sửa'}
+                </h2>
+                <p className="ruo-drawer-subtitle">{selectedTicket.ticket_code} • {selectedTicket.equipment_id?.name}</p>
               </div>
               <button onClick={() => setShowCloseModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
             </div>
 
             <form onSubmit={handleCloseSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ fontSize: '12.5px', color: 'var(--ink-secondary)' }}>
-                  Theo quy chuẩn vận hành: Nếu phòng học ban đầu đã đủ định mức (hoặc đã được cấp thiết bị dự phòng), thiết bị sau khi sửa xong sẽ được điều chuyển về <strong>Kho dự phòng KHO-01</strong>.
-                </div>
+                {selectedTicket.status === 'unrepairable' ? (
+                  <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', padding: '12px 14px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', color: 'var(--ink-primary)' }}>
+                    <div style={{ fontWeight: 700, color: '#EF4444', marginBottom: '4px' }}>
+                      Xác nhận thiết bị không thể khắc phục
+                    </div>
+                    <div>
+                      Kỹ thuật viên đã kết luận thiết bị này không thể sửa chữa. Khi đóng phiếu, thiết bị sẽ được giữ ở trạng thái <strong>Chờ thanh lý</strong> để đưa vào danh sách đề xuất thanh lý trình Hiệu trưởng phê duyệt.
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '12.5px', color: 'var(--ink-secondary)' }}>
+                      Theo quy chuẩn vận hành: Nếu phòng học ban đầu đã đủ định mức (hoặc đã được cấp thiết bị dự phòng), thiết bị sau khi sửa xong sẽ được điều chuyển về <strong>Kho dự phòng KHO-01</strong>.
+                    </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>
-                    Chọn Nơi Về Của Thiết Bị Sau Sửa Chữa *
-                  </label>
-                  <select
-                    required
-                    value={closeForm.destination_room_id}
-                    onChange={(e) => setCloseForm({ destination_room_id: e.target.value })}
-                    className="ruo-portal-input"
-                    style={{ width: '100%', height: '40px', fontSize: '13px' }}
-                  >
-                    {rooms.map(r => (
-                      <option key={r._id} value={r._id}>
-                        {(r.room_type || r.type) === 'warehouse' ? `[KHO DỰ PHÒNG] ${r.code} - ${r.name}` : `${r.code} - ${r.name}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>
+                        Chọn Nơi Về Của Thiết Bị Sau Sửa Chữa *
+                      </label>
+                      <select
+                        required
+                        value={closeForm.destination_room_id}
+                        onChange={(e) => setCloseForm({ destination_room_id: e.target.value })}
+                        className="ruo-portal-input"
+                        style={{ width: '100%', height: '40px', fontSize: '13px' }}
+                      >
+                        {rooms.map(r => (
+                          <option key={r._id} value={r._id}>
+                            {(r.room_type || r.type) === 'warehouse' ? `[KHO DỰ PHÒNG] ${r.code} - ${r.name}` : `${r.code} - ${r.name}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="ruo-drawer-footer">

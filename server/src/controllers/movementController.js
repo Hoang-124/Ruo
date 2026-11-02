@@ -154,6 +154,8 @@ export const createMovementOrder = async (req, res) => {
     }
 
     const from_room_id = equipment.room_id || null;
+    const isDirectOrder = [USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN].includes(req.user.role);
+    const initialStatus = isDirectOrder ? MOVEMENT_STATUSES.APPROVED : MOVEMENT_STATUSES.AWAITING_APPROVAL;
 
     const movement = await EquipmentMovement.create({
       equipment_id: equipment._id,
@@ -161,9 +163,11 @@ export const createMovementOrder = async (req, res) => {
       from_room_id,
       to_room_id: toRoom._id,
       ordered_by: req.user._id,
+      approved_by: isDirectOrder ? req.user._id : null,
+      approved_at: isDirectOrder ? new Date() : null,
       assigned_to: assignedTechnician?._id || (req.user.role === USER_ROLES.TECHNICIAN ? req.user._id : null),
       reason: reason.trim(),
-      status: MOVEMENT_STATUSES.AWAITING_APPROVAL
+      status: initialStatus
     });
 
     await AuditLog.logAction({
@@ -176,21 +180,39 @@ export const createMovementOrder = async (req, res) => {
       new_value: { equipment_id: equipment.code, from: from_room_id, to: toRoom.code, type, status: movement.status }
     });
 
-    const managers = await User.find({ role: USER_ROLES.FACILITY_MANAGER, status: 'active' });
-    for (const manager of managers) {
-      await Notification.create({
-        user_id: manager._id,
-        type: 'movement_ordered',
-        title: 'Phiếu điều chuyển cần phê duyệt',
-        message: `Yêu cầu chuyển thiết bị ${equipment.code} đến phòng ${toRoom.code} đang chờ phê duyệt.`,
-        reference_type: 'equipment_movement',
-        reference_id: movement._id
-      });
+    if (isDirectOrder) {
+      const technicians = assignedTechnician
+        ? [assignedTechnician]
+        : await User.find({ role: USER_ROLES.TECHNICIAN, status: 'active' });
+      for (const technician of technicians.filter(Boolean)) {
+        await Notification.create({
+          user_id: technician._id,
+          type: 'movement_ordered',
+          title: 'Lệnh điều chuyển thiết bị mới',
+          message: `Quản lý CSVC giao lệnh chuyển thiết bị ${equipment.code} đến phòng ${toRoom.code}.`,
+          reference_type: 'equipment_movement',
+          reference_id: movement._id
+        });
+      }
+    } else {
+      const managers = await User.find({ role: USER_ROLES.FACILITY_MANAGER, status: 'active' });
+      for (const manager of managers) {
+        await Notification.create({
+          user_id: manager._id,
+          type: 'movement_ordered',
+          title: 'Phiếu điều chuyển cần phê duyệt',
+          message: `Yêu cầu chuyển thiết bị ${equipment.code} đến phòng ${toRoom.code} đang chờ phê duyệt.`,
+          reference_type: 'equipment_movement',
+          reference_id: movement._id
+        });
+      }
     }
 
     res.status(201).json({
       success: true,
-      message: 'Đã gửi phiếu điều chuyển, đang chờ Quản lý CSVC phê duyệt.',
+      message: isDirectOrder
+        ? 'Đã phát hành lệnh điều chuyển. Kỹ thuật viên có thể thực hiện ngay.'
+        : 'Đã gửi phiếu điều chuyển, đang chờ Quản lý CSVC phê duyệt.',
       movement
     });
   } catch (error) {
