@@ -246,7 +246,13 @@ export const repairApi = {
     if (res && res.data && !res.repair) res.repair = res.data;
     return res;
   },
-  create: (data) => api.post('/repairs', data),
+  create: async (data) => {
+    const res = await api.post('/repairs', data);
+    if (res && res.data && !res.repair) res.repair = res.data;
+    return res;
+  },
+  aiTriage: (data) => api.post('/repairs/ai-triage', data),
+  aiCopilot: (id) => api.post(`/repairs/${id}/ai-copilot`, {}),
   assign: (id, data) => api.put(`/repairs/${id}/assign`, data),
   accept: (id) => api.put(`/repairs/${id}/accept`),
   addLog: (id, data) => api.post(`/repairs/${id}/logs`, data),
@@ -295,7 +301,8 @@ export const inventoryApi = {
   getSessionById: (id) => api.get(`/inventory-sessions/${id}`),
   scanInRoom: (sessionId, data) => api.put(`/inventory-sessions/${sessionId}/scan`, data),
   reconcile: (sessionId) => api.put(`/inventory-sessions/${sessionId}/reconcile`, {}),
-  exportReport: (sessionId) => api.get(`/inventory-sessions/${sessionId}/export`)
+  exportReport: (sessionId) => api.get(`/inventory-sessions/${sessionId}/export`),
+  aiAnalyze: (sessionId) => api.post(`/inventory-sessions/${sessionId}/ai-analyze`, {})
 };
 
 export const masterDataApi = {
@@ -344,6 +351,7 @@ export const reportApi = {
 export const auditApi = {
   getLogs: (params) => api.get('/audit/logs', params),
   verifyChain: () => api.get('/audit/verify-chain'),
+  aiAnalyze: (params = {}) => api.post('/audit/ai-analyze', params),
   downloadCsv: () => apiRequest('/audit/export', { responseType: 'blob' }),
   exportCsv: () => `${API_BASE}/audit/export`
 };
