@@ -42,6 +42,10 @@ export const InventoryPage = () => {
   const [exportingReport, setExportingReport] = useState(false);
   const [isDigitallySigned, setIsDigitallySigned] = useState(false);
 
+  // AI Inventory Discrepancy Analyst State (Feature #4A)
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+
   const fetchRooms = async () => {
     try {
       const res = await masterDataApi.getRooms({ limit: 100 });
@@ -79,6 +83,7 @@ export const InventoryPage = () => {
 
   const loadSessionDetails = async (sessionId) => {
     try {
+      setAiAnalysis(null);
       const res = await inventoryApi.getSessionById(sessionId);
       if (res && res.success && res.data) {
         setActiveSession(res.data);
@@ -86,6 +91,22 @@ export const InventoryPage = () => {
       }
     } catch (err) {
       toast.error('Lỗi khi tải chi tiết đợt kiểm kê: ' + err.message);
+    }
+  };
+
+  const handleAiAnalyzeSession = async () => {
+    if (!activeSession?._id) return;
+    try {
+      setAiAnalyzing(true);
+      const res = await inventoryApi.aiAnalyze(activeSession._id);
+      if (res && res.success && res.analysis) {
+        setAiAnalysis(res.analysis);
+        toast.success('AI đã hoàn tất phân tích bất thường & điểm nóng lệch kiểm kê!');
+      }
+    } catch (err) {
+      toast.error('Không thể chạy AI Phân tích kiểm kê: ' + err.message);
+    } finally {
+      setAiAnalyzing(false);
     }
   };
 
@@ -439,6 +460,27 @@ export const InventoryPage = () => {
 
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <button
+                    type="button"
+                    onClick={handleAiAnalyzeSession}
+                    disabled={aiAnalyzing}
+                    className="laser-btn laser-btn-secondary"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 14px',
+                      fontSize: '12.5px',
+                      fontWeight: 800,
+                      color: 'var(--laser-cyan)',
+                      background: 'var(--surface-2)',
+                      border: '1.5px solid var(--border-focus)'
+                    }}
+                  >
+                    <Icons.Sparkles size={15} />
+                    <span>{aiAnalyzing ? 'AI Đang Rà Soát...' : 'AI Phân Tích Lệch Kiểm Kê'}</span>
+                  </button>
+
+                  <button
                     onClick={handleOpenExportReport}
                     disabled={exportingReport}
                     className="laser-btn laser-btn-secondary"
@@ -502,6 +544,128 @@ export const InventoryPage = () => {
                 </div>
               </div>
             </div>
+
+            {/* AI Inventory Discrepancy & Zombie Asset Intelligence Panel */}
+            {aiAnalysis && (
+              <div
+                style={{
+                  background: 'var(--surface-card)',
+                  border: '1.5px solid var(--border-focus)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '18px 20px',
+                  boxShadow: 'var(--shadow-sm)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 9px', borderRadius: '4px', fontSize: '11px', fontWeight: 800, background: 'var(--status-info-bg)', color: 'var(--status-info-color)', border: '1px solid var(--status-info-border)' }}>
+                      <Icons.Sparkles size={13} />
+                      <span>{aiAnalysis.engine === 'gemini' ? 'GEMINI INVENTORY AUDITOR' : 'RUO AI INVENTORY AUDITOR'}</span>
+                    </span>
+                    <span
+                      style={{
+                        padding: '3px 9px',
+                        borderRadius: '4px',
+                        fontSize: '11.5px',
+                        fontWeight: 800,
+                        background:
+                          aiAnalysis.risk_level === 'critical'
+                            ? 'var(--status-danger-bg)'
+                            : aiAnalysis.risk_level === 'high' || aiAnalysis.risk_level === 'medium'
+                              ? 'var(--status-warning-bg)'
+                              : 'var(--status-success-bg)',
+                        color:
+                          aiAnalysis.risk_level === 'critical'
+                            ? 'var(--status-danger-color)'
+                            : aiAnalysis.risk_level === 'high' || aiAnalysis.risk_level === 'medium'
+                              ? 'var(--status-warning-color)'
+                              : 'var(--status-success-color)',
+                        border: `1px solid ${
+                          aiAnalysis.risk_level === 'critical'
+                            ? 'var(--status-danger-border)'
+                            : aiAnalysis.risk_level === 'high' || aiAnalysis.risk_level === 'medium'
+                              ? 'var(--status-warning-border)'
+                              : 'var(--status-success-border)'
+                        }`
+                      }}
+                    >
+                      Mức rủi ro: {String(aiAnalysis.risk_level || 'low').toUpperCase()} • Điểm khớp chuẩn: {aiAnalysis.health_score}/100
+                    </span>
+                    {aiAnalysis.metrics?.missing_value_vnd > 0 && (
+                      <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--status-danger-color)' }}>
+                        Rủi ro thất lạc: {Number(aiAnalysis.metrics.missing_value_vnd).toLocaleString('vi-VN')} VNĐ
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setAiAnalysis(null)}
+                    className="ruo-drawer-close-btn"
+                    title="Đóng bảng phân tích AI"
+                  >
+                    <Icons.X size={16} />
+                  </button>
+                </div>
+
+                <div style={{ fontSize: '13px', color: 'var(--ink-primary)', fontWeight: 600, background: 'var(--surface-2)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)' }}>
+                  {aiAnalysis.executive_summary}
+                </div>
+
+                {Array.isArray(aiAnalysis.zombie_assets) && aiAnalysis.zombie_assets.length > 0 && (
+                  <div style={{ background: 'var(--status-danger-bg)', border: '1.5px solid var(--status-danger-border)', borderRadius: 'var(--radius-md)', padding: '10px 14px', color: 'var(--status-danger-color)', fontSize: '12.5px' }}>
+                    <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <Icons.AlertTriangle size={15} />
+                      <span>CẢNH BÁO TÀI SẢN BÓNG MA (ĐÃ THANH LÝ NHƯNG VẪN XUẤT HIỆN THỰC ĐỊA):</span>
+                    </div>
+                    {aiAnalysis.zombie_assets.map((z) => (
+                      <div key={z.code} style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+                        • [{z.code}] {z.name} — Quét thấy tại phòng {z.scanned_room} ({Number(z.price || 0).toLocaleString('vi-VN')} đ)
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                  <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                    <div style={{ fontSize: '11.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-pure)', marginBottom: '8px' }}>
+                      Điểm Nóng Sai Lệch Theo Phòng
+                    </div>
+                    {Array.isArray(aiAnalysis.hotspots_by_room) && aiAnalysis.hotspots_by_room.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
+                        {aiAnalysis.hotspots_by_room.map((h) => (
+                          <div key={h.room_code} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'var(--surface-card)', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
+                            <div>
+                              <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--laser-cyan)' }}>{h.room_code}</strong>{' '}
+                              <span style={{ color: 'var(--ink-secondary)' }}>({h.missing} thiếu • {h.wrong_location} sai phòng • {h.damaged} hỏng)</span>
+                            </div>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700, color: 'var(--ink-muted)' }}>
+                              {Number(h.exposure_vnd || 0).toLocaleString('vi-VN')} đ
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Không phát hiện điểm nóng bất thường tại các phòng đã quét.</div>
+                    )}
+                  </div>
+
+                  <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                    <div style={{ fontSize: '11.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-pure)', marginBottom: '8px' }}>
+                      Khuyến Nghị Xử Lý Đối Soát
+                    </div>
+                    <ul style={{ margin: '0 0 0 18px', padding: 0, fontSize: '12px', color: 'var(--ink-secondary)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {(aiAnalysis.recommendations || []).map((rec, idx) => (
+                        <li key={idx}>{rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Locked Session Banner OR Field Scanner Toolbar (UC-3.10) */}
             {isSessionLocked ? (

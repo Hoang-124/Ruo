@@ -12,10 +12,12 @@ export const AuditLogPage = () => {
   const [targetTableFilter, setTargetTableFilter] = useState('ALL');
   const [selectedLog, setSelectedLog] = useState(null);
   
-  // Verification & Export State
+  // Verification, AI Security Analyst & Export State
   const [verifying, setVerifying] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [verificationResult, setVerificationResult] = useState(null);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [aiReport, setAiReport] = useState(null);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -57,6 +59,25 @@ export const AuditLogPage = () => {
       toast.error('Lỗi khi kiểm tra chuỗi kiểm toán: ' + err.message);
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const handleAiAnalyzeAudit = async () => {
+    if (typeof auditApi.aiAnalyze !== 'function') return;
+    setAiAnalyzing(true);
+    try {
+      const res = await auditApi.aiAnalyze({ limit: 150, target_table: targetTableFilter });
+      if (res && res.success && res.analysis) {
+        setAiReport(res.analysis);
+        if (res.analysis.chain_integrity) {
+          setVerificationResult(res.analysis.chain_integrity);
+        }
+        toast.success('AI CSO đã hoàn tất phân tích chuỗi SHA-256 và hành vi bảo mật!');
+      }
+    } catch (err) {
+      toast.error('Không thể chạy AI Phân tích kiểm toán: ' + err.message);
+    } finally {
+      setAiAnalyzing(false);
     }
   };
 
@@ -197,7 +218,16 @@ export const AuditLogPage = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <Button
+            variant="secondary"
+            icon={Icons.Sparkles}
+            loading={aiAnalyzing}
+            onClick={handleAiAnalyzeAudit}
+          >
+            AI Phân Tích Bất Thường
+          </Button>
+
           <Button
             variant="primary"
             icon={Icons.Shield}
@@ -280,6 +310,140 @@ export const AuditLogPage = () => {
             STATUS: {verificationResult.isValid ? 'CRYPTOGRAPHIC_VALID' : 'TAMPER_DETECTED'}
           </span>
         </div>
+      )}
+
+      {/* AI Cryptographic Security & Anomaly Analyst Panel */}
+      {aiReport && (
+        <Card style={{ padding: '18px 20px', border: '1.5px solid var(--border-focus)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 9px', borderRadius: '4px', fontSize: '11px', fontWeight: 800, background: 'var(--status-info-bg)', color: 'var(--status-info-color)', border: '1px solid var(--status-info-border)' }}>
+                  <Icons.Sparkles size={13} />
+                  <span>{aiReport.engine === 'gemini' ? 'GEMINI CSO LEDGER ANALYST' : 'RUO AI CSO LEDGER ANALYST'}</span>
+                </span>
+                <span
+                  style={{
+                    padding: '3px 9px',
+                    borderRadius: '4px',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    background:
+                      aiReport.risk_level === 'critical'
+                        ? 'var(--status-danger-bg)'
+                        : aiReport.risk_level === 'high' || aiReport.risk_level === 'medium'
+                          ? 'var(--status-warning-bg)'
+                          : 'var(--status-success-bg)',
+                    color:
+                      aiReport.risk_level === 'critical'
+                        ? 'var(--status-danger-color)'
+                        : aiReport.risk_level === 'high' || aiReport.risk_level === 'medium'
+                          ? 'var(--status-warning-color)'
+                          : 'var(--status-success-color)',
+                    border: `1px solid ${
+                      aiReport.risk_level === 'critical'
+                        ? 'var(--status-danger-border)'
+                        : aiReport.risk_level === 'high' || aiReport.risk_level === 'medium'
+                          ? 'var(--status-warning-border)'
+                          : 'var(--status-success-border)'
+                    }`
+                  }}
+                >
+                  Rủi ro: {String(aiReport.risk_level || 'low').toUpperCase()} • Điểm an toàn: {aiReport.security_score}/100
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAiReport(null)}
+                className="ruo-drawer-close-btn"
+                title="Đóng phân tích AI"
+              >
+                <Icons.X size={16} />
+              </button>
+            </div>
+
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink-primary)', background: 'var(--surface-2)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)' }}>
+              {aiReport.executive_summary}
+            </div>
+
+            {aiReport.stats && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px' }}>
+                {[
+                  { label: 'Khối đã quét', val: aiReport.stats.logs_analyzed },
+                  { label: 'Thay đổi RBAC', val: aiReport.stats.rbac_mutations },
+                  { label: 'Khóa / Reset Auth', val: aiReport.stats.auth_lockouts },
+                  { label: 'Lệnh ngoài giờ HC', val: aiReport.stats.off_hours_sensitive }
+                ].map((m) => (
+                  <div key={m.label} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '8px 10px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>{m.label}</div>
+                    <div style={{ fontSize: '18px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--ink-pure)' }}>{m.val ?? 0}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+              <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                <div style={{ fontSize: '11.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-pure)', marginBottom: '8px' }}>
+                  Phát Hiện Bất Thường & Dấu Vết Khối (#Seq)
+                </div>
+                {Array.isArray(aiReport.anomalies) && aiReport.anomalies.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {aiReport.anomalies.map((anom, i) => (
+                      <div key={i} style={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '8px 10px', fontSize: '12px' }}>
+                        <div style={{ fontWeight: 800, color: anom.severity === 'critical' ? 'var(--status-danger-color)' : 'var(--ink-pure)' }}>
+                          {anom.title}
+                        </div>
+                        <div style={{ color: 'var(--ink-secondary)', marginTop: '2px', fontSize: '11.5px' }}>{anom.detail}</div>
+                        {Array.isArray(anom.seq_refs) && anom.seq_refs.length > 0 && (
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                            {anom.seq_refs.map((seqNum) => (
+                              <button
+                                key={seqNum}
+                                type="button"
+                                onClick={() => {
+                                  const matched = logs.find((l) => Number(l.seq) === Number(seqNum));
+                                  if (matched) setSelectedLog(matched);
+                                }}
+                                style={{
+                                  fontFamily: 'var(--font-mono)',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  padding: '2px 7px',
+                                  borderRadius: '4px',
+                                  border: '1px solid var(--border-default)',
+                                  background: 'var(--surface-2)',
+                                  color: 'var(--laser-cyan)',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                #{seqNum}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Không phát hiện mẫu hành vi rủi ro hoặc đứt gãy chuỗi băm.</div>
+                )}
+              </div>
+
+              <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                <div style={{ fontSize: '11.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-pure)', marginBottom: '8px' }}>
+                  Khuyến Nghị Quản Trị Bảo Mật (CSO)
+                </div>
+                <ul style={{ margin: '0 0 0 18px', padding: 0, fontSize: '12px', color: 'var(--ink-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {(aiReport.recommendations || []).map((rec, idx) => (
+                    <li key={idx}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* Filter Toolbar */}
