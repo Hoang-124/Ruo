@@ -22,6 +22,8 @@ export const TicketKanbanPage = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [aiCopilotLoading, setAiCopilotLoading] = useState(false);
+  const [aiCopilotMap, setAiCopilotMap] = useState({});
 
   // Forms
   const [assignForm, setAssignForm] = useState({
@@ -128,6 +130,35 @@ export const TicketKanbanPage = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleRunAiCopilot = async (ticket) => {
+    if (!ticket?._id) return;
+    try {
+      setAiCopilotLoading(true);
+      const res = await repairApi.aiCopilot(ticket._id);
+      if (res && res.success && res.copilot) {
+        setAiCopilotMap((prev) => ({ ...prev, [ticket._id]: res.copilot }));
+        toast.success(`AI Copilot đã phân tích phiếu [${ticket.ticket_code}]!`);
+      }
+    } catch (err) {
+      toast.error('Lỗi khi chạy AI Điều phối: ' + err.message);
+    } finally {
+      setAiCopilotLoading(false);
+    }
+  };
+
+  const applyAiDispatchRecommendation = (copilot) => {
+    const rec = copilot?.dispatch_recommendation;
+    if (!rec) return;
+    setAssignForm((prev) => ({
+      ...prev,
+      assigned_to: rec.recommended_technician?._id || prev.assigned_to,
+      damage_level: rec.suggested_damage_level || prev.damage_level,
+      deadline: rec.suggested_deadline ? new Date(rec.suggested_deadline).toISOString().slice(0, 16) : prev.deadline,
+      replacement_equipment_id: rec.recommended_replacement?._id || prev.replacement_equipment_id
+    }));
+    toast.success('Đã điền tự động KTV tối ưu, hạn SLA và thiết bị dự phòng từ AI!');
+  };
 
   const openAssign = (ticket) => {
     setSelectedTicket(ticket);
@@ -502,6 +533,57 @@ export const TicketKanbanPage = () => {
                 </div>
               </div>
 
+              {/* AI Dispatch & Diagnosis Copilot Panel */}
+              <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-focus)', borderRadius: 'var(--radius-md)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '12.5px', color: 'var(--ink-pure)' }}>
+                    <Icons.Sparkles size={15} style={{ color: 'var(--laser-cyan)' }} />
+                    <span>AI Chẩn Đoán & Gợi Ý Điều Phối</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRunAiCopilot(selectedTicket)}
+                    disabled={aiCopilotLoading}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '11.5px', fontWeight: 700 }}
+                  >
+                    {aiCopilotLoading ? 'Đang Phân Tích...' : (aiCopilotMap[selectedTicket._id] ? 'Phân Tích Lại' : 'Chạy AI Copilot')}
+                  </button>
+                </div>
+
+                {aiCopilotMap[selectedTicket._id] && (() => {
+                  const cp = aiCopilotMap[selectedTicket._id];
+                  const bestTech = cp.dispatch_recommendation?.recommended_technician;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                      {cp.disposal_advisory?.should_consider_disposal && (
+                        <div style={{ background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger-border)', color: 'var(--status-danger-color)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700 }}>
+                          ⚠ {cp.disposal_advisory.recommendation}
+                        </div>
+                      )}
+                      <div>
+                        <strong style={{ color: 'var(--ink-pure)' }}>Nguyên nhân gốc dự kiến:</strong>{' '}
+                        <span style={{ color: 'var(--ink-secondary)' }}>{cp.diagnosis?.root_cause}</span>
+                      </div>
+                      {bestTech && (
+                        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', padding: '8px 10px', borderRadius: 'var(--radius-sm)' }}>
+                          <div style={{ fontWeight: 800, color: 'var(--laser-cyan)' }}>
+                            KTV đề xuất #1: {bestTech.full_name} ({bestTech.code}) • Điểm phù hợp {bestTech.score}/100
+                          </div>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', marginTop: '2px' }}>{bestTech.reason}</div>
+                        </div>
+                      )}
+                      {Array.isArray(cp.recommended_parts) && cp.recommended_parts.length > 0 && (
+                        <div>
+                          <strong style={{ color: 'var(--ink-pure)' }}>Linh kiện kho gợi ý:</strong>{' '}
+                          {cp.recommended_parts.map((p) => `${p.name} (Tồn: ${p.stock} ${p.unit})`).join(' • ')}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               {selectedTicket.replacement_equipment_id && (
                 <div style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
                   Thiết bị dự phòng thay thế đã cấp: <strong>{selectedTicket.replacement_equipment_id?.name} ({selectedTicket.replacement_equipment_id?.code})</strong>
@@ -564,6 +646,45 @@ export const TicketKanbanPage = () => {
 
             <form onSubmit={handleAssignSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* AI Dispatch One-Click Banner inside Assign Modal */}
+                <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-focus)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--ink-pure)' }}>
+                      <Icons.Sparkles size={14} style={{ color: 'var(--laser-cyan)' }} />
+                      <span>AI Gợi Ý Phân Công Tối Ưu</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleRunAiCopilot(selectedTicket)}
+                        disabled={aiCopilotLoading}
+                        className="laser-btn laser-btn-secondary"
+                        style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
+                      >
+                        {aiCopilotLoading ? 'Đang Tính...' : 'Gợi Ý Từ AI'}
+                      </button>
+                      {aiCopilotMap[selectedTicket._id] && (
+                        <button
+                          type="button"
+                          onClick={() => applyAiDispatchRecommendation(aiCopilotMap[selectedTicket._id])}
+                          className="laser-btn laser-btn-primary"
+                          style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
+                        >
+                          Áp Dụng Gợi Ý
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {aiCopilotMap[selectedTicket._id]?.dispatch_recommendation?.recommended_technician && (
+                    <div style={{ marginTop: '8px', fontSize: '11.5px', color: 'var(--ink-secondary)' }}>
+                      Đề xuất: <strong>{aiCopilotMap[selectedTicket._id].dispatch_recommendation.recommended_technician.full_name}</strong> ({aiCopilotMap[selectedTicket._id].dispatch_recommendation.recommended_technician.reason})
+                      {aiCopilotMap[selectedTicket._id].dispatch_recommendation.recommended_replacement && (
+                        <span> • Đồ dự phòng: <strong>{aiCopilotMap[selectedTicket._id].dispatch_recommendation.recommended_replacement.code}</strong></span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
                     Chọn Kỹ Thuật Viên Phụ Trách *

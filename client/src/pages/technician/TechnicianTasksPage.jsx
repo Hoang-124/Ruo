@@ -36,6 +36,24 @@ export const TechnicianTasksPage = () => {
   const [showLogModal, setShowLogModal] = useState(false);
   const [showOutcomeModal, setShowOutcomeModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiByTask, setAiByTask] = useState({});
+
+  const handleLoadTaskAi = async (task) => {
+    if (!task?._id) return;
+    try {
+      setAiLoading(true);
+      const res = await repairApi.aiCopilot(task._id);
+      if (res && res.success && res.copilot) {
+        setAiByTask((prev) => ({ ...prev, [task._id]: res.copilot }));
+        toast.success(`AI Kỹ thuật đã chẩn đoán nhiệm vụ [${task.ticket_code}]!`);
+      }
+    } catch (err) {
+      toast.error('Không thể chạy AI Chẩn đoán: ' + err.message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // Forms
   const [logData, setLogData] = useState({
@@ -446,6 +464,75 @@ export const TechnicianTasksPage = () => {
                 <div style={{ marginTop: '6px' }}>Phòng: <strong>{selectedTask.room_id?.code || selectedTask.equipment_id?.room_id?.code || 'Kho / Chưa gán'} {selectedTask.room_id?.name ? `- ${selectedTask.room_id.name}` : ''}</strong></div>
               </div>
 
+              {/* AI Technician Diagnosis & Spare Parts Copilot */}
+              <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-focus)', borderRadius: 'var(--radius-md)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 800, color: 'var(--ink-pure)' }}>
+                    <Icons.Sparkles size={15} style={{ color: 'var(--laser-cyan)' }} />
+                    <span>AI Chẩn Đoán & Gợi Ý Vật Tư Kho</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleLoadTaskAi(selectedTask)}
+                    disabled={aiLoading}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '11.5px', fontWeight: 700 }}
+                  >
+                    {aiLoading ? 'Đang Phân Tích...' : (aiByTask[selectedTask._id] ? 'Chẩn Đoán Lại' : 'AI Chẩn Đoán Lỗi')}
+                  </button>
+                </div>
+
+                {aiByTask[selectedTask._id] && (() => {
+                  const cp = aiByTask[selectedTask._id];
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                      {cp.disposal_advisory?.should_consider_disposal && (
+                        <div style={{ background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger-border)', color: 'var(--status-danger-color)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700 }}>
+                          ⚠ {cp.disposal_advisory.recommendation}
+                        </div>
+                      )}
+                      <div>
+                        <strong style={{ color: 'var(--ink-pure)' }}>Giả thuyết lỗi gốc:</strong>{' '}
+                        <span style={{ color: 'var(--ink-secondary)' }}>{cp.diagnosis?.root_cause}</span>
+                      </div>
+                      {Array.isArray(cp.diagnosis?.troubleshooting_steps) && cp.diagnosis.troubleshooting_steps.length > 0 && (
+                        <div>
+                          <strong style={{ color: 'var(--ink-pure)' }}>Các bước kiểm tra khuyến nghị:</strong>
+                          <ol style={{ margin: '4px 0 0 18px', padding: 0, color: 'var(--ink-secondary)' }}>
+                            {cp.diagnosis.troubleshooting_steps.map((step, idx) => (
+                              <li key={idx} style={{ marginBottom: '2px' }}>{step}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+                      {Array.isArray(cp.recommended_parts) && cp.recommended_parts.length > 0 && (
+                        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '8px 10px' }}>
+                          <div style={{ fontWeight: 800, color: 'var(--ink-pure)', marginBottom: '4px' }}>Vật tư thay thế cần mang theo (Kho KHO-01):</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {cp.recommended_parts.map((p) => (
+                              <span
+                                key={p._id}
+                                style={{
+                                  fontSize: '11px',
+                                  padding: '3px 8px',
+                                  borderRadius: '4px',
+                                  fontWeight: 700,
+                                  background: p.in_stock ? 'var(--status-success-bg)' : 'var(--status-danger-bg)',
+                                  color: p.in_stock ? 'var(--status-success-color)' : 'var(--status-danger-color)',
+                                  border: `1px solid ${p.in_stock ? 'var(--status-success-border)' : 'var(--status-danger-border)'}`
+                                }}
+                              >
+                                {p.name} ({p.in_stock ? `Còn ${p.stock} ${p.unit}` : 'Hết hàng'})
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               <div>
                 <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--ink-muted)', fontWeight: 700, marginBottom: '6px' }}>
                   Nhật Ký Thao Tác Kỹ Thuật (Repair Logs)
@@ -497,6 +584,46 @@ export const TechnicianTasksPage = () => {
 
             <form onSubmit={handleLogSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', background: 'var(--surface-2)', border: '1px solid var(--border-focus)', borderRadius: 'var(--radius-sm)', padding: '8px 10px' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Icons.Sparkles size={13} style={{ color: 'var(--laser-cyan)' }} />
+                    <span>Trợ lý AI soạn nhanh nhật ký kỹ thuật</span>
+                  </span>
+                  <button
+                    type="button"
+                    disabled={aiLoading}
+                    onClick={async () => {
+                      let cp = aiByTask[selectedTask._id];
+                      if (!cp) {
+                        setAiLoading(true);
+                        try {
+                          const res = await repairApi.aiCopilot(selectedTask._id);
+                          if (res?.success && res.copilot) {
+                            cp = res.copilot;
+                            setAiByTask((prev) => ({ ...prev, [selectedTask._id]: cp }));
+                          }
+                        } catch (err) {
+                          toast.error('Lỗi gọi AI: ' + err.message);
+                        } finally {
+                          setAiLoading(false);
+                        }
+                      }
+                      if (cp?.diagnosis) {
+                        setLogData((prev) => ({
+                          ...prev,
+                          action: cp.diagnosis.suggested_log_action || prev.action,
+                          notes: cp.diagnosis.suggested_log_notes || prev.notes
+                        }));
+                        toast.success('Đã điền mẫu nhật ký kỹ thuật từ AI!');
+                      }
+                    }}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
+                  >
+                    {aiLoading ? 'Đang Soạn...' : 'Điền Nhanh Bằng AI'}
+                  </button>
+                </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
                     Hành Động / Thao Tác Thực Hiện *
@@ -569,6 +696,45 @@ export const TechnicianTasksPage = () => {
 
             <form onSubmit={handleOutcomeSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', background: 'var(--surface-2)', border: '1px solid var(--border-focus)', borderRadius: 'var(--radius-sm)', padding: '8px 10px' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Icons.Sparkles size={13} style={{ color: 'var(--laser-cyan)' }} />
+                    <span>AI gợi ý kết luận (đối chiếu ngưỡng R-ratio 60%)</span>
+                  </span>
+                  <button
+                    type="button"
+                    disabled={aiLoading}
+                    onClick={async () => {
+                      let cp = aiByTask[selectedTask._id];
+                      if (!cp) {
+                        setAiLoading(true);
+                        try {
+                          const res = await repairApi.aiCopilot(selectedTask._id);
+                          if (res?.success && res.copilot) {
+                            cp = res.copilot;
+                            setAiByTask((prev) => ({ ...prev, [selectedTask._id]: cp }));
+                          }
+                        } catch (err) {
+                          toast.error('Lỗi gọi AI: ' + err.message);
+                        } finally {
+                          setAiLoading(false);
+                        }
+                      }
+                      if (cp?.diagnosis) {
+                        setOutcomeData({
+                          outcome: cp.diagnosis.suggested_outcome || 'repaired',
+                          notes: cp.diagnosis.suggested_outcome_notes || ''
+                        });
+                        toast.success('Đã điền gợi ý kết luận nghiệm thu từ AI!');
+                      }
+                    }}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
+                  >
+                    {aiLoading ? 'Đang Tính...' : 'Gợi Ý Kết Luận AI'}
+                  </button>
+                </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '8px' }}>
                     Kết Luận Tình Trạng Thiết Bị *
