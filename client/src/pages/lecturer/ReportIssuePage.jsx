@@ -9,6 +9,8 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
   const [rooms, setRooms] = useState([]);
   const [equipments, setEquipments] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [triaging, setTriaging] = useState(false);
+  const [triageResult, setTriageResult] = useState(null);
 
   const [formData, setFormData] = useState({
     room_id: preselectedRoom?._id || '',
@@ -66,6 +68,46 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
     } catch (err) {
       console.warn('Load room equipment warning:', err.message);
     }
+  };
+
+  const handleAiTriage = async () => {
+    if (!formData.incident_description.trim()) {
+      toast.error('Vui lòng nhập mô tả hiện tượng sự cố để AI phân tích.');
+      return;
+    }
+    try {
+      setTriaging(true);
+      const imagesArray = formData.incident_images
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const res = await repairApi.aiTriage({
+        room_id: formData.room_id,
+        equipment_id: formData.equipment_id,
+        incident_description: formData.incident_description.trim(),
+        incident_images: imagesArray
+      });
+
+      if (res && res.success && res.triage) {
+        setTriageResult(res.triage);
+        toast.success('AI đã phân tích mức độ ưu tiên, kiểm tra trùng lặp và chuẩn hóa mô tả!');
+      }
+    } catch (err) {
+      toast.error('Không thể chạy AI Phân loại sự cố: ' + err.message);
+    } finally {
+      setTriaging(false);
+    }
+  };
+
+  const handleApplyTriage = () => {
+    if (!triageResult) return;
+    setFormData((prev) => ({
+      ...prev,
+      damage_level: triageResult.suggested_damage_level || prev.damage_level,
+      incident_description: triageResult.refined_description || prev.incident_description
+    }));
+    toast.success('Đã áp dụng mức độ ưu tiên và mô tả kỹ thuật chuẩn từ AI!');
   };
 
   const handleSubmit = async (e) => {
@@ -228,11 +270,34 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
             </div>
           </div>
 
-          {/* Incident Description */}
+          {/* Incident Description + AI Triage Copilot */}
           <div>
-            <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: 'var(--ink-pure)' }}>
-              4. Mô Tả Chi Tiết Sự Cố *
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--ink-pure)' }}>
+                4. Mô Tả Chi Tiết Sự Cố *
+              </label>
+              <button
+                type="button"
+                onClick={handleAiTriage}
+                disabled={triaging}
+                className="laser-btn laser-btn-secondary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: 'var(--laser-cyan)',
+                  border: '1px solid var(--border-focus)',
+                  background: 'var(--surface-2)'
+                }}
+              >
+                <Icons.Sparkles size={14} />
+                <span>{triaging ? 'AI Đang Phân Tích...' : 'AI Phân Loại & Kiểm Tra Trùng Lặp'}</span>
+              </button>
+            </div>
             <textarea
               required
               rows={4}
@@ -242,6 +307,120 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
               className="ruo-portal-input"
               style={{ width: '100%', resize: 'vertical' }}
             />
+
+            {triageResult && (
+              <div
+                style={{
+                  marginTop: '12px',
+                  background: 'var(--surface-2)',
+                  border: '1.5px solid var(--border-focus)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '14px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: 'var(--status-info-bg)', color: 'var(--status-info-color)', border: '1px solid var(--status-info-border)' }}>
+                      <Icons.Sparkles size={12} />
+                      <span>{triageResult.engine === 'gemini' ? 'GEMINI AI TRIAGE' : 'RUO AI TRIAGE'}</span>
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11.5px',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background:
+                          triageResult.suggested_damage_level === 'critical'
+                            ? 'var(--status-danger-bg)'
+                            : triageResult.suggested_damage_level === 'major'
+                              ? 'var(--status-warning-bg)'
+                              : 'var(--status-success-bg)',
+                        color:
+                          triageResult.suggested_damage_level === 'critical'
+                            ? 'var(--status-danger-color)'
+                            : triageResult.suggested_damage_level === 'major'
+                              ? 'var(--status-warning-color)'
+                              : 'var(--status-success-color)',
+                        border: `1px solid ${
+                          triageResult.suggested_damage_level === 'critical'
+                            ? 'var(--status-danger-border)'
+                            : triageResult.suggested_damage_level === 'major'
+                              ? 'var(--status-warning-border)'
+                              : 'var(--status-success-border)'
+                        }`
+                      }}
+                    >
+                      Đề xuất: {triageResult.suggested_damage_level?.toUpperCase()} • SLA {triageResult.sla_label}
+                    </span>
+                    <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)' }}>
+                      Độ tin cậy: {triageResult.confidence}%
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleApplyTriage}
+                    className="laser-btn laser-btn-primary"
+                    style={{ padding: '5px 12px', fontSize: '11.5px', fontWeight: 700, borderRadius: 'var(--radius-sm)' }}
+                  >
+                    Áp Dụng Gợi Ý AI
+                  </button>
+                </div>
+
+                {Array.isArray(triageResult.duplicate_tickets) && triageResult.duplicate_tickets.length > 0 && (
+                  <div
+                    style={{
+                      background: 'var(--status-warning-bg)',
+                      border: '1px solid var(--status-warning-border)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '10px 12px',
+                      fontSize: '12px',
+                      color: 'var(--status-warning-color)'
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <Icons.AlertTriangle size={14} />
+                      <span>
+                        {triageResult.has_exact_duplicate
+                          ? 'Cảnh báo trùng lặp: Thiết bị này đang có phiếu báo hỏng chưa đóng!'
+                          : 'Lưu ý: Phòng học này đang có phiếu sự cố mở liên quan:'}
+                      </span>
+                    </div>
+                    {triageResult.duplicate_tickets.slice(0, 2).map((dup) => (
+                      <div key={dup._id || dup.ticket_code} style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', marginTop: '2px' }}>
+                        • <strong style={{ fontFamily: 'var(--font-mono)' }}>{dup.ticket_code}</strong> ({dup.status}): {dup.incident_description}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ fontSize: '12.5px', color: 'var(--ink-secondary)' }}>
+                  <strong style={{ color: 'var(--ink-pure)' }}>Nhận định kỹ thuật:</strong> {triageResult.reasoning}
+                </div>
+
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: '12px', color: 'var(--ink-primary)' }}>
+                  <div style={{ fontSize: '10.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-muted)', marginBottom: '3px' }}>
+                    Mô tả chuẩn hóa gợi ý
+                  </div>
+                  <div>{triageResult.refined_description}</div>
+                </div>
+
+                {Array.isArray(triageResult.quick_checks) && triageResult.quick_checks.length > 0 && (
+                  <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                    <strong style={{ color: 'var(--ink-secondary)' }}>Hướng dẫn xử lý nhanh tại chỗ:</strong>
+                    <ul style={{ margin: '4px 0 0 18px', padding: 0 }}>
+                      {triageResult.quick_checks.map((tip, i) => (
+                        <li key={i} style={{ marginBottom: '2px' }}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Incident Images Simulator */}
