@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -45,6 +45,9 @@ export const InventoryPage = () => {
   // AI Inventory Discrepancy Analyst State (Feature #4A)
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState(null);
+  const detailRequest = useRef(0);
+  const analysisRequest = useRef(0);
+  const selectedSessionId = useRef(null);
 
   const fetchRooms = async () => {
     try {
@@ -69,8 +72,14 @@ export const InventoryPage = () => {
       const list = res?.data || res?.sessions || [];
       setSessions(list);
       if (list.length > 0) {
-        loadSessionDetails(list[0]._id);
+        const selected = list.find((session) => session._id === selectedSessionId.current);
+        await loadSessionDetails(selected?._id || list[0]._id);
       } else {
+        selectedSessionId.current = null;
+        detailRequest.current += 1;
+        analysisRequest.current += 1;
+        setAiAnalysis(null);
+        setAiAnalyzing(false);
         setActiveSession(null);
         setSessionLogs([]);
       }
@@ -82,37 +91,51 @@ export const InventoryPage = () => {
   };
 
   const loadSessionDetails = async (sessionId) => {
+    const request = ++detailRequest.current;
+    selectedSessionId.current = sessionId;
+    analysisRequest.current += 1;
+    setAiAnalyzing(false);
+    setActiveSession(null);
+    setSessionLogs([]);
     try {
       setAiAnalysis(null);
       const res = await inventoryApi.getSessionById(sessionId);
+      if (request !== detailRequest.current) return;
       if (res && res.success && res.data) {
         setActiveSession(res.data);
         setSessionLogs(res.data.logs || []);
       }
     } catch (err) {
-      toast.error('Lỗi khi tải chi tiết đợt kiểm kê: ' + err.message);
+      if (request === detailRequest.current) toast.error('Lỗi khi tải chi tiết đợt kiểm kê: ' + err.message);
     }
   };
 
   const handleAiAnalyzeSession = async () => {
     if (!activeSession?._id) return;
+    const request = ++analysisRequest.current;
     try {
       setAiAnalyzing(true);
+      setAiAnalysis(null);
       const res = await inventoryApi.aiAnalyze(activeSession._id);
+      if (request !== analysisRequest.current) return;
       if (res && res.success && res.analysis) {
         setAiAnalysis(res.analysis);
         toast.success('AI đã hoàn tất phân tích bất thường & điểm nóng lệch kiểm kê!');
       }
     } catch (err) {
-      toast.error('Không thể chạy AI Phân tích kiểm kê: ' + err.message);
+      if (request === analysisRequest.current) toast.error('Không thể chạy AI Phân tích kiểm kê: ' + err.message);
     } finally {
-      setAiAnalyzing(false);
+      if (request === analysisRequest.current) setAiAnalyzing(false);
     }
   };
 
   useEffect(() => {
     fetchRooms();
     fetchSessions();
+    return () => {
+      detailRequest.current += 1;
+      analysisRequest.current += 1;
+    };
   }, []);
 
   const handleCreateSessionSubmit = async (e) => {
@@ -186,7 +209,7 @@ export const InventoryPage = () => {
         setQrInput('');
         setScanMode('auto');
         setDamageNote('');
-        await loadSessionDetails(activeSession._id);
+        if (selectedSessionId.current === activeSession._id) await loadSessionDetails(activeSession._id);
       }
     } catch (err) {
       toast.error('Lỗi khi kiểm kê thiết bị: ' + err.message);
@@ -201,7 +224,6 @@ export const InventoryPage = () => {
       const res = await inventoryApi.reconcile(activeSession._id);
       if (res && res.success) {
         toast.success(res.message || 'Đã chốt đối soát số liệu kiểm kê thành công!');
-        await loadSessionDetails(activeSession._id);
         await fetchSessions();
       }
     } catch (err) {
@@ -592,8 +614,13 @@ export const InventoryPage = () => {
                         }`
                       }}
                     >
-                      Mức rủi ro: {String(aiAnalysis.risk_level || 'low').toUpperCase()} • Điểm khớp chuẩn: {aiAnalysis.health_score}/100
+                      Mức rủi ro: {String(aiAnalysis.risk_level || 'low').toUpperCase()} • Điểm dữ liệu đã kiểm tra: {aiAnalysis.health_score}/100
                     </span>
+                    {aiAnalysis.metrics?.expected_count > 0 && (
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                        Tiến độ kiểm kê: {aiAnalysis.metrics.completion_percent ?? 0}%
+                      </span>
+                    )}
                     {aiAnalysis.metrics?.missing_value_vnd > 0 && (
                       <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--status-danger-color)' }}>
                         Rủi ro thất lạc: {Number(aiAnalysis.metrics.missing_value_vnd).toLocaleString('vi-VN')} VNĐ

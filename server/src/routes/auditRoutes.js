@@ -1,7 +1,7 @@
 import express from 'express';
 import { getAuditLogs, verifyAuditChain, exportAuditLogs } from '../controllers/auditController.js';
 import { analyzeAuditAnomalies } from '../controllers/aiController.js';
-import { protect, requireRole } from '../middlewares/authMiddleware.js';
+import { protect, requirePermission, requireRole } from '../middlewares/authMiddleware.js';
 import { createRateLimiter } from '../middlewares/securityMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
@@ -17,7 +17,7 @@ router.use(requireRole(USER_ROLES.ADMIN)); // Only Admin can inspect & export au
 
 router.get('/logs', getAuditLogs);
 router.get('/verify-chain', verifyAuditChain);
-router.post('/ai-analyze', aiRateLimiter, analyzeAuditAnomalies);
+router.post('/ai-analyze', aiRateLimiter, requirePermission('audit:read', USER_ROLES.ADMIN), analyzeAuditAnomalies);
 router.get('/export', exportAuditLogs);
 router.get('/export/csv', exportAuditLogs);
 

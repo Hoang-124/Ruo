@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { auditApi } from '../../lib/api';
 import { Button, Card, DataTable, StatusBadge, EmptyState } from '../../components/ui/Primitives';
@@ -18,6 +18,14 @@ export const AuditLogPage = () => {
   const [verificationResult, setVerificationResult] = useState(null);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiReport, setAiReport] = useState(null);
+  const analysisRequest = useRef(0);
+
+  useEffect(() => {
+    analysisRequest.current += 1;
+    setAiReport(null);
+    setAiAnalyzing(false);
+    return () => { analysisRequest.current += 1; };
+  }, [targetTableFilter]);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -64,9 +72,12 @@ export const AuditLogPage = () => {
 
   const handleAiAnalyzeAudit = async () => {
     if (typeof auditApi.aiAnalyze !== 'function') return;
+    const request = ++analysisRequest.current;
     setAiAnalyzing(true);
+    setAiReport(null);
     try {
       const res = await auditApi.aiAnalyze({ limit: 150, target_table: targetTableFilter });
+      if (request !== analysisRequest.current) return;
       if (res && res.success && res.analysis) {
         setAiReport(res.analysis);
         if (res.analysis.chain_integrity) {
@@ -75,9 +86,9 @@ export const AuditLogPage = () => {
         toast.success('AI CSO đã hoàn tất phân tích chuỗi SHA-256 và hành vi bảo mật!');
       }
     } catch (err) {
-      toast.error('Không thể chạy AI Phân tích kiểm toán: ' + err.message);
+      if (request === analysisRequest.current) toast.error('Không thể chạy AI Phân tích kiểm toán: ' + err.message);
     } finally {
-      setAiAnalyzing(false);
+      if (request === analysisRequest.current) setAiAnalyzing(false);
     }
   };
 

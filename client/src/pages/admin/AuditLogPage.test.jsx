@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AuditLogPage } from './AuditLogPage';
 
 const mocks = vi.hoisted(() => ({
@@ -28,6 +28,17 @@ vi.mock('../../lib/api', () => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+});
+
+it('discards AI audit analysis when the table scope changes during the request', async () => {
+  mocks.getLogs.mockResolvedValue({ success: true, logs: [] });
+  let resolveAnalysis;
+  mocks.aiAnalyze.mockImplementationOnce(() => new Promise((resolve) => { resolveAnalysis = resolve; }));
+  render(<AuditLogPage />);
+  fireEvent.click(screen.getByRole('button', { name: /AI Phân Tích Bất Thường/i }));
+  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'equipments' } });
+  await act(async () => resolveAnalysis({ success: true, analysis: { executive_summary: 'Phân tích phạm vi cũ', anomalies: [], recommendations: [] } }));
+  expect(screen.queryByText('Phân tích phạm vi cũ')).toBeNull();
 });
 
 it('verifies SHA-256 chain integrity and downloads CSV via authenticated blob request', async () => {

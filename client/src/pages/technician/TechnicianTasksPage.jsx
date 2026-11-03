@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -38,20 +38,34 @@ export const TechnicianTasksPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiByTask, setAiByTask] = useState({});
+  const aiRequest = useRef(0);
+  const formVersion = useRef(0);
+
+  useEffect(() => {
+    formVersion.current += 1;
+    aiRequest.current += 1;
+    setAiLoading(false);
+    return () => {
+      formVersion.current += 1;
+      aiRequest.current += 1;
+    };
+  }, [selectedTask?._id, showLogModal, showOutcomeModal]);
 
   const handleLoadTaskAi = async (task) => {
     if (!task?._id) return;
+    const request = ++aiRequest.current;
     try {
       setAiLoading(true);
       const res = await repairApi.aiCopilot(task._id);
+      if (request !== aiRequest.current) return;
       if (res && res.success && res.copilot) {
         setAiByTask((prev) => ({ ...prev, [task._id]: res.copilot }));
         toast.success(`AI Kỹ thuật đã chẩn đoán nhiệm vụ [${task.ticket_code}]!`);
       }
     } catch (err) {
-      toast.error('Không thể chạy AI Chẩn đoán: ' + err.message);
+      if (request === aiRequest.current) toast.error('Không thể chạy AI Chẩn đoán: ' + err.message);
     } finally {
-      setAiLoading(false);
+      if (request === aiRequest.current) setAiLoading(false);
     }
   };
 
@@ -67,7 +81,48 @@ export const TechnicianTasksPage = () => {
     notes: ''
   });
 
+  const applyAiDraft = async (kind) => {
+    const taskId = selectedTask?._id;
+    if (!taskId) return;
+    const version = formVersion.current;
+    const request = ++aiRequest.current;
+    try {
+      setAiLoading(true);
+      let cp = aiByTask[taskId];
+      if (!cp) {
+        const res = await repairApi.aiCopilot(taskId);
+        if (request !== aiRequest.current || version !== formVersion.current) return;
+        if (!res?.success || !res.copilot) throw new Error('Chưa nhận được gợi ý kỹ thuật.');
+        cp = res.copilot;
+        setAiByTask((prev) => ({ ...prev, [taskId]: cp }));
+      }
+      if (!cp?.diagnosis || version !== formVersion.current) return;
+      if (kind === 'log') {
+        setLogData((prev) => ({
+          ...prev,
+          action: cp.diagnosis.suggested_log_action || prev.action,
+          notes: cp.diagnosis.suggested_log_notes || prev.notes
+        }));
+      } else {
+        // The technician decides the physical outcome; AI only drafts review notes.
+        setOutcomeData((prev) => ({
+          ...prev,
+          notes: cp.diagnosis.suggested_outcome_notes || prev.notes
+        }));
+      }
+      toast.success('Đã điền bản nháp AI. Vui lòng đối chiếu thực tế trước khi lưu.');
+    } catch (err) {
+      if (request === aiRequest.current) toast.error('Lỗi gọi AI: ' + err.message);
+    } finally {
+      if (request === aiRequest.current) setAiLoading(false);
+    }
+  };
+
   const fetchTasks = async () => {
+    aiRequest.current += 1;
+    formVersion.current += 1;
+    setAiLoading(false);
+    setAiByTask({});
     try {
       setLoading(true);
       const currentUserId = String(currentUser?._id || currentUser?.id || '');
@@ -592,31 +647,7 @@ export const TechnicianTasksPage = () => {
                   <button
                     type="button"
                     disabled={aiLoading}
-                    onClick={async () => {
-                      let cp = aiByTask[selectedTask._id];
-                      if (!cp) {
-                        setAiLoading(true);
-                        try {
-                          const res = await repairApi.aiCopilot(selectedTask._id);
-                          if (res?.success && res.copilot) {
-                            cp = res.copilot;
-                            setAiByTask((prev) => ({ ...prev, [selectedTask._id]: cp }));
-                          }
-                        } catch (err) {
-                          toast.error('Lỗi gọi AI: ' + err.message);
-                        } finally {
-                          setAiLoading(false);
-                        }
-                      }
-                      if (cp?.diagnosis) {
-                        setLogData((prev) => ({
-                          ...prev,
-                          action: cp.diagnosis.suggested_log_action || prev.action,
-                          notes: cp.diagnosis.suggested_log_notes || prev.notes
-                        }));
-                        toast.success('Đã điền mẫu nhật ký kỹ thuật từ AI!');
-                      }
-                    }}
+                    onClick={() => applyAiDraft('log')}
                     className="laser-btn laser-btn-secondary"
                     style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
                   >
@@ -633,7 +664,7 @@ export const TechnicianTasksPage = () => {
                     required
                     placeholder="VD: Đoản mạch nguồn cấp, thay cầu chì 10A..."
                     value={logData.action}
-                    onChange={(e) => setLogData({ ...logData, action: e.target.value })}
+                    onChange={(e) => { formVersion.current += 1; setLogData({ ...logData, action: e.target.value }); }}
                     className="ruo-portal-input"
                     style={{ width: '100%' }}
                   />
@@ -647,7 +678,7 @@ export const TechnicianTasksPage = () => {
                     rows={3}
                     placeholder="Mô tả kỹ thuật bổ sung hoặc các phát hiện bất thường..."
                     value={logData.notes}
-                    onChange={(e) => setLogData({ ...logData, notes: e.target.value })}
+                    onChange={(e) => { formVersion.current += 1; setLogData({ ...logData, notes: e.target.value }); }}
                     className="ruo-portal-input"
                     style={{ width: '100%', resize: 'vertical' }}
                   />
@@ -699,35 +730,12 @@ export const TechnicianTasksPage = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', background: 'var(--surface-2)', border: '1px solid var(--border-focus)', borderRadius: 'var(--radius-sm)', padding: '8px 10px' }}>
                   <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                     <Icons.Sparkles size={13} style={{ color: 'var(--laser-cyan)' }} />
-                    <span>AI gợi ý kết luận (đối chiếu ngưỡng R-ratio 60%)</span>
+                    <span>AI soạn ghi chú đối chiếu; KTV xác nhận kết quả thực tế</span>
                   </span>
                   <button
                     type="button"
                     disabled={aiLoading}
-                    onClick={async () => {
-                      let cp = aiByTask[selectedTask._id];
-                      if (!cp) {
-                        setAiLoading(true);
-                        try {
-                          const res = await repairApi.aiCopilot(selectedTask._id);
-                          if (res?.success && res.copilot) {
-                            cp = res.copilot;
-                            setAiByTask((prev) => ({ ...prev, [selectedTask._id]: cp }));
-                          }
-                        } catch (err) {
-                          toast.error('Lỗi gọi AI: ' + err.message);
-                        } finally {
-                          setAiLoading(false);
-                        }
-                      }
-                      if (cp?.diagnosis) {
-                        setOutcomeData({
-                          outcome: cp.diagnosis.suggested_outcome || 'repaired',
-                          notes: cp.diagnosis.suggested_outcome_notes || ''
-                        });
-                        toast.success('Đã điền gợi ý kết luận nghiệm thu từ AI!');
-                      }
-                    }}
+                    onClick={() => applyAiDraft('outcome')}
                     className="laser-btn laser-btn-secondary"
                     style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
                   >
@@ -781,7 +789,7 @@ export const TechnicianTasksPage = () => {
                     rows={4}
                     placeholder="VD: Đã thay bóng đèn chiếu và vệ sinh thấu kính; kiểm tra chạy thử 30 phút đạt độ nét chuẩn..."
                     value={outcomeData.notes}
-                    onChange={(e) => setOutcomeData({ ...outcomeData, notes: e.target.value })}
+                    onChange={(e) => { formVersion.current += 1; setOutcomeData({ ...outcomeData, notes: e.target.value }); }}
                     className="ruo-portal-input"
                     style={{ width: '100%', resize: 'vertical' }}
                   />

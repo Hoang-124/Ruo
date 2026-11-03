@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { masterDataApi, equipmentApi, repairApi } from '../../lib/api';
@@ -11,6 +11,7 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
   const [submitting, setSubmitting] = useState(false);
   const [triaging, setTriaging] = useState(false);
   const [triageResult, setTriageResult] = useState(null);
+  const triageRequest = useRef(0);
 
   const [formData, setFormData] = useState({
     room_id: preselectedRoom?._id || '',
@@ -25,12 +26,31 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
   }, []);
 
   useEffect(() => {
+    let active = true;
+    setEquipments([]);
     if (formData.room_id) {
-      fetchRoomEquipments(formData.room_id);
-    } else {
-      setEquipments([]);
+      equipmentApi.list({ room: formData.room_id, limit: 100 }).then((res) => {
+        if (!active) return;
+        const list = res?.equipments || [];
+        setEquipments(list);
+        setFormData((prev) => ({
+          ...prev,
+          equipment_id: list.some((item) => item._id === prev.equipment_id)
+            ? prev.equipment_id : (list[0]?._id || '')
+        }));
+      }).catch((err) => {
+        if (active) toast.error('Không thể tải thiết bị của phòng: ' + err.message);
+      });
     }
+    return () => { active = false; };
   }, [formData.room_id]);
+
+  useEffect(() => {
+    triageRequest.current += 1;
+    setTriageResult(null);
+    setTriaging(false);
+    return () => { triageRequest.current += 1; };
+  }, [formData.room_id, formData.equipment_id, formData.incident_description, formData.incident_images]);
 
   useEffect(() => {
     if (preselectedRoom?._id) {
@@ -47,8 +67,8 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
       const res = await masterDataApi.getRooms({ limit: 100 });
       const availableRooms = (res?.rooms || []).filter(r => (r.room_type || r.type) !== 'warehouse');
       setRooms(availableRooms);
-      if (!formData.room_id && availableRooms.length > 0) {
-        setFormData(prev => ({ ...prev, room_id: availableRooms[0]._id }));
+      if (availableRooms.length > 0) {
+        setFormData(prev => prev.room_id ? prev : ({ ...prev, room_id: availableRooms[0]._id }));
       }
     } catch (err) {
       toast.error('Lỗi khi tải danh sách phòng: ' + err.message);
@@ -57,26 +77,15 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
     }
   };
 
-  const fetchRoomEquipments = async (roomId) => {
-    try {
-      const res = await equipmentApi.list({ room: roomId, limit: 100 });
-      const eqList = res?.equipments || [];
-      setEquipments(eqList);
-      if (!formData.equipment_id && eqList.length > 0) {
-        setFormData(prev => ({ ...prev, equipment_id: eqList[0]._id }));
-      }
-    } catch (err) {
-      console.warn('Load room equipment warning:', err.message);
-    }
-  };
-
   const handleAiTriage = async () => {
     if (!formData.incident_description.trim()) {
       toast.error('Vui lòng nhập mô tả hiện tượng sự cố để AI phân tích.');
       return;
     }
+    const request = ++triageRequest.current;
     try {
       setTriaging(true);
+      setTriageResult(null);
       const imagesArray = formData.incident_images
         .split('\n')
         .map((s) => s.trim())
@@ -89,14 +98,15 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
         incident_images: imagesArray
       });
 
+      if (request !== triageRequest.current) return;
       if (res && res.success && res.triage) {
         setTriageResult(res.triage);
         toast.success('AI đã phân tích mức độ ưu tiên, kiểm tra trùng lặp và chuẩn hóa mô tả!');
       }
     } catch (err) {
-      toast.error('Không thể chạy AI Phân loại sự cố: ' + err.message);
+      if (request === triageRequest.current) toast.error('Không thể chạy AI Phân loại sự cố: ' + err.message);
     } finally {
-      setTriaging(false);
+      if (request === triageRequest.current) setTriaging(false);
     }
   };
 
@@ -245,7 +255,7 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
               {[
                 { key: 'minor', label: 'Hỏng Nhẹ (Minor)', desc: 'Ảnh hưởng nhỏ, phòng vẫn học được', color: '#10B981', sla: 'Xử lý trong 48 giờ' },
                 { key: 'major', label: 'Hỏng Nặng (Major)', desc: 'Gián đoạn giảng dạy, cần thay thế', color: '#F59E0B', sla: 'Xử lý trong 24 giờ' },
-                { key: 'critical', label: 'Khẩn Cấp (Critical)', desc: 'Mất an toàn, chập cháy, tê liệt', color: '#EF4444', sla: 'Xử lý khẩn cấp 4 giờ' }
+                { key: 'critical', label: 'Khẩn Cấp (Critical)', desc: 'Mất an toàn, chập cháy, tê liệt', color: '#EF4444', sla: 'Xử lý khẩn cấp 8 giờ (24/7)' }
               ].map(lvl => (
                 <div
                   key={lvl.key}

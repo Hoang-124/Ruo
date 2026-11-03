@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { InventoryPage } from './InventoryPage';
 
 const mocks = vi.hoisted(() => ({
@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getSessions: vi.fn(),
   getSessionById: vi.fn(),
   aiAnalyze: vi.fn(),
+  reconcile: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   toastWarning: vi.fn()
@@ -37,13 +38,52 @@ vi.mock('../../lib/api', () => ({
   inventoryApi: {
     getSessions: mocks.getSessions,
     getSessionById: mocks.getSessionById,
-    aiAnalyze: mocks.aiAnalyze
+    aiAnalyze: mocks.aiAnalyze,
+    reconcile: mocks.reconcile
   }
 }));
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+});
+
+it('discards old inventory AI and detail responses after switching sessions', async () => {
+  const sessions = [{ _id: 'a', name: 'Đợt A' }, { _id: 'b', name: 'Đợt B' }];
+  mocks.getRooms.mockResolvedValue({ rooms: [] });
+  mocks.getSessions.mockResolvedValue({ success: true, data: sessions });
+  mocks.getSessionById.mockImplementation((id) => Promise.resolve({ success: true, data: { ...sessions.find((s) => s._id === id), logs: [] } }));
+  let resolveAnalysis;
+  mocks.aiAnalyze.mockImplementationOnce(() => new Promise((resolve) => { resolveAnalysis = resolve; }));
+  render(<InventoryPage />);
+  fireEvent.click(await screen.findByRole('button', { name: /AI Phân Tích Lệch/i }));
+  fireEvent.click(screen.getByText('Đợt B'));
+  await waitFor(() => expect(screen.getAllByText('Đợt B')).toHaveLength(2));
+  await act(async () => resolveAnalysis({ success: true, analysis: { executive_summary: 'Kết quả cũ đợt A', recommendations: [] } }));
+  expect(screen.queryByText('Kết quả cũ đợt A')).toBeNull();
+  let resolveDetails;
+  mocks.getSessionById.mockImplementationOnce(() => new Promise((resolve) => { resolveDetails = resolve; }));
+  fireEvent.click(screen.getByText('Đợt A'));
+  fireEvent.click(screen.getByText('Đợt B'));
+  await waitFor(() => expect(screen.getAllByText('Đợt B')).toHaveLength(2));
+  await act(async () => resolveDetails({ success: true, data: { ...sessions[0], logs: [] } }));
+  expect(screen.getAllByText('Đợt B')).toHaveLength(2);
+});
+
+it('keeps the newly selected session when reconciliation of another session completes', async () => {
+  const sessions = [{ _id: 'a', name: 'Đợt A', status: 'in_progress' }, { _id: 'b', name: 'Đợt B', status: 'in_progress' }];
+  mocks.getRooms.mockResolvedValue({ rooms: [] });
+  mocks.getSessions.mockResolvedValue({ success: true, data: sessions });
+  mocks.getSessionById.mockImplementation((id) => Promise.resolve({ success: true, data: { ...sessions.find((s) => s._id === id), logs: [] } }));
+  let resolveReconcile;
+  mocks.reconcile.mockImplementationOnce(() => new Promise((resolve) => { resolveReconcile = resolve; }));
+  render(<InventoryPage />);
+  fireEvent.click(await screen.findByRole('button', { name: /Chốt Số Liệu Đối Soát/i }));
+  fireEvent.click(screen.getByText('Đợt B'));
+  await waitFor(() => expect(screen.getAllByText('Đợt B')).toHaveLength(2));
+  await act(async () => resolveReconcile({ success: true }));
+  await waitFor(() => expect(mocks.getSessions).toHaveBeenCalledTimes(2));
+  expect(screen.getAllByText('Đợt B')).toHaveLength(2);
 });
 
 it('runs AI inventory discrepancy analysis and displays zombie asset warning + room hotspots', async () => {
@@ -82,7 +122,7 @@ it('runs AI inventory discrepancy analysis and displays zombie asset warning + r
       risk_level: 'critical',
       health_score: 42,
       executive_summary: 'Phát hiện 1 tài sản đã thanh lý vẫn xuất hiện thực địa tại P101.',
-      metrics: { missing_value_vnd: 6500000 },
+      metrics: { missing_value_vnd: 6500000, expected_count: 3, completion_percent: 33 },
       zombie_assets: [{ code: 'EQ-ZOMBIE-99', name: 'PC Dell Đã Thanh Lý', scanned_room: 'P101', price: 12000000 }],
       hotspots_by_room: [{ room_code: 'P101', missing: 1, wrong_location: 1, damaged: 0, exposure_vnd: 18500000 }],
       recommendations: ['Kiểm tra ngay hồ sơ thanh lý đối với EQ-ZOMBIE-99.']
@@ -96,6 +136,7 @@ it('runs AI inventory discrepancy analysis and displays zombie asset warning + r
   await waitFor(() => expect(mocks.aiAnalyze).toHaveBeenCalledWith('sess-1'));
 
   expect(await screen.findByText(/CẢNH BÁO TÀI SẢN BÓNG MA/i)).toBeTruthy();
-  expect(screen.getByText(/Điểm khớp chuẩn: 42\/100/i)).toBeTruthy();
+  expect(screen.getByText(/Điểm dữ liệu đã kiểm tra: 42\/100/i)).toBeTruthy();
+  expect(screen.getByText(/Tiến độ kiểm kê: 33%/i)).toBeTruthy();
   expect(screen.getByText(/Kiểm tra ngay hồ sơ thanh lý đối với EQ-ZOMBIE-99/i)).toBeTruthy();
 });

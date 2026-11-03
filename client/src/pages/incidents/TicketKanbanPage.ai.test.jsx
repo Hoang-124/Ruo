@@ -67,9 +67,8 @@ it('runs AI dispatch copilot in Assign Modal and applies optimal technician + sp
   });
   mocks.listEquipments.mockResolvedValue({
     success: true,
-    equipments: [
-      { _id: 'spare-eq-1', code: 'EQ-SPARE-01', name: 'Máy chiếu Epson dự phòng', brand: 'Epson', model: 'X41' }
-    ]
+    // The recommended asset is outside the first page of the warehouse list.
+    equipments: []
   });
   mocks.getRooms.mockResolvedValue({ success: true, rooms: [] });
   mocks.aiCopilot.mockResolvedValue({
@@ -106,12 +105,14 @@ it('runs AI dispatch copilot in Assign Modal and applies optimal technician + sp
   fireEvent.click(screen.getByRole('button', { name: /Gợi Ý Từ AI/i }));
 
   await waitFor(() => expect(mocks.aiCopilot).toHaveBeenCalledWith('rep-202'));
-  expect((await screen.findAllByText(/EQ-SPARE-01/)).length).toBeGreaterThanOrEqual(2);
+  await screen.findByText('EQ-SPARE-01');
 
   fireEvent.click(screen.getByRole('button', { name: /Áp Dụng Gợi Ý/i }));
+  expect(screen.getByRole('option', { name: /EQ-SPARE-01/ }).selected).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: /Xác Nhận Giao Việc/i }));
 
   await waitFor(() => expect(mocks.assignRepair).toHaveBeenCalledTimes(1));
   expect(mocks.assignRepair.mock.calls[0][1].assigned_to).toBe('tech-2');
   expect(mocks.assignRepair.mock.calls[0][1].replacement_equipment_id).toBe('spare-eq-1');
+  expect(mocks.assignRepair.mock.calls[0][1].deadline.toISOString()).toBe('2026-11-03T15:00:00.000Z');
 });

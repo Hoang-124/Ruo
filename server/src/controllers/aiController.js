@@ -23,11 +23,7 @@ import {
   buildAuditAnomalyAnalysis
 } from '../services/aiService.js';
 
-const canCallModel = (Model, methodName) => {
-  if (!Model || typeof Model[methodName] !== 'function') return false;
-  if (mongoose.connection.readyState === 1) return true;
-  return Model[methodName] !== mongoose.Model[methodName];
-};
+const isDocumentId = (value) => typeof value === 'string' && mongoose.isObjectIdOrHexString(value);
 
 // @desc    AI Incident Triage & Duplicate Detector for Lecturer Report Issue (Feature #1A)
 // @route   POST /api/repairs/ai-triage
@@ -40,53 +36,59 @@ export const triageIncidentReport = async (req, res) => {
       incident_images = []
     } = req.body || {};
 
-    const cleanDesc = String(incident_description || '').trim();
+    const cleanDesc = typeof incident_description === 'string' ? incident_description.trim() : '';
     if (!cleanDesc) {
       return res.status(400).json({
         success: false,
         message: 'Vui lòng nhập mô tả hiện tượng sự cố trước khi chạy AI Phân loại.'
       });
     }
+    if (cleanDesc.length > 10_000) {
+      return res.status(400).json({ success: false, message: 'Mô tả sự cố không được vượt quá 10.000 ký tự.' });
+    }
+
+    if ([room_id, equipment_id].some((id) => id !== undefined && id !== null && id !== '' && !isDocumentId(id))) {
+      return res.status(400).json({ success: false, message: 'Mã phòng hoặc thiết bị không hợp lệ.' });
+    }
+    if (typeof incident_images !== 'string' && (!Array.isArray(incident_images) || incident_images.some((image) => typeof image !== 'string'))) {
+      return res.status(400).json({ success: false, message: 'Ảnh hiện trường phải là danh sách đường dẫn.' });
+    }
 
     let equipment = null;
-    if (equipment_id && canCallModel(Equipment, 'findById')) {
-      try {
-        equipment = await Equipment.findById(equipment_id).populate('category_id', 'code name');
-      } catch (_) {
-        equipment = null;
+    if (equipment_id) {
+      equipment = await Equipment.findById(equipment_id).populate('category_id', 'code name');
+      if (!equipment) {
+        return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị để phân tích AI.' });
       }
     }
 
     let room = null;
-    if (room_id && canCallModel(Room, 'findById')) {
-      try {
-        room = await Room.findById(room_id).select('code name building floor room_type');
-      } catch (_) {
-        room = null;
+    const resolvedRoomId = room_id || equipment?.room_id;
+    if (resolvedRoomId) {
+      room = await Room.findById(resolvedRoomId).select('code name building floor room_type');
+      if (!room) {
+        return res.status(404).json({ success: false, message: 'Không tìm thấy phòng để phân tích AI.' });
       }
     }
-
-    let openRepairs = [];
-    if (canCallModel(Repair, 'find')) {
-      const orClauses = [];
-      if (equipment_id) orClauses.push({ equipment_id });
-      if (room_id) orClauses.push({ room_id });
-
-      if (orClauses.length > 0) {
-        try {
-          openRepairs = await Repair.find({
-            status: { $in: [REPAIR_STATUSES.REPORTED, REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] },
-            $or: orClauses
-          })
-            .populate('equipment_id', 'code name')
-            .populate('room_id', 'code name')
-            .sort({ created_at: -1 })
-            .limit(10);
-        } catch (_) {
-          openRepairs = [];
-        }
-      }
+    if (equipment && room_id && String(equipment.room_id?._id || equipment.room_id || '') !== String(room._id)) {
+      return res.status(400).json({ success: false, message: 'Thiết bị không thuộc phòng đã chọn. Vui lòng tải lại danh sách thiết bị.' });
     }
+
+    const findOpenRepairs = (filter) => Repair.find({
+      status: { $in: [REPAIR_STATUSES.REPORTED, REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] },
+      ...filter
+    })
+      .select('ticket_code equipment_id room_id status damage_level incident_description')
+      .populate('equipment_id', 'code name')
+      .populate('room_id', 'code name')
+      .sort({ created_at: -1 })
+      .limit(10);
+    // Keep exact equipment matches ahead of room-level context even in a busy room.
+    const [exactRepairs, roomRepairs] = await Promise.all([
+      equipment ? findOpenRepairs({ equipment_id: equipment._id }) : [],
+      room ? findOpenRepairs({ room_id: room._id, ...(equipment ? { equipment_id: { $ne: equipment._id } } : {}) }) : []
+    ]);
+    const openRepairs = [...new Map([...exactRepairs, ...roomRepairs].map((repair) => [String(repair._id), repair])).values()].slice(0, 10);
 
     const normalizedImages = Array.isArray(incident_images)
       ? incident_images.filter(Boolean)
@@ -116,10 +118,13 @@ export const triageIncidentReport = async (req, res) => {
 // @route   POST /api/repairs/:id/ai-copilot
 export const getRepairAiCopilot = async (req, res) => {
   try {
+    if (!isDocumentId(req.params?.id)) {
+      return res.status(400).json({ success: false, message: 'Mã phiếu sửa chữa không hợp lệ.' });
+    }
     const repair = await Repair.findById(req.params.id)
       .populate({
         path: 'equipment_id',
-        select: 'code name brand model price remaining_value estimated_repair_cost repair_count category_id room_id status warranty_status',
+        select: 'code name brand model price purchase_date depreciation_rate remaining_value estimated_repair_cost repair_count category_id room_id status warranty_status',
         populate: { path: 'category_id', select: 'code name' }
       })
       .populate('room_id', 'code name building floor')
@@ -146,6 +151,7 @@ export const getRepairAiCopilot = async (req, res) => {
     }
 
     const eqId = repair.equipment_id?._id || repair.equipment_id;
+    const categoryId = repair.equipment_id?.category_id?._id || repair.equipment_id?.category_id;
 
     const [
       equipmentHistory,
@@ -156,33 +162,24 @@ export const getRepairAiCopilot = async (req, res) => {
       openRepairs,
       resolvedRepairs
     ] = await Promise.all([
-      eqId && canCallModel(Repair, 'find')
+      eqId
         ? Repair.find({ equipment_id: eqId, _id: { $ne: repair._id } }).sort({ created_at: -1 }).limit(10)
         : Promise.resolve([]),
-      canCallModel(RepairLog, 'find')
-        ? RepairLog.find({ repair_id: repair._id }).sort({ created_at: -1 }).limit(20)
+      RepairLog.find({ repair_id: repair._id }).sort({ created_at: -1 }).limit(20),
+      SparePart.find().limit(100),
+      categoryId
+        ? Equipment.find({ status: EQUIPMENT_STATUSES.IN_STOCK, category_id: categoryId, _id: { $ne: eqId } }).limit(50)
         : Promise.resolve([]),
-      canCallModel(SparePart, 'find')
-        ? SparePart.find().limit(100)
-        : Promise.resolve([]),
-      canCallModel(Equipment, 'find')
-        ? Equipment.find({ status: EQUIPMENT_STATUSES.IN_STOCK }).limit(50)
-        : Promise.resolve([]),
-      canCallModel(User, 'find')
-        ? User.find({ role: USER_ROLES.TECHNICIAN, status: USER_STATUSES.ACTIVE }).select('full_name code email department role status')
-        : Promise.resolve([]),
-      canCallModel(Repair, 'find')
-        ? Repair.find({
-            status: { $in: [REPAIR_STATUSES.REPORTED, REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] }
-          }).select('assigned_to status deadline')
-        : Promise.resolve([]),
-      canCallModel(Repair, 'find')
-        ? Repair.find({
-            status: { $in: [REPAIR_STATUSES.RESOLVED, REPAIR_STATUSES.CLOSED] }
-          })
-            .populate('equipment_id', 'category_id')
-            .limit(200)
-        : Promise.resolve([])
+      User.find({ role: USER_ROLES.TECHNICIAN, status: USER_STATUSES.ACTIVE }).select('full_name code email department role status'),
+      Repair.find({
+        status: { $in: [REPAIR_STATUSES.REPORTED, REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] }
+      }).select('assigned_to status deadline'),
+      Repair.find({
+        status: { $in: [REPAIR_STATUSES.RESOLVED, REPAIR_STATUSES.CLOSED] }
+      })
+        .populate('equipment_id', 'category_id')
+        .sort({ resolved_at: -1, created_at: -1 })
+        .limit(200)
     ]);
 
     const copilot = await buildRepairCopilot({
@@ -209,6 +206,9 @@ export const getRepairAiCopilot = async (req, res) => {
 // @route   POST /api/inventory/sessions/:id/ai-analyze & POST /api/inventory-sessions/:id/ai-analyze
 export const analyzeInventoryDiscrepancies = async (req, res) => {
   try {
+    if (!isDocumentId(req.params?.id)) {
+      return res.status(400).json({ success: false, message: 'Mã đợt kiểm kê không hợp lệ.' });
+    }
     const session = await InventorySession.findById(req.params.id).populate('scope_ids', 'code name floor');
     if (!session) {
       return res.status(404).json({
@@ -232,20 +232,23 @@ export const analyzeInventoryDiscrepancies = async (req, res) => {
     let unscannedEquipments = [];
     let expectedCount = logs.length;
 
-    try {
+    if (!['completed', 'reconciled'].includes(session.status)) {
       const rawScopeIds = Array.isArray(session.scope_ids) ? session.scope_ids : [];
-      let roomIds = rawScopeIds.map((r) => (r && r._id ? r._id : r));
+      let roomIds = rawScopeIds.map((r) => (r && r._id ? r._id : r)).filter(Boolean);
 
-      if (roomIds.length === 0 && canCallModel(Room, 'find')) {
+      if (roomIds.length === 0 && session.scope_type !== 'room') {
         const roomFilter = { building: 'A1' };
-        if (session.scope_type === 'floor' && session.scope_floor) {
+        if (session.scope_type === 'floor') {
+          if (!Number.isInteger(session.scope_floor) || session.scope_floor < 1 || session.scope_floor > 5) {
+            return res.status(400).json({ success: false, message: 'Đợt kiểm kê thiếu tầng hợp lệ để xác định phạm vi.' });
+          }
           roomFilter.floor = Number(session.scope_floor);
         }
         const scopedRooms = await Room.find(roomFilter).select('_id');
         roomIds = Array.isArray(scopedRooms) ? scopedRooms.map((r) => r._id) : [];
       }
 
-      if (roomIds.length > 0 && canCallModel(Equipment, 'find')) {
+      if (roomIds.length > 0) {
         const rawExpected = await Equipment.find({
           room_id: { $in: roomIds },
           status: { $nin: [EQUIPMENT_STATUSES.DISPOSED, EQUIPMENT_STATUSES.LOST] }
@@ -261,8 +264,6 @@ export const analyzeInventoryDiscrepancies = async (req, res) => {
           unscannedEquipments = rawExpected.filter((eq) => !scannedIds.has(String(eq._id)));
         }
       }
-    } catch (_) {
-      unscannedEquipments = [];
     }
 
     const analysis = await buildInventoryDiscrepancyAnalysis({
@@ -286,7 +287,7 @@ export const analyzeInventoryDiscrepancies = async (req, res) => {
 export const analyzeAuditAnomalies = async (req, res) => {
   try {
     const rawLimit = Number(req.body?.limit || req.query?.limit || 150);
-    const limit = Math.max(10, Math.min(500, Number.isFinite(rawLimit) ? rawLimit : 150));
+    const limit = Math.max(10, Math.min(500, Number.isFinite(rawLimit) ? Math.trunc(rawLimit) : 150));
     const targetTable = req.body?.target_table || req.query?.target_table;
 
     const filter = {};

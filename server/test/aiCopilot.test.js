@@ -44,7 +44,7 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
     const res = makeRes();
     await triageIncidentReport(
       {
-        body: { room_id: 'room-1', equipment_id: 'eq-1', incident_description: '   ' },
+        body: { room_id: 'room-1', equipment_id: '507f1f77bcf86cd799439016', incident_description: '   ' },
         user: { _id: 'lec-1', role: 'lecturer' }
       },
       res
@@ -65,7 +65,8 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
 
     Equipment.findById = () =>
       chainable({
-        _id: 'eq-proj-1',
+        _id: '507f1f77bcf86cd799439011',
+        room_id: '507f1f77bcf86cd799439012',
         code: 'EQ-2026-101',
         name: 'Máy chiếu laser Epson',
         brand: 'Epson',
@@ -76,7 +77,7 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
       });
     Room.findById = () =>
       chainable({
-        _id: 'room-p301',
+        _id: '507f1f77bcf86cd799439012',
         code: 'P301',
         name: 'Phòng lý thuyết 301',
         floor: 3,
@@ -87,8 +88,8 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
         {
           _id: 'rep-dup-1',
           ticket_code: 'REP-DUP-001',
-          equipment_id: { _id: 'eq-proj-1', code: 'EQ-2026-101', name: 'Máy chiếu laser Epson' },
-          room_id: { _id: 'room-p301', code: 'P301' },
+          equipment_id: { _id: '507f1f77bcf86cd799439011', code: 'EQ-2026-101', name: 'Máy chiếu laser Epson' },
+          room_id: { _id: '507f1f77bcf86cd799439012', code: 'P301' },
           status: 'reported',
           damage_level: 'major',
           incident_description: 'Máy chiếu có mùi khét nhẹ ở nguồn'
@@ -99,8 +100,8 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
     await triageIncidentReport(
       {
         body: {
-          room_id: 'room-p301',
-          equipment_id: 'eq-proj-1',
+          room_id: '507f1f77bcf86cd799439012',
+          equipment_id: '507f1f77bcf86cd799439011',
           incident_description: 'Máy chiếu bốc khói khét, tia lửa điện ở ổ nguồn trần phòng P301!'
         },
         user: { _id: 'lec-1', role: 'lecturer' }
@@ -136,7 +137,7 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
     });
 
     const ticketDoc = {
-      _id: 'rep-100',
+      _id: '507f1f77bcf86cd799439014',
       ticket_code: 'REP-2026-100',
       status: 'reported',
       damage_level: 'major',
@@ -151,7 +152,7 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
         model: 'VPL-EX455',
         price: 15000000,
         remaining_value: 5000000,
-        estimated_repair_cost: 3600000, // rRatio = 72% >= 60%!
+        estimated_repair_cost: 3600000, // Canonical disposal R = 24% of original price.
         repair_count: 4,
         category_id: { _id: 'cat-proj', code: 'PROJ', name: 'Máy chiếu' }
       }
@@ -183,10 +184,13 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
         { _id: 'sp-lamp', code: 'SP-LAMP-01', name: 'Bóng đèn máy chiếu cao áp', stock: 4, min_stock: 2, price: 1500000, unit: 'Bóng' },
         { _id: 'sp-chair', code: 'SP-CHAIR-02', name: 'Bánh xe ghế xoay', stock: 12, min_stock: 5, price: 50000, unit: 'Cái' }
       ]);
-    Equipment.find = () =>
-      chainable([
+    let replacementFilter;
+    Equipment.find = (filter) => {
+      replacementFilter = filter;
+      return chainable([
         { _id: 'eq-spare-proj', code: 'EQ-SPARE-01', name: 'Máy chiếu dự phòng Epson', brand: 'Epson', model: 'X41', status: 'in_stock', category_id: 'cat-proj' }
       ]);
+    };
     User.find = () =>
       chainable([
         { _id: 'tech-busy', full_name: 'Trần Bận Rộn', code: 'KT01', department: 'Tổ Điện - Điện Tử', role: 'technician', status: 'active' },
@@ -197,7 +201,7 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
     const forbiddenRes = makeRes();
     await getRepairAiCopilot(
       {
-        params: { id: 'rep-100' },
+        params: { id: '507f1f77bcf86cd799439014' },
         user: { _id: 'tech-other', role: 'technician' }
       },
       forbiddenRes
@@ -208,7 +212,7 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
     const fmRes = makeRes();
     await getRepairAiCopilot(
       {
-        params: { id: 'rep-100' },
+        params: { id: '507f1f77bcf86cd799439014' },
         user: { _id: 'fm-1', role: 'facility_manager' }
       },
       fmRes
@@ -218,9 +222,11 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
     const copilot = fmRes.body.copilot;
     assert.equal(copilot.dispatch_recommendation.recommended_technician._id, 'tech-free');
     assert.equal(copilot.dispatch_recommendation.recommended_replacement._id, 'eq-spare-proj');
+    assert.equal(replacementFilter.category_id, 'cat-proj');
+    assert.equal(replacementFilter._id.$ne, 'eq-202');
     assert.equal(copilot.recommended_parts[0]._id, 'sp-lamp');
-    assert.equal(copilot.disposal_advisory.should_consider_disposal, true);
-    assert.ok(copilot.disposal_advisory.r_ratio >= 60);
+    assert.equal(copilot.disposal_advisory.should_consider_disposal, false);
+    assert.equal(copilot.disposal_advisory.r_ratio, 24);
   });
 
   test('Feature #4A: analyzeInventoryDiscrepancies flags zombie disposed assets, missing value exposure, and room hotspots', async (t) => {
@@ -238,7 +244,7 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
 
     InventorySession.findById = () =>
       chainable({
-        _id: 'sess-1',
+        _id: '507f1f77bcf86cd799439015',
         name: 'Kiểm kê Học kỳ 1 - Tòa A1',
         scope_type: 'building',
         status: 'in_progress',
@@ -295,7 +301,7 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
     const res = makeRes();
     await analyzeInventoryDiscrepancies(
       {
-        params: { id: 'sess-1' },
+        params: { id: '507f1f77bcf86cd799439015' },
         user: { _id: 'fm-1', role: 'facility_manager' }
       },
       res
@@ -388,8 +394,8 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
     });
 
     process.env.GEMINI_API_KEY = 'test-gemini-key';
-    Equipment.findById = () => chainable({ _id: 'eq-1', code: 'EQ-01', name: 'Điều hòa Panasonic', brand: 'Panasonic', model: 'CU-N12' });
-    Room.findById = () => chainable({ _id: 'r-1', code: 'P105', name: 'Phòng 105', floor: 1 });
+    Equipment.findById = () => chainable({ _id: '507f1f77bcf86cd799439016', room_id: '507f1f77bcf86cd799439017', code: 'EQ-01', name: 'Điều hòa Panasonic', brand: 'Panasonic', model: 'CU-N12' });
+    Room.findById = () => chainable({ _id: '507f1f77bcf86cd799439017', code: 'P105', name: 'Phòng 105', floor: 1 });
     Repair.find = () => chainable([]);
 
     globalThis.fetch = async () => ({
@@ -417,7 +423,7 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
     const res = makeRes();
     await triageIncidentReport(
       {
-        body: { room_id: 'r-1', equipment_id: 'eq-1', incident_description: 'Điều hòa bật 18 độ nhưng chỉ thổi gió nóng' },
+        body: { room_id: '507f1f77bcf86cd799439017', equipment_id: '507f1f77bcf86cd799439016', incident_description: 'Điều hòa bật 18 độ nhưng chỉ thổi gió nóng' },
         user: { _id: 'lec-1', role: 'lecturer' }
       },
       res

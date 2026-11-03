@@ -1,9 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { repairApi, authApi, equipmentApi, masterDataApi } from '../../lib/api';
 import { RepairStepper } from '../../components/repairs/RepairStepper';
 import { DeadlineCountdown } from '../../components/repairs/DeadlineCountdown';
+
+const toLocalDateTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
 
 export const TicketKanbanPage = () => {
   const { toast } = useToast();
@@ -24,6 +31,13 @@ export const TicketKanbanPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [aiCopilotLoading, setAiCopilotLoading] = useState(false);
   const [aiCopilotMap, setAiCopilotMap] = useState({});
+  const aiRequest = useRef(0);
+
+  useEffect(() => {
+    aiRequest.current += 1;
+    setAiCopilotLoading(false);
+    return () => { aiRequest.current += 1; };
+  }, [selectedTicket?._id]);
 
   // Forms
   const [assignForm, setAssignForm] = useState({
@@ -80,6 +94,9 @@ export const TicketKanbanPage = () => {
   ];
 
   const fetchData = async () => {
+    aiRequest.current += 1;
+    setAiCopilotLoading(false);
+    setAiCopilotMap({});
     try {
       setLoading(true);
       const [repRes, techRes, eqRes, roomRes, slaRes] = await Promise.all([
@@ -133,28 +150,39 @@ export const TicketKanbanPage = () => {
 
   const handleRunAiCopilot = async (ticket) => {
     if (!ticket?._id) return;
+    const request = ++aiRequest.current;
     try {
       setAiCopilotLoading(true);
       const res = await repairApi.aiCopilot(ticket._id);
+      if (request !== aiRequest.current) return;
       if (res && res.success && res.copilot) {
         setAiCopilotMap((prev) => ({ ...prev, [ticket._id]: res.copilot }));
         toast.success(`AI Copilot đã phân tích phiếu [${ticket.ticket_code}]!`);
       }
     } catch (err) {
-      toast.error('Lỗi khi chạy AI Điều phối: ' + err.message);
+      if (request === aiRequest.current) toast.error('Lỗi khi chạy AI Điều phối: ' + err.message);
     } finally {
-      setAiCopilotLoading(false);
+      if (request === aiRequest.current) setAiCopilotLoading(false);
     }
   };
 
   const applyAiDispatchRecommendation = (copilot) => {
     const rec = copilot?.dispatch_recommendation;
     if (!rec) return;
+    // AI searches the full category; the initial lists may be paginated.
+    if (rec.recommended_replacement?._id) {
+      setSpareEquipments((prev) => prev.some((eq) => eq._id === rec.recommended_replacement._id)
+        ? prev : [...prev, rec.recommended_replacement]);
+    }
+    if (rec.recommended_technician?._id) {
+      setTechnicians((prev) => prev.some((tech) => tech._id === rec.recommended_technician._id)
+        ? prev : [...prev, rec.recommended_technician]);
+    }
     setAssignForm((prev) => ({
       ...prev,
       assigned_to: rec.recommended_technician?._id || prev.assigned_to,
       damage_level: rec.suggested_damage_level || prev.damage_level,
-      deadline: rec.suggested_deadline ? new Date(rec.suggested_deadline).toISOString().slice(0, 16) : prev.deadline,
+      deadline: toLocalDateTime(rec.suggested_deadline) || prev.deadline,
       replacement_equipment_id: rec.recommended_replacement?._id || prev.replacement_equipment_id
     }));
     toast.success('Đã điền tự động KTV tối ưu, hạn SLA và thiết bị dự phòng từ AI!');
@@ -162,8 +190,8 @@ export const TicketKanbanPage = () => {
 
   const openAssign = (ticket) => {
     setSelectedTicket(ticket);
-    const defaultHours = ticket.damage_level === 'critical' ? 4 : ticket.damage_level === 'major' ? 24 : 48;
-    const defaultDeadline = new Date(Date.now() + defaultHours * 3600 * 1000).toISOString().slice(0, 16);
+    const defaultHours = ticket.damage_level === 'critical' ? 8 : ticket.damage_level === 'major' ? 24 : 48;
+    const defaultDeadline = toLocalDateTime(ticket.deadline) || toLocalDateTime(Date.now() + defaultHours * 3600 * 1000);
 
     setAssignForm({
       assigned_to: technicians[0]?._id || '',
@@ -716,7 +744,7 @@ export const TicketKanbanPage = () => {
                   >
                     <option value="minor">Hỏng Nhẹ (Minor - SLA 48h)</option>
                     <option value="major">Hỏng Nặng (Major - SLA 24h)</option>
-                    <option value="critical">Khẩn Cấp (Critical - SLA 4h)</option>
+                    <option value="critical">Khẩn Cấp (Critical - SLA 8h)</option>
                   </select>
                 </div>
 

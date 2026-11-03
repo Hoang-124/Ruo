@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ReportIssuePage } from './ReportIssuePage';
 
 const mocks = vi.hoisted(() => ({
@@ -31,7 +31,44 @@ vi.mock('../../lib/api', () => ({
 
 afterEach(() => {
   cleanup();
-  vi.clearAllMocks();
+  vi.resetAllMocks();
+});
+
+it('ignores triage for edited inputs and removes a completed suggestion after changing equipment', async () => {
+  mocks.getRooms.mockResolvedValue({ rooms: [{ _id: 'room-a', code: 'A' }] });
+  mocks.listEquipments.mockResolvedValue({ equipments: [{ _id: 'eq-a', code: 'EQ-A' }, { _id: 'eq-b', code: 'EQ-B' }] });
+  let resolveTriage;
+  mocks.aiTriage.mockImplementationOnce(() => new Promise((resolve) => { resolveTriage = resolve; }));
+  render(<ReportIssuePage />);
+  await screen.findAllByText(/EQ-A/);
+  const description = screen.getByPlaceholderText(/Máy chiếu bật không lên nguồn/i);
+  fireEvent.change(description, { target: { value: 'Sự cố A' } });
+  fireEvent.click(screen.getByRole('button', { name: /AI Phân Loại/i }));
+  fireEvent.change(description, { target: { value: 'Sự cố B' } });
+  const result = { success: true, triage: { suggested_damage_level: 'critical', refined_description: 'Mô tả cũ' } };
+  await act(async () => resolveTriage(result));
+  expect(screen.queryByRole('button', { name: /Áp Dụng Gợi Ý AI/i })).toBeNull();
+  expect(description.value).toBe('Sự cố B');
+  mocks.aiTriage.mockResolvedValueOnce(result);
+  fireEvent.click(screen.getByRole('button', { name: /AI Phân Loại/i }));
+  await screen.findByRole('button', { name: /Áp Dụng Gợi Ý AI/i });
+  fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: 'eq-b' } });
+  expect(screen.queryByRole('button', { name: /Áp Dụng Gợi Ý AI/i })).toBeNull();
+});
+
+it('keeps the selected room equipment when an earlier room request finishes last', async () => {
+  mocks.getRooms.mockResolvedValue({ rooms: [{ _id: 'room-a', code: 'A' }, { _id: 'room-b', code: 'B' }] });
+  let resolveRoomA;
+  mocks.listEquipments.mockImplementation(({ room }) => room === 'room-a'
+    ? new Promise((resolve) => { resolveRoomA = resolve; })
+    : Promise.resolve({ equipments: [{ _id: 'eq-b', code: 'EQ-B' }] }));
+  render(<ReportIssuePage />);
+  await waitFor(() => expect(mocks.listEquipments).toHaveBeenCalledWith({ room: 'room-a', limit: 100 }));
+  fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'room-b' } });
+  await screen.findAllByText(/EQ-B/);
+  await act(async () => resolveRoomA({ equipments: [{ _id: 'eq-a', code: 'EQ-A' }] }));
+  expect(screen.queryByText(/EQ-A/)).toBeNull();
+  expect(screen.getAllByRole('combobox')[1].value).toBe('eq-b');
 });
 
 it('runs AI incident triage, warns about duplicate open tickets, and applies priority + standardized description', async () => {
