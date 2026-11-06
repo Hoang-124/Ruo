@@ -281,7 +281,13 @@ Hệ thống bao gồm **21 Mongoose Models** tại `server/src/models/`, phân 
 ## 8. HƯỚNG DẪN CÀI ĐẶT, KHỞI CHẠY & KIỂM THỬ
 
 ### 8.1. Yêu Cầu Môi Trường
-- **Node.js**: `>= 18.0.0` (Khuyến nghị LTS `v20.x`)
+
+**Transaction:** duyệt xuất linh kiện, hoàn tất điều chuyển và tiếp nhận thay thế thanh lý yêu cầu MongoDB replica set (hoặc sharded cluster). MongoDB standalone trả HTTP 503 cho các thao tác này để tránh ghi dữ liệu một phần. Cấu hình `MONGO_URI` trỏ tới replica set đã khởi tạo; ví dụ `mongodb://127.0.0.1:27017/ruo_db?replicaSet=rs0`. Không chuyển cấu hình database đang có dữ liệu trước khi sao lưu.
+
+Frontend mặc định gọi `/api` cùng origin. Khi triển khai, cấu hình reverse proxy `/api` tới backend hoặc đặt `VITE_API_BASE_URL` theo `client/.env.example` trước khi build.
+
+Kiểm thử transaction dùng **database ngẫu nhiên riêng**, không seed database ứng dụng: đặt `TEST_MONGO_URI` tới replica set kiểm thử rồi chạy `npm --prefix server run test:task-scope`. Mặc định là `mongodb://127.0.0.1:27028`.
+- **Node.js**: `>= 22.12.0` (đã kiểm thử với Node 24; phù hợp Vitest 5 và Vite 8)
 - **MongoDB**: `>= 6.0` (Mặc định kết nối `mongodb://127.0.0.1:27017/ruo_db`)
 
 ### 8.2. Cài Đặt & Khởi Tạo Dữ Liệu Mẫu

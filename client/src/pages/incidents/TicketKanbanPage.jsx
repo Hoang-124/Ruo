@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { repairApi, authApi, equipmentApi, masterDataApi } from '../../lib/api';
@@ -14,7 +14,13 @@ const toLocalDateTime = (value) => {
 
 export const TicketKanbanPage = () => {
   const { toast } = useToast();
+  const { error: showError } = toast;
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [repairs, setRepairs] = useState([]);
   const [slaStats, setSlaStats] = useState(null);
@@ -33,9 +39,15 @@ export const TicketKanbanPage = () => {
   const [aiCopilotMap, setAiCopilotMap] = useState({});
   const aiRequest = useRef(0);
 
+  const aiContext = JSON.stringify([selectedTicket?._id]);
+  const [previousAiContext, setPreviousAiContext] = useState(aiContext);
+  if (previousAiContext !== aiContext) {
+    setPreviousAiContext(aiContext);
+    setAiCopilotLoading(false);
+  }
+
   useEffect(() => {
     aiRequest.current += 1;
-    setAiCopilotLoading(false);
     return () => { aiRequest.current += 1; };
   }, [selectedTicket?._id]);
 
@@ -93,7 +105,7 @@ export const TicketKanbanPage = () => {
     { id: 'closed', title: 'ĐÃ ĐÓNG PHIẾU', color: 'var(--ink-secondary)' }
   ];
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     aiRequest.current += 1;
     setAiCopilotLoading(false);
     setAiCopilotMap({});
@@ -123,11 +135,11 @@ export const TicketKanbanPage = () => {
         setSlaStats(slaRes.data);
       }
     } catch (err) {
-      toast.error('Lỗi khi tải dữ liệu sửa chữa: ' + err.message);
+      showError('Lỗi khi tải dữ liệu sửa chữa: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
 
   const handleCheckBreaches = async () => {
     try {
@@ -138,15 +150,17 @@ export const TicketKanbanPage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi kiểm tra vi phạm SLA: ' + err.message);
+      showError('Lỗi khi kiểm tra vi phạm SLA: ' + err.message);
     } finally {
       setCheckingBreaches(false);
     }
   };
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleRunAiCopilot = async (ticket) => {
     if (!ticket?._id) return;
@@ -160,7 +174,7 @@ export const TicketKanbanPage = () => {
         toast.success(`AI Copilot đã phân tích phiếu [${ticket.ticket_code}]!`);
       }
     } catch (err) {
-      if (request === aiRequest.current) toast.error('Lỗi khi chạy AI Điều phối: ' + err.message);
+      if (request === aiRequest.current) showError('Lỗi khi chạy AI Điều phối: ' + err.message);
     } finally {
       if (request === aiRequest.current) setAiCopilotLoading(false);
     }
@@ -191,7 +205,7 @@ export const TicketKanbanPage = () => {
   const openAssign = (ticket) => {
     setSelectedTicket(ticket);
     const defaultHours = ticket.damage_level === 'critical' ? 8 : ticket.damage_level === 'major' ? 24 : 48;
-    const defaultDeadline = toLocalDateTime(ticket.deadline) || toLocalDateTime(Date.now() + defaultHours * 3600 * 1000);
+    const defaultDeadline = toLocalDateTime(ticket.deadline) || toLocalDateTime(now + defaultHours * 3600 * 1000);
 
     setAssignForm({
       assigned_to: technicians[0]?._id || '',
@@ -205,7 +219,7 @@ export const TicketKanbanPage = () => {
   const handleAssignSubmit = async (e) => {
     e.preventDefault();
     if (!assignForm.assigned_to) {
-      toast.error('Vui lòng chọn Kỹ thuật viên phụ trách.');
+      showError('Vui lòng chọn Kỹ thuật viên phụ trách.');
       return;
     }
 
@@ -224,7 +238,7 @@ export const TicketKanbanPage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi phân công KTV: ' + err.message);
+      showError('Lỗi khi phân công KTV: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -259,7 +273,7 @@ export const TicketKanbanPage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi đóng phiếu: ' + err.message);
+      showError('Lỗi khi đóng phiếu: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -386,7 +400,7 @@ export const TicketKanbanPage = () => {
             const colTickets = repairs.filter(r => {
               if (r.status !== col.id) return false;
               if (filterMode === 'OVERDUE') {
-                return r.deadline_status === 'overdue' || (r.deadline && new Date(r.deadline).getTime() < Date.now());
+                return r.deadline_status === 'overdue' || (r.deadline && new Date(r.deadline).getTime() < now);
               }
               if (filterMode === 'AT_RISK') {
                 return r.deadline_status === 'at_risk' || (r.remaining_minutes > 0 && r.remaining_minutes <= 120);

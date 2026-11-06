@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { auditApi } from '../../lib/api';
-import { Button, Card, DataTable, StatusBadge, EmptyState } from '../../components/ui/Primitives';
+import { Button, Card, DataTable } from '../../components/ui/Primitives';
 import { useToast } from '../../context/ToastContext';
 
 export const AuditLogPage = () => {
   const { toast } = useToast();
+  const { error: showError } = toast;
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchFilter, setSearchFilter] = useState('');
@@ -22,12 +23,10 @@ export const AuditLogPage = () => {
 
   useEffect(() => {
     analysisRequest.current += 1;
-    setAiReport(null);
-    setAiAnalyzing(false);
     return () => { analysisRequest.current += 1; };
   }, [targetTableFilter]);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const res = await auditApi.getLogs({ limit: 100 });
@@ -35,15 +34,17 @@ export const AuditLogPage = () => {
         setLogs(res.logs || []);
       }
     } catch (err) {
-      toast.error('Không thể tải nhật ký kiểm toán: ' + err.message);
+      showError('Không thể tải nhật ký kiểm toán: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchLogs();
-  }, []);
+  }, [fetchLogs]);
 
   const handleVerifyChain = async () => {
     setVerifying(true);
@@ -57,14 +58,14 @@ export const AuditLogPage = () => {
             'Bảo Mật Tuyệt Đối'
           );
         } else {
-          toast.error(
+          showError(
             `CẢNH BÁO: Phát hiện vi phạm toàn vẹn tại khối seq=${res.verification.brokenAt} (${res.verification.reason})!`,
             'Phát Hiện Chỉnh Sửa Trái Phép'
           );
         }
       }
     } catch (err) {
-      toast.error('Lỗi khi kiểm tra chuỗi kiểm toán: ' + err.message);
+      showError('Lỗi khi kiểm tra chuỗi kiểm toán: ' + err.message);
     } finally {
       setVerifying(false);
     }
@@ -86,7 +87,7 @@ export const AuditLogPage = () => {
         toast.success('AI CSO đã hoàn tất phân tích chuỗi SHA-256 và hành vi bảo mật!');
       }
     } catch (err) {
-      if (request === analysisRequest.current) toast.error('Không thể chạy AI Phân tích kiểm toán: ' + err.message);
+      if (request === analysisRequest.current) showError('Không thể chạy AI Phân tích kiểm toán: ' + err.message);
     } finally {
       if (request === analysisRequest.current) setAiAnalyzing(false);
     }
@@ -106,7 +107,7 @@ export const AuditLogPage = () => {
       window.URL.revokeObjectURL(url);
       toast.success('Đã xuất tệp CSV sổ cái kiểm toán SHA-256 thành công.');
     } catch (err) {
-      toast.error('Không thể xuất CSV kiểm toán: ' + err.message);
+      showError('Không thể xuất CSV kiểm toán: ' + err.message);
     } finally {
       setExporting(false);
     }
@@ -476,7 +477,7 @@ export const AuditLogPage = () => {
             <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Bảng:</span>
             <select
               value={targetTableFilter}
-              onChange={(e) => setTargetTableFilter(e.target.value)}
+              onChange={(e) => { setTargetTableFilter(e.target.value); setAiReport(null); setAiAnalyzing(false); }}
               className="ruo-portal-input"
               style={{ height: '34px', fontSize: '12px', padding: '0 10px' }}
             >

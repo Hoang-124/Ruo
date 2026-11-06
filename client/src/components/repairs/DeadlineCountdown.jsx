@@ -81,7 +81,7 @@ function formatTimeRemaining(diffMs) {
  * - compact: boolean (render as inline badge or full card block)
  */
 export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = false }) => {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     // Only tick if ticket is active (not resolved/closed/unrepairable)
@@ -105,11 +105,9 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
 
   const deadlineTime = new Date(deadline).getTime();
   const diffMs = deadlineTime - now;
-  const isCompleted = ['resolved', 'closed', 'unrepairable'].includes(status);
   const formatted = formatTimeRemaining(diffMs);
 
   // SLA State Evaluation
-  let slaState = 'ON_TRACK';
   let rightHeadline = formatted.text;
   let rightSubline = formatted.detailed;
   let compactText = formatted.text;
@@ -124,7 +122,6 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
   };
 
   if (status === 'unrepairable') {
-    slaState = 'UNREPAIRABLE';
     rightHeadline = '✗ KHÔNG THỂ SỬA';
     rightSubline = 'Chờ đóng phiếu / thanh lý';
     compactText = 'Chờ thanh lý';
@@ -137,7 +134,6 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
       Icon: SvgIcons.AlertCircle
     };
   } else if (status === 'resolved') {
-    slaState = 'RESOLVED';
     rightHeadline = '✓ ĐÃ SỬA XONG';
     rightSubline = 'Chờ Quản lý nghiệm thu';
     compactText = 'Chờ nghiệm thu';
@@ -150,7 +146,6 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
       Icon: SvgIcons.CheckCircle
     };
   } else if (status === 'closed') {
-    slaState = 'COMPLETED';
     rightHeadline = '✓ ĐÃ ĐÓNG PHIẾU';
     rightSubline = 'Nhiệm vụ đã hoàn tất';
     compactText = 'Hoàn tất';
@@ -163,7 +158,6 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
       Icon: SvgIcons.CheckCircle
     };
   } else if (diffMs <= 0) {
-    slaState = 'OVERDUE';
     theme = {
       bg: 'rgba(239, 68, 68, 0.16)',
       border: 'rgba(239, 68, 68, 0.5)',
@@ -173,7 +167,6 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
       Icon: SvgIcons.AlertTriangle
     };
   } else if (diffMs <= 2 * 3600 * 1000) { // under 2 hours
-    slaState = 'AT_RISK';
     theme = {
       bg: 'rgba(245, 158, 11, 0.15)',
       border: 'rgba(245, 158, 11, 0.45)',

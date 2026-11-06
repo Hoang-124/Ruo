@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -6,6 +6,7 @@ import { equipmentApi, masterDataApi, movementApi } from '../../lib/api';
 
 export const MovementTasksPage = ({ preselectedEquipment = null, preselectedRoom = null, onClearPrefill }) => {
   const { toast } = useToast();
+  const { error: showError } = toast;
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [movements, setMovements] = useState([]);
@@ -22,12 +23,12 @@ export const MovementTasksPage = ({ preselectedEquipment = null, preselectedRoom
   const [requestForm, setRequestForm] = useState({ equipment_id: '', to_room_id: '', reason: '' });
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchMovements = async () => {
+  const fetchMovements = useCallback(async () => {
     try {
       setLoading(true);
       const [res, equipmentRes, roomRes] = await Promise.all([
         movementApi.list(),
-        equipmentApi.list({ limit: 500 }),
+        equipmentApi.listAll(),
         masterDataApi.getRooms({ limit: 500 })
       ]);
       setMovements(res.movements || []);
@@ -39,29 +40,32 @@ export const MovementTasksPage = ({ preselectedEquipment = null, preselectedRoom
         to_room_id: prev.to_room_id || roomRes.rooms?.[0]?._id || ''
       }));
     } catch (err) {
-      toast.error('Lỗi khi tải lệnh di chuyển: ' + err.message);
+      showError('Lỗi khi tải lệnh di chuyển: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchMovements();
-  }, []);
+  }, [fetchMovements]);
 
+  const [appliedPrefill, setAppliedPrefill] = useState(null);
+  if (preselectedEquipment && preselectedEquipment !== appliedPrefill && rooms.length) {
+    const eqRoomId = preselectedEquipment.room_id?._id || preselectedEquipment.room_id || preselectedRoom?._id || '';
+    setAppliedPrefill(preselectedEquipment);
+    setSourceRoomFilter(eqRoomId || 'ALL');
+    setRequestForm(prev => ({ ...prev, equipment_id: preselectedEquipment._id,
+      to_room_id: rooms.find(room => String(room._id) !== String(eqRoomId) && room.status !== 'inactive')?._id || prev.to_room_id
+    }));
+    setShowRequestModal(true);
+  }
+  // Acknowledge consumed navigation input after commit; never update the parent during render.
   useEffect(() => {
-    if (preselectedEquipment) {
-      const eqRoomId = preselectedEquipment.room_id?._id || preselectedEquipment.room_id || preselectedRoom?._id || '';
-      setSourceRoomFilter(eqRoomId || 'ALL');
-      setRequestForm(prev => ({
-        ...prev,
-        equipment_id: preselectedEquipment._id,
-        to_room_id: rooms.find(r => String(r._id) !== String(eqRoomId) && r.status !== 'inactive')?._id || prev.to_room_id
-      }));
-      setShowRequestModal(true);
-      onClearPrefill?.();
-    }
-  }, [preselectedEquipment, preselectedRoom, rooms, onClearPrefill]);
+    if (appliedPrefill && appliedPrefill === preselectedEquipment) onClearPrefill?.();
+  }, [appliedPrefill, preselectedEquipment, onClearPrefill]);
 
   const filteredSourceEquipments = equipments.filter(eq => {
     if (['disposed', 'lost'].includes(eq.status)) return false;
@@ -96,7 +100,7 @@ export const MovementTasksPage = ({ preselectedEquipment = null, preselectedRoom
         await fetchMovements();
       }
     } catch (err) {
-      toast.error('Lỗi khi xác nhận di chuyển: ' + err.message);
+      showError('Lỗi khi xác nhận di chuyển: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -105,7 +109,7 @@ export const MovementTasksPage = ({ preselectedEquipment = null, preselectedRoom
   const handleRequestSubmit = async (event) => {
     event.preventDefault();
     if (!requestForm.equipment_id || !requestForm.to_room_id || requestForm.reason.trim().length < 3) {
-      toast.error('Vui lòng chọn thiết bị, phòng đích và nhập lý do (ít nhất 3 ký tự).');
+      showError('Vui lòng chọn thiết bị, phòng đích và nhập lý do (ít nhất 3 ký tự).');
       return;
     }
     try {
@@ -121,7 +125,7 @@ export const MovementTasksPage = ({ preselectedEquipment = null, preselectedRoom
       setRequestForm(prev => ({ ...prev, reason: '' }));
       await fetchMovements();
     } catch (error) {
-      toast.error(`Không gửi được phiếu điều chuyển: ${error.message}`);
+      showError(`Không gửi được phiếu điều chuyển: ${error.message}`);
     } finally {
       setSubmitting(false);
     }

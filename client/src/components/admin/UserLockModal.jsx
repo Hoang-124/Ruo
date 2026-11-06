@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Icons } from '../common/SvgIcons';
 import { ROLE_METADATA, USER_ROLES } from '../../config/navigation';
 
@@ -7,7 +7,10 @@ import { ROLE_METADATA, USER_ROLES } from '../../config/navigation';
  * Supports selecting/entering lock reasons and warns about session revocation.
  * Strictly Native SVG Only.
  */
-export const UserLockModal = ({
+export const UserLockModal = (props) => props.isOpen && props.user
+  ? <UserLockModalContent key={props.user._id} {...props} /> : null;
+
+const UserLockModalContent = ({
   user,
   isOpen,
   onClose,
@@ -24,13 +27,6 @@ export const UserLockModal = ({
     'Cán bộ chuyển đơn vị / Nghỉ việc chưa thanh lý hồ sơ bàn giao',
     'custom'
   ];
-
-  useEffect(() => {
-    if (isOpen) {
-      setReasonOption('Nghi vấn an ninh / Tài khoản bị xâm phạm hoặc lộ thông tin');
-      setCustomReason('');
-    }
-  }, [isOpen]);
 
   if (!isOpen || !user) return null;
 

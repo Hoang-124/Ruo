@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -6,6 +6,7 @@ import { sparePartApi, repairApi } from '../../lib/api';
 
 export const SparePartsPage = () => {
   const { toast } = useToast();
+  const { error: showError } = toast;
   const { currentUser, hasPermission } = useAuth();
   const canApproveParts = Boolean(
     hasPermission?.('parts:approve') ||
@@ -56,7 +57,7 @@ export const SparePartsPage = () => {
     reason: 'Thay thế linh kiện hỏng trong quá trình sửa chữa'
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [partsRes, reqRes, repRes] = await Promise.all([
@@ -74,20 +75,22 @@ export const SparePartsPage = () => {
       if (repRes && repRes.success) {
         const inProgress = (repRes.repairs || []).filter(r => ['assigned', 'in_progress'].includes(r.status));
         setActiveRepairs(inProgress);
-        if (inProgress.length > 0 && !requestForm.repair_id) {
-          setRequestForm(prev => ({ ...prev, repair_id: inProgress[0]._id }));
+        if (inProgress.length > 0) {
+          setRequestForm(prev => prev.repair_id ? prev : ({ ...prev, repair_id: inProgress[0]._id }));
         }
       }
     } catch (err) {
-      toast.error('Lỗi khi tải kho linh kiện: ' + err.message);
+      showError('Lỗi khi tải kho linh kiện: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const openRequest = (part = null) => {
     setRequestForm({
@@ -102,15 +105,15 @@ export const SparePartsPage = () => {
   const handleRequestSubmit = async (e) => {
     e.preventDefault();
     if (!requestForm.part_id) {
-      toast.error('Vui lòng chọn linh kiện cần yêu cầu cấp phát.');
+      showError('Vui lòng chọn linh kiện cần yêu cầu cấp phát.');
       return;
     }
     if (!requestForm.repair_id) {
-      toast.error('Vui lòng chọn phiếu sửa chữa cần cấp linh kiện.');
+      showError('Vui lòng chọn phiếu sửa chữa cần cấp linh kiện.');
       return;
     }
     if (requestForm.qty < 1) {
-      toast.error('Số lượng linh kiện yêu cầu phải lớn hơn 0.');
+      showError('Số lượng linh kiện yêu cầu phải lớn hơn 0.');
       return;
     }
 
@@ -129,7 +132,7 @@ export const SparePartsPage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi gửi yêu cầu: ' + err.message);
+      showError('Lỗi khi gửi yêu cầu: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -150,11 +153,11 @@ export const SparePartsPage = () => {
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     if (!createForm.code.trim()) {
-      toast.error('Vui lòng nhập mã linh kiện (VD: PRT-RAM-8GB).');
+      showError('Vui lòng nhập mã linh kiện (VD: PRT-RAM-8GB).');
       return;
     }
     if (!createForm.name.trim()) {
-      toast.error('Vui lòng nhập tên linh kiện.');
+      showError('Vui lòng nhập tên linh kiện.');
       return;
     }
     try {
@@ -173,7 +176,7 @@ export const SparePartsPage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi thêm linh kiện: ' + err.message);
+      showError('Lỗi khi thêm linh kiện: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -195,7 +198,7 @@ export const SparePartsPage = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!editForm.name.trim()) {
-      toast.error('Vui lòng nhập tên linh kiện.');
+      showError('Vui lòng nhập tên linh kiện.');
       return;
     }
     try {
@@ -213,7 +216,7 @@ export const SparePartsPage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi cập nhật linh kiện: ' + err.message);
+      showError('Lỗi khi cập nhật linh kiện: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -230,7 +233,7 @@ export const SparePartsPage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi xóa linh kiện: ' + err.message);
+      showError('Lỗi khi xóa linh kiện: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -467,7 +470,6 @@ export const SparePartsPage = () => {
                 {requests.map(r => {
                   const isPending = r.status === 'pending';
                   const isApproved = r.status === 'approved';
-                  const isRejected = r.status === 'rejected';
 
                   return (
                     <tr key={r._id} style={{ borderBottom: '1px solid var(--hairline-soft)' }}>
@@ -515,7 +517,7 @@ export const SparePartsPage = () => {
                                     toast.success('Đã phê duyệt xuất kho linh kiện!');
                                     fetchData();
                                   } catch (err) {
-                                    toast.error('Lỗi duyệt linh kiện: ' + err.message);
+                                    showError('Lỗi duyệt linh kiện: ' + err.message);
                                   }
                                 }}
                                 className="laser-btn laser-btn-primary"
@@ -531,7 +533,7 @@ export const SparePartsPage = () => {
                                     toast.info('Đã từ chối yêu cầu cấp linh kiện.');
                                     fetchData();
                                   } catch (err) {
-                                    toast.error('Lỗi từ chối: ' + err.message);
+                                    showError('Lỗi từ chối: ' + err.message);
                                   }
                                 }}
                                 className="laser-btn laser-btn-secondary"

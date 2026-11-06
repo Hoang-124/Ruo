@@ -5,9 +5,9 @@ import { masterDataApi, equipmentApi, repairApi } from '../../lib/api';
 
 export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselectedRoom }) => {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+  const { error: showError } = toast;
   const [rooms, setRooms] = useState([]);
-  const [equipments, setEquipments] = useState([]);
+  const [equipmentResult, setEquipmentResult] = useState({ roomId: null, items: [] });
   const [submitting, setSubmitting] = useState(false);
   const [triaging, setTriaging] = useState(false);
   const [triageResult, setTriageResult] = useState(null);
@@ -21,65 +21,56 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
     incident_images: ''
   });
 
-  useEffect(() => {
-    fetchRooms();
-  }, []);
+  const equipments = equipmentResult.roomId === formData.room_id ? equipmentResult.items : [];
+  const prefillKey = JSON.stringify([preselectedRoom?._id, preselectedEquipment?._id]);
+  const [previousPrefill, setPreviousPrefill] = useState(prefillKey);
+  if (previousPrefill !== prefillKey) {
+    setPreviousPrefill(prefillKey);
+    setFormData(prev => ({ ...prev,
+      room_id: preselectedRoom?._id || prev.room_id,
+      equipment_id: preselectedEquipment?._id || prev.equipment_id
+    }));
+  }
+  const triageContext = JSON.stringify([formData.room_id, formData.equipment_id, formData.incident_description, formData.incident_images]);
+  const [previousTriageContext, setPreviousTriageContext] = useState(triageContext);
+  if (previousTriageContext !== triageContext) {
+    setPreviousTriageContext(triageContext);
+    setTriageResult(null);
+    setTriaging(false);
+  }
 
   useEffect(() => {
     let active = true;
-    setEquipments([]);
+    masterDataApi.getRooms({ limit: 100 }).then(res => {
+      if (!active) return;
+      const availableRooms = (res?.rooms || []).filter(r => (r.room_type || r.type) !== 'warehouse');
+      setRooms(availableRooms);
+      if (availableRooms.length) setFormData(prev => prev.room_id ? prev : ({ ...prev, room_id: availableRooms[0]._id }));
+    }).catch(err => { if (active) showError('Lỗi khi tải danh sách phòng: ' + err.message); });
+    return () => { active = false; };
+  }, [showError]);
+
+  useEffect(() => {
+    let active = true;
     if (formData.room_id) {
-      equipmentApi.list({ room: formData.room_id, limit: 100 }).then((res) => {
+      equipmentApi.list({ room: formData.room_id, limit: 100 }).then(res => {
         if (!active) return;
         const list = res?.equipments || [];
-        setEquipments(list);
-        setFormData((prev) => ({
-          ...prev,
-          equipment_id: list.some((item) => item._id === prev.equipment_id)
-            ? prev.equipment_id : (list[0]?._id || '')
-        }));
-      }).catch((err) => {
-        if (active) toast.error('Không thể tải thiết bị của phòng: ' + err.message);
-      });
+        setEquipmentResult({ roomId: formData.room_id, items: list });
+        setFormData(prev => ({ ...prev, equipment_id: list.some(item => item._id === prev.equipment_id) ? prev.equipment_id : (list[0]?._id || '') }));
+      }).catch(err => { if (active) showError('Không thể tải thiết bị của phòng: ' + err.message); });
     }
     return () => { active = false; };
-  }, [formData.room_id]);
+  }, [formData.room_id, showError]);
 
   useEffect(() => {
     triageRequest.current += 1;
-    setTriageResult(null);
-    setTriaging(false);
     return () => { triageRequest.current += 1; };
-  }, [formData.room_id, formData.equipment_id, formData.incident_description, formData.incident_images]);
-
-  useEffect(() => {
-    if (preselectedRoom?._id) {
-      setFormData(prev => ({ ...prev, room_id: preselectedRoom._id }));
-    }
-    if (preselectedEquipment?._id) {
-      setFormData(prev => ({ ...prev, equipment_id: preselectedEquipment._id }));
-    }
-  }, [preselectedRoom, preselectedEquipment]);
-
-  const fetchRooms = async () => {
-    try {
-      setLoading(true);
-      const res = await masterDataApi.getRooms({ limit: 100 });
-      const availableRooms = (res?.rooms || []).filter(r => (r.room_type || r.type) !== 'warehouse');
-      setRooms(availableRooms);
-      if (availableRooms.length > 0) {
-        setFormData(prev => prev.room_id ? prev : ({ ...prev, room_id: availableRooms[0]._id }));
-      }
-    } catch (err) {
-      toast.error('Lỗi khi tải danh sách phòng: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [triageContext]);
 
   const handleAiTriage = async () => {
     if (!formData.incident_description.trim()) {
-      toast.error('Vui lòng nhập mô tả hiện tượng sự cố để AI phân tích.');
+      showError('Vui lòng nhập mô tả hiện tượng sự cố để AI phân tích.');
       return;
     }
     const request = ++triageRequest.current;
@@ -104,7 +95,7 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
         toast.success('AI đã phân tích mức độ ưu tiên, kiểm tra trùng lặp và chuẩn hóa mô tả!');
       }
     } catch (err) {
-      if (request === triageRequest.current) toast.error('Không thể chạy AI Phân loại sự cố: ' + err.message);
+      if (request === triageRequest.current) showError('Không thể chạy AI Phân loại sự cố: ' + err.message);
     } finally {
       if (request === triageRequest.current) setTriaging(false);
     }
@@ -123,15 +114,15 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.room_id) {
-      toast.error('Vui lòng chọn phòng học xảy ra sự cố.');
+      showError('Vui lòng chọn phòng học xảy ra sự cố.');
       return;
     }
     if (!formData.equipment_id) {
-      toast.error('Vui lòng chọn thiết bị gặp sự cố.');
+      showError('Vui lòng chọn thiết bị gặp sự cố.');
       return;
     }
     if (!formData.incident_description.trim()) {
-      toast.error('Vui lòng nhập mô tả chi tiết sự cố hỏng hóc.');
+      showError('Vui lòng nhập mô tả chi tiết sự cố hỏng hóc.');
       return;
     }
 
@@ -158,7 +149,7 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
         }
       }
     } catch (err) {
-      toast.error('Lỗi khi gửi báo hỏng: ' + err.message);
+      showError('Lỗi khi gửi báo hỏng: ' + err.message);
     } finally {
       setSubmitting(false);
     }

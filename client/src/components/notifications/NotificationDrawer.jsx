@@ -466,7 +466,7 @@ export const NotificationDrawer = ({
               ) : null}
             </div>
           ) : (
-            visibleNotifications.map((item) => {
+            visibleNotifications.map((item, index) => {
               const notifId = item._id || item.id;
               const isUnread = !item.is_read && !item.read && !item.isRead;
               const meta = getCategoryMeta(item);
@@ -474,7 +474,7 @@ export const NotificationDrawer = ({
 
               return (
                 <div
-                  key={notifId || Math.random()}
+                  key={notifId || `notification-${index}`}
                   className={`ruo-notif-card category-${meta.key} ${isUnread ? 'unread' : 'read'}`}
                 >
                   {/* Category Avatar */}

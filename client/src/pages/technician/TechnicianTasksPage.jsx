@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -9,8 +9,16 @@ import { DeadlineCountdown } from '../../components/repairs/DeadlineCountdown';
 
 export const TechnicianTasksPage = () => {
   const { currentUser } = useAuth();
+  const userIdentity = useMemo(() => ({ _id: currentUser?._id, id: currentUser?.id, code: currentUser?.code, email: currentUser?.email }),
+    [currentUser?._id, currentUser?.id, currentUser?.code, currentUser?.email]);
   const { toast } = useToast();
+  const { error: showError } = toast;
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -25,7 +33,7 @@ export const TechnicianTasksPage = () => {
       if (res && res.repair) {
         setSelectedTask(res.repair);
       }
-    } catch (_) {
+    } catch {
       // Keep summary fallback if detail fetch fails
     } finally {
       setLoadingDetail(false);
@@ -41,10 +49,16 @@ export const TechnicianTasksPage = () => {
   const aiRequest = useRef(0);
   const formVersion = useRef(0);
 
+  const aiContext = JSON.stringify([selectedTask?._id, showLogModal, showOutcomeModal]);
+  const [previousAiContext, setPreviousAiContext] = useState(aiContext);
+  if (previousAiContext !== aiContext) {
+    setPreviousAiContext(aiContext);
+    setAiLoading(false);
+  }
+
   useEffect(() => {
     formVersion.current += 1;
     aiRequest.current += 1;
-    setAiLoading(false);
     return () => {
       formVersion.current += 1;
       aiRequest.current += 1;
@@ -63,7 +77,7 @@ export const TechnicianTasksPage = () => {
         toast.success(`AI Kỹ thuật đã chẩn đoán nhiệm vụ [${task.ticket_code}]!`);
       }
     } catch (err) {
-      if (request === aiRequest.current) toast.error('Không thể chạy AI Chẩn đoán: ' + err.message);
+      if (request === aiRequest.current) showError('Không thể chạy AI Chẩn đoán: ' + err.message);
     } finally {
       if (request === aiRequest.current) setAiLoading(false);
     }
@@ -112,36 +126,38 @@ export const TechnicianTasksPage = () => {
       }
       toast.success('Đã điền bản nháp AI. Vui lòng đối chiếu thực tế trước khi lưu.');
     } catch (err) {
-      if (request === aiRequest.current) toast.error('Lỗi gọi AI: ' + err.message);
+      if (request === aiRequest.current) showError('Lỗi gọi AI: ' + err.message);
     } finally {
       if (request === aiRequest.current) setAiLoading(false);
     }
   };
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     aiRequest.current += 1;
     formVersion.current += 1;
     setAiLoading(false);
     setAiByTask({});
     try {
       setLoading(true);
-      const currentUserId = String(currentUser?._id || currentUser?.id || '');
+      const userIdentityId = String(userIdentity?._id || userIdentity?.id || '');
       const res = await repairApi.list(
-        currentUserId && currentUserId !== 'guest' ? { assigned_to: currentUserId } : {}
+        userIdentityId && userIdentityId !== 'guest' ? { assigned_to: userIdentityId } : {}
       );
       if (res && res.success) {
-        setTasks((res.repairs || []).filter((r) => isSameUser(r.assigned_to, currentUser)));
+        setTasks((res.repairs || []).filter((r) => isSameUser(r.assigned_to, userIdentity)));
       }
     } catch (err) {
-      toast.error('Lỗi khi tải danh sách nhiệm vụ: ' + err.message);
+      showError('Lỗi khi tải danh sách nhiệm vụ: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError, userIdentity]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchTasks();
-  }, [currentUser?._id, currentUser?.id, currentUser?.code]);
+  }, [fetchTasks]);
 
   const handleAcceptTask = async (task) => {
     try {
@@ -152,7 +168,7 @@ export const TechnicianTasksPage = () => {
         await fetchTasks();
       }
     } catch (err) {
-      toast.error('Lỗi khi tiếp nhận nhiệm vụ: ' + err.message);
+      showError('Lỗi khi tiếp nhận nhiệm vụ: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -167,7 +183,7 @@ export const TechnicianTasksPage = () => {
   const handleLogSubmit = async (e) => {
     e.preventDefault();
     if (!logData.action.trim()) {
-      toast.error('Vui lòng nhập hành động đã thực hiện.');
+      showError('Vui lòng nhập hành động đã thực hiện.');
       return;
     }
 
@@ -185,7 +201,7 @@ export const TechnicianTasksPage = () => {
         await fetchTasks();
       }
     } catch (err) {
-      toast.error('Lỗi khi ghi nhật ký: ' + err.message);
+      showError('Lỗi khi ghi nhật ký: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -218,7 +234,7 @@ export const TechnicianTasksPage = () => {
         await fetchTasks();
       }
     } catch (err) {
-      toast.error('Lỗi khi báo cáo kết quả: ' + err.message);
+      showError('Lỗi khi báo cáo kết quả: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -272,14 +288,14 @@ export const TechnicianTasksPage = () => {
     if (statusFilter === 'ALL') return true;
     if (statusFilter === 'TODO') return t.status === 'assigned';
     if (statusFilter === 'DOING') return t.status === 'in_progress';
-    if (statusFilter === 'OVERDUE') return !['resolved', 'unrepairable', 'closed'].includes(t.status) && t.deadline && new Date(t.deadline).getTime() < Date.now();
+    if (statusFilter === 'OVERDUE') return !['resolved', 'unrepairable', 'closed'].includes(t.status) && t.deadline && new Date(t.deadline).getTime() < now;
     if (statusFilter === 'DONE') return ['resolved', 'unrepairable', 'closed'].includes(t.status);
     return true;
   });
 
   const countTodo = tasks.filter(t => t.status === 'assigned').length;
   const countDoing = tasks.filter(t => t.status === 'in_progress').length;
-  const countOverdue = tasks.filter(t => !['resolved', 'unrepairable', 'closed'].includes(t.status) && t.deadline && new Date(t.deadline).getTime() < Date.now()).length;
+  const countOverdue = tasks.filter(t => !['resolved', 'unrepairable', 'closed'].includes(t.status) && t.deadline && new Date(t.deadline).getTime() < now).length;
   const countDone = tasks.filter(t => ['resolved', 'unrepairable', 'closed'].includes(t.status)).length;
 
   return (
@@ -609,7 +625,7 @@ export const TechnicianTasksPage = () => {
                         <div key={log._id || idx} style={{ background: 'var(--surface-panel)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', fontSize: '12px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink-muted)', fontSize: '11px', marginBottom: '2px' }}>
                             <span>{actorName}</span>
-                            <span>{new Date(log.timestamp || log.created_at || Date.now()).toLocaleString('vi-VN')}</span>
+                            <span>{new Date(log.timestamp || log.created_at || now).toLocaleString('vi-VN')}</span>
                           </div>
                           <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{getLogActionLabel(log.action)}</div>
                           {detailNote && <div style={{ color: 'var(--ink-secondary)', marginTop: '2px' }}>{detailNote}</div>}

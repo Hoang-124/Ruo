@@ -1,50 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffectEvent } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { equipmentApi } from '../../lib/api';
 
-// Pure Native SVG 2D QR Matrix Generator (Zero external icon libraries)
-const InlineQrSvg = ({ value = 'QR-EQ-2026-001', size = 128 }) => {
-  const gridSize = 21;
-  const cells = [];
-  const seedStr = String(value || 'RUO-UEMS');
-
-  const isFinder = (r, c) =>
-    (r < 7 && c < 7) || (r < 7 && c >= gridSize - 7) || (r >= gridSize - 7 && c < 7);
-
-  const getFinderBit = (r, c) => {
-    const lr = r >= gridSize - 7 ? r - (gridSize - 7) : r;
-    const lc = c >= gridSize - 7 ? c - (gridSize - 7) : c;
-    if (lr === 0 || lr === 6 || lc === 0 || lc === 6) return true;
-    if (lr >= 2 && lr <= 4 && lc >= 2 && lc <= 4) return true;
-    return false;
-  };
-
-  for (let r = 0; r < gridSize; r++) {
-    for (let c = 0; c < gridSize; c++) {
-      let filled = false;
-      if (isFinder(r, c)) {
-        filled = getFinderBit(r, c);
-      } else if (r === 6 || c === 6) {
-        filled = (r + c) % 2 === 0;
-      } else {
-        const charIdx = (r * gridSize + c) % seedStr.length;
-        const code = seedStr.charCodeAt(charIdx);
-        filled = ((code * (r + 3) + c * 17 + charIdx * 31) % 7) < 3;
-      }
-      if (filled) {
-        cells.push(<rect key={`${r}-${c}`} x={c} y={r} width={1} height={1} fill="#000000" />);
-      }
-    }
-  }
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${gridSize} ${gridSize}`} shapeRendering="crispEdges" style={{ display: 'block' }}>
-      <rect width={gridSize} height={gridSize} fill="#ffffff" />
-      {cells}
-    </svg>
-  );
-};
+import { EquipmentQr } from '../../components/common/EquipmentQr';
 
 export const QRScannerPage = ({ onNavigateTab }) => {
   const { toast } = useToast();
@@ -61,6 +20,7 @@ export const QRScannerPage = ({ onNavigateTab }) => {
   const [sampleEquipments, setSampleEquipments] = useState([]);
   const videoRef = React.useRef(null);
   const streamRef = React.useRef(null);
+  const detectorRef = React.useRef(null);
 
   React.useEffect(() => {
     equipmentApi
@@ -73,10 +33,64 @@ export const QRScannerPage = ({ onNavigateTab }) => {
       .catch(() => {});
   }, []);
 
-  // Real WebRTC Camera + Native BarcodeDetector API with graceful simulation fallback
+  const executeQrLookup = useCallback(async (rawCode) => {
+    const cleanCode = String(rawCode || '').trim();
+    if (!cleanCode) return;
+
+    const startTime = performance.now();
+    try {
+      setLoading(true);
+      const res = await equipmentApi.getByQr(cleanCode);
+      const elapsed = Math.max(1, Math.round(performance.now() - startTime));
+      setLookupMs(elapsed);
+
+      if (res && res.success && res.equipment) {
+        setEquipment(res.equipment);
+        setRepairs(res.repairs || []);
+        setMovements(res.movements || []);
+        setLifecycle(res.lifecycle || null);
+        toast.success(`Đã tra cứu [${res.equipment.code}] ${res.equipment.name} trong ${elapsed}ms!`);
+      }
+    } catch {
+      toast.error('Không tìm thấy thiết bị với mã QR / Mã tài sản: ' + cleanCode);
+      setEquipment(null);
+      setRepairs([]);
+      setMovements([]);
+      setLifecycle(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  const lookupDetectedCode = useEffectEvent(code => executeQrLookup(code));
+  const toggleCamera = () => {
+    if (cameraActive) {
+      setCameraActive(false);
+      setCameraStreamActive(false);
+      setCameraHint('');
+      return;
+    }
+    try {
+      if (typeof window.BarcodeDetector !== 'function') throw new Error('unsupported');
+      detectorRef.current = new window.BarcodeDetector({ formats: ['qr_code'] });
+    } catch {
+      setCameraHint('Trình duyệt không hỗ trợ đọc QR bằng camera. Hãy nhập mã tài sản hoặc dùng đầu đọc QR.');
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraHint('Camera không khả dụng. Hãy dùng HTTPS để truy cập camera hoặc nhập mã tài sản.');
+      return;
+    }
+    setCameraHint('Đang yêu cầu quyền camera...');
+    setCameraActive(true);
+  };
+
+  // Only advertise scanning when an actual QR decoder and camera are available.
   React.useEffect(() => {
     let scanTimer = null;
     let cancelled = false;
+    let detecting = false;
+    let detected = false;
 
     const stopStream = () => {
       if (scanTimer) clearInterval(scanTimer);
@@ -84,12 +98,9 @@ export const QRScannerPage = ({ onNavigateTab }) => {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
-      setCameraStreamActive(false);
     };
 
     if (!cameraActive) {
-      stopStream();
-      setCameraHint('');
       return undefined;
     }
 
@@ -108,39 +119,40 @@ export const QRScannerPage = ({ onNavigateTab }) => {
             videoRef.current.srcObject = stream;
           }
 
-          if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
-            try {
-              const detector = new window.BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39'] });
-              scanTimer = setInterval(async () => {
-                if (!videoRef.current || videoRef.current.readyState < 2) return;
+          scanTimer = setInterval(async () => {
+                if (cancelled || detecting || detected || !videoRef.current || videoRef.current.readyState < 2) return;
+                detecting = true;
                 try {
-                  const barcodes = await detector.detect(videoRef.current);
+                  const barcodes = await detectorRef.current.detect(videoRef.current);
+                  if (cancelled || detected) return;
                   if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
                     const detectedCode = String(barcodes[0].rawValue).trim();
                     if (detectedCode) {
+                      detected = true;
+                      stopStream();
+                      setCameraStreamActive(false);
                       setQuery(detectedCode);
                       setCameraActive(false);
-                      executeQrLookup(detectedCode);
+                      lookupDetectedCode(detectedCode);
                     }
                   }
-                } catch (_) {
-                  // Ignore frame detection error
+                } catch {
+                  if (!cancelled) {
+                    stopStream();
+                    setCameraStreamActive(false);
+                    setCameraHint('Không thể đọc QR từ camera. Hãy nhập mã tài sản hoặc dùng đầu đọc QR.');
+                  }
+                } finally {
+                  detecting = false;
                 }
-              }, 300);
-            } catch (_) {
-              // BarcodeDetector format fallback
-            }
-          }
+          }, 300);
         })
         .catch(() => {
           if (!cancelled) {
             setCameraStreamActive(false);
-            setCameraHint('Thiết bị không có Camera vật lý hoặc chưa cấp quyền — Đang bật Chế độ Mô phỏng Quang học');
+            setCameraHint('Không thể mở camera. Hãy cấp quyền camera hoặc nhập mã tài sản để tra cứu.');
           }
         });
-    } else {
-      setCameraStreamActive(false);
-      setCameraHint('Trình duyệt không hỗ trợ WebRTC Camera — Đang bật Chế độ Mô phỏng Quang học');
     }
 
     return () => {
@@ -149,34 +161,7 @@ export const QRScannerPage = ({ onNavigateTab }) => {
     };
   }, [cameraActive]);
 
-  const executeQrLookup = async (rawCode) => {
-    const cleanCode = String(rawCode || '').trim();
-    if (!cleanCode) return;
 
-    const startTime = performance.now();
-    try {
-      setLoading(true);
-      const res = await equipmentApi.getByQr(cleanCode);
-      const elapsed = Math.max(1, Math.round(performance.now() - startTime));
-      setLookupMs(elapsed);
-
-      if (res && res.success && res.equipment) {
-        setEquipment(res.equipment);
-        setRepairs(res.repairs || []);
-        setMovements(res.movements || []);
-        setLifecycle(res.lifecycle || null);
-        toast.success(`Đã tra cứu [${res.equipment.code}] ${res.equipment.name} trong ${elapsed}ms!`);
-      }
-    } catch (_) {
-      toast.error('Không tìm thấy thiết bị với mã QR / Mã tài sản: ' + cleanCode);
-      setEquipment(null);
-      setRepairs([]);
-      setMovements([]);
-      setLifecycle(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -230,7 +215,7 @@ export const QRScannerPage = ({ onNavigateTab }) => {
               <div style={{ maxWidth: '380px', margin: '0 auto 16px', padding: '18px', background: '#0F172A', border: '2px solid #3B82F6', borderRadius: '12px', position: 'relative' }}>
                 <div style={{ fontSize: '11.5px', color: '#60A5FA', fontWeight: 800, marginBottom: '8px', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                   <span className="ruo-live-dot" style={{ color: '#10B981' }} />
-                  <span>{cameraStreamActive ? 'Camera WebRTC Thực Địa Đang Quét' : 'Camera Quang Học Đang Hoạt Động'}</span>
+                  <span>{cameraStreamActive ? 'Camera đang quét QR' : 'Camera chưa sẵn sàng'}</span>
                 </div>
                 <div className="ruo-laser-scan-box" style={{ height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px dashed #60A5FA', borderRadius: '8px', marginBottom: '10px', background: '#020617' }}>
                   <div className="ruo-laser-scan-line" />
@@ -260,7 +245,7 @@ export const QRScannerPage = ({ onNavigateTab }) => {
                   className="laser-btn laser-btn-primary"
                   style={{ padding: '7px 14px', fontSize: '12px', fontWeight: 800 }}
                 >
-                  Mô Phỏng Bắt Mã QR Thiết Bị Trong Khung Hình
+                  Tra cứu thiết bị mẫu (không quét camera)
                 </button>
               </div>
             ) : (
@@ -298,13 +283,15 @@ export const QRScannerPage = ({ onNavigateTab }) => {
               </button>
               <button
                 type="button"
-                onClick={() => setCameraActive((v) => !v)}
+                onClick={toggleCamera}
                 className="laser-btn laser-btn-secondary"
                 style={{ padding: '0 16px', height: '42px', fontSize: '12.5px', fontWeight: 800, border: '1.5px solid var(--border-strong)' }}
               >
                 {cameraActive ? 'Tắt Camera' : 'Bật Camera QR'}
               </button>
             </div>
+
+            {!cameraActive && cameraHint && <p role="status">{cameraHint}</p>}
 
             <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <button
@@ -313,7 +300,7 @@ export const QRScannerPage = ({ onNavigateTab }) => {
                 className="ruo-rbac-toggle-pill"
                 style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', background: 'var(--status-info-bg)', border: '1.5px solid var(--status-info-border)', color: 'var(--status-info-color)', cursor: 'pointer', fontWeight: 800 }}
               >
-                ⚡ Quét Thử Thiết Bị Mẫu Trong Kho Tòa A1
+                Tra cứu thiết bị mẫu trong kho
               </button>
 
               {sampleEquipments.map((item) => {
@@ -355,7 +342,7 @@ export const QRScannerPage = ({ onNavigateTab }) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
             <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div className="ruo-qr-badge-hover" style={{ padding: '8px', background: '#fff', borderRadius: '8px', border: '2px solid #0F172A' }}>
-                <InlineQrSvg value={equipment.qr_code || `QR-${equipment.code}`} size={88} />
+                <EquipmentQr value={equipment.qr_code || `QR-${equipment.code}`} size={88} />
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>

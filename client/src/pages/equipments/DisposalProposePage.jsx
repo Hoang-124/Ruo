@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -8,6 +8,7 @@ import { disposalApi, repairApi } from '../../lib/api';
 export const DisposalProposePage = () => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const { error: showError } = toast;
   const isTechnician = currentUser?.role === USER_ROLES.TECHNICIAN;
   const isFacilityManager = currentUser?.role === USER_ROLES.FACILITY_MANAGER;
   const [loading, setLoading] = useState(true);
@@ -31,7 +32,7 @@ export const DisposalProposePage = () => {
     recovery_value: 0
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [dispRes, repRes] = await Promise.all([
@@ -47,15 +48,17 @@ export const DisposalProposePage = () => {
         setClosedRepairs(repRes.repairs || []);
       }
     } catch (err) {
-      toast.error('Lỗi khi tải danh sách thanh lý: ' + err.message);
+      showError('Lỗi khi tải danh sách thanh lý: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError, isFacilityManager]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchData();
-  }, [isFacilityManager]);
+  }, [fetchData]);
 
   const openProposeModal = (eq = null) => {
     const equipment = eq || candidates[0];
@@ -71,11 +74,11 @@ export const DisposalProposePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.equipment_id) {
-      toast.error('Vui lòng chọn thiết bị cần đề xuất thanh lý.');
+      showError('Vui lòng chọn thiết bị cần đề xuất thanh lý.');
       return;
     }
     if (!formData.reason.trim()) {
-      toast.error('Vui lòng nhập lý do đề xuất thanh lý.');
+      showError('Vui lòng nhập lý do đề xuất thanh lý.');
       return;
     }
 
@@ -94,7 +97,7 @@ export const DisposalProposePage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi lập đề xuất: ' + err.message);
+      showError('Lỗi khi lập đề xuất: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -109,7 +112,7 @@ export const DisposalProposePage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi thẩm định CSVC: ' + err.message);
+      showError('Lỗi thẩm định CSVC: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -126,7 +129,7 @@ export const DisposalProposePage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi từ chối hồ sơ: ' + err.message);
+      showError('Lỗi từ chối hồ sơ: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -158,7 +161,7 @@ export const DisposalProposePage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi lập dự trù mua sắm: ' + err.message);
+      showError('Lỗi lập dự trù mua sắm: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -177,15 +180,15 @@ export const DisposalProposePage = () => {
     const price = Number(receiptForm.price);
     const budget = Number(selectedProposal.procurement?.budget);
     if (!receiptForm.code.trim()) {
-      toast.error('Vui lòng nhập mã tài sản mới.');
+      showError('Vui lòng nhập mã tài sản mới.');
       return;
     }
     if (!Number.isFinite(price) || price <= 0) {
-      toast.error('Nguyên giá thực tế phải lớn hơn 0.');
+      showError('Nguyên giá thực tế phải lớn hơn 0.');
       return;
     }
     if (!Number.isFinite(budget) || price > budget) {
-      toast.error('Nguyên giá thực tế không được vượt ngân sách dự trù.');
+      showError('Nguyên giá thực tế không được vượt ngân sách dự trù.');
       return;
     }
 
@@ -205,7 +208,7 @@ export const DisposalProposePage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi tiếp nhận thiết bị thay thế: ' + err.message);
+      showError('Lỗi khi tiếp nhận thiết bị thay thế: ' + err.message);
     } finally {
       setSubmitting(false);
     }
