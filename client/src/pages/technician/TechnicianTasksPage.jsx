@@ -153,6 +153,8 @@ export const TechnicianTasksPage = () => {
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case 'reported':
+        return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(245,158,11,0.15)', color: '#F59E0B' }}>Mới Tiếp Nhận</span>;
       case 'assigned':
         return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(6,182,212,0.15)', color: 'var(--laser-cyan)' }}>Cần Tiếp Nhận</span>;
       case 'in_progress':
@@ -165,6 +167,31 @@ export const TechnicianTasksPage = () => {
         return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(100,116,139,0.2)', color: 'var(--ink-secondary)' }}>Đã Đóng Phiếu</span>;
       default:
         return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(255,255,255,0.08)', color: 'var(--ink-muted)' }}>{status}</span>;
+    }
+  };
+
+  const getDamageLabel = (level) => {
+    switch (level) {
+      case 'critical':
+        return { label: 'Khẩn cấp', bg: 'rgba(239,68,68,0.2)', color: '#EF4444' };
+      case 'major':
+        return { label: 'Hỏng nặng', bg: 'rgba(245,158,11,0.2)', color: '#F59E0B' };
+      case 'minor':
+      default:
+        return { label: 'Hỏng nhẹ', bg: 'rgba(16,185,129,0.16)', color: '#10B981' };
+    }
+  };
+
+  const getLogActionLabel = (action) => {
+    switch (action) {
+      case 'reported': return 'Ghi nhận báo cáo sự cố';
+      case 'assigned': return 'Phân công Kỹ thuật viên';
+      case 'in_progress': return 'Cập nhật tiến độ sửa chữa';
+      case 'resolved': return 'Hoàn tất khắc phục sự cố';
+      case 'unrepairable': return 'Kết luận không thể sửa chữa';
+      case 'closed': return 'Nghiệm thu & đóng phiếu';
+      case 'escalated': return 'Cảnh báo vượt hạn SLA';
+      default: return action;
     }
   };
 
@@ -317,8 +344,8 @@ export const TechnicianTasksPage = () => {
                       {eq.name} ({eq.code})
                     </span>
                     {getStatusBadge(t.status)}
-                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: isCritical ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)', color: isCritical ? '#EF4444' : '#F59E0B' }}>
-                      Mức: {t.damage_level}
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: getDamageLabel(t.damage_level).bg, color: getDamageLabel(t.damage_level).color }}>
+                      Mức: {getDamageLabel(t.damage_level).label}
                     </span>
                   </div>
 
@@ -413,8 +440,10 @@ export const TechnicianTasksPage = () => {
             <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ background: 'var(--surface-panel)', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
                 <div>Trạng thái: {getStatusBadge(selectedTask.status)}</div>
-                <div style={{ marginTop: '4px' }}>Mức độ hư hỏng: <strong>{selectedTask.damage_level}</strong></div>
-                <div style={{ marginTop: '4px' }}>Phòng: <strong>{selectedTask.room_id?.code || selectedTask.equipment_id?.room_id?.code || 'Kho / Chưa gán'} {selectedTask.room_id?.name ? `- ${selectedTask.room_id.name}` : ''}</strong></div>
+                <div style={{ marginTop: '6px' }}>
+                  Mức độ hư hỏng: <strong style={{ color: getDamageLabel(selectedTask.damage_level).color }}>{getDamageLabel(selectedTask.damage_level).label}</strong>
+                </div>
+                <div style={{ marginTop: '6px' }}>Phòng: <strong>{selectedTask.room_id?.code || selectedTask.equipment_id?.room_id?.code || 'Kho / Chưa gán'} {selectedTask.room_id?.name ? `- ${selectedTask.room_id.name}` : ''}</strong></div>
               </div>
 
               <div>
@@ -440,7 +469,7 @@ export const TechnicianTasksPage = () => {
                             <span>{actorName}</span>
                             <span>{new Date(log.timestamp || log.created_at || Date.now()).toLocaleString('vi-VN')}</span>
                           </div>
-                          <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{log.action}</div>
+                          <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{getLogActionLabel(log.action)}</div>
                           {detailNote && <div style={{ color: 'var(--ink-secondary)', marginTop: '2px' }}>{detailNote}</div>}
                           {log.cost > 0 && <div style={{ color: '#10B981', marginTop: '2px' }}>Chi phí: {log.cost.toLocaleString('vi-VN')} đ</div>}
                         </div>

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icons } from '../../components/common/SvgIcons';
 import { facilityApi, movementApi } from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   TRANSFER_REASON_MAX,
   buildTransferPayload,
@@ -21,6 +22,8 @@ const errorStyle = { margin: '6px 0 0', fontSize: '12px', color: 'var(--crimson-
  */
 export const EquipmentTransferModal = ({ equipment, room, onClose, onOrdered }) => {
   const { toast } = useToast();
+  const { currentUser } = useAuth();
+  const isFM = currentUser?.role === 'facility_manager';
   const [rooms, setRooms] = useState([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [destinationId, setDestinationId] = useState('');
@@ -34,7 +37,7 @@ export const EquipmentTransferModal = ({ equipment, room, onClose, onOrdered }) 
     facilityApi.getAllRooms()
       .then((res) => {
         if (ignore) return;
-        const options = getTransferDestinations(res.rooms || [], room._id);
+        const options = getTransferDestinations(res.rooms || [], room._id, room.code);
         setRooms(options);
         setDestinationId(options[0]?._id || '');
       })
@@ -85,7 +88,9 @@ export const EquipmentTransferModal = ({ equipment, room, onClose, onOrdered }) 
         <div className="ruo-drawer-header">
           <div>
             <h2 id="equipment-transfer-title" className="ruo-drawer-title">Điều Chuyển Thiết Bị</h2>
-            <p className="ruo-drawer-subtitle">Chuyển khỏi phòng {room.code} • chờ CSVC duyệt & KTV xác nhận</p>
+            <p className="ruo-drawer-subtitle">
+              Chuyển khỏi phòng {room.code} • {isFM ? 'Lệnh có hiệu lực ngay, chờ KTV xác nhận' : 'Chờ CSVC duyệt & KTV xác nhận'}
+            </p>
           </div>
           <button type="button" onClick={onClose} className="ruo-drawer-close-btn" aria-label="Đóng"><Icons.Close size={18} /></button>
         </div>

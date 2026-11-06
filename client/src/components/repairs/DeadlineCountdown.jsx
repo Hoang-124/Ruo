@@ -110,23 +110,56 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
 
   // SLA State Evaluation
   let slaState = 'ON_TRACK';
+  let rightHeadline = formatted.text;
+  let rightSubline = formatted.detailed;
+  let compactText = formatted.text;
+
   let theme = {
     bg: 'rgba(16, 185, 129, 0.12)',
     border: 'rgba(16, 185, 129, 0.35)',
     color: '#10B981',
     pulse: false,
-    label: 'Đúng hạn SLA',
+    label: status === 'reported' ? 'Dự kiến hạn SLA (Chờ giao KTV)' : 'Đúng hạn SLA',
     Icon: SvgIcons.Clock
   };
 
-  if (isCompleted) {
+  if (status === 'unrepairable') {
+    slaState = 'UNREPAIRABLE';
+    rightHeadline = '✗ KHÔNG THỂ SỬA';
+    rightSubline = 'Chờ đóng phiếu / thanh lý';
+    compactText = 'Chờ thanh lý';
+    theme = {
+      bg: 'rgba(239, 68, 68, 0.12)',
+      border: 'rgba(239, 68, 68, 0.35)',
+      color: '#EF4444',
+      pulse: false,
+      label: 'Dừng SLA • Không thể sửa chữa',
+      Icon: SvgIcons.AlertCircle
+    };
+  } else if (status === 'resolved') {
+    slaState = 'RESOLVED';
+    rightHeadline = '✓ ĐÃ SỬA XONG';
+    rightSubline = 'Chờ Quản lý nghiệm thu';
+    compactText = 'Chờ nghiệm thu';
+    theme = {
+      bg: 'rgba(16, 185, 129, 0.12)',
+      border: 'rgba(16, 185, 129, 0.35)',
+      color: '#10B981',
+      pulse: false,
+      label: 'Đã khắc phục • Chờ nghiệm thu',
+      Icon: SvgIcons.CheckCircle
+    };
+  } else if (status === 'closed') {
     slaState = 'COMPLETED';
+    rightHeadline = '✓ ĐÃ ĐÓNG PHIẾU';
+    rightSubline = 'Nhiệm vụ đã hoàn tất';
+    compactText = 'Hoàn tất';
     theme = {
       bg: 'rgba(100, 116, 139, 0.12)',
       border: 'rgba(100, 116, 139, 0.3)',
       color: 'var(--ink-secondary)',
       pulse: false,
-      label: 'Đã hoàn tất',
+      label: 'Đã hoàn tất & Nghiệm thu',
       Icon: SvgIcons.CheckCircle
     };
   } else if (diffMs <= 0) {
@@ -181,7 +214,7 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
         }}
       >
         <theme.Icon size={12} color={theme.color} />
-        <span>{isCompleted ? 'Hoàn tất' : formatted.text}</span>
+        <span>{compactText}</span>
       </div>
     );
   }
@@ -211,7 +244,8 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
             border: `1px solid ${theme.border}`,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            flexShrink: 0
           }}
         >
           <theme.Icon size={16} color={theme.color} />
@@ -226,20 +260,20 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
         </div>
       </div>
 
-      <div style={{ textAlign: 'right' }}>
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div
           style={{
             fontFamily: 'var(--font-mono, monospace)',
-            fontSize: '16px',
+            fontSize: '15px',
             fontWeight: 800,
             color: theme.color,
-            letterSpacing: '0.04em'
+            letterSpacing: '0.03em'
           }}
         >
-          {isCompleted ? '✓ ĐÃ XONG' : formatted.text}
+          {rightHeadline}
         </div>
         <div style={{ fontSize: '10.5px', color: 'var(--ink-muted, #94A3B8)' }}>
-          {isCompleted ? 'Nhiệm vụ đã đóng' : formatted.detailed}
+          {rightSubline}
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { equipmentApi, masterDataApi, movementApi } from '../../lib/api';
 
-export const MovementTasksPage = () => {
+export const MovementTasksPage = ({ preselectedEquipment = null, preselectedRoom = null, onClearPrefill }) => {
   const { toast } = useToast();
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -18,6 +18,7 @@ export const MovementTasksPage = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [confirmNotes, setConfirmNotes] = useState('');
+  const [sourceRoomFilter, setSourceRoomFilter] = useState('');
   const [requestForm, setRequestForm] = useState({ equipment_id: '', to_room_id: '', reason: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,6 +48,36 @@ export const MovementTasksPage = () => {
   useEffect(() => {
     fetchMovements();
   }, []);
+
+  useEffect(() => {
+    if (preselectedEquipment) {
+      const eqRoomId = preselectedEquipment.room_id?._id || preselectedEquipment.room_id || preselectedRoom?._id || '';
+      setSourceRoomFilter(eqRoomId || 'ALL');
+      setRequestForm(prev => ({
+        ...prev,
+        equipment_id: preselectedEquipment._id,
+        to_room_id: rooms.find(r => String(r._id) !== String(eqRoomId) && r.status !== 'inactive')?._id || prev.to_room_id
+      }));
+      setShowRequestModal(true);
+      onClearPrefill?.();
+    }
+  }, [preselectedEquipment, preselectedRoom, rooms, onClearPrefill]);
+
+  const filteredSourceEquipments = equipments.filter(eq => {
+    if (['disposed', 'lost'].includes(eq.status)) return false;
+    if (!sourceRoomFilter || sourceRoomFilter === 'ALL') return true;
+    if (sourceRoomFilter === 'WAREHOUSE') {
+      return !eq.room_id || eq.room_id?.room_type === 'warehouse';
+    }
+    const eqRoomId = eq.room_id?._id || eq.room_id;
+    return String(eqRoomId) === String(sourceRoomFilter);
+  });
+
+  const selectedEqObj = equipments.find(eq => String(eq._id) === String(requestForm.equipment_id));
+  const currentEqRoomId = selectedEqObj?.room_id?._id || selectedEqObj?.room_id || '';
+  const availableDestinationRooms = rooms.filter(
+    r => r.status !== 'inactive' && String(r._id) !== String(currentEqRoomId)
+  );
 
   const openConfirmModal = (m) => {
     setSelectedMovement(m);
@@ -98,6 +129,8 @@ export const MovementTasksPage = () => {
 
   const getMovementTypeBadge = (type) => {
     switch (type) {
+      case 'allocation':
+        return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(16,185,129,0.15)', color: '#10B981' }}>Cấp Phát Ban Đầu</span>;
       case 'replacement':
         return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(6,182,212,0.15)', color: 'var(--laser-cyan)' }}>Thay Đồ Dự Phòng</span>;
       case 'transfer':
@@ -111,6 +144,12 @@ export const MovementTasksPage = () => {
       default:
         return <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, background: 'rgba(255,255,255,0.08)', color: 'var(--ink-muted)' }}>{type}</span>;
     }
+  };
+
+  const formatRoomDisplay = (room) => {
+    if (!room) return 'Kho dự phòng (KHO-01)';
+    if (!room.name || room.name === room.code) return room.code;
+    return `${room.code} (${room.name})`;
   };
 
   const filtered = movements.filter(m => {
@@ -241,8 +280,8 @@ export const MovementTasksPage = () => {
             <tbody>
               {filtered.map(m => {
                 const eq = m.equipment_id || {};
-                const fromRoom = m.from_room_id ? `${m.from_room_id.code} (${m.from_room_id.name})` : 'Kho dự phòng (null)';
-                const toRoom = m.to_room_id ? `${m.to_room_id.code} (${m.to_room_id.name})` : 'Kho dự phòng (null)';
+                const fromRoom = formatRoomDisplay(m.from_room_id);
+                const toRoom = formatRoomDisplay(m.to_room_id);
                 const canComplete = m.status === 'approved' || m.status === 'pending';
                 const isAssignedElsewhere = m.assigned_to?._id && m.assigned_to._id !== currentUser?._id;
                 const statusLabels = {
@@ -330,24 +369,74 @@ export const MovementTasksPage = () => {
             <form onSubmit={handleRequestSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'grid', gap: 14 }}>
                 <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>
-                  Thiết bị *
+                  Phòng xuất phát (Lọc thiết bị theo phòng)
                   <select
-                    required
-                    value={requestForm.equipment_id}
-                    onChange={event => setRequestForm(prev => ({ ...prev, equipment_id: event.target.value }))}
+                    value={sourceRoomFilter}
+                    onChange={event => {
+                      const nextRoom = event.target.value;
+                      setSourceRoomFilter(nextRoom);
+                      const matching = equipments.filter(eq => {
+                        if (['disposed', 'lost'].includes(eq.status)) return false;
+                        if (!nextRoom || nextRoom === 'ALL') return true;
+                        if (nextRoom === 'WAREHOUSE') return !eq.room_id || eq.room_id?.room_type === 'warehouse';
+                        return String(eq.room_id?._id || eq.room_id) === String(nextRoom);
+                      });
+                      const firstEq = matching[0];
+                      const firstEqRoomId = firstEq?.room_id?._id || firstEq?.room_id || '';
+                      const nextDest = rooms.find(r => r.status !== 'inactive' && String(r._id) !== String(firstEqRoomId));
+                      setRequestForm(prev => ({
+                        ...prev,
+                        equipment_id: firstEq?._id || '',
+                        to_room_id: nextDest?._id || prev.to_room_id
+                      }));
+                    }}
                     className="ruo-portal-input"
                     style={{ height: 38 }}
                   >
-                    <option value="" disabled>{equipments.length ? 'Chọn thiết bị cần điều chuyển' : 'Chưa có thiết bị trong hệ thống'}</option>
-                    {equipments.map(equipment => (
-                      <option key={equipment._id} value={equipment._id}>
-                        {equipment.code} — {equipment.name} ({equipment.room_id?.code || 'Kho dự phòng'})
+                    <option value="">Tất cả phòng học & kho ({equipments.length} thiết bị)</option>
+                    <option value="WAREHOUSE">[KHO] Kho dự phòng</option>
+                    {rooms.map(room => (
+                      <option key={room._id} value={room._id}>
+                        {room.room_type === 'warehouse' ? '[KHO] ' : ''}{room.code} — {room.name}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>
-                  Phòng đích *
+                  Thiết bị cần điều chuyển * ({filteredSourceEquipments.length} thiết bị)
+                  <select
+                    required
+                    value={requestForm.equipment_id}
+                    onChange={event => {
+                      const nextEqId = event.target.value;
+                      const eqObj = equipments.find(item => String(item._id) === String(nextEqId));
+                      const eqRoomId = eqObj?.room_id?._id || eqObj?.room_id || '';
+                      setRequestForm(prev => ({
+                        ...prev,
+                        equipment_id: nextEqId,
+                        to_room_id: String(prev.to_room_id) === String(eqRoomId)
+                          ? (rooms.find(r => r.status !== 'inactive' && String(r._id) !== String(eqRoomId))?._id || '')
+                          : prev.to_room_id
+                      }));
+                    }}
+                    className="ruo-portal-input"
+                    style={{ height: 38 }}
+                  >
+                    <option value="" disabled>{filteredSourceEquipments.length ? 'Chọn thiết bị cần điều chuyển' : 'Không có thiết bị tại phòng này'}</option>
+                    {filteredSourceEquipments.map(equipment => (
+                      <option key={equipment._id} value={equipment._id}>
+                        [{equipment.room_id?.code || 'KHO'}] {equipment.code} — {equipment.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {selectedEqObj && (
+                  <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '8px 12px', fontSize: '12px', color: 'var(--ink-secondary)' }}>
+                    Đang ở tại: <strong style={{ color: 'var(--ink-primary)' }}>{selectedEqObj.room_id ? `${selectedEqObj.room_id.code} — ${selectedEqObj.room_id.name || ''}` : 'Kho dự phòng'}</strong>
+                  </div>
+                )}
+                <label style={{ display: 'grid', gap: 5, fontSize: 12, fontWeight: 700 }}>
+                  Phòng đích (Nơi nhận) *
                   <select
                     required
                     value={requestForm.to_room_id}
@@ -355,8 +444,8 @@ export const MovementTasksPage = () => {
                     className="ruo-portal-input"
                     style={{ height: 38 }}
                   >
-                    <option value="" disabled>{rooms.length ? 'Chọn phòng đích' : 'Chưa có phòng trong hệ thống'}</option>
-                    {rooms.map(room => (
+                    <option value="" disabled>{availableDestinationRooms.length ? 'Chọn phòng đích' : 'Chưa có phòng đích phù hợp'}</option>
+                    {availableDestinationRooms.map(room => (
                       <option key={room._id} value={room._id}>
                         {room.room_type === 'warehouse' ? '[KHO] ' : ''}{room.code} — {room.name}
                       </option>

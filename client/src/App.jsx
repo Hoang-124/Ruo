@@ -59,6 +59,7 @@ const MainAppContent = () => {
   const { tab: activeTab, setTab: setActiveTab } = useRouter();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [reportPrefill, setReportPrefill] = useState({ equipment: null, room: null });
+  const [movementPrefill, setMovementPrefill] = useState({ equipment: null, room: null });
 
   if (!isLoggedIn) {
     return (
@@ -70,31 +71,22 @@ const MainAppContent = () => {
 
   // Subpage wrapper with Return-to-Dashboard breadcrumb
   const renderSubPageWrapper = (title, category, component) => (
-    <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '24px 32px 80px' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px',
-          paddingBottom: '14px',
-          borderBottom: '1px solid var(--border-default)'
-        }}
-      >
+    <div className="ruo-subpage-shell">
+      <div className="ruo-subpage-topbar">
         <button
           onClick={() => setActiveTab(currentRoleMeta?.defaultTab || 'dashboard')}
           className="ruo-btn ruo-btn-ghost ruo-btn-sm ruo-back-nav-btn"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: 'var(--ink-secondary)' }}
           title="Quay lại Trang Chủ Vận Hành"
         >
           <Icons.ChevronLeft size={14} />
           <span>Quay lại {currentRoleMeta?.shortLabel || 'Trang Chủ'}</span>
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-          <span style={{ color: 'var(--ink-muted)' }}>{category}</span>
+        <div className="ruo-subpage-breadcrumb">
+          <span className="ruo-subpage-crumb-category">{category}</span>
           <span style={{ color: 'var(--border-default)' }}>/</span>
-          <span style={{ color: 'var(--blueprint-400)', fontWeight: 700 }}>{title}</span>
+          <span className="ruo-subpage-crumb-title">{title}</span>
         </div>
       </div>
 
@@ -174,7 +166,11 @@ const MainAppContent = () => {
         return renderSubPageWrapper(
           'Lệnh Di Chuyển & Thay Thế Thiết Bị Dự Phòng',
           'LỆNH DI CHUYỂN & THAY THẾ THỰC ĐỊA',
-          <MovementTasksPage />
+          <MovementTasksPage
+            preselectedEquipment={movementPrefill.equipment}
+            preselectedRoom={movementPrefill.room}
+            onClearPrefill={() => setMovementPrefill({ equipment: null, room: null })}
+          />
         );
 
       case 'transfer_history':
@@ -222,7 +218,11 @@ const MainAppContent = () => {
         return renderSubPageWrapper(
           'Điều Chuyển Trang Thiết Bị Giữa Các Phòng',
           'ĐIỀU CHUYỂN TRANG THIẾT BỊ GIỮA CÁC PHÒNG',
-          <MovementsPage />
+          <MovementsPage
+            preselectedEquipment={movementPrefill.equipment}
+            preselectedRoom={movementPrefill.room}
+            onClearPrefill={() => setMovementPrefill({ equipment: null, room: null })}
+          />
         );
 
       case 'equipments':
@@ -297,6 +297,10 @@ const MainAppContent = () => {
               onSelectEquipmentForReport={(eq, room) => {
                 setReportPrefill({ equipment: eq, room: room });
                 setActiveTab('report_issue');
+              }}
+              onSelectEquipmentForMovement={(eq, room) => {
+                setMovementPrefill({ equipment: eq, room: room });
+                setActiveTab(currentUser?.role === 'facility_manager' ? 'movements' : 'movement_tasks');
               }}
             />
           </div>

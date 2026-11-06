@@ -49,21 +49,23 @@ export const RepairStepper = ({ status, outcome, logs = [], deadline }) => {
         background: isUnrepairable
           ? 'linear-gradient(90deg, #EF4444, #F87171)'
           : isClosed
-            ? 'linear-gradient(90deg, #10B981, #06B6D4)'
-            : 'linear-gradient(90deg, #06B6D4, #3B82F6)'
+            ? 'linear-gradient(90deg, #10B981, #34D399)'
+            : 'linear-gradient(90deg, var(--laser-cyan), #F59E0B)'
       }} />
 
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '8px',
         marginBottom: '16px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--laser-cyan)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--laser-cyan)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
           </svg>
-          <span style={{ fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ink-primary)' }}>
+          <span style={{ fontSize: '12.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ink-primary)', whiteSpace: 'nowrap' }}>
             Tiến Độ Khắc Phục Sự Cố (UC-5.7)
           </span>
         </div>
@@ -77,16 +79,17 @@ export const RepairStepper = ({ status, outcome, logs = [], deadline }) => {
             background: 'rgba(239,68,68,0.15)',
             color: '#EF4444',
             border: '1px solid rgba(239,68,68,0.3)',
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: '4px'
+            gap: '4px',
+            whiteSpace: 'nowrap'
           }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
               <circle cx="12" cy="12" r="10" />
               <line x1="15" y1="9" x2="9" y2="15" />
               <line x1="9" y1="9" x2="15" y2="15" />
             </svg>
-            Không Thể Sửa Chữa (Đề xuất thanh lý)
+            Không Thể Sửa (Chờ thanh lý)
           </span>
         ) : isClosed ? (
           <span style={{
@@ -97,11 +100,12 @@ export const RepairStepper = ({ status, outcome, logs = [], deadline }) => {
             background: 'rgba(16,185,129,0.15)',
             color: '#10B981',
             border: '1px solid rgba(16,185,129,0.3)',
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: '4px'
+            gap: '4px',
+            whiteSpace: 'nowrap'
           }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
               <polyline points="20 6 9 17 4 12" />
             </svg>
             Đã Nghiệm Thu & Đóng Phiếu
@@ -110,7 +114,8 @@ export const RepairStepper = ({ status, outcome, logs = [], deadline }) => {
           <span style={{
             fontSize: '11px',
             fontWeight: 700,
-            color: 'var(--laser-cyan)'
+            color: 'var(--laser-cyan)',
+            whiteSpace: 'nowrap'
           }}>
             Chặng {currentIndex + 1} / 4: {steps[currentIndex]?.label}
           </span>
@@ -135,17 +140,17 @@ export const RepairStepper = ({ status, outcome, logs = [], deadline }) => {
           let textColor = 'var(--ink-secondary)';
 
           if (isFailed) {
-            badgeBg = 'rgba(239,68,68,0.2)';
+            badgeBg = 'linear-gradient(rgba(239,68,68,0.18), rgba(239,68,68,0.18)), var(--surface-card)';
             badgeColor = '#EF4444';
             borderColor = '#EF4444';
             textColor = '#EF4444';
           } else if (isPassed) {
-            badgeBg = 'rgba(16,185,129,0.2)';
+            badgeBg = 'linear-gradient(rgba(16,185,129,0.18), rgba(16,185,129,0.18)), var(--surface-card)';
             badgeColor = '#10B981';
             borderColor = '#10B981';
             textColor = '#10B981';
           } else if (isCurrent) {
-            badgeBg = 'rgba(6,182,212,0.2)';
+            badgeBg = 'linear-gradient(rgba(234,88,12,0.14), rgba(234,88,12,0.14)), var(--surface-card)';
             badgeColor = 'var(--laser-cyan)';
             borderColor = 'var(--laser-cyan)';
             textColor = 'var(--ink-primary)';
@@ -163,11 +168,13 @@ export const RepairStepper = ({ status, outcome, logs = [], deadline }) => {
               {idx > 0 && (
                 <div style={{
                   position: 'absolute',
-                  top: '16px',
+                  top: '15px',
                   right: '50%',
-                  width: '100%',
+                  width: 'calc(100% + 8px)',
                   height: '2px',
-                  background: idx <= currentIndex ? 'var(--laser-cyan)' : 'var(--hairline-medium)',
+                  background: idx <= currentIndex
+                    ? (isFailed && idx === 2 ? '#EF4444' : idx <= currentIndex ? '#10B981' : 'var(--laser-cyan)')
+                    : 'var(--hairline-medium)',
                   zIndex: 0
                 }} />
               )}
@@ -187,7 +194,7 @@ export const RepairStepper = ({ status, outcome, logs = [], deadline }) => {
                 fontSize: '13px',
                 zIndex: 1,
                 marginBottom: '8px',
-                boxShadow: isCurrent ? '0 0 10px rgba(6,182,212,0.35)' : 'none',
+                boxShadow: isCurrent ? '0 0 0 3px rgba(234,88,12,0.15)' : 'none',
                 transition: 'all 0.2s ease'
               }}>
                 {isPassed ? (
