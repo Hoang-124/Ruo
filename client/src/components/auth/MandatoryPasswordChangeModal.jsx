@@ -107,7 +107,7 @@ export const MandatoryPasswordChangeModal = () => {
     try {
       await logout();
       toast.info('Đã đăng xuất tài khoản an toàn.', 'Đăng Xuất');
-    } catch (e) {
+    } catch {
       window.location.reload();
     } finally {
       setLoggingOut(false);

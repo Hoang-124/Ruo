@@ -1,0 +1,20 @@
+name: ruo_mobile
+description: Ruo Android - phong hoc, CAD va bao cao cua Tung.
+publish_to: none
+version: 1.0.0+1
+environment:
+  sdk: ^3.13.3
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.6.0
+  shared_preferences: ^2.5.6
+  mobile_scanner: ^7.5.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+flutter:
+  uses-material-design: true

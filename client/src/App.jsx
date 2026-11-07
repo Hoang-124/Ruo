@@ -1,6 +1,7 @@
 import React, { useState, Suspense, lazy } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { ToastProvider } from './context/ToastContext';
+import { AuthProvider } from './context/AuthProvider';
+import { useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastProvider';
 import { AppHeader } from './components/layout/AppHeader';
 import { Dashboard } from './pages/dashboard/Dashboard';
 import { Icons } from './components/common/SvgIcons';

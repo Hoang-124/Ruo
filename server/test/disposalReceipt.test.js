@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { completeDisposalReceipt } from '../src/controllers/disposalController.js';
@@ -9,6 +10,8 @@ import { EquipmentMovement } from '../src/models/EquipmentMovement.js';
 import { Room } from '../src/models/Room.js';
 
 const mockReceiptModels = (t, { budget = 12000000 } = {}) => {
+  const session = { withTransaction: async (fn) => fn(), endSession: async () => {} };
+  t.mock.method(mongoose, 'startSession', async () => session);
   const proposal = {
     _id: 'disposal-1',
     status: 'procurement_planned',
@@ -41,8 +44,8 @@ const mockReceiptModels = (t, { budget = 12000000 } = {}) => {
   Equipment.findById = async () => original;
   Equipment.findOne = async () => null;
   Equipment.exists = async () => false;
-  Equipment.create = async (data) => Object.assign(replacement, data);
-  EquipmentMovement.create = async (data) => movements.push(data);
+  Equipment.create = async ([data]) => [Object.assign(replacement, data)];
+  EquipmentMovement.create = async ([data]) => movements.push(data);
   Category.findById = async () => ({ _id: 'category-1' });
   Room.findById = async () => ({ _id: 'room-1' });
   AuditLog.logAction = async (data) => auditRecords.push(data);

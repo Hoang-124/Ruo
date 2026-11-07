@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ruo — Bảng Mã QR Kiểm Thử Thực Địa</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --border: #1f293d;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --brand: #38bdf8;
+      --brand-accent: #0284c7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 32px 20px;
+    }
+    .header {
+      max-width: 1200px;
+      margin: 0 auto 32px;
+      text-align: center;
+    }
+    .logo-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 999px;
+      color: var(--brand);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    p.lead {
+      color: var(--text-muted);
+      font-size: 15px;
+      max-width: 650px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .qr-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .qr-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--brand);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+    }
+    .badge {
+      align-self: flex-end;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      margin-bottom: 12px;
+    }
+    .qr-img-wrap {
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .qr-img {
+      display: block;
+      width: 220px;
+      height: 220px;
+      image-rendering: pixelated;
+    }
+    .zoom-hint {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(15, 23, 42, 0.85);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .qr-card:hover .zoom-hint {
+      opacity: 1;
+    }
+    .qr-code-text {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--brand);
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .qr-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+    .qr-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .qr-desc {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.4;
+    }
+    .instructions {
+      max-width: 1200px;
+      margin: 40px auto 0;
+      background: rgba(56, 189, 248, 0.05);
+      border: 1px dashed rgba(56, 189, 248, 0.25);
+      border-radius: 14px;
+      padding: 20px 24px;
+    }
+    .instructions h3 {
+      color: var(--brand);
+      font-size: 15px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .instructions ol {
+      padding-left: 20px;
+      color: var(--text-muted);
+      font-size: 13.5px;
+      line-height: 1.6;
+    }
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: #ffffff;
+      padding: 32px;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    .modal-img {
+      width: 320px;
+      height: 320px;
+      margin: 0 auto 16px;
+      display: block;
+      image-rendering: pixelated;
+    }
+    .modal-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+    .modal-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 20px;
+    }
+    .modal-close-btn {
+      background: #0f172a;
+      color: #ffffff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo-badge">RUO FIELD SUITE · KIỂM THỬ MÁY ẢNH QR</div>
+    <h1>Bảng Mã QR Thiết Bị & Phòng Học Thực Địa</h1>
+    <p class="lead">
+      Mở trang này trên màn hình máy tính, bật tab <strong>Quét QR</strong> trên điện thoại Vivo V2338A và đưa máy ảnh vào để quét nhận diện tức thì.
+    </p>
+  </div>
+
+  <div class="grid">
+    
+      <div class="qr-card" onclick="openModal('EQ-101-ACCASS-01', 'Điều hòa Daikin Inverter Cassette 4HP', 'data:image/png;base64,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')">
+        <div class="badge" style="background:#f59e0b22; color:#f59e0b; border-color:#f59e0b55;">
+          Đang bảo trì
+        </div>
+        <div class="qr-img-wrap">
+          <img src="data:image/png;base64,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" alt="QR EQ-101-ACCASS-01" class="qr-img" />
+          <div class="zoom-hint">🔍 Nhấp để phóng to toàn màn hình</div>
+        </div>
+        <div class="qr-code-text">EQ-101-ACCASS-01</div>
+        <div class="qr-title">Điều hòa Daikin Inverter Cassette 4HP</div>
+        <div class="qr-meta">📍 Phòng A1-101 · Tầng 1 Tòa A1 · 🏷️ Thiết bị điện lạnh</div>
+        <p class="qr-desc">Thiết bị báo hỏng rung lắc quạt gió cần kỹ thuật viên xử lý gấp.</p>
+      </div>
+    
+      <div class="qr-card" onclick="openModal('EQ-101-PRJ-01', 'Máy chiếu Sony Laser 5000 Lumens', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAAFACAYAAADNkKWqAAAAAklEQVR4AewaftIAAAerSURBVO3BsZEkORIEwLi0EQAkdID+okAHkNDg/pjna4my3p5093/+/U8AGqoANFUBaKoC0FQFoKkKQFMVgKYqAE1VAJqqADRVAWiqAtBUBaCpCkBTFYCmKgBNVQCaqgA0VQFoqgLQVAWgqQpAUxWApn7yojFX+DP37Dw15sob7tn5tDFXvsk9O0+NucKfuWfnDRWApioATVUAmqoANFUBaKoC0FQFoKkKQFMVgKYqAE395C9xz85vNebKG+7ZeWrMlTeMufLUPTufds/OU2OufNo9O7/VmCufVgFoqgLQVAWgqQpAUxWApioATVUAmqoANFUBaKoC0NRPvtCYK592zw5/h3t23nDPzjcZc+XT7tn5JhWApioATVUAmqoANFUBaKoC0FQFoKkKQFMVgKYqAE39hK815sqn3bPzaWOuPHXPDvxfBaCpCkBTFYCmKgBNVQCaqgA0VQFoqgLQVAWgqQpAUz/ha92z89SYK5825spT9+y8YcyVN9yzw/epADRVAWiqAtBUBaCpCkBTFYCmKgBNVQCaqgA0VQFo6idf6J4d/sw9O0+NufLUPTufNubKG+7Z+Sb37PBnKgBNVQCaqgA0VQFoqgLQVAWgqQpAUxWApioATVUAmvrJX2LMFf7MmCtP3bNDcs/OU2OuPHXPzhvGXOE9FYCmKgBNVQCaqgA0VQFoqgLQVAWgqQpAUxWApioATf3kRffs8J57dr7JPTtPjbny1D073+SeHf4OFYCmKgBNVQCaqgA0VQFoqgLQVAWgqQpAUxWApioATf3kC4258tQ9O0+NufJp9+w8NebKG+7Z+a3GXHnDmCtP3bPzaWOuPHXPzhvGXHnqnp03VACaqgA0VQFoqgLQVAWgqQpAUxWApioATVUAmqoANPWTF4258mljrjx1z85TY648dc/OG+7ZeWrMlTeMufKGe3ZIxlx5wz07T4258ltVAJqqADRVAWiqAtBUBaCpCkBTFYCmKgBNVQCaqgA09ZMX3bPzTcZceeqenafGXHnqnp033LPz1Jgrb7hn5w1jrnzaPTtPjbny1D07T425wp+pADRVAWiqAtBUBaCpCkBTFYCmKgBNVQCaqgA0VQFo6p9//5O/wJgrb7hn5w1jrjx1z84bxlx56p6dN4y58oZ7dp4ac+Wb3LPz1JgrT92z89SYK0/ds/PUmCtvuGfnDRWApioATVUAmqoANFUBaKoC0FQFoKkKQFMVgKYqAE398+9/8pIxV566Z+epMVdI7tl5asyVp+7Z+bQxV95wz86njbny1D07nzbmyhvu2fm0CkBTFYCmKgBNVQCaqgA0VQFoqgLQVAWgqQpAUxWApn7yont23nDPzhvGXHnDPTtPjbnyTcZceeqenafu2XlqzJWnxlx56p6dp8ZceeqenafGXPm0e3aeGnPlm1QAmqoANFUBaKoC0FQFoKkKQFMVgKYqAE1VAJqqADT1kxeNufLUPTu/1ZgrT92z89SYK0/ds/PUmCvf5J6d3+qenU8bc+Wpe3aeGnPlqXt23lABaKoC0FQFoKkKQFMVgKYqAE1VAJqqADRVAWiqAtDUP//+J3+BMVeeumfn08ZceeqenTeMufJp9+y8YcyVp+7ZeWrMlafu2XlqzJU33LPDeyoATVUAmqoANFUBaKoC0FQFoKkKQFMVgKYqAE1VAJr6yYvGXHnqnp03jLnyhnt2nhpz5Zvcs/PUmCvf5J6dp8Zc+bQxVz7tnp3fqgLQVAWgqQpAUxWApioATVUAmqoANFUBaKoC0FQFoKl//v1P+Epjrrzhnp1vMubKp92z82ljrvxW9+y8oQLQVAWgqQpAUxWApioATVUAmqoANFUBaKoC0FQFoKmfvGjMFf7MPTtP3bPz1Jgr32TMlTfcs/PUmCtvGHPlqXt23nDPDkkFoKkKQFMVgKYqAE1VAJqqADRVAWiqAtBUBaCpCkBTP/lL3LPzW4258oYxV94w5sob7tkhuWfntxpz5Q337LyhAtBUBaCpCkBTFYCmKgBNVQCaqgA0VQFoqgLQVAWgqZ98oTFXPu2end/qnp03jLnyhnt2nhpz5Q1jrnyTMVeeumfnt6oANFUBaKoC0FQFoKkKQFMVgKYqAE1VAJqqADRVAWjqJ3yte3aeGnPlqTFX3nDPzlNjrjw15sqn3bPz1Jgrn3bPzqfds/NpFYCmKgBNVQCaqgA0VQFoqgLQVAWgqQpAUxWApioATf2ErzXmyhvu2XlqzJWnxlx56p6dp8ZcecM9O9/knp03jLny1D07T4258tQ9O2+oADRVAWiqAtBUBaCpCkBTFYCmKgBNVQCaqgA0VQFo6idf6J4dknt2Pu2enafGXHnDPTufNubKU/fsPDXmylNjrjx1z84bxlz5JhWApioATVUAmqoANFUBaKoC0FQFoKkKQFMVgKYqAE395C8x5grvGXPlqXt2nhpz5bcac+UNY648dc/OU2OuPDXmyhvu2XlqzJVPqwA0VQFoqgLQVAWgqQpAUxWApioATVUAmqoANFUBaOqff/8TgIYqAE1VAJqqADRVAWiqAtBUBaCpCkBTFYCmKgBNVQCaqgA0VQFoqgLQVAWgqQpAUxWApioATVUAmqoANFUBaKoC0NT/ABTXkUm5bkXoAAAAAElFTkSuQmCC')">
+        <div class="badge" style="background:#10b98122; color:#10b981; border-color:#10b98155;">
+          Sẵn sàng
+        </div>
+        <div class="qr-img-wrap">
+          <img src="data:image/png;base64,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" alt="QR EQ-101-PRJ-01" class="qr-img" />
+          <div class="zoom-hint">🔍 Nhấp để phóng to toàn màn hình</div>
+        </div>
+        <div class="qr-code-text">EQ-101-PRJ-01</div>
+        <div class="qr-title">Máy chiếu Sony Laser 5000 Lumens</div>
+        <div class="qr-meta">📍 Phòng A1-101 · Tầng 1 Tòa A1 · 🏷️ Thiết bị trình chiếu</div>
+        <p class="qr-desc">Máy chiếu giảng dạy chất lượng cao, định kỳ bảo dưỡng định dạng laser.</p>
+      </div>
+    
+      <div class="qr-card" onclick="openModal('EQ-102-CAM-01', 'Camera PTZ Tracking Tự Động', 'data:image/png;base64,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')">
+        <div class="badge" style="background:#10b98122; color:#10b981; border-color:#10b98155;">
+          Sẵn sàng
+        </div>
+        <div class="qr-img-wrap">
+          <img src="data:image/png;base64,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" alt="QR EQ-102-CAM-01" class="qr-img" />
+          <div class="zoom-hint">🔍 Nhấp để phóng to toàn màn hình</div>
+        </div>
+        <div class="qr-code-text">EQ-102-CAM-01</div>
+        <div class="qr-title">Camera PTZ Tracking Tự Động</div>
+        <div class="qr-meta">📍 Phòng A1-102 · Tầng 1 Tòa A1 · 🏷️ Hệ thống Smart Classroom</div>
+        <p class="qr-desc">Camera tự động bám theo giảng viên và ghi hình bài giảng.</p>
+      </div>
+    
+      <div class="qr-card" onclick="openModal('A1-101', 'Phòng Học Thông Minh A1-101', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAAFACAYAAADNkKWqAAAAAklEQVR4AewaftIAAAZSSURBVO3BQZHESBIEwNi0AaCnOIg/lOJQz2KwtxBOjx5rm3D3f/79TwAKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBK/eSXXPcTPu/slTeu+8lvOHvlret+8tbZK5923U/4vLNXPm0CUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUOonX+zslWbX/eTTzl5567qf/IazV/6Ks1eaXfeTbzQBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKPWTP+a6n3yjs1eaXfeTt85eaXbdT77R2St/xQSg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1E+odt1PvtV1P/m0s1foNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEo9ROqnb3yra77CXzSBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUT/6Ys1f4Ptf95K2zV5qdvcJnTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBK/eSLXfcTPuu6n7x19sq3uu4nb5y98huu+wnfZwJQagJQagJQagJQagJQagJQagJQagJQagJQagJQagJQagJQ6ie/5OwVvs/ZK7xz9gp/wwSg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1E/+mOt+8tbZK29c95NvdfbKG9f95C85e+WN637y1tkr3+q6n7xx9spvuO4nb5298mkTgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFI/+WLX/eSts1f+irNX3rruJ2+cvfLWdT956+yVt677Ce+cvfLGdT956+yVv2ICUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUOonv+S6nzQ7e+Wt637yjc5e+SvOXvlW1/3krbNX3jh7pdkEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQ///4n5a77yaedvfIbrvvJG2ev/IbrftLs7JW/4rqfvHX2yjeaAJSaAJSaAJSaAJSaAJSaAJSaAJSaAJSaAJSaAJSaAJSaAJT6yRe77ifNrvvJW2evfNp1P3nr7JW3rvvJW2evfNp1P/kN1/3krbNX+P9NAEpNAEpNAEpNAEpNAEpNAEpNAEpNAEpNAEpNAEpNAEr98+9/Qq3rfvKtzl5567qf/BVnr3zadT956+yVv2ICUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUOonv+S6n/B5Z6+8cfbKW9f95FudvfLGdT956+yVt677SbPrfvLW2SufNgEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEo9ZMvdvZKs+t+8mnX/eSts1e+1XU/+Suu+8mnnb3SbAJQagJQagJQagJQagJQagJQagJQagJQagJQagJQagJQagJQ6id/zHU/+UZnr/wV1/3krzh75VudvfJp1/3krbNX/ooJQKkJQKkJQKkJQKkJQKkJQKkJQKkJQKkJQKkJQKkJQKkJQKmfUO3sld9w3U/eOnvl0677yV9y3U/eOHvlret+8tbZK99oAlBqAlBqAlBqAlBqAlBqAlBqAlBqAlBqAlBqAlBqAlDqJ1S77ie/4eyV33DdT77R2StvXfeTt85eeeO6n7x19spb1/3krbNXPm0CUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUOonf8zZK/z/zl5567qfvHXdT946e+Wts1c+7bqfvHXdT946e+XTzl5567qf/BUTgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFI/+WLX/YS/4eyVt677yVtnr3za2Su/4bqfvHX2yhvX/eSts1feuu4n32gCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUOqff/8TgEITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFL/A0HLBAMC8pRuAAAAAElFTkSuQmCC')">
+        <div class="badge" style="background:#f59e0b22; color:#f59e0b; border-color:#f59e0b55;">
+          Đang bảo trì
+        </div>
+        <div class="qr-img-wrap">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAAFACAYAAADNkKWqAAAAAklEQVR4AewaftIAAAZSSURBVO3BQZHESBIEwNi0AaCnOIg/lOJQz2KwtxBOjx5rm3D3f/79TwAKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBK/eSXXPcTPu/slTeu+8lvOHvlret+8tbZK5923U/4vLNXPm0CUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUOonX+zslWbX/eTTzl5567qf/IazV/6Ks1eaXfeTbzQBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKPWTP+a6n3yjs1eaXfeTt85eaXbdT77R2St/xQSg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1E+odt1PvtV1P/m0s1foNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEo9ROqnb3yra77CXzSBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUBKDUT/6Ys1f4Ptf95K2zV5qdvcJnTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBKTQBK/eSLXfcTPuu6n7x19sq3uu4nb5y98huu+wnfZwJQagJQagJQagJQagJQagJQagJQagJQagJQagJQagJQagJQ6ie/5OwVvs/ZK7xz9gp/wwSg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1ASg1E/+mOt+8tbZK29c95NvdfbKG9f95C85e+WN637y1tkr3+q6n7xx9spvuO4nb5298mkTgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFI/+WLX/eSts1f+irNX3rruJ2+cvfLWdT956+yVt677Ce+cvfLGdT956+yVv2ICUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUOonv+S6nzQ7e+Wt637yjc5e+SvOXvlW1/3krbNX3jh7pdkEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQ///4n5a77yaedvfIbrvvJG2ev/IbrftLs7JW/4rqfvHX2yjeaAJSaAJSaAJSaAJSaAJSaAJSaAJSaAJSaAJSaAJSaAJSaAJT6yRe77ifNrvvJW2evfNp1P3nr7JW3rvvJW2evfNp1P/kN1/3krbNX+P9NAEpNAEpNAEpNAEpNAEpNAEpNAEpNAEpNAEpNAEpNAEr98+9/Qq3rfvKtzl5567qf/BVnr3zadT956+yVv2ICUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUOonv+S6n/B5Z6+8cfbKW9f95FudvfLGdT956+yVt677SbPrfvLW2SufNgEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEoNQEo9ZMvdvZKs+t+8mnX/eSts1e+1XU/+Suu+8mnnb3SbAJQagJQagJQagJQagJQagJQagJQagJQagJQagJQagJQagJQ6id/zHU/+UZnr/wV1/3krzh75VudvfJp1/3krbNX/ooJQKkJQKkJQKkJQKkJQKkJQKkJQKkJQKkJQKkJQKkJQKkJQKmfUO3sld9w3U/eOnvl0677yV9y3U/eOHvlret+8tbZK99oAlBqAlBqAlBqAlBqAlBqAlBqAlBqAlBqAlBqAlBqAlDqJ1S77ie/4eyV33DdT77R2StvXfeTt85eeeO6n7x19spb1/3krbNXPm0CUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUOonf8zZK/z/zl5567qfvHXdT946e+Wts1c+7bqfvHXdT946e+XTzl5567qf/BUTgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFI/+WLX/YS/4eyVt677yVtnr3za2Su/4bqfvHX2yhvX/eSts1feuu4n32gCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUGoCUOqff/8TgEITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFITgFL/A0HLBAMC8pRuAAAAAElFTkSuQmCC" alt="QR A1-101" class="qr-img" />
+          <div class="zoom-hint">🔍 Nhấp để phóng to toàn màn hình</div>
+        </div>
+        <div class="qr-code-text">A1-101</div>
+        <div class="qr-title">Phòng Học Thông Minh A1-101</div>
+        <div class="qr-meta">📍 Tầng 1 · Tòa nhà A1 · 🏷️ Không gian giảng dạy</div>
+        <p class="qr-desc">Phòng học 50 chỗ trang bị bàn ghế di động và màn hình tương tác.</p>
+      </div>
+    
+  </div>
+
+  <div class="instructions">
+    <h3>📱 Hướng Dẫn Thử Nghiệm Với Điện Thoại Thật</h3>
+    <ol>
+      <li>Mở ứng dụng <strong>Ruo</strong> trên điện thoại Vivo V2338A (đã kết nối qua ADB reverse cổng 5000).</li>
+      <li>Đăng nhập nhanh với vai trò <strong>GV001 (Giảng viên)</strong> hoặc <strong>KT001 (Kỹ thuật viên)</strong>.</li>
+      <li>Chạm vào tab <strong>Quét QR</strong> (Tab 2) trên thanh điều hướng dưới cùng.</li>
+      <li>Khung bo tròn hiển thị trực tiếp luồng camera thật. Hướng camera vào bất kỳ ô mã QR nào ở trên (hoặc nhấp vào ô để phóng to toàn màn hình).</li>
+      <li>Camera sẽ tự động nhận dạng trong vòng <strong>0.2 giây</strong>, rung phản hồi và mở bảng tra cứu thiết bị / báo hỏng SLA tương ứng.</li>
+    </ol>
+  </div>
+
+  <div id="modal" class="modal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <img id="modalImg" src="" alt="QR Modal" class="modal-img" />
+      <div id="modalCode" class="modal-code"></div>
+      <div id="modalName" class="modal-name"></div>
+      <button class="modal-close-btn" onclick="closeModal()">Đóng cửa sổ</button>
+    </div>
+  </div>
+
+  <script>
+    function openModal(code, name, src) {
+      document.getElementById('modalCode').innerText = code;
+      document.getElementById('modalName').innerText = name;
+      document.getElementById('modalImg').src = src;
+      document.getElementById('modal').classList.add('active');
+    }
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+</body>
+</html>

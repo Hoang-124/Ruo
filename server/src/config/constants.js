@@ -65,6 +65,7 @@ export const MOVEMENT_STATUSES = {
   AWAITING_APPROVAL: 'awaiting_approval',
   PENDING: 'pending',
   APPROVED: 'approved',
+  COMPLETING: 'completing',
   REJECTED: 'rejected',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled'

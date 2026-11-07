@@ -1,3 +1,4 @@
+import { workflowError } from '../services/transaction.js';
 import mongoose from 'mongoose';
 import { EquipmentMovement } from '../models/EquipmentMovement.js';
 import { Equipment } from '../models/Equipment.js';
@@ -136,7 +137,7 @@ export const createMovementOrder = async (req, res) => {
 
     const activeMovement = await EquipmentMovement.findOne({
       equipment_id: equipment._id,
-      status: { $in: [MOVEMENT_STATUSES.AWAITING_APPROVAL, MOVEMENT_STATUSES.APPROVED, MOVEMENT_STATUSES.PENDING] }
+      status: { $in: [MOVEMENT_STATUSES.AWAITING_APPROVAL, MOVEMENT_STATUSES.APPROVED, MOVEMENT_STATUSES.PENDING, MOVEMENT_STATUSES.COMPLETING] }
     });
     if (activeMovement) {
       return res.status(409).json({ success: false, message: 'Thiết bị đã có phiếu điều chuyển đang xử lý.' });
@@ -324,43 +325,113 @@ export const confirmMovement = async (req, res) => {
     }
     const movement = await EquipmentMovement.findById(req.params.id);
     if (!movement) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy lệnh điều chuyển.' });
+      throw workflowError(404, 'Không tìm thấy lệnh điều chuyển.');
     }
 
-    assertTransition('TRANSFER', movement.status, MOVEMENT_STATUSES.COMPLETED, req.user.role);
-    if (movement.assigned_to && movement.assigned_to.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Phiếu này được giao cho Kỹ thuật viên khác.' });
+    const resuming = movement.status === MOVEMENT_STATUSES.COMPLETING;
+    if (!resuming) {
+      assertTransition('TRANSFER', movement.status, MOVEMENT_STATUSES.COMPLETED, req.user.role);
     }
+    if (movement.assigned_to && movement.assigned_to.toString() !== req.user._id.toString()) {
+      throw workflowError(403, 'Phiếu này được giao cho Kỹ thuật viên khác.');
+    }
+
     const equipment = await Equipment.findById(movement.equipment_id);
     if (!equipment) {
-      return res.status(404).json({ success: false, message: 'Thiết bị không còn tồn tại.' });
+      throw workflowError(404, 'Thiết bị không còn tồn tại.');
     }
 
-    // Recheck at execution time: the room may have closed since the order was approved.
-    if (movement.type !== MOVEMENT_TYPES.REPAIR_OUT) {
+    const blockedStatuses = [
+      EQUIPMENT_STATUSES.DISPOSED,
+      EQUIPMENT_STATUSES.LOST,
+      EQUIPMENT_STATUSES.PENDING_DISPOSAL
+    ];
+    const isAtSource = String(equipment.room_id || '') === String(movement.from_room_id || '');
+    const targetRoomId = movement.type === MOVEMENT_TYPES.REPAIR_OUT ? null : movement.to_room_id;
+    const isAtDestination = String(equipment.room_id || '') === String(targetRoomId || '');
+
+    if (!resuming && blockedStatuses.includes(equipment.status)) {
+      throw workflowError(409, 'Thiết bị đã thanh lý, thất lạc hoặc đang chờ thanh lý; không thể hoàn tất điều chuyển.');
+    }
+    if (!isAtSource && !(resuming && isAtDestination)) {
+      throw workflowError(409, 'Vị trí thiết bị đã thay đổi; cần lập lại phiếu điều chuyển.');
+    }
+
+    if (isAtSource && movement.type !== MOVEMENT_TYPES.REPAIR_OUT) {
       const destination = await Room.findById(movement.to_room_id);
       if (!destination || destination.status === ROOM_STATUSES.INACTIVE) {
-        return res.status(409).json({ success: false, message: 'Phòng đích không tồn tại hoặc đã ngừng sử dụng. Vui lòng chọn phòng khác.' });
+        throw workflowError(409, 'Phòng đích không tồn tại hoặc đã ngừng sử dụng. Vui lòng chọn phòng khác.');
       }
     }
 
-    movement.performed_by = req.user._id;
-    movement.status = MOVEMENT_STATUSES.COMPLETED;
-    movement.completed_at = new Date();
-    movement.completion_notes = String(req.body?.notes || '').trim().slice(0, 500);
-    await movement.save();
-
-    // Physically update equipment location
-    equipment.room_id = movement.to_room_id;
-    if (movement.type === MOVEMENT_TYPES.REPLACEMENT || movement.type === MOVEMENT_TYPES.TRANSFER || movement.type === MOVEMENT_TYPES.REPAIR_RETURN) {
-      equipment.status = EQUIPMENT_STATUSES.IN_USE;
-    } else if (movement.type === MOVEMENT_TYPES.TO_STOCK) {
-      equipment.status = EQUIPMENT_STATUSES.IN_STOCK;
-    } else if (movement.type === MOVEMENT_TYPES.REPAIR_OUT) {
-      equipment.room_id = null; // external
+    const previousStatus = movement.status;
+    if (!resuming) {
+      // This persisted phase makes completion recoverable if the server stops between the two document writes.
+      const claimed = await EquipmentMovement.updateOne(
+        { _id: movement._id, status: previousStatus },
+        {
+          $set: {
+            status: MOVEMENT_STATUSES.COMPLETING,
+            performed_by: req.user._id,
+            completion_notes: String(req.body?.notes || '').trim().slice(0, 500)
+          }
+        }
+      );
+      if (claimed.matchedCount === 0) {
+        throw workflowError(409, 'Phiếu điều chuyển đang được xử lý hoặc đã được cập nhật. Vui lòng tải lại.');
+      }
     }
-    await equipment.save();
 
+    if (!isAtDestination) {
+      const equipmentUpdate = { room_id: targetRoomId };
+      if ([MOVEMENT_TYPES.REPLACEMENT, MOVEMENT_TYPES.TRANSFER, MOVEMENT_TYPES.REPAIR_RETURN].includes(movement.type)) {
+        equipmentUpdate.status = EQUIPMENT_STATUSES.IN_USE;
+      } else if (movement.type === MOVEMENT_TYPES.TO_STOCK) {
+        equipmentUpdate.status = EQUIPMENT_STATUSES.IN_STOCK;
+      }
+
+      const moved = await Equipment.updateOne(
+        {
+          _id: equipment._id,
+          room_id: movement.from_room_id,
+          status: { $nin: blockedStatuses }
+        },
+        { $set: equipmentUpdate }
+      );
+      if (moved.matchedCount === 0) {
+        const latestEquipment = await Equipment.findById(equipment._id);
+        const alreadyMoved = resuming &&
+          String(latestEquipment?.room_id || '') === String(targetRoomId || '');
+        if (!alreadyMoved) {
+          if (!resuming) {
+            await EquipmentMovement.updateOne(
+              { _id: movement._id, status: MOVEMENT_STATUSES.COMPLETING },
+              { $set: { status: previousStatus } }
+            );
+          }
+          throw workflowError(409, 'Không thể cập nhật vị trí thiết bị; hãy tải lại và thử lại.');
+        }
+      }
+    }
+
+    const completion = {
+      status: MOVEMENT_STATUSES.COMPLETED,
+      performed_by: req.user._id,
+      completed_at: new Date(),
+      completion_notes: String(req.body?.notes || movement.completion_notes || '').trim().slice(0, 500)
+    };
+    const finalized = await EquipmentMovement.updateOne(
+      { _id: movement._id, status: MOVEMENT_STATUSES.COMPLETING },
+      { $set: completion }
+    );
+    if (finalized.matchedCount === 0) {
+      const latestMovement = await EquipmentMovement.findById(movement._id);
+      if (latestMovement?.status !== MOVEMENT_STATUSES.COMPLETED) {
+        throw workflowError(503, 'Vị trí thiết bị đã được cập nhật; vui lòng xác nhận lại để hoàn tất phiếu.');
+      }
+    }
+
+    Object.assign(movement, completion);
     await movement.populate([
       { path: 'equipment_id', select: 'code name brand model status' },
       { path: 'from_room_id', select: 'code name building floor' },

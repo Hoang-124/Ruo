@@ -1,13 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { repairApi, authApi, equipmentApi, masterDataApi } from '../../lib/api';
 import { RepairStepper } from '../../components/repairs/RepairStepper';
 import { DeadlineCountdown } from '../../components/repairs/DeadlineCountdown';
 
+const toLocalDateTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+
 export const TicketKanbanPage = () => {
   const { toast } = useToast();
+  const { error: showError } = toast;
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [repairs, setRepairs] = useState([]);
   const [slaStats, setSlaStats] = useState(null);
@@ -22,6 +35,21 @@ export const TicketKanbanPage = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [aiCopilotLoading, setAiCopilotLoading] = useState(false);
+  const [aiCopilotMap, setAiCopilotMap] = useState({});
+  const aiRequest = useRef(0);
+
+  const aiContext = JSON.stringify([selectedTicket?._id]);
+  const [previousAiContext, setPreviousAiContext] = useState(aiContext);
+  if (previousAiContext !== aiContext) {
+    setPreviousAiContext(aiContext);
+    setAiCopilotLoading(false);
+  }
+
+  useEffect(() => {
+    aiRequest.current += 1;
+    return () => { aiRequest.current += 1; };
+  }, [selectedTicket?._id]);
 
   // Forms
   const [assignForm, setAssignForm] = useState({
@@ -77,7 +105,10 @@ export const TicketKanbanPage = () => {
     { id: 'closed', title: 'ĐÃ ĐÓNG PHIẾU', color: 'var(--ink-secondary)' }
   ];
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    aiRequest.current += 1;
+    setAiCopilotLoading(false);
+    setAiCopilotMap({});
     try {
       setLoading(true);
       const [repRes, techRes, eqRes, roomRes, slaRes] = await Promise.all([
@@ -104,11 +135,11 @@ export const TicketKanbanPage = () => {
         setSlaStats(slaRes.data);
       }
     } catch (err) {
-      toast.error('Lỗi khi tải dữ liệu sửa chữa: ' + err.message);
+      showError('Lỗi khi tải dữ liệu sửa chữa: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
 
   const handleCheckBreaches = async () => {
     try {
@@ -119,20 +150,62 @@ export const TicketKanbanPage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi kiểm tra vi phạm SLA: ' + err.message);
+      showError('Lỗi khi kiểm tra vi phạm SLA: ' + err.message);
     } finally {
       setCheckingBreaches(false);
     }
   };
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchData();
-  }, []);
+  }, [fetchData]);
+
+  const handleRunAiCopilot = async (ticket) => {
+    if (!ticket?._id) return;
+    const request = ++aiRequest.current;
+    try {
+      setAiCopilotLoading(true);
+      const res = await repairApi.aiCopilot(ticket._id);
+      if (request !== aiRequest.current) return;
+      if (res && res.success && res.copilot) {
+        setAiCopilotMap((prev) => ({ ...prev, [ticket._id]: res.copilot }));
+        toast.success(`AI Copilot đã phân tích phiếu [${ticket.ticket_code}]!`);
+      }
+    } catch (err) {
+      if (request === aiRequest.current) showError('Lỗi khi chạy AI Điều phối: ' + err.message);
+    } finally {
+      if (request === aiRequest.current) setAiCopilotLoading(false);
+    }
+  };
+
+  const applyAiDispatchRecommendation = (copilot) => {
+    const rec = copilot?.dispatch_recommendation;
+    if (!rec) return;
+    // AI searches the full category; the initial lists may be paginated.
+    if (rec.recommended_replacement?._id) {
+      setSpareEquipments((prev) => prev.some((eq) => eq._id === rec.recommended_replacement._id)
+        ? prev : [...prev, rec.recommended_replacement]);
+    }
+    if (rec.recommended_technician?._id) {
+      setTechnicians((prev) => prev.some((tech) => tech._id === rec.recommended_technician._id)
+        ? prev : [...prev, rec.recommended_technician]);
+    }
+    setAssignForm((prev) => ({
+      ...prev,
+      assigned_to: rec.recommended_technician?._id || prev.assigned_to,
+      damage_level: rec.suggested_damage_level || prev.damage_level,
+      deadline: toLocalDateTime(rec.suggested_deadline) || prev.deadline,
+      replacement_equipment_id: rec.recommended_replacement?._id || prev.replacement_equipment_id
+    }));
+    toast.success('Đã điền tự động KTV tối ưu, hạn SLA và thiết bị dự phòng từ AI!');
+  };
 
   const openAssign = (ticket) => {
     setSelectedTicket(ticket);
-    const defaultHours = ticket.damage_level === 'critical' ? 4 : ticket.damage_level === 'major' ? 24 : 48;
-    const defaultDeadline = new Date(Date.now() + defaultHours * 3600 * 1000).toISOString().slice(0, 16);
+    const defaultHours = ticket.damage_level === 'critical' ? 8 : ticket.damage_level === 'major' ? 24 : 48;
+    const defaultDeadline = toLocalDateTime(ticket.deadline) || toLocalDateTime(now + defaultHours * 3600 * 1000);
 
     setAssignForm({
       assigned_to: technicians[0]?._id || '',
@@ -146,7 +219,7 @@ export const TicketKanbanPage = () => {
   const handleAssignSubmit = async (e) => {
     e.preventDefault();
     if (!assignForm.assigned_to) {
-      toast.error('Vui lòng chọn Kỹ thuật viên phụ trách.');
+      showError('Vui lòng chọn Kỹ thuật viên phụ trách.');
       return;
     }
 
@@ -165,7 +238,7 @@ export const TicketKanbanPage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi phân công KTV: ' + err.message);
+      showError('Lỗi khi phân công KTV: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -200,7 +273,7 @@ export const TicketKanbanPage = () => {
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi đóng phiếu: ' + err.message);
+      showError('Lỗi khi đóng phiếu: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -327,7 +400,7 @@ export const TicketKanbanPage = () => {
             const colTickets = repairs.filter(r => {
               if (r.status !== col.id) return false;
               if (filterMode === 'OVERDUE') {
-                return r.deadline_status === 'overdue' || (r.deadline && new Date(r.deadline).getTime() < Date.now());
+                return r.deadline_status === 'overdue' || (r.deadline && new Date(r.deadline).getTime() < now);
               }
               if (filterMode === 'AT_RISK') {
                 return r.deadline_status === 'at_risk' || (r.remaining_minutes > 0 && r.remaining_minutes <= 120);
@@ -502,6 +575,81 @@ export const TicketKanbanPage = () => {
                 </div>
               </div>
 
+              {/* AI Dispatch & Diagnosis Copilot Panel */}
+              <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-focus)', borderRadius: 'var(--radius-md)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '12.5px', color: 'var(--ink-pure)' }}>
+                    <Icons.Sparkles size={15} style={{ color: 'var(--laser-cyan)' }} />
+                    <span>AI Chẩn Đoán & Gợi Ý Điều Phối</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRunAiCopilot(selectedTicket)}
+                    disabled={aiCopilotLoading}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '11.5px', fontWeight: 700 }}
+                  >
+                    {aiCopilotLoading ? 'Đang Phân Tích...' : (aiCopilotMap[selectedTicket._id] ? 'Phân Tích Lại' : 'Chạy AI Copilot')}
+                  </button>
+                </div>
+
+                {aiCopilotMap[selectedTicket._id] && (() => {
+                  const cp = aiCopilotMap[selectedTicket._id];
+                  const bestTech = cp.dispatch_recommendation?.recommended_technician;
+                  const hist = cp.historical_insights;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '10.5px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px', background: 'var(--status-info-bg)', color: 'var(--status-info-color)', border: '1px solid var(--status-info-border)' }}>
+                          {cp.engine === 'gemini' ? 'GEMINI HYBRID AI' : 'RUO CORTEX LOCAL AI'}
+                        </span>
+                        {cp.diagnosis?.playbook_title && (
+                          <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 7px', borderRadius: '4px', background: 'var(--surface-card)', color: 'var(--ink-secondary)', border: '1px solid var(--border-default)' }}>
+                            {cp.diagnosis.playbook_title}
+                          </span>
+                        )}
+                      </div>
+                      {cp.disposal_advisory?.should_consider_disposal && (
+                        <div style={{ background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger-border)', color: 'var(--status-danger-color)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700 }}>
+                          ⚠ {cp.disposal_advisory.recommendation}
+                        </div>
+                      )}
+                      {hist?.chronic_pattern?.advisory && (
+                        <div style={{ background: 'var(--status-warning-bg)', border: '1px solid var(--status-warning-border)', color: 'var(--status-warning-color)', padding: '7px 10px', borderRadius: 'var(--radius-sm)', fontSize: '11.5px', fontWeight: 600 }}>
+                          {hist.chronic_pattern.advisory}
+                        </div>
+                      )}
+                      <div>
+                        <strong style={{ color: 'var(--ink-pure)' }}>Nguyên nhân gốc dự kiến:</strong>{' '}
+                        <span style={{ color: 'var(--ink-secondary)' }}>{cp.diagnosis?.root_cause}</span>
+                      </div>
+                      {bestTech && (
+                        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', padding: '8px 10px', borderRadius: 'var(--radius-sm)' }}>
+                          <div style={{ fontWeight: 800, color: 'var(--laser-cyan)' }}>
+                            KTV đề xuất #1: {bestTech.full_name} ({bestTech.code}) • Điểm phù hợp {bestTech.score}/100
+                          </div>
+                          <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', marginTop: '2px' }}>{bestTech.reason}</div>
+                        </div>
+                      )}
+                      {hist?.learned_benchmarks?.matched_cases_count > 0 && (
+                        <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                          <strong style={{ color: 'var(--ink-pure)' }}>Học từ lịch sử Tòa A1:</strong>{' '}
+                          Khớp {hist.learned_benchmarks.matched_cases_count} ca tương tự
+                          {hist.learned_benchmarks.avg_mttr_hours ? ` • MTTR trung bình ${hist.learned_benchmarks.avg_mttr_hours}h` : ''}
+                          {hist.learned_benchmarks.avg_repair_cost_vnd ? ` • Chi phí TB ${hist.learned_benchmarks.avg_repair_cost_vnd.toLocaleString('vi-VN')} đ` : ''}
+                        </div>
+                      )}
+                      {Array.isArray(cp.recommended_parts) && cp.recommended_parts.length > 0 && (
+                        <div>
+                          <strong style={{ color: 'var(--ink-pure)' }}>Linh kiện kho gợi ý:</strong>{' '}
+                          {cp.recommended_parts.map((p) => `${p.name} (Tồn: ${p.stock} ${p.unit})`).join(' • ')}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               {selectedTicket.replacement_equipment_id && (
                 <div style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
                   Thiết bị dự phòng thay thế đã cấp: <strong>{selectedTicket.replacement_equipment_id?.name} ({selectedTicket.replacement_equipment_id?.code})</strong>
@@ -564,6 +712,45 @@ export const TicketKanbanPage = () => {
 
             <form onSubmit={handleAssignSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* AI Dispatch One-Click Banner inside Assign Modal */}
+                <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-focus)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--ink-pure)' }}>
+                      <Icons.Sparkles size={14} style={{ color: 'var(--laser-cyan)' }} />
+                      <span>AI Gợi Ý Phân Công Tối Ưu</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleRunAiCopilot(selectedTicket)}
+                        disabled={aiCopilotLoading}
+                        className="laser-btn laser-btn-secondary"
+                        style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
+                      >
+                        {aiCopilotLoading ? 'Đang Tính...' : 'Gợi Ý Từ AI'}
+                      </button>
+                      {aiCopilotMap[selectedTicket._id] && (
+                        <button
+                          type="button"
+                          onClick={() => applyAiDispatchRecommendation(aiCopilotMap[selectedTicket._id])}
+                          className="laser-btn laser-btn-primary"
+                          style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
+                        >
+                          Áp Dụng Gợi Ý
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {aiCopilotMap[selectedTicket._id]?.dispatch_recommendation?.recommended_technician && (
+                    <div style={{ marginTop: '8px', fontSize: '11.5px', color: 'var(--ink-secondary)' }}>
+                      Đề xuất: <strong>{aiCopilotMap[selectedTicket._id].dispatch_recommendation.recommended_technician.full_name}</strong> ({aiCopilotMap[selectedTicket._id].dispatch_recommendation.recommended_technician.reason})
+                      {aiCopilotMap[selectedTicket._id].dispatch_recommendation.recommended_replacement && (
+                        <span> • Đồ dự phòng: <strong>{aiCopilotMap[selectedTicket._id].dispatch_recommendation.recommended_replacement.code}</strong></span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
                     Chọn Kỹ Thuật Viên Phụ Trách *
@@ -595,7 +782,7 @@ export const TicketKanbanPage = () => {
                   >
                     <option value="minor">Hỏng Nhẹ (Minor - SLA 48h)</option>
                     <option value="major">Hỏng Nặng (Major - SLA 24h)</option>
-                    <option value="critical">Khẩn Cấp (Critical - SLA 4h)</option>
+                    <option value="critical">Khẩn Cấp (Critical - SLA 8h)</option>
                   </select>
                 </div>
 

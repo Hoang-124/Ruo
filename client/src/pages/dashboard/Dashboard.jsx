@@ -16,7 +16,7 @@ import { EquipmentTransferModal } from '../rooms/EquipmentTransferModal';
 /**
  * Dashboard - UEMS Operational Command Center
  */
-export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport, onSelectEquipmentForMovement }) => {
+export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
   const { currentUser, currentRoleKey } = useAuth();
   const optionalToast = useOptionalToast();
 
@@ -223,6 +223,8 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport, onSelectE
   };
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchDashboardData(true);
   }, [fetchDashboardData]);
 
@@ -252,6 +254,8 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport, onSelectE
   // Reload the pods whenever the floor changes.
   useEffect(() => {
     let ignore = false;
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     loadCadFloor(selectedFloor, { clearBeforeLoad: true, isCancelled: () => ignore });
     return () => { ignore = true; };
   }, [selectedFloor, loadCadFloor]);

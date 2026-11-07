@@ -59,7 +59,9 @@ const TableShell = ({ children }) => (
  * UC-2.3 Room Detail View — read-only drawer for every role.
  * Shows room specs, equipment (serial number + QR code), maintenance history and movement history.
  */
-export const RoomDetailModal = ({ roomCode, onClose, onEdit, onTransferEquipment }) => {
+export const RoomDetailModal = (props) => <RoomDetailContent key={props.roomCode} {...props} />;
+
+const RoomDetailContent = ({ roomCode, onClose, onEdit, onTransferEquipment }) => {
   const { currentUser } = useAuth();
   const canTransfer = ['technician', 'facility_manager'].includes(currentUser?.role);
   const [detail, setDetail] = useState(null);
@@ -89,8 +91,16 @@ export const RoomDetailModal = ({ roomCode, onClose, onEdit, onTransferEquipment
   }, [roomCode]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    let active = true;
+    Promise.all([facilityApi.getRoomByCode(roomCode), facilityApi.getRoomMaintenanceHistory(roomCode)])
+      .then(([roomDetail, history]) => {
+        if (!active) return;
+        setDetail(roomDetail);
+        setRoomHistory({ maintenanceHistory: history.maintenanceHistory || [], repairHistory: history.repairHistory || [] });
+      }).catch((err) => { if (active) setError(err.message || 'Không thể tải thông tin phòng.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [roomCode]);
 
   useEffect(() => {
     const onKeyDown = (event) => event.key === 'Escape' && onClose();
