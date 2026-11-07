@@ -87,6 +87,18 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
     }
   };
 
+  const getDamageLabel = (level) => {
+    switch (level) {
+      case 'critical':
+        return { label: 'Khẩn cấp', color: '#EF4444' };
+      case 'major':
+        return { label: 'Hỏng nặng', color: '#F59E0B' };
+      case 'minor':
+      default:
+        return { label: 'Hỏng nhẹ', color: '#10B981' };
+    }
+  };
+
   const filteredTickets = tickets.filter(t => {
     if (statusFilter === 'ALL') return true;
     if (statusFilter === 'OPEN') return ['reported', 'assigned', 'in_progress'].includes(t.status);
@@ -197,7 +209,7 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '12.5px', color: 'var(--ink-muted)', marginBottom: '10px' }}>
                     <div>Phòng học: <strong style={{ color: 'var(--ink-pure)' }}>{room.code} - {room.name}</strong></div>
-                    <div>Mức độ: <strong style={{ color: t.damage_level === 'critical' ? '#EF4444' : t.damage_level === 'major' ? '#F59E0B' : '#10B981' }}>{t.damage_level}</strong></div>
+                    <div>Mức độ: <strong style={{ color: getDamageLabel(t.damage_level).color }}>{getDamageLabel(t.damage_level).label}</strong></div>
                     <div>Hạn SLA: <strong style={{ color: 'var(--ink-pure)' }}>{t.deadline ? new Date(t.deadline).toLocaleString('vi-VN') : '—'}</strong></div>
                     <div>KTV phụ trách: <strong style={{ color: 'var(--ink-pure)' }}>{t.assigned_to?.full_name || 'Đang phân công'}</strong></div>
                   </div>
@@ -262,7 +274,7 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>Mức Độ Hư Hỏng</div>
-                  <div style={{ fontWeight: 700, color: 'var(--ink-pure)', marginTop: '4px' }}>{selectedTicket.damage_level}</div>
+                  <div style={{ fontWeight: 700, color: getDamageLabel(selectedTicket.damage_level).color, marginTop: '4px' }}>{getDamageLabel(selectedTicket.damage_level).label}</div>
                 </div>
               </div>
 

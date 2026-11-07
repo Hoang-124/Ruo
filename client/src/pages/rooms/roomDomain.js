@@ -224,13 +224,20 @@ export const TRANSFER_REASON_MAX = 500;
  * UC-2.5/2.6: rooms that equipment can be moved to while its room is being closed.
  * Never the source room itself and never an inactive room; warehouses come first, then by code.
  */
-export const getTransferDestinations = (rooms = [], sourceRoomId) =>
-  rooms
-    .filter((room) => room && room._id !== sourceRoomId && room.status !== 'inactive')
+export const getTransferDestinations = (rooms = [], sourceRoomId, sourceRoomCode = '') => {
+  const normCode = normalizeRoomCode(sourceRoomCode);
+  return rooms
+    .filter((room) => {
+      if (!room || room.status === 'inactive') return false;
+      if (sourceRoomId && String(room._id) === String(sourceRoomId)) return false;
+      if (normCode && normalizeRoomCode(room.code) === normCode) return false;
+      return true;
+    })
     .sort((a, b) => {
       const warehouseDiff = Number(b.room_type === 'warehouse') - Number(a.room_type === 'warehouse');
       return warehouseDiff || String(a.code).localeCompare(String(b.code));
     });
+};
 
 /** Validates the transfer dialog; returns { destination?, reason? } error messages (empty when valid). */
 export const validateTransferForm = ({ destinationId, reason }) => {

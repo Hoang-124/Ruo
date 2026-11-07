@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Icons } from '../common/SvgIcons';
 import { facilityApi } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import {
   formatDateTime,
   getEquipmentStatusLabel,
@@ -58,7 +59,9 @@ const TableShell = ({ children }) => (
  * UC-2.3 Room Detail View — read-only drawer for every role.
  * Shows room specs, equipment (serial number + QR code), maintenance history and movement history.
  */
-export const RoomDetailModal = ({ roomCode, onClose, onEdit }) => {
+export const RoomDetailModal = ({ roomCode, onClose, onEdit, onTransferEquipment }) => {
+  const { currentUser } = useAuth();
+  const canTransfer = ['technician', 'facility_manager'].includes(currentUser?.role);
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -199,7 +202,7 @@ export const RoomDetailModal = ({ roomCode, onClose, onEdit }) => {
                   <TableShell>
                     <thead>
                       <tr style={{ background: 'var(--surface-2)' }}>
-                        <th style={th}>Mã TB</th><th style={th}>Tên thiết bị</th><th style={th}>Số serial</th><th style={th}>Mã QR</th><th style={th}>Trạng thái</th>
+                        <th style={th}>Mã TB</th><th style={th}>Tên thiết bị</th><th style={th}>Số serial</th><th style={th}>Mã QR</th><th style={th}>Trạng thái</th>{canTransfer && onTransferEquipment && <th style={{ ...th, textAlign: 'right' }}>Thao tác</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -213,6 +216,20 @@ export const RoomDetailModal = ({ roomCode, onClose, onEdit }) => {
                           <td style={{ ...td, fontFamily: 'var(--font-mono)' }}>{eq.serial_number || '—'}</td>
                           <td style={{ ...td, fontFamily: 'var(--font-mono)' }}>{eq.qr_code || '—'}</td>
                           <td style={td}><Pill tone={EQUIPMENT_TONES[eq.status]}>{getEquipmentStatusLabel(eq.status)}</Pill></td>
+                          {canTransfer && onTransferEquipment && (
+                            <td style={{ ...td, textAlign: 'right' }}>
+                              {!['disposed', 'lost'].includes(eq.status) ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onTransferEquipment(eq, room)}
+                                  className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+                                  style={{ fontSize: '11px', padding: '4px 10px' }}
+                                >
+                                  ⇄ Điều Chuyển
+                                </button>
+                              ) : '—'}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

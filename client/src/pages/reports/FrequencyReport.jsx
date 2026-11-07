@@ -8,9 +8,13 @@ function FrequencyTable({ title, rows }) {
   return <div className="dashboard-report-table"><table>
     <caption className="reports-caption">{title}</caption>
     <thead><tr><th scope="col">Nhóm</th><th scope="col">Số sự cố</th><th scope="col">Thiết bị có sự cố</th><th scope="col">Sự cố / TB có sự cố</th></tr></thead>
-    <tbody>{rows.map(row => <tr key={row._id || 'unknown'}><td><strong>{row.code}</strong><br />{row.name}</td>
-      <td>{row.failureCount}</td><td>{row.affectedEquipment}</td><td>{row.incidentsPerEquipment.toLocaleString('vi-VN')}</td></tr>)}</tbody>
-  </table>{rows.length === 0 && <p>Không có sự cố trong năm này.</p>}</div>;
+    <tbody>{rows.map(row => <tr key={row._id || 'unknown'}>
+      <td><strong className="reports-code-pill">{row.code}</strong><br /><span className="reports-room-name">{row.name}</span></td>
+      <td style={{ fontWeight: 700, color: 'var(--laser-cyan)' }}>{row.failureCount}</td>
+      <td style={{ fontWeight: 600 }}>{row.affectedEquipment}</td>
+      <td className="reports-value-cell">{row.incidentsPerEquipment.toLocaleString('vi-VN')}</td>
+    </tr>)}</tbody>
+  </table>{rows.length === 0 && <p style={{ padding: '14px 16px', color: 'var(--ink-muted)' }}>Không có sự cố trong năm này.</p>}</div>;
 }
 
 export function FrequencyReport({ refreshKey }) {

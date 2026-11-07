@@ -102,28 +102,28 @@
   --duration-normal: 200ms;
 
   /* ==========================================================================
-     2. SEMANTIC TOKENS — WARM ARCHITECTURAL SANDSTONE & SOLAR ORANGE (DEFAULT)
-     High-Contrast Crisp Paper Cards (#FFFFFF) on Warm Alabaster Stone (#F7F4EF)
-     with Deep Espresso Ink (#1C1917) & Solar Terracotta Accents (#EA580C)
+     2. SEMANTIC TOKENS — ARCHITECTURAL STUDIO SLATE & SOLAR ORANGE (DEFAULT)
+     High-Contrast Crisp Paper Cards (#FFFFFF) on Clean Architectural Slate (#F8FAFC)
+     with Deep Slate Ink (#0F172A) & Solar Terracotta Accents (#EA580C)
      ========================================================================== */
-  --bg-app: #F7F4EF;
+  --bg-app: #F8FAFC;
   --surface-1: #FFFFFF;
-  --surface-2: #FAF8F5;
-  --surface-3: #F0ECE4;
-  --surface-header: #F2EDE4;
+  --surface-2: #F8FAFC;
+  --surface-3: #F1F5F9;
+  --surface-header: #F8FAFC;
   --surface-card: #FFFFFF;
   --surface-elevated: #FFFFFF;
   --surface-glass: rgba(255, 255, 255, 0.96);
 
-  --border-subtle: #E6E0D6;
-  --border-default: #CFC7BC;
-  --border-strong: #78716C;
+  --border-subtle: #E2E8F0;
+  --border-default: #CBD5E1;
+  --border-strong: #94A3B8;
   --border-focus: #EA580C;
 
-  --ink-primary: #1C1917;
-  --ink-secondary: #292524;
-  --ink-muted: #57534E;
-  --ink-faint: #78716C;
+  --ink-primary: #0F172A;
+  --ink-secondary: #334155;
+  --ink-muted: #64748B;
+  --ink-faint: #94A3B8;
 
   /* High-Contrast Solid & Tinted Status Tokens (WCAG AAA on Daylight Paper) */
   --status-active-color: #065F46;
@@ -146,10 +146,10 @@
   --status-disposal-border: #7C3AED;
   --status-disposal-solid: #7C3AED;
 
-  --status-disposed-color: #292524;
-  --status-disposed-bg: #E7E5E4;
-  --status-disposed-border: #78716C;
-  --status-disposed-solid: #57534E;
+  --status-disposed-color: #334155;
+  --status-disposed-bg: #F1F5F9;
+  --status-disposed-border: #94A3B8;
+  --status-disposed-solid: #475569;
 
   --status-overdue-color: #991B1B;
   --status-overdue-bg: #FEE2E2;
@@ -177,59 +177,59 @@
   --status-purple-bg: var(--status-disposal-bg);
   --status-purple-border: var(--status-disposal-border);
 
-  /* Crisp Structural Elevation (Warm-tinted shadows) */
-  --shadow-xs: 0 1px 3px rgba(28, 25, 23, 0.07);
-  --shadow-sm: 0 2px 8px rgba(28, 25, 23, 0.07), 0 1px 2px rgba(28, 25, 23, 0.05);
-  --shadow-md: 0 8px 22px rgba(28, 25, 23, 0.09), 0 2px 6px rgba(28, 25, 23, 0.05);
-  --shadow-card: 0 2px 10px rgba(28, 25, 23, 0.06), 0 1px 3px rgba(28, 25, 23, 0.04);
-  --shadow-card-hover: 0 10px 26px rgba(234, 88, 12, 0.12), 0 3px 8px rgba(28, 25, 23, 0.06);
-  --shadow-dropdown: 0 14px 34px rgba(28, 25, 23, 0.16);
-  --shadow-drawer: -12px 0 36px rgba(28, 25, 23, 0.16);
+  /* Crisp Structural Elevation (Multi-layered studio shadows) */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 4px 10px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 12px 28px rgba(15, 23, 42, 0.06);
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.05), 0 6px 18px rgba(15, 23, 42, 0.04);
+  --shadow-card-hover: 0 12px 28px rgba(234, 88, 12, 0.10), 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-dropdown: 0 16px 38px rgba(15, 23, 42, 0.14);
+  --shadow-drawer: -12px 0 36px rgba(15, 23, 42, 0.14);
 
   /* Technical Architectural Grid */
   --blueprint-grid: radial-gradient(rgba(234, 88, 12, 0.14) 1px, transparent 1px);
 
   /* Unified 2D Architectural Floor Plan Palette (All 5 Floors) */
-  --cad-canvas-bg: #F3EFE8;
-  --cad-shell-stroke: #1C1917;
-  --cad-shell-inner: #CFC7BC;
+  --cad-canvas-bg: #F1F5F9;
+  --cad-shell-stroke: #0F172A;
+  --cad-shell-inner: #CBD5E1;
   --cad-window-stroke: #EA580C;
-  --cad-corridor-bg: #E7E0D5;
-  --cad-corridor-stroke: #CFC7BC;
-  --cad-corridor-dash: rgba(120, 113, 108, 0.48);
-  --cad-corridor-ink: #57534E;
-  --cad-void-bg: #F7F4EE;
-  --cad-void-stroke: #CFC7BC;
+  --cad-corridor-bg: #E2E8F0;
+  --cad-corridor-stroke: #CBD5E1;
+  --cad-corridor-dash: rgba(100, 116, 139, 0.48);
+  --cad-corridor-ink: #475569;
+  --cad-void-bg: #F8FAFC;
+  --cad-void-stroke: #CBD5E1;
   --cad-void-dash: rgba(234, 88, 12, 0.42);
-  --cad-wall-fill: #D6CFC4;
-  --cad-wall-stroke: #78716C;
-  --cad-stair-bg: #EFEAE1;
-  --cad-stair-landing: #E2DAD0;
-  --cad-stair-tread-stroke: #A8A29E;
+  --cad-wall-fill: #CBD5E1;
+  --cad-wall-stroke: #64748B;
+  --cad-stair-bg: #F1F5F9;
+  --cad-stair-landing: #E2E8F0;
+  --cad-stair-tread-stroke: #94A3B8;
   --cad-stair-arrow-up: #EA580C;
-  --cad-stair-arrow-down: #57534E;
+  --cad-stair-arrow-down: #475569;
   --cad-room-bg: #FFFFFF;
-  --cad-room-border: #D6C7B8;
+  --cad-room-border: #CBD5E1;
   --cad-room-accent: #EA580C;
   --cad-room-selected-bg: #FFF7ED;
   --cad-room-selected-glow: rgba(234, 88, 12, 0.28);
-  --cad-utility-bg: #F6F3EC;
-  --cad-utility-border: #D6CFC4;
-  --cad-utility-accent: #78716C;
+  --cad-utility-bg: #F8FAFC;
+  --cad-utility-border: #CBD5E1;
+  --cad-utility-accent: #64748B;
 
   /* Legacy & Surface Compatibility Aliases */
   --surface-primary: #FFFFFF;
-  --surface-input: #FAF8F5;
-  --surface-base: #F7F4EF;
+  --surface-input: #F8FAFC;
+  --surface-base: #F8FAFC;
   --surface-panel: #FFFFFF;
-  --surface-sunken: #ECE7DF;
-  --surface-subtle: #FAF8F5;
-  --canvas-base: #F7F4EF;
-  --canvas-subtle: #FAF8F5;
-  --hairline-soft: #E6E0D6;
-  --hairline-medium: #CFC7BC;
-  --hairline-strong: #78716C;
-  --ink-pure: #1C1917;
+  --surface-sunken: #F1F5F9;
+  --surface-subtle: #F8FAFC;
+  --canvas-base: #F8FAFC;
+  --canvas-subtle: #F1F5F9;
+  --hairline-soft: #E2E8F0;
+  --hairline-medium: #CBD5E1;
+  --hairline-strong: #94A3B8;
+  --ink-pure: #0F172A;
   --laser-cyan: #EA580C;
   --laser-indigo: #C2410C;
   --laser-emerald: #047857;
