@@ -84,6 +84,7 @@ String statusLabel(String status) =>
       'awaiting_approval': 'Chờ CSVC duyệt',
       'pending': 'Đang chờ',
       'approved': 'Đã duyệt',
+      'completing': 'Đang hoàn tất · có thể thử lại',
       'rejected': 'Từ chối',
       'cancelled': 'Đã hủy',
       'unrepairable': 'Không thể sửa',

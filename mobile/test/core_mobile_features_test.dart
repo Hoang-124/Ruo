@@ -12,6 +12,7 @@ import 'package:ruo_mobile/features/field_profile.dart';
 import 'package:ruo_mobile/features/field_repairs.dart';
 import 'package:ruo_mobile/features/operations_disposals.dart';
 import 'package:ruo_mobile/features/operations_maintenance.dart';
+import 'package:ruo_mobile/features/operations_transfers.dart';
 import 'package:ruo_mobile/ui/common.dart';
 import 'package:ruo_mobile/ui/tokens.dart';
 
@@ -319,6 +320,61 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('technician can retry a partially completed transfer', (
+    tester,
+  ) async {
+    String? completedPath;
+    final api = RuoApi(
+      client: MockClient((request) async {
+        if (request.method == 'PUT') {
+          completedPath = request.url.path;
+          return http.Response(
+            '{"success":true,"message":"Đã hoàn tất."}',
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'movements': [
+              {
+                '_id': 'movement-1',
+                'status': 'completing',
+                'type': 'transfer',
+                'equipment_id': {'code': 'TV-101', 'name': 'Smart TV'},
+                'from_room_id': {'code': 'P101'},
+                'to_room_id': {'code': 'P102'},
+                'reason': 'Điều chuyển phòng',
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+    api.user = {'role': 'technician'};
+    addTearDown(api.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RuoTokens.theme(Brightness.dark),
+        home: Scaffold(body: TransfersPage(api: api)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Đang hoàn tất · có thể thử lại'), findsOneWidget);
+    await tester.tap(find.text('Xác nhận hoàn tất'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Xác nhận lại');
+    await tester.tap(find.text('Hoàn tất'));
+    await tester.pumpAndSettle();
+
+    expect(completedPath, '/api/movements/movement-1/complete');
+    expect(find.text('Đã hoàn tất.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('replacement equipment receipt keeps form controllers alive', (
     tester,

@@ -4,6 +4,44 @@ import '../core/api.dart';
 import '../ui/common.dart';
 import '../ui/vectors.dart';
 
+class _TransferCompletionDialog extends StatefulWidget {
+  const _TransferCompletionDialog();
+
+  @override
+  State<_TransferCompletionDialog> createState() =>
+      _TransferCompletionDialogState();
+}
+
+class _TransferCompletionDialogState extends State<_TransferCompletionDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Xác nhận hoàn tất'),
+    content: TextField(
+      controller: _controller,
+      maxLength: 500,
+      decoration: const InputDecoration(labelText: 'Ghi chú hoàn tất'),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(context, _controller.text.trim()),
+        child: const Text('Hoàn tất'),
+      ),
+    ],
+  );
+}
+
 class TransfersPage extends StatefulWidget {
   const TransfersPage({super.key, required this.api});
   final RuoApi api;
@@ -174,30 +212,10 @@ class _TransfersPageState extends State<TransfersPage> {
   }
 
   Future<void> _complete(Json movement) async {
-    final controller = TextEditingController();
     final notes = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Xác nhận hoàn tất'),
-        content: TextField(
-          controller: controller,
-          maxLength: 500,
-          decoration: const InputDecoration(labelText: 'Ghi chú hoàn tất'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('Hoàn tất'),
-          ),
-        ],
-      ),
+      builder: (_) => const _TransferCompletionDialog(),
     );
-    controller.dispose();
     if (notes == null) return;
     await _run(
       () => widget.api.send('PUT', '/movements/${movement['_id']}/complete', {
@@ -335,7 +353,12 @@ class _TransfersPageState extends State<TransfersPage> {
                                 ),
                               ],
                             ),
-                          if (_canComplete && movement['status'] == 'approved')
+                          if (_canComplete &&
+                              const {
+                                'approved',
+                                'pending',
+                                'completing',
+                              }.contains(movement['status']))
                             Align(
                               alignment: Alignment.centerRight,
                               child: FilledButton.icon(
