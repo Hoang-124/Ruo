@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import mongoose from 'mongoose';
 import { connectDB } from './config/db.js';
 import { notFound, errorHandler } from './middlewares/errorMiddleware.js';
@@ -32,8 +34,23 @@ const PORT = process.env.PORT || 5000;
 
 // Security & Parsing Middlewares
 app.use(securityHeaders);
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:8080',
+  'http://127.0.0.1:8080',
+  process.env.CORS_ORIGIN
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl) or allowed origins
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => origin.startsWith(o))) {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -55,6 +72,7 @@ app.use('/api/admin', authRoutes); // Supports GET /api/admin/users and POST /ap
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/equipments', equipmentRoutes);
+app.use('/api/equipment', equipmentRoutes);
 app.use('/api/repairs', repairRoutes);
 app.use('/api/movements', movementRoutes);
 app.use('/api/transfers', movementRoutes); // Backward compatibility
@@ -73,6 +91,15 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/master', masterDataRoutes);
 app.use('/api/master-data', masterDataRoutes);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const testQrPath = path.resolve(__dirname, '../../test_qr_codes');
+
+app.use('/test-qr', express.static(testQrPath));
+app.get('/qr-test', (req, res) => {
+  res.sendFile(path.join(testQrPath, 'qr_test_sheet.html'));
+});
 
 import { checkAndNotifyOverdueRepairs } from './controllers/repairController.js';
 
