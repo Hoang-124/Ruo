@@ -99,7 +99,12 @@ flutter drive --driver=test_driver/integration_test.dart --target=integration_te
 - `lib/features/cad_blueprint.dart`: bản vẽ kiến trúc 2D Tòa A1 5 tầng (`CustomPainter` + `InteractiveViewer`), ánh xạ `Pxxx` ↔ `A1-xxx`.
 - `lib/features/rooms.dart`: mặt bằng CAD (`CadPage`), danh sách/bộ lọc phòng (`RoomsPage`), chi tiết & chặn thiết bị (`RoomDetailPage`), form tạo/sửa phòng (`RoomFormPage`).
 - `lib/features/reports.dart`: tổng quan KPI/chi phí/sức khỏe (`DashboardPage`) và 6 chế độ báo cáo/xuất file (`ReportsPage`).
-- `lib/features/operations.dart`: giao diện danh mục, điều chuyển, bảo dưỡng, quy trình thanh lý, kiểm kê và tra cứu QR.
+- `lib/features/operations.dart`: điều phối các phân hệ nghiệp vụ theo vai trò.
+- `lib/features/operations_catalog.dart`: quản lý danh mục hệ thống.
+- `lib/features/operations_transfers.dart`: tạo, duyệt, hoàn tất và tra cứu điều chuyển.
+- `lib/features/operations_maintenance.dart`: kế hoạch và ghi nhận bảo dưỡng.
+- `lib/features/operations_disposals.dart`: quy trình đề xuất và phê duyệt thanh lý.
+- `lib/features/operations_inventory.dart`: kiểm kê, tra cứu QR và báo cáo kiểm kê.
 - `lib/ui/tokens.dart`: hệ thống token màu sắc & typography Ruo UEMS V3.0 (Light Slate & Dark Warm Obsidian).
 - `lib/ui/vectors.dart`: hệ thống icon vector & logo kiến trúc `RuoLogoMark` thuần Dart `CustomPainter` (không dùng thư viện icon ngoài).
 - `lib/ui/common.dart`: thành phần dùng chung (`StatusBadge`, `SectionTitle`, `DataCard`, `EmptyNotice`, `AsyncPanel`).
