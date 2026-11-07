@@ -31,6 +31,12 @@ enum RuoIcon {
   wrench,
   transfer,
   zoomReset,
+  qrCode,
+  bell,
+  clock,
+  inventory,
+  user,
+  camera,
 }
 
 class RuoVectorIcon extends StatelessWidget {
@@ -185,18 +191,23 @@ class _RuoIconPainter extends CustomPainter {
           p,
         );
       case RuoIcon.refresh:
-        canvas.drawArc(
-          const Rect.fromLTWH(4.5, 4.5, 15, 15),
-          -math.pi * 0.75,
-          math.pi * 1.45,
-          false,
+        canvas.drawPath(
+          Path()
+            ..moveTo(21, 12)
+            ..arcToPoint(
+              const Offset(18.7, 5.7),
+              radius: const Radius.circular(9),
+              clockwise: true,
+              largeArc: true,
+            )
+            ..lineTo(21, 8),
           p,
         );
         canvas.drawPath(
           Path()
-            ..moveTo(15.5, 4.2)
-            ..lineTo(19.5, 4.8)
-            ..lineTo(18.8, 8.8),
+            ..moveTo(21, 3)
+            ..lineTo(21, 8)
+            ..lineTo(16, 8),
           p,
         );
       case RuoIcon.alert:
@@ -302,17 +313,19 @@ class _RuoIconPainter extends CustomPainter {
       case RuoIcon.moon:
         canvas.drawPath(
           Path()
-            ..moveTo(18.5, 14.5)
+            ..moveTo(21, 12.8)
             ..arcToPoint(
-              const Offset(9.5, 5.5),
-              radius: const Radius.circular(7),
+              const Offset(11.2, 3),
+              radius: const Radius.circular(9),
               clockwise: true,
+              largeArc: true,
             )
             ..arcToPoint(
-              const Offset(18.5, 14.5),
-              radius: const Radius.circular(7.8),
+              const Offset(21, 12.8),
+              radius: const Radius.circular(7),
               clockwise: false,
-            ),
+            )
+            ..close(),
           p,
         );
       case RuoIcon.wrench:
@@ -359,6 +372,71 @@ class _RuoIconPainter extends CustomPainter {
             ..lineTo(4, 15),
           p,
         );
+      case RuoIcon.qrCode:
+        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(3, 3, 7, 7), const Radius.circular(1.5)), p);
+        canvas.drawRect(const Rect.fromLTWH(5.2, 5.2, 2.6, 2.6), fill);
+        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(14, 3, 7, 7), const Radius.circular(1.5)), p);
+        canvas.drawRect(const Rect.fromLTWH(16.2, 5.2, 2.6, 2.6), fill);
+        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(3, 14, 7, 7), const Radius.circular(1.5)), p);
+        canvas.drawRect(const Rect.fromLTWH(5.2, 16.2, 2.6, 2.6), fill);
+        canvas.drawRect(const Rect.fromLTWH(14, 14, 3, 3), fill);
+        canvas.drawRect(const Rect.fromLTWH(18, 14, 3, 3), fill);
+        canvas.drawRect(const Rect.fromLTWH(14, 18, 3, 3), fill);
+        canvas.drawRect(const Rect.fromLTWH(18, 18, 3, 3), fill);
+        canvas.drawRect(const Rect.fromLTWH(11, 4, 2, 5), fill);
+        canvas.drawRect(const Rect.fromLTWH(11, 15, 2, 5), fill);
+      case RuoIcon.bell:
+        // Lucide / Apple SF Symbols bell geometry
+        final bellBody = Path()
+          ..moveTo(6, 8)
+          ..arcToPoint(
+            const Offset(18, 8),
+            radius: const Radius.circular(6),
+            clockwise: true,
+          )
+          ..cubicTo(18, 14.5, 21, 17, 21, 17)
+          ..lineTo(3, 17)
+          ..cubicTo(3, 17, 6, 14.5, 6, 8)
+          ..close();
+        canvas.drawPath(bellBody, p);
+
+        final clapper = Path()
+          ..moveTo(10.3, 20)
+          ..arcToPoint(
+            const Offset(13.7, 20),
+            radius: const Radius.circular(2),
+            clockwise: false,
+          );
+        canvas.drawPath(clapper, p);
+      case RuoIcon.clock:
+        canvas.drawCircle(const Offset(12, 12), 8.5, p);
+        canvas.drawLine(const Offset(12, 12), const Offset(12, 7.5), p);
+        canvas.drawLine(const Offset(12, 12), const Offset(15.5, 12), p);
+      case RuoIcon.inventory:
+        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(4, 3, 16, 18), const Radius.circular(2)), p);
+        canvas.drawLine(const Offset(8, 8), const Offset(16, 8), p);
+        canvas.drawLine(const Offset(8, 12), const Offset(16, 12), p);
+        canvas.drawLine(const Offset(8, 16), const Offset(13, 16), p);
+      case RuoIcon.user:
+        canvas.drawCircle(const Offset(12, 8), 4, p);
+        canvas.drawPath(
+          Path()
+            ..moveTo(4.5, 20)
+            ..quadraticBezierTo(5, 14.5, 12, 14.5)
+            ..quadraticBezierTo(19, 14.5, 19.5, 20),
+          p,
+        );
+      case RuoIcon.camera:
+        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(3, 7, 18, 13), const Radius.circular(2.5)), p);
+        canvas.drawPath(
+          Path()
+            ..moveTo(8, 7)
+            ..lineTo(9.5, 4.5)
+            ..lineTo(14.5, 4.5)
+            ..lineTo(16, 7),
+          p,
+        );
+        canvas.drawCircle(const Offset(12, 13.5), 3.5, p);
     }
     canvas.restore();
   }

@@ -12,8 +12,20 @@ class RuoTokens {
   static const brand600 = Color(0xFFEA580C);
   static const brand500 = Color(0xFFF97316);
   static const brand400 = Color(0xFFFB923C);
+  static const brand300 = Color(0xFFFDBA74);
   static const brand100 = Color(0xFFFFEDD5);
   static const brand50 = Color(0xFFFFF7ED);
+
+  // Status & Semantic Accents
+  static const emerald700 = Color(0xFF047857);
+  static const emerald600 = Color(0xFF059669);
+  static const amber600 = Color(0xFFD97706);
+  static const blue600 = Color(0xFF2563EB);
+  static const rose600 = Color(0xFFE11D48);
+  static const slate500 = Color(0xFF64748B);
+  static const slate600 = Color(0xFF475569);
+  static const slate900 = Color(0xFF0F172A);
+  static const slate950 = Color(0xFF020617);
 
   // Light Surfaces & Ink
   static const lightBg = Color(0xFFF8FAFC);

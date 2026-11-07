@@ -46,4 +46,9 @@ CHANGELOG.md
 
 # Local database storage
 server/data/
+screenshots/
+apk_dist/
+*.apk
+phone_live_screen.png
+phone_ui.xml
 

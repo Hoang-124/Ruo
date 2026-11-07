@@ -5,6 +5,8 @@ import '../ui/common.dart';
 import '../ui/tokens.dart';
 import '../ui/vectors.dart';
 import 'cad_blueprint.dart';
+import 'field_inventory.dart';
+import 'field_repairs.dart';
 
 const roomTypeNames = <String, String>{
   'lecture': 'Phòng học',
@@ -330,22 +332,66 @@ class _CadPageState extends State<CadPage> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: DataCard(
                     title: value(item['name']),
-                    subtitle: value(item['code']),
+                    subtitle: '${value(item['code'])} · Chạm để báo hỏng SLA',
                     trailing: StatusBadge(value(item['status'])),
+                    onTap: () {
+                      showDialog<void>(
+                        context: context,
+                        builder: (_) => ReportIncidentDialog(
+                          api: widget.api,
+                          equipment: {
+                            ...item,
+                            'room_code': value(room['code']),
+                          },
+                        ),
+                      );
+                    },
                   ),
                 ),
               const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () {
-                  Navigator.pop(sheetContext);
-                  _openDetail(room);
-                },
-                icon: const RuoVectorIcon(
-                  RuoIcon.door,
-                  size: 17,
-                  color: Colors.white,
-                ),
-                label: const Text('Thông tin phòng & lịch sử'),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        _openDetail(room);
+                      },
+                      icon: const RuoVectorIcon(
+                        RuoIcon.door,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                      label: const Text('Chi tiết phòng'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => Scaffold(
+                              appBar: AppBar(
+                                title: Text('Kiểm kê phòng ${value(room['code'])}'),
+                              ),
+                              body: ClassroomAuditPage(
+                                api: widget.api,
+                                initialRoomCode: value(room['code']),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const RuoVectorIcon(
+                        RuoIcon.inventory,
+                        size: 16,
+                      ),
+                      label: const Text('Kiểm kê'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

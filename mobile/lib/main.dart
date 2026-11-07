@@ -4,6 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/api.dart';
 import 'features/operations.dart';
+import 'features/field_equipment.dart';
+import 'features/field_inventory.dart';
+import 'features/field_notifications.dart';
+import 'features/field_profile.dart';
+import 'features/field_repairs.dart';
 import 'features/reports.dart';
 import 'features/rooms.dart';
 import 'ui/common.dart';
@@ -19,12 +24,13 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final preferences = await SharedPreferences.getInstance();
   const configured = String.fromEnvironment('RUO_API_URL', defaultValue: '');
-  final api = RuoApi(
-    baseUrl: configured.isNotEmpty
-        ? configured
-        : preferences.getString('server_url') ??
-              'http://$_defaultLocalHost:5000/api',
-  );
+  final savedUrl = preferences.getString('server_url');
+  final initialUrl = (savedUrl != null && savedUrl.isNotEmpty)
+      ? savedUrl
+      : (configured.isNotEmpty
+          ? configured
+          : 'http://$_defaultLocalHost:5000/api');
+  final api = RuoApi(baseUrl: initialUrl);
   runApp(RuoApp(api: api, preferences: preferences));
 }
 
@@ -296,7 +302,60 @@ class _LoginPageState extends State<LoginPage> {
                           v == null || v.isEmpty ? 'Nhập mật khẩu.' : null,
                       onFieldSubmitted: (_) => _login(),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
+                    Text(
+                      'ĐĂNG NHẬP NHANH (MÔI TRƯỜNG DEMO)',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.9,
+                        color: scheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ActionChip(
+                          avatar: const RuoVectorIcon(RuoIcon.user, size: 14),
+                          label: const Text('GV001 (Giảng viên)'),
+                          onPressed: () {
+                            _identifier.text = 'GV001';
+                            _password.text = 'Ruo@2026';
+                            _login();
+                          },
+                        ),
+                        ActionChip(
+                          avatar: const RuoVectorIcon(RuoIcon.wrench, size: 14),
+                          label: const Text('KT001 (Kỹ thuật viên)'),
+                          onPressed: () {
+                            _identifier.text = 'KT001';
+                            _password.text = 'Ruo@2026';
+                            _login();
+                          },
+                        ),
+                        ActionChip(
+                          avatar: const RuoVectorIcon(RuoIcon.dashboard, size: 14),
+                          label: const Text('QL001 (Quản lý)'),
+                          onPressed: () {
+                            _identifier.text = 'QL001';
+                            _password.text = 'Ruo@2026';
+                            _login();
+                          },
+                        ),
+                        ActionChip(
+                          avatar: const RuoVectorIcon(RuoIcon.blueprint, size: 14),
+                          label: const Text('AD001 (Quản trị)'),
+                          onPressed: () {
+                            _identifier.text = 'AD001';
+                            _password.text = 'Ruo@2026';
+                            _login();
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
                     Container(
                       decoration: BoxDecoration(
                         color: scheme.surface,
@@ -429,7 +488,7 @@ class _LoginPageState extends State<LoginPage> {
                     FilledButton(
                       key: const Key('login_submit'),
                       onPressed: _busy ? null : _login,
-                      child: Text(_busy ? 'Đang đăng nhập…' : 'Đăng nhập'),
+                      child: Text(_busy ? 'Đang đăng nhập…' : 'ĐĂNG NHẬP VÀO HỆ THỐNG'),
                     ),
                     const SizedBox(height: 22),
                     Text(
@@ -470,12 +529,32 @@ class _WorkspaceState extends State<Workspace> {
     final dark = brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
 
+    final role = widget.api.user?['role']?.toString();
+    final isLecturer = role == 'lecturer';
+    final isTechnician = role == 'technician';
+
     final tabs = <(String, RuoIcon, Widget)>[
-      ('Mặt bằng', RuoIcon.blueprint, CadPage(api: widget.api)),
-      ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
-      if (widget.api.canReport) ...[
-        ('Tổng quan', RuoIcon.dashboard, DashboardPage(api: widget.api)),
-        ('Báo cáo', RuoIcon.chart, ReportsPage(api: widget.api)),
+      if (isTechnician) ...[
+        ('SLA Sửa Chữa', RuoIcon.wrench, TechnicianTasksPage(api: widget.api)),
+        ('Mặt bằng', RuoIcon.blueprint, CadPage(api: widget.api)),
+        ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
+        ('Kiểm Kê', RuoIcon.inventory, ClassroomAuditPage(api: widget.api)),
+        ('Hồ sơ', RuoIcon.user, ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme)),
+      ] else if (isLecturer) ...[
+        ('Mặt bằng', RuoIcon.blueprint, CadPage(api: widget.api)),
+        ('Quét QR', RuoIcon.qrCode, QrScannerPage(api: widget.api)),
+        ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
+        ('Thông báo', RuoIcon.bell, NotificationsPage(api: widget.api)),
+        ('Hồ sơ', RuoIcon.user, ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme)),
+      ] else ...[
+        ('Mặt bằng', RuoIcon.blueprint, CadPage(api: widget.api)),
+        ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
+        ('SLA Sửa Chữa', RuoIcon.wrench, TechnicianTasksPage(api: widget.api)),
+        ('Kiểm Kê', RuoIcon.inventory, ClassroomAuditPage(api: widget.api)),
+        if (widget.api.canReport) ...[
+          ('Báo cáo', RuoIcon.chart, ReportsPage(api: widget.api)),
+        ],
+        ('Hồ sơ', RuoIcon.user, ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme)),
       ],
       if (['admin', 'facility_manager', 'technician']
           .contains(widget.api.user?['role']))
@@ -542,6 +621,41 @@ class _WorkspaceState extends State<Workspace> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Thông báo',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('Trung tâm thông báo')),
+                    body: NotificationsPage(api: widget.api),
+                  ),
+                ),
+              );
+            },
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                RuoVectorIcon(
+                  RuoIcon.bell,
+                  size: 20,
+                  color: scheme.onSurfaceVariant,
+                ),
+                Positioned(
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: RuoTokens.rose600,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (widget.onToggleTheme != null)
             IconButton(
               key: const Key('workspace_theme_toggle'),

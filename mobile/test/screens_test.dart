@@ -22,10 +22,10 @@ const room = {
 };
 
 http.Response reply(Object body, [int status = 200]) => http.Response(
-      jsonEncode(body),
-      status,
-      headers: {'content-type': 'application/json; charset=utf-8'},
-    );
+  jsonEncode(body),
+  status,
+  headers: {'content-type': 'application/json; charset=utf-8'},
+);
 
 void main() {
   testWidgets(
@@ -87,10 +87,15 @@ void main() {
         await api.login('x', 'y');
         await tester.pumpWidget(RuoApp(api: api));
         await tester.pumpAndSettle();
-        final management = ['admin', 'facility_manager'].contains(role);
+        final expectedDestinations = switch (role) {
+          'admin' || 'facility_manager' => 7,
+          'technician' => 6,
+          'lecturer' => 5,
+          _ => 5,
+        };
         expect(
           find.byType(NavigationDestination),
-          findsNWidgets(management ? 5 : role == 'technician' ? 3 : 2),
+          findsNWidgets(expectedDestinations),
         );
         await tester.tap(
           find.widgetWithText(NavigationDestination, 'Phòng học'),
@@ -161,7 +166,11 @@ void main() {
     tester,
   ) async {
     final api = RuoApi(
-      client: MockClient((_) async => reply({'rooms': [room]})),
+      client: MockClient(
+        (_) async => reply({
+          'rooms': [room],
+        }),
+      ),
     );
     addTearDown(api.dispose);
     await tester.pumpWidget(RuoApp(api: api));
