@@ -555,11 +555,27 @@ export const TechnicianTasksPage = () => {
 
                 {aiByTask[selectedTask._id] && (() => {
                   const cp = aiByTask[selectedTask._id];
+                  const hist = cp.historical_insights;
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '10.5px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px', background: 'var(--status-info-bg)', color: 'var(--status-info-color)', border: '1px solid var(--status-info-border)' }}>
+                          {cp.engine === 'gemini' ? 'GEMINI HYBRID AI' : 'RUO CORTEX LOCAL AI'}
+                        </span>
+                        {cp.diagnosis?.playbook_title && (
+                          <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 7px', borderRadius: '4px', background: 'var(--surface-card)', color: 'var(--ink-secondary)', border: '1px solid var(--border-default)' }}>
+                            {cp.diagnosis.playbook_title}
+                          </span>
+                        )}
+                      </div>
                       {cp.disposal_advisory?.should_consider_disposal && (
                         <div style={{ background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger-border)', color: 'var(--status-danger-color)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700 }}>
                           ⚠ {cp.disposal_advisory.recommendation}
+                        </div>
+                      )}
+                      {hist?.chronic_pattern?.advisory && (
+                        <div style={{ background: 'var(--status-warning-bg)', border: '1px solid var(--status-warning-border)', color: 'var(--status-warning-color)', padding: '7px 10px', borderRadius: 'var(--radius-sm)', fontSize: '11.5px', fontWeight: 600 }}>
+                          {hist.chronic_pattern.advisory}
                         </div>
                       )}
                       <div>
@@ -574,6 +590,18 @@ export const TechnicianTasksPage = () => {
                               <li key={idx} style={{ marginBottom: '2px' }}>{step}</li>
                             ))}
                           </ol>
+                        </div>
+                      )}
+                      {Array.isArray(cp.historical_insights?.similar_cases) && cp.historical_insights.similar_cases.length > 0 && (
+                        <div style={{ background: 'var(--surface-panel)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-sm)', padding: '7px 10px', fontSize: '11.5px' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--ink-pure)', marginBottom: '3px' }}>
+                            Kinh nghiệm từ ca tương tự tại Tòa A1 ({cp.historical_insights.similar_cases.length} phiếu):
+                          </div>
+                          {cp.historical_insights.similar_cases.slice(0, 2).map((sc) => (
+                            <div key={sc.ticket_code} style={{ color: 'var(--ink-muted)', marginTop: '2px' }}>
+                              • <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-secondary)' }}>{sc.ticket_code}</strong> ({sc.similarity}% tương đồng): {sc.incident_description}
+                            </div>
+                          ))}
                         </div>
                       )}
                       {Array.isArray(cp.recommended_parts) && cp.recommended_parts.length > 0 && (

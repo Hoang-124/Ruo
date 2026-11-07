@@ -596,11 +596,27 @@ export const TicketKanbanPage = () => {
                 {aiCopilotMap[selectedTicket._id] && (() => {
                   const cp = aiCopilotMap[selectedTicket._id];
                   const bestTech = cp.dispatch_recommendation?.recommended_technician;
+                  const hist = cp.historical_insights;
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '10.5px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px', background: 'var(--status-info-bg)', color: 'var(--status-info-color)', border: '1px solid var(--status-info-border)' }}>
+                          {cp.engine === 'gemini' ? 'GEMINI HYBRID AI' : 'RUO CORTEX LOCAL AI'}
+                        </span>
+                        {cp.diagnosis?.playbook_title && (
+                          <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 7px', borderRadius: '4px', background: 'var(--surface-card)', color: 'var(--ink-secondary)', border: '1px solid var(--border-default)' }}>
+                            {cp.diagnosis.playbook_title}
+                          </span>
+                        )}
+                      </div>
                       {cp.disposal_advisory?.should_consider_disposal && (
                         <div style={{ background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger-border)', color: 'var(--status-danger-color)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700 }}>
                           ⚠ {cp.disposal_advisory.recommendation}
+                        </div>
+                      )}
+                      {hist?.chronic_pattern?.advisory && (
+                        <div style={{ background: 'var(--status-warning-bg)', border: '1px solid var(--status-warning-border)', color: 'var(--status-warning-color)', padding: '7px 10px', borderRadius: 'var(--radius-sm)', fontSize: '11.5px', fontWeight: 600 }}>
+                          {hist.chronic_pattern.advisory}
                         </div>
                       )}
                       <div>
@@ -613,6 +629,14 @@ export const TicketKanbanPage = () => {
                             KTV đề xuất #1: {bestTech.full_name} ({bestTech.code}) • Điểm phù hợp {bestTech.score}/100
                           </div>
                           <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', marginTop: '2px' }}>{bestTech.reason}</div>
+                        </div>
+                      )}
+                      {hist?.learned_benchmarks?.matched_cases_count > 0 && (
+                        <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                          <strong style={{ color: 'var(--ink-pure)' }}>Học từ lịch sử Tòa A1:</strong>{' '}
+                          Khớp {hist.learned_benchmarks.matched_cases_count} ca tương tự
+                          {hist.learned_benchmarks.avg_mttr_hours ? ` • MTTR trung bình ${hist.learned_benchmarks.avg_mttr_hours}h` : ''}
+                          {hist.learned_benchmarks.avg_repair_cost_vnd ? ` • Chi phí TB ${hist.learned_benchmarks.avg_repair_cost_vnd.toLocaleString('vi-VN')} đ` : ''}
                         </div>
                       )}
                       {Array.isArray(cp.recommended_parts) && cp.recommended_parts.length > 0 && (

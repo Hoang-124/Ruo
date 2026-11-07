@@ -86,7 +86,15 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
         room_id: formData.room_id,
         equipment_id: formData.equipment_id,
         incident_description: formData.incident_description.trim(),
-        incident_images: imagesArray
+        incident_images: imagesArray,
+        room_equipments: equipments.map((eq) => ({
+          _id: eq._id,
+          code: eq.code,
+          name: eq.name,
+          brand: eq.brand,
+          model: eq.model,
+          category_id: eq.category_id
+        }))
       });
 
       if (request !== triageRequest.current) return;
@@ -103,12 +111,19 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
 
   const handleApplyTriage = () => {
     if (!triageResult) return;
+    const suggestedEqId = triageResult.equipment_mismatch?.suggested_equipment?._id;
+    const canSwitchEq = Boolean(suggestedEqId && equipments.some((eq) => eq._id === suggestedEqId));
     setFormData((prev) => ({
       ...prev,
+      equipment_id: canSwitchEq ? suggestedEqId : prev.equipment_id,
       damage_level: triageResult.suggested_damage_level || prev.damage_level,
       incident_description: triageResult.refined_description || prev.incident_description
     }));
-    toast.success('Đã áp dụng mức độ ưu tiên và mô tả kỹ thuật chuẩn từ AI!');
+    toast.success(
+      canSwitchEq
+        ? 'Đã chuyển đúng thiết bị khớp mô tả và áp dụng chuẩn hóa kỹ thuật từ AI!'
+        : 'Đã áp dụng mức độ ưu tiên và mô tả kỹ thuật chuẩn từ AI!'
+    );
   };
 
   const handleSubmit = async (e) => {
@@ -326,7 +341,7 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: 'var(--status-info-bg)', color: 'var(--status-info-color)', border: '1px solid var(--status-info-border)' }}>
                       <Icons.Sparkles size={12} />
-                      <span>{triageResult.engine === 'gemini' ? 'GEMINI AI TRIAGE' : 'RUO AI TRIAGE'}</span>
+                      <span>{triageResult.engine === 'gemini' ? 'GEMINI HYBRID AI' : 'RUO CORTEX LOCAL AI'}</span>
                     </span>
                     <span
                       style={{
@@ -357,6 +372,21 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
                     >
                       Đề xuất: {triageResult.suggested_damage_level?.toUpperCase()} • SLA {triageResult.sla_label}
                     </span>
+                    {triageResult.fault_classification?.playbook_title && (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: 'var(--surface-card)',
+                          color: 'var(--ink-secondary)',
+                          border: '1px solid var(--border-default)'
+                        }}
+                      >
+                        {triageResult.fault_classification.playbook_title}
+                      </span>
+                    )}
                     <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)' }}>
                       Độ tin cậy: {triageResult.confidence}%
                     </span>
@@ -371,6 +401,61 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
                     Áp Dụng Gợi Ý AI
                   </button>
                 </div>
+
+                {triageResult.equipment_mismatch?.detected && (
+                  <div
+                    style={{
+                      background: 'var(--status-warning-bg)',
+                      border: '1px solid var(--status-warning-border)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '10px 12px',
+                      fontSize: '12px',
+                      color: 'var(--status-warning-color)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '10px',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: '240px' }}>
+                      <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        <Icons.AlertTriangle size={14} />
+                        <span>Phát hiện lệch đối tượng giữa Mô tả và Thiết bị đang chọn!</span>
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--ink-secondary)' }}>
+                        {triageResult.equipment_mismatch.message} AI đã tự động áp dụng quy tắc an toàn vật lý cho{' '}
+                        <strong>{triageResult.equipment_mismatch.mentioned_label}</strong>.
+                      </div>
+                    </div>
+                    {triageResult.equipment_mismatch.suggested_equipment?._id
+                      && equipments.some((eq) => eq._id === triageResult.equipment_mismatch.suggested_equipment._id) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetEq = triageResult.equipment_mismatch.suggested_equipment;
+                          setFormData((prev) => ({
+                            ...prev,
+                            equipment_id: targetEq._id,
+                            damage_level: triageResult.suggested_damage_level || prev.damage_level,
+                            incident_description: triageResult.refined_description || prev.incident_description
+                          }));
+                          toast.success(`Đã chuyển sang thiết bị [${targetEq.code}] ${targetEq.name} và áp dụng gợi ý AI!`);
+                        }}
+                        className="laser-btn laser-btn-secondary"
+                        style={{
+                          padding: '5px 10px',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          borderRadius: 'var(--radius-sm)',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Chuyển sang [{triageResult.equipment_mismatch.suggested_equipment.code}]
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {Array.isArray(triageResult.duplicate_tickets) && triageResult.duplicate_tickets.length > 0 && (
                   <div

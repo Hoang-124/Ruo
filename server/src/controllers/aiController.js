@@ -33,7 +33,8 @@ export const triageIncidentReport = async (req, res) => {
       room_id,
       equipment_id,
       incident_description,
-      incident_images = []
+      incident_images = [],
+      room_equipments = []
     } = req.body || {};
 
     const cleanDesc = typeof incident_description === 'string' ? incident_description.trim() : '';
@@ -90,6 +91,35 @@ export const triageIncidentReport = async (req, res) => {
     ]);
     const openRepairs = [...new Map([...exactRepairs, ...roomRepairs].map((repair) => [String(repair._id), repair])).values()].slice(0, 10);
 
+    // Sanitize room_equipments passed from client or load from live MongoDB when connected
+    let roomEquipments = [];
+    if (Array.isArray(room_equipments) && room_equipments.length > 0) {
+      roomEquipments = room_equipments
+        .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+        .slice(0, 100)
+        .map((item) => ({
+          _id: typeof item._id === 'string' && isDocumentId(item._id) ? item._id : '',
+          code: typeof item.code === 'string' ? item.code.slice(0, 80) : '',
+          name: typeof item.name === 'string' ? item.name.slice(0, 160) : '',
+          brand: typeof item.brand === 'string' ? item.brand.slice(0, 80) : '',
+          model: typeof item.model === 'string' ? item.model.slice(0, 80) : '',
+          category_id: item.category_id && typeof item.category_id === 'object'
+            ? {
+                code: typeof item.category_id.code === 'string' ? item.category_id.code.slice(0, 40) : '',
+                name: typeof item.category_id.name === 'string' ? item.category_id.name.slice(0, 100) : ''
+              }
+            : null
+        }));
+    } else if (room && mongoose.connection?.readyState === 1) {
+      roomEquipments = await Equipment.find({
+        room_id: room._id,
+        status: { $nin: [EQUIPMENT_STATUSES.DISPOSED, EQUIPMENT_STATUSES.LOST] }
+      })
+        .select('code name brand model category_id status')
+        .populate('category_id', 'code name')
+        .limit(100);
+    }
+
     const normalizedImages = Array.isArray(incident_images)
       ? incident_images.filter(Boolean)
       : String(incident_images || '')
@@ -102,7 +132,8 @@ export const triageIncidentReport = async (req, res) => {
       images: normalizedImages,
       equipment,
       room,
-      openRepairs
+      openRepairs,
+      roomEquipments
     });
 
     return res.json({
@@ -177,7 +208,11 @@ export const getRepairAiCopilot = async (req, res) => {
       Repair.find({
         status: { $in: [REPAIR_STATUSES.RESOLVED, REPAIR_STATUSES.CLOSED] }
       })
-        .populate('equipment_id', 'category_id')
+        .populate({
+          path: 'equipment_id',
+          select: 'code name category_id',
+          populate: { path: 'category_id', select: 'code name' }
+        })
         .sort({ resolved_at: -1, created_at: -1 })
         .limit(200)
     ]);

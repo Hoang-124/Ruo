@@ -118,3 +118,66 @@ it('runs AI incident triage, warns about duplicate open tickets, and applies pri
   await waitFor(() => expect(mocks.createRepair).toHaveBeenCalledTimes(1));
   expect(mocks.createRepair.mock.calls[0][0].damage_level).toBe('critical');
 });
+
+it('alerts when description mentions a burning desk while Projector is selected and switches equipment on apply', async () => {
+  mocks.getRooms.mockResolvedValue({
+    rooms: [{ _id: 'room-101', code: 'A1-101', name: 'Phòng lý thuyết 101', building: 'A1', floor: 1, room_type: 'lecture' }]
+  });
+  mocks.listEquipments.mockResolvedValue({
+    equipments: [
+      { _id: 'eq-proj', code: 'EQ-101-PRJ-01', name: 'Máy chiếu Laser Full HD', brand: 'Epson', model: 'EB-L200F', status: 'in_use' },
+      { _id: 'eq-desk', code: 'EQ-101-DESKSTU-01', name: 'Bàn ghế sinh viên liền dãy', brand: 'Hòa Phát', model: 'BSV102', status: 'in_use' }
+    ]
+  });
+  mocks.aiTriage.mockResolvedValue({
+    success: true,
+    triage: {
+      engine: 'domain_heuristic',
+      suggested_damage_level: 'critical',
+      confidence: 96,
+      sla_label: 'Khẩn cấp 8 giờ (24/7)',
+      refined_description: '[A1-101 - EQ-101-DESKSTU-01] Bàn ghế sinh viên liền dãy (Hòa Phát): Cái bàn bị cháy.',
+      reasoning: 'Phát hiện dấu hiệu cháy vật liệu rắn trên Bàn ghế sinh viên liền dãy — nguy cơ mất an toàn cháy nổ.',
+      quick_checks: ['CẢNH BÁO AN TOÀN PCCC: Sơ tán sinh viên và dùng bình bột chữa cháy ABC tại hành lang.'],
+      has_exact_duplicate: false,
+      duplicate_tickets: [],
+      fault_classification: {
+        category_code: 'CAT-FURN',
+        playbook_title: 'Cháy vật liệu rắn / nội thất (Đám cháy loại A)'
+      },
+      equipment_mismatch: {
+        detected: true,
+        mentioned_category: 'CAT-FURN',
+        mentioned_label: 'Nội thất & Bàn ghế phòng học',
+        message: 'Mô tả sự cố đề cập đến "Nội thất & Bàn ghế phòng học" nhưng mục Thiết bị đang chọn "Máy chiếu Laser Full HD".',
+        suggested_equipment: {
+          _id: 'eq-desk',
+          code: 'EQ-101-DESKSTU-01',
+          name: 'Bàn ghế sinh viên liền dãy'
+        }
+      }
+    }
+  });
+  mocks.createRepair.mockResolvedValue({
+    success: true,
+    repair: { ticket_code: 'REP-DESK-101' }
+  });
+
+  render(<ReportIssuePage />);
+  await screen.findAllByText(/EQ-101-PRJ-01/);
+
+  const textarea = screen.getByPlaceholderText(/Máy chiếu bật không lên nguồn/i);
+  fireEvent.change(textarea, { target: { value: 'cái bàn bị cháy' } });
+  fireEvent.click(screen.getByRole('button', { name: /AI Phân Loại & Kiểm Tra Trùng Lặp/i }));
+
+  expect(await screen.findByText(/Phát hiện lệch đối tượng giữa Mô tả và Thiết bị đang chọn/i)).toBeTruthy();
+  expect(screen.getByText(/RUO CORTEX LOCAL AI/i)).toBeTruthy();
+
+  fireEvent.click(screen.getByRole('button', { name: /Chuyển sang \[EQ-101-DESKSTU-01\]/i }));
+  expect(screen.getAllByRole('combobox')[1].value).toBe('eq-desk');
+
+  fireEvent.click(screen.getByRole('button', { name: /Gửi Báo Hỏng Ngay/i }));
+  await waitFor(() => expect(mocks.createRepair).toHaveBeenCalledTimes(1));
+  expect(mocks.createRepair.mock.calls[0][0].equipment_id).toBe('eq-desk');
+  expect(mocks.createRepair.mock.calls[0][0].damage_level).toBe('critical');
+});
