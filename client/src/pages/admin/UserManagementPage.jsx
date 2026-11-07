@@ -27,8 +27,6 @@ export const UserManagementPage = () => {
   const [lockingUser, setLockingUser] = useState(false);
   const [createdUserResult, setCreatedUserResult] = useState(null); // UC-10.1: Lưu thông tin tài khoản & mật khẩu vừa tạo
   const [showPassword, setShowPassword] = useState(false);
-  const [userActivities, setUserActivities] = useState([]); // UC-10.2: Lịch sử hoạt động của người dùng
-  const [loadingActivities, setLoadingActivities] = useState(false);
 
   // UC-10.4: Live RBAC Role Change & Confirmation Modal
   const [pendingRoleChange, setPendingRoleChange] = useState(null); // { user, targetRole }
@@ -93,6 +91,8 @@ export const UserManagementPage = () => {
   }, [debouncedSearch, roleFilter, statusTab, toast]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchUsers({ silent: false });
     // Realtime polling counts every 30s (silent refresh so table does not flicker)
     const timer = setInterval(() => fetchUsers({ silent: true }), 30000);
@@ -214,44 +214,16 @@ export const UserManagementPage = () => {
   // UC-10.2: Xem chi tiết tài khoản kèm lịch sử hoạt động AuditLog
   const handleViewUserDetail = async (u) => {
     setSelectedUser(u);
-    setUserActivities([]);
-    setLoadingActivities(true);
     try {
       const res = await authApi.getUserById(u._id);
       if (res.success && res.user) {
         setSelectedUser(res.user);
-        setUserActivities(res.activities || []);
       }
     } catch (err) {
       console.warn('Lỗi nạp nhật ký hoạt động người dùng:', err.message);
-    } finally {
-      setLoadingActivities(false);
     }
   };
 
-  const getActionMeta = (action) => {
-    switch (action) {
-      case 'LOGIN':
-        return { label: 'Đăng nhập hệ thống', color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' };
-      case 'LOGOUT':
-        return { label: 'Đăng xuất', color: '#71717A', bg: 'rgba(113, 113, 122, 0.15)' };
-      case 'UPDATE_PROFILE':
-        return { label: 'Cập nhật hồ sơ cá nhân', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.15)' };
-      case 'CREATE_USER':
-        return { label: 'Khởi tạo tài khoản', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.15)' };
-      case 'LOCK_USER':
-        return { label: 'Khóa tài khoản', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)' };
-      case 'UNLOCK_USER':
-        return { label: 'Mở khóa tài khoản', color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' };
-      case 'CHANGE_PASSWORD':
-      case 'RESET_PASSWORD':
-        return { label: 'Đổi mật khẩu', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' };
-      case 'APPROVE_USER':
-        return { label: 'Phê duyệt bổ nhiệm', color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)' };
-      default:
-        return { label: action || 'Thao tác hệ thống', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)' };
-    }
-  };
 
   // UC-10.5: Force Reset Password (POST /api/admin/users/:id/reset-password)
   const handleAdminResetPassword = async (userId, customPassword) => {

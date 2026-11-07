@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { roleApi } from '../../lib/api';
@@ -22,9 +22,6 @@ import { USER_ROLES } from '../../config/navigation';
  * - Exportable compliance ledger (CSV / JSON)
  * - Pure Native Inline SVG icons only (Strict compliance with AGENTS.md / GEMINI.md)
  */
-
-export const RBACMatrixPage = () => {
-  const { toast } = useToast();
 
   const canonicalRoles = [
     {
@@ -211,6 +208,11 @@ export const RBACMatrixPage = () => {
     }
   ];
 
+
+export const RBACMatrixPage = () => {
+  const { toast } = useToast();
+  const { error: showError } = toast;
+
   const [dbRoles, setDbRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -236,11 +238,7 @@ export const RBACMatrixPage = () => {
     }]
     : permissionModules;
 
-  useEffect(() => {
-    loadRoles();
-  }, []);
-
-  const loadRoles = async () => {
+  const loadRoles = useCallback(async () => {
     try {
       setLoading(true);
       const res = await roleApi.list();
@@ -285,11 +283,17 @@ export const RBACMatrixPage = () => {
       setMatrixState(state);
       setSavedMatrixState(state);
     } catch (err) {
-      toast.error('Không thể nạp ma trận phân quyền từ máy chủ: ' + err.message);
+      showError('Không thể nạp ma trận phân quyền từ máy chủ: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
+
+  useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
+    loadRoles();
+  }, [loadRoles]);
 
   const togglePermission = (roleId, code) => {
     if (roleId === USER_ROLES.ADMIN && code === 'role:update') {
@@ -346,7 +350,7 @@ export const RBACMatrixPage = () => {
         window.dispatchEvent(new CustomEvent('ruo:rbac-updated'));
       }
     } catch (err) {
-      toast.error('Lỗi khi khôi phục chuẩn mặc định: ' + err.message);
+      showError('Lỗi khi khôi phục chuẩn mặc định: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -389,7 +393,7 @@ export const RBACMatrixPage = () => {
       await loadRoles();
       window.dispatchEvent(new CustomEvent('ruo:rbac-updated'));
     } catch (err) {
-      toast.error('Lỗi khi lưu ma trận phân quyền: ' + err.message);
+      showError('Lỗi khi lưu ma trận phân quyền: ' + err.message);
     } finally {
       setSaving(false);
     }

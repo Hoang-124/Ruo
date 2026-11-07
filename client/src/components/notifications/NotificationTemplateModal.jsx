@@ -85,11 +85,14 @@ const ModalSvg = {
   )
 };
 
-export const NotificationTemplateModal = ({ isOpen, onClose }) => {
+export const NotificationTemplateModal = (props) => props.isOpen ? <NotificationTemplateContent {...props} /> : null;
+
+const NotificationTemplateContent = ({ isOpen, onClose }) => {
   const { toast } = useToast();
   const [templates, setTemplates] = useState([]);
   const [activeKey, setActiveKey] = useState('repair_assigned');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [targetField, setTargetField] = useState('body');
 
@@ -180,11 +183,29 @@ export const NotificationTemplateModal = ({ isOpen, onClose }) => {
   };
 
   useEffect(() => {
-    if (isOpen) {
-      fetchTemplates();
-      handleVerifyChain({ silent: true });
-    }
-  }, [isOpen]);
+    let active = true;
+    adminConfigApi.getTemplates().then((res) => {
+      if (!active || !res?.success || !Array.isArray(res.templates)) return;
+      setTemplates(res.templates);
+      const current = res.templates.find((item) => item.key === 'repair_assigned') || res.templates[0];
+      if (current) {
+        setActiveKey(current.key);
+        setFormData({ subject: current.subject || '', title: current.title || '', body: current.body || '',
+          badge_text: current.badge_text || '', badge_color: current.badge_color || '#0369A1', badge_bg: current.badge_bg || '#E0F2FE' });
+      }
+    }).catch((error) => { if (active) setLoadError('Lỗi tải danh sách mẫu thông báo: ' + error.message); })
+      .finally(() => { if (active) setIsLoading(false); });
+    adminConfigApi.verifyChain().then((res) => {
+      if (!active) return;
+      const v = res?.success ? res.verification : null;
+      setChainStatus({ checked: true, isValid: Boolean(v && v.isValid !== false),
+        totalLogs: v?.totalLogs || v?.total_checked || 0,
+        message: v?.message || (v ? 'Chuỗi kiểm toán SHA-256 nguyên vẹn.' : 'Không thể xác thực tính toàn vẹn của chuỗi.'), loading: false });
+    }).catch((error) => {
+      if (active) setChainStatus({ checked: true, isValid: false, totalLogs: 0, message: error.message, loading: false });
+    });
+    return () => { active = false; };
+  }, []);
 
   // Switch template handler
   const handleSelectTemplate = (key) => {
@@ -317,12 +338,13 @@ export const NotificationTemplateModal = ({ isOpen, onClose }) => {
     ...new Set(
       `${formData.subject} ${formData.title} ${formData.body}`.match(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g) || []
     )
-  ].map((t) => t.replace(/[\{\}\s]/g, ''));
+  ].map((t) => t.replace(/[{}\s]/g, ''));
 
   if (!isOpen) return null;
 
   return (
-    <div className="ruo-modal-overlay" style={{ zIndex: 1100 }}>
+    <div aria-busy={isLoading} className="ruo-modal-overlay" style={{ zIndex: 1100 }}>
+      {loadError && <p role="alert">{loadError}</p>}
       <div
         className="ruo-modal-card"
         style={{

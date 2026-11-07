@@ -53,7 +53,7 @@ export const LogoutConfirmModal = ({
     setIsSubmitting(true);
     try {
       await onConfirm(allDevices);
-    } catch (e) {
+    } catch {
       setIsSubmitting(false);
     }
   };

@@ -5,7 +5,7 @@ import React from 'react';
  * Visual repair stage tracker: Báo hỏng → Giao việc → Đang sửa → Nghiệm thu
  * Strict 100% Native Inline SVG - Zero external icon library dependencies
  */
-export const RepairStepper = ({ status, outcome, logs = [], deadline }) => {
+export const RepairStepper = ({ status, outcome }) => {
   const steps = [
     { key: 'reported', label: 'Báo Hỏng', sublabel: 'Tiếp nhận sự cố', num: 1 },
     { key: 'assigned', label: 'Giao Việc', sublabel: 'Phân công KTV', num: 2 },

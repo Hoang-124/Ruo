@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Icons } from '../common/SvgIcons';
 import { ROLE_METADATA, USER_ROLES } from '../../config/navigation';
 
@@ -8,30 +8,25 @@ import { ROLE_METADATA, USER_ROLES } from '../../config/navigation';
  * Supports auto-generating temporary passwords, copy to clipboard, and session revocation warnings.
  * Strictly Native SVG Only.
  */
-export const ForceResetPasswordModal = ({
+const generateRandomPassword = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return 'Ruo@' + Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+};
+
+export const ForceResetPasswordModal = (props) => props.isOpen && props.user
+  ? <ForceResetPasswordModalContent key={props.user._id} {...props} /> : null;
+
+const ForceResetPasswordModalContent = ({
   user,
   isOpen,
   onClose,
   onConfirm,
   loading = false
 }) => {
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState(generateRandomPassword);
+  const [showPassword, setShowPassword] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const generateRandomPassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$';
-    const randNum = Math.floor(100000 + Math.random() * 900000);
-    return `Ruo@${randNum}`;
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      setPassword(generateRandomPassword());
-      setShowPassword(true);
-      setCopied(false);
-    }
-  }, [isOpen]);
 
   if (!isOpen || !user) return null;
 

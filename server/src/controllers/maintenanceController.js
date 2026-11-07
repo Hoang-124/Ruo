@@ -34,14 +34,16 @@ const getMonthOffset = (date, months) => {
   return new Date(Date.UTC(year, month, day));
 };
 
-const getPlanSchedule = (plan, now = new Date()) => {
+export const getPlanSchedule = (plan, now = new Date()) => {
   const start = new Date(plan.start_date);
   const months = plan.frequency === 'quarterly' ? 3 : 1;
   const monthDifference = (now.getUTCFullYear() - start.getUTCFullYear()) * 12
     + now.getUTCMonth() - start.getUTCMonth();
-  const cycleIndex = Math.max(0, Math.floor(monthDifference / months));
+  let cycleIndex = Math.max(0, Math.floor(monthDifference / months));
+  // Before this month's anniversary, the previous cycle is still current.
+  if (cycleIndex > 0 && getMonthOffset(start, cycleIndex * months) > now) cycleIndex -= 1;
   const currentCycle = getMonthOffset(start, cycleIndex * months);
-  const isStarted = currentCycle <= now;
+  const isStarted = start <= now;
   return {
     current_cycle_start: (isStarted ? currentCycle : start).toISOString(),
     next_due_at: getMonthOffset(start, (cycleIndex + (isStarted ? 1 : 0)) * months).toISOString(),

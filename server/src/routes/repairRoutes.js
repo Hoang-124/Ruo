@@ -14,10 +14,26 @@ import {
   closeRepairTicket,
   evaluateRepairQuality
 } from '../controllers/repairController.js';
-import { protect, requirePermission } from '../middlewares/authMiddleware.js';
+import { triageIncidentReport, getRepairAiCopilot } from '../controllers/aiController.js';
+import { protect, requirePermission, requireRole } from '../middlewares/authMiddleware.js';
+import { createRateLimiter } from '../middlewares/securityMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
+const aiRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 30,
+  message: 'Tần suất gọi AI Copilot vượt ngưỡng cho phép.'
+});
+
+// AI Incident Triage & Duplicate Detector (Feature #1A — must precede /:id)
+router.post(
+  '/ai-triage',
+  protect,
+  aiRateLimiter,
+  requirePermission('incident:create', USER_ROLES.LECTURER, USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN),
+  triageIncidentReport
+);
 
 // Read repairs & SLA metrics (UC-5.2, UC-5.8, UC-5.9, UC-7.2)
 router.get('/', protect, getRepairs);
@@ -25,6 +41,16 @@ router.get('/overdue', protect, getOverdueRepairs);
 router.get('/sla-stats', protect, getSlaComplianceStats);
 router.post('/sla/check-breaches', protect, checkAndNotifyOverdueRepairs);
 router.get('/equipment/:id', protect, getEquipmentRepairHistory);
+
+// AI Repair Dispatch & Technician Diagnosis Copilot (Feature #1B)
+router.post(
+  '/:id/ai-copilot',
+  protect,
+  aiRateLimiter,
+  requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN, USER_ROLES.ADMIN),
+  getRepairAiCopilot
+);
+
 router.get('/:id', protect, getRepairById);
 
 // Report malfunction (Lecturer, Technician when doing inventory, FM, Admin) (UC-5.1)
