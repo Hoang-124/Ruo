@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -6,6 +6,7 @@ import { movementApi, equipmentApi, masterDataApi, authApi } from '../../lib/api
 
 export const MovementsPage = ({ preselectedEquipment = null, preselectedRoom = null, onClearPrefill }) => {
   const { toast } = useToast();
+  const { error: showError } = toast;
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
   const canManageMovements = currentUser?.role === 'facility_manager';
@@ -32,7 +33,7 @@ export const MovementsPage = ({ preselectedEquipment = null, preselectedRoom = n
     type: 'transfer'
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [movRes, pendingRes] = await Promise.all([
@@ -48,52 +49,55 @@ export const MovementsPage = ({ preselectedEquipment = null, preselectedRoom = n
       if (!canManageMovements) return;
 
       const [eqRes, roomRes, techRes] = await Promise.all([
-        equipmentApi.list({ limit: 100 }),
+        equipmentApi.listAll(),
         masterDataApi.getRooms({ limit: 100 }),
         authApi.listUsers({ role: 'technician' })
       ]);
       if (eqRes && eqRes.success) {
         setEquipments(eqRes.equipments || []);
-        if (eqRes.equipments?.length > 0 && !orderForm.equipment_id) {
-          setOrderForm(prev => ({ ...prev, equipment_id: eqRes.equipments[0]._id }));
+        if (eqRes.equipments?.length > 0) {
+          setOrderForm(prev => ({ ...prev, equipment_id: prev.equipment_id || eqRes.equipments[0]._id }));
         }
       }
       if (roomRes && roomRes.success) {
         setRooms(roomRes.rooms || []);
-        if (roomRes.rooms?.length > 0 && !orderForm.to_room_id) {
-          setOrderForm(prev => ({ ...prev, to_room_id: roomRes.rooms[0]._id }));
+        if (roomRes.rooms?.length > 0) {
+          setOrderForm(prev => ({ ...prev, to_room_id: prev.to_room_id || roomRes.rooms[0]._id }));
         }
       }
       if (techRes && techRes.success) {
         setTechnicians(techRes.users || []);
-        if (techRes.users?.length > 0 && !orderForm.assigned_to) {
-          setOrderForm(prev => ({ ...prev, assigned_to: techRes.users[0]._id }));
+        if (techRes.users?.length > 0) {
+          setOrderForm(prev => ({ ...prev, assigned_to: prev.assigned_to || techRes.users[0]._id }));
         }
       }
     } catch (err) {
-      toast.error('Lỗi khi tải danh sách điều chuyển: ' + err.message);
+      showError('Lỗi khi tải danh sách điều chuyển: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError, canManageMovements]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchData();
-  }, []);
+  }, [fetchData]);
 
+  const [appliedPrefill, setAppliedPrefill] = useState(null);
+  if (preselectedEquipment && preselectedEquipment !== appliedPrefill && rooms.length && canManageMovements) {
+    const eqRoomId = preselectedEquipment.room_id?._id || preselectedEquipment.room_id || preselectedRoom?._id || '';
+    setAppliedPrefill(preselectedEquipment);
+    setSourceRoomFilter(eqRoomId || 'ALL');
+    setOrderForm(prev => ({ ...prev, equipment_id: preselectedEquipment._id,
+      to_room_id: rooms.find(room => String(room._id) !== String(eqRoomId) && room.status !== 'inactive')?._id || prev.to_room_id
+    }));
+    setShowOrderModal(true);
+  }
+  // Acknowledge consumed navigation input after commit; never update the parent during render.
   useEffect(() => {
-    if (preselectedEquipment && canManageMovements) {
-      const eqRoomId = preselectedEquipment.room_id?._id || preselectedEquipment.room_id || preselectedRoom?._id || '';
-      setSourceRoomFilter(eqRoomId || 'ALL');
-      setOrderForm(prev => ({
-        ...prev,
-        equipment_id: preselectedEquipment._id,
-        to_room_id: rooms.find(r => String(r._id) !== String(eqRoomId) && r.status !== 'inactive')?._id || prev.to_room_id
-      }));
-      setShowOrderModal(true);
-      onClearPrefill?.();
-    }
-  }, [preselectedEquipment, preselectedRoom, rooms, canManageMovements, onClearPrefill]);
+    if (appliedPrefill && appliedPrefill === preselectedEquipment) onClearPrefill?.();
+  }, [appliedPrefill, preselectedEquipment, onClearPrefill]);
 
   const filteredSourceEquipments = equipments.filter(eq => {
     if (['disposed', 'lost'].includes(eq.status)) return false;
@@ -118,7 +122,7 @@ export const MovementsPage = ({ preselectedEquipment = null, preselectedRoom = n
       toast.success('Đã phê duyệt phiếu điều chuyển. Kỹ thuật viên được giao đã nhận thông báo.');
       await fetchData();
     } catch (err) {
-      toast.error(`Không thể phê duyệt phiếu: ${err.message}`);
+      showError(`Không thể phê duyệt phiếu: ${err.message}`);
     }
   };
 
@@ -126,7 +130,7 @@ export const MovementsPage = ({ preselectedEquipment = null, preselectedRoom = n
     event.preventDefault();
     if (!canManageMovements) return;
     if (!rejectingMovement || rejectReason.trim().length < 3) {
-      toast.error('Vui lòng nhập lý do từ chối (ít nhất 3 ký tự).');
+      showError('Vui lòng nhập lý do từ chối (ít nhất 3 ký tự).');
       return;
     }
     try {
@@ -137,7 +141,7 @@ export const MovementsPage = ({ preselectedEquipment = null, preselectedRoom = n
       setRejectReason('');
       await fetchData();
     } catch (err) {
-      toast.error(`Không thể từ chối phiếu: ${err.message}`);
+      showError(`Không thể từ chối phiếu: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -147,15 +151,15 @@ export const MovementsPage = ({ preselectedEquipment = null, preselectedRoom = n
     e.preventDefault();
     if (!canManageMovements) return;
     if (!orderForm.equipment_id) {
-      toast.error('Vui lòng chọn thiết bị cần điều chuyển.');
+      showError('Vui lòng chọn thiết bị cần điều chuyển.');
       return;
     }
     if (!orderForm.to_room_id) {
-      toast.error('Vui lòng chọn phòng đến.');
+      showError('Vui lòng chọn phòng đến.');
       return;
     }
     if (!orderForm.reason.trim()) {
-      toast.error('Vui lòng nhập lý do điều chuyển.');
+      showError('Vui lòng nhập lý do điều chuyển.');
       return;
     }
 
@@ -182,7 +186,7 @@ export const MovementsPage = ({ preselectedEquipment = null, preselectedRoom = n
         await fetchData();
       }
     } catch (err) {
-      toast.error('Lỗi khi ra lệnh điều chuyển: ' + err.message);
+      showError('Lỗi khi ra lệnh điều chuyển: ' + err.message);
     } finally {
       setSubmitting(false);
     }

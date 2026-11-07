@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -9,8 +9,16 @@ import { DeadlineCountdown } from '../../components/repairs/DeadlineCountdown';
 
 export const TechnicianTasksPage = () => {
   const { currentUser } = useAuth();
+  const userIdentity = useMemo(() => ({ _id: currentUser?._id, id: currentUser?.id, code: currentUser?.code, email: currentUser?.email }),
+    [currentUser?._id, currentUser?.id, currentUser?.code, currentUser?.email]);
   const { toast } = useToast();
+  const { error: showError } = toast;
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -25,7 +33,7 @@ export const TechnicianTasksPage = () => {
       if (res && res.repair) {
         setSelectedTask(res.repair);
       }
-    } catch (_) {
+    } catch {
       // Keep summary fallback if detail fetch fails
     } finally {
       setLoadingDetail(false);
@@ -36,6 +44,44 @@ export const TechnicianTasksPage = () => {
   const [showLogModal, setShowLogModal] = useState(false);
   const [showOutcomeModal, setShowOutcomeModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiByTask, setAiByTask] = useState({});
+  const aiRequest = useRef(0);
+  const formVersion = useRef(0);
+
+  const aiContext = JSON.stringify([selectedTask?._id, showLogModal, showOutcomeModal]);
+  const [previousAiContext, setPreviousAiContext] = useState(aiContext);
+  if (previousAiContext !== aiContext) {
+    setPreviousAiContext(aiContext);
+    setAiLoading(false);
+  }
+
+  useEffect(() => {
+    formVersion.current += 1;
+    aiRequest.current += 1;
+    return () => {
+      formVersion.current += 1;
+      aiRequest.current += 1;
+    };
+  }, [selectedTask?._id, showLogModal, showOutcomeModal]);
+
+  const handleLoadTaskAi = async (task) => {
+    if (!task?._id) return;
+    const request = ++aiRequest.current;
+    try {
+      setAiLoading(true);
+      const res = await repairApi.aiCopilot(task._id);
+      if (request !== aiRequest.current) return;
+      if (res && res.success && res.copilot) {
+        setAiByTask((prev) => ({ ...prev, [task._id]: res.copilot }));
+        toast.success(`AI Kỹ thuật đã chẩn đoán nhiệm vụ [${task.ticket_code}]!`);
+      }
+    } catch (err) {
+      if (request === aiRequest.current) showError('Không thể chạy AI Chẩn đoán: ' + err.message);
+    } finally {
+      if (request === aiRequest.current) setAiLoading(false);
+    }
+  };
 
   // Forms
   const [logData, setLogData] = useState({
@@ -49,26 +95,69 @@ export const TechnicianTasksPage = () => {
     notes: ''
   });
 
-  const fetchTasks = async () => {
+  const applyAiDraft = async (kind) => {
+    const taskId = selectedTask?._id;
+    if (!taskId) return;
+    const version = formVersion.current;
+    const request = ++aiRequest.current;
     try {
-      setLoading(true);
-      const currentUserId = String(currentUser?._id || currentUser?.id || '');
-      const res = await repairApi.list(
-        currentUserId && currentUserId !== 'guest' ? { assigned_to: currentUserId } : {}
-      );
-      if (res && res.success) {
-        setTasks((res.repairs || []).filter((r) => isSameUser(r.assigned_to, currentUser)));
+      setAiLoading(true);
+      let cp = aiByTask[taskId];
+      if (!cp) {
+        const res = await repairApi.aiCopilot(taskId);
+        if (request !== aiRequest.current || version !== formVersion.current) return;
+        if (!res?.success || !res.copilot) throw new Error('Chưa nhận được gợi ý kỹ thuật.');
+        cp = res.copilot;
+        setAiByTask((prev) => ({ ...prev, [taskId]: cp }));
       }
+      if (!cp?.diagnosis || version !== formVersion.current) return;
+      if (kind === 'log') {
+        setLogData((prev) => ({
+          ...prev,
+          action: cp.diagnosis.suggested_log_action || prev.action,
+          notes: cp.diagnosis.suggested_log_notes || prev.notes
+        }));
+      } else {
+        // The technician decides the physical outcome; AI only drafts review notes.
+        setOutcomeData((prev) => ({
+          ...prev,
+          notes: cp.diagnosis.suggested_outcome_notes || prev.notes
+        }));
+      }
+      toast.success('Đã điền bản nháp AI. Vui lòng đối chiếu thực tế trước khi lưu.');
     } catch (err) {
-      toast.error('Lỗi khi tải danh sách nhiệm vụ: ' + err.message);
+      if (request === aiRequest.current) showError('Lỗi gọi AI: ' + err.message);
     } finally {
-      setLoading(false);
+      if (request === aiRequest.current) setAiLoading(false);
     }
   };
 
+  const fetchTasks = useCallback(async () => {
+    aiRequest.current += 1;
+    formVersion.current += 1;
+    setAiLoading(false);
+    setAiByTask({});
+    try {
+      setLoading(true);
+      const userIdentityId = String(userIdentity?._id || userIdentity?.id || '');
+      const res = await repairApi.list(
+        userIdentityId && userIdentityId !== 'guest' ? { assigned_to: userIdentityId } : {}
+      );
+      if (res && res.success) {
+        setTasks((res.repairs || []).filter((r) => isSameUser(r.assigned_to, userIdentity)));
+      }
+    } catch (err) {
+      showError('Lỗi khi tải danh sách nhiệm vụ: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [showError, userIdentity]);
+
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchTasks();
-  }, [currentUser?._id, currentUser?.id, currentUser?.code]);
+  }, [fetchTasks]);
 
   const handleAcceptTask = async (task) => {
     try {
@@ -79,7 +168,7 @@ export const TechnicianTasksPage = () => {
         await fetchTasks();
       }
     } catch (err) {
-      toast.error('Lỗi khi tiếp nhận nhiệm vụ: ' + err.message);
+      showError('Lỗi khi tiếp nhận nhiệm vụ: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -94,7 +183,7 @@ export const TechnicianTasksPage = () => {
   const handleLogSubmit = async (e) => {
     e.preventDefault();
     if (!logData.action.trim()) {
-      toast.error('Vui lòng nhập hành động đã thực hiện.');
+      showError('Vui lòng nhập hành động đã thực hiện.');
       return;
     }
 
@@ -112,7 +201,7 @@ export const TechnicianTasksPage = () => {
         await fetchTasks();
       }
     } catch (err) {
-      toast.error('Lỗi khi ghi nhật ký: ' + err.message);
+      showError('Lỗi khi ghi nhật ký: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -145,7 +234,7 @@ export const TechnicianTasksPage = () => {
         await fetchTasks();
       }
     } catch (err) {
-      toast.error('Lỗi khi báo cáo kết quả: ' + err.message);
+      showError('Lỗi khi báo cáo kết quả: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -199,14 +288,14 @@ export const TechnicianTasksPage = () => {
     if (statusFilter === 'ALL') return true;
     if (statusFilter === 'TODO') return t.status === 'assigned';
     if (statusFilter === 'DOING') return t.status === 'in_progress';
-    if (statusFilter === 'OVERDUE') return !['resolved', 'unrepairable', 'closed'].includes(t.status) && t.deadline && new Date(t.deadline).getTime() < Date.now();
+    if (statusFilter === 'OVERDUE') return !['resolved', 'unrepairable', 'closed'].includes(t.status) && t.deadline && new Date(t.deadline).getTime() < now;
     if (statusFilter === 'DONE') return ['resolved', 'unrepairable', 'closed'].includes(t.status);
     return true;
   });
 
   const countTodo = tasks.filter(t => t.status === 'assigned').length;
   const countDoing = tasks.filter(t => t.status === 'in_progress').length;
-  const countOverdue = tasks.filter(t => !['resolved', 'unrepairable', 'closed'].includes(t.status) && t.deadline && new Date(t.deadline).getTime() < Date.now()).length;
+  const countOverdue = tasks.filter(t => !['resolved', 'unrepairable', 'closed'].includes(t.status) && t.deadline && new Date(t.deadline).getTime() < now).length;
   const countDone = tasks.filter(t => ['resolved', 'unrepairable', 'closed'].includes(t.status)).length;
 
   return (
@@ -446,6 +535,75 @@ export const TechnicianTasksPage = () => {
                 <div style={{ marginTop: '6px' }}>Phòng: <strong>{selectedTask.room_id?.code || selectedTask.equipment_id?.room_id?.code || 'Kho / Chưa gán'} {selectedTask.room_id?.name ? `- ${selectedTask.room_id.name}` : ''}</strong></div>
               </div>
 
+              {/* AI Technician Diagnosis & Spare Parts Copilot */}
+              <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-focus)', borderRadius: 'var(--radius-md)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 800, color: 'var(--ink-pure)' }}>
+                    <Icons.Sparkles size={15} style={{ color: 'var(--laser-cyan)' }} />
+                    <span>AI Chẩn Đoán & Gợi Ý Vật Tư Kho</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleLoadTaskAi(selectedTask)}
+                    disabled={aiLoading}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '11.5px', fontWeight: 700 }}
+                  >
+                    {aiLoading ? 'Đang Phân Tích...' : (aiByTask[selectedTask._id] ? 'Chẩn Đoán Lại' : 'AI Chẩn Đoán Lỗi')}
+                  </button>
+                </div>
+
+                {aiByTask[selectedTask._id] && (() => {
+                  const cp = aiByTask[selectedTask._id];
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                      {cp.disposal_advisory?.should_consider_disposal && (
+                        <div style={{ background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger-border)', color: 'var(--status-danger-color)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700 }}>
+                          ⚠ {cp.disposal_advisory.recommendation}
+                        </div>
+                      )}
+                      <div>
+                        <strong style={{ color: 'var(--ink-pure)' }}>Giả thuyết lỗi gốc:</strong>{' '}
+                        <span style={{ color: 'var(--ink-secondary)' }}>{cp.diagnosis?.root_cause}</span>
+                      </div>
+                      {Array.isArray(cp.diagnosis?.troubleshooting_steps) && cp.diagnosis.troubleshooting_steps.length > 0 && (
+                        <div>
+                          <strong style={{ color: 'var(--ink-pure)' }}>Các bước kiểm tra khuyến nghị:</strong>
+                          <ol style={{ margin: '4px 0 0 18px', padding: 0, color: 'var(--ink-secondary)' }}>
+                            {cp.diagnosis.troubleshooting_steps.map((step, idx) => (
+                              <li key={idx} style={{ marginBottom: '2px' }}>{step}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+                      {Array.isArray(cp.recommended_parts) && cp.recommended_parts.length > 0 && (
+                        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '8px 10px' }}>
+                          <div style={{ fontWeight: 800, color: 'var(--ink-pure)', marginBottom: '4px' }}>Vật tư thay thế cần mang theo (Kho KHO-01):</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {cp.recommended_parts.map((p) => (
+                              <span
+                                key={p._id}
+                                style={{
+                                  fontSize: '11px',
+                                  padding: '3px 8px',
+                                  borderRadius: '4px',
+                                  fontWeight: 700,
+                                  background: p.in_stock ? 'var(--status-success-bg)' : 'var(--status-danger-bg)',
+                                  color: p.in_stock ? 'var(--status-success-color)' : 'var(--status-danger-color)',
+                                  border: `1px solid ${p.in_stock ? 'var(--status-success-border)' : 'var(--status-danger-border)'}`
+                                }}
+                              >
+                                {p.name} ({p.in_stock ? `Còn ${p.stock} ${p.unit}` : 'Hết hàng'})
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               <div>
                 <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--ink-muted)', fontWeight: 700, marginBottom: '6px' }}>
                   Nhật Ký Thao Tác Kỹ Thuật (Repair Logs)
@@ -467,7 +625,7 @@ export const TechnicianTasksPage = () => {
                         <div key={log._id || idx} style={{ background: 'var(--surface-panel)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', fontSize: '12px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink-muted)', fontSize: '11px', marginBottom: '2px' }}>
                             <span>{actorName}</span>
-                            <span>{new Date(log.timestamp || log.created_at || Date.now()).toLocaleString('vi-VN')}</span>
+                            <span>{new Date(log.timestamp || log.created_at || now).toLocaleString('vi-VN')}</span>
                           </div>
                           <div style={{ fontWeight: 600, color: 'var(--ink-pure)' }}>{getLogActionLabel(log.action)}</div>
                           {detailNote && <div style={{ color: 'var(--ink-secondary)', marginTop: '2px' }}>{detailNote}</div>}
@@ -497,6 +655,22 @@ export const TechnicianTasksPage = () => {
 
             <form onSubmit={handleLogSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', background: 'var(--surface-2)', border: '1px solid var(--border-focus)', borderRadius: 'var(--radius-sm)', padding: '8px 10px' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Icons.Sparkles size={13} style={{ color: 'var(--laser-cyan)' }} />
+                    <span>Trợ lý AI soạn nhanh nhật ký kỹ thuật</span>
+                  </span>
+                  <button
+                    type="button"
+                    disabled={aiLoading}
+                    onClick={() => applyAiDraft('log')}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
+                  >
+                    {aiLoading ? 'Đang Soạn...' : 'Điền Nhanh Bằng AI'}
+                  </button>
+                </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
                     Hành Động / Thao Tác Thực Hiện *
@@ -506,7 +680,7 @@ export const TechnicianTasksPage = () => {
                     required
                     placeholder="VD: Đoản mạch nguồn cấp, thay cầu chì 10A..."
                     value={logData.action}
-                    onChange={(e) => setLogData({ ...logData, action: e.target.value })}
+                    onChange={(e) => { formVersion.current += 1; setLogData({ ...logData, action: e.target.value }); }}
                     className="ruo-portal-input"
                     style={{ width: '100%' }}
                   />
@@ -520,7 +694,7 @@ export const TechnicianTasksPage = () => {
                     rows={3}
                     placeholder="Mô tả kỹ thuật bổ sung hoặc các phát hiện bất thường..."
                     value={logData.notes}
-                    onChange={(e) => setLogData({ ...logData, notes: e.target.value })}
+                    onChange={(e) => { formVersion.current += 1; setLogData({ ...logData, notes: e.target.value }); }}
                     className="ruo-portal-input"
                     style={{ width: '100%', resize: 'vertical' }}
                   />
@@ -569,6 +743,22 @@ export const TechnicianTasksPage = () => {
 
             <form onSubmit={handleOutcomeSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', background: 'var(--surface-2)', border: '1px solid var(--border-focus)', borderRadius: 'var(--radius-sm)', padding: '8px 10px' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Icons.Sparkles size={13} style={{ color: 'var(--laser-cyan)' }} />
+                    <span>AI soạn ghi chú đối chiếu; KTV xác nhận kết quả thực tế</span>
+                  </span>
+                  <button
+                    type="button"
+                    disabled={aiLoading}
+                    onClick={() => applyAiDraft('outcome')}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
+                  >
+                    {aiLoading ? 'Đang Tính...' : 'Gợi Ý Kết Luận AI'}
+                  </button>
+                </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '8px' }}>
                     Kết Luận Tình Trạng Thiết Bị *
@@ -615,7 +805,7 @@ export const TechnicianTasksPage = () => {
                     rows={4}
                     placeholder="VD: Đã thay bóng đèn chiếu và vệ sinh thấu kính; kiểm tra chạy thử 30 phút đạt độ nét chuẩn..."
                     value={outcomeData.notes}
-                    onChange={(e) => setOutcomeData({ ...outcomeData, notes: e.target.value })}
+                    onChange={(e) => { formVersion.current += 1; setOutcomeData({ ...outcomeData, notes: e.target.value }); }}
                     className="ruo-portal-input"
                     style={{ width: '100%', resize: 'vertical' }}
                   />

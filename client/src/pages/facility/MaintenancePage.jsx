@@ -105,6 +105,8 @@ export const MaintenancePage = () => {
   }, [toast]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     loadData();
   }, [loadData]);
 

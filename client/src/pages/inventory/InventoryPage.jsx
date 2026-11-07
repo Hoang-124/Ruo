@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -6,6 +6,7 @@ import { inventoryApi, masterDataApi } from '../../lib/api';
 
 export const InventoryPage = () => {
   const { toast } = useToast();
+  const { error: showError } = toast;
   const { currentUser, hasPermission } = useAuth();
   const userRole = currentUser?.role || 'facility_manager';
   const canCreateOrReconcile = typeof hasPermission === 'function'
@@ -15,7 +16,6 @@ export const InventoryPage = () => {
     ? hasPermission('inventory:scan')
     : ['technician', 'facility_manager'].includes(userRole);
 
-  const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
   const [sessionLogs, setSessionLogs] = useState([]);
@@ -36,72 +36,116 @@ export const InventoryPage = () => {
   const [scopeRoomId, setScopeRoomId] = useState('');
   const [submittingSession, setSubmittingSession] = useState(false);
 
-  // Export Report & Digital Signature Modal (UC-3.11)
+  // Export Report & Content Checksum Modal (UC-3.11)
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportData, setReportData] = useState(null);
   const [exportingReport, setExportingReport] = useState(false);
-  const [isDigitallySigned, setIsDigitallySigned] = useState(false);
 
-  const fetchRooms = async () => {
+  // AI Inventory Discrepancy Analyst State (Feature #4A)
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const detailRequest = useRef(0);
+  const analysisRequest = useRef(0);
+  const selectedSessionId = useRef(null);
+
+  const fetchRooms = useCallback(async () => {
     try {
       const res = await masterDataApi.getRooms({ limit: 100 });
       const roomList = res?.rooms || [];
       setRooms(roomList);
-      if (roomList.length > 0 && !scannedRoomId) {
-        setScannedRoomId(roomList[0]._id);
+      if (roomList.length > 0) {
+        setScannedRoomId(previous => previous || roomList[0]._id);
       }
-      if (roomList.length > 0 && !scopeRoomId) {
-        setScopeRoomId(roomList[0]._id);
+      if (roomList.length > 0) {
+        setScopeRoomId(previous => previous || roomList[0]._id);
       }
     } catch (err) {
       console.warn('Load rooms warning:', err.message);
     }
-  };
+  }, []);
 
-  const fetchSessions = async () => {
+  const loadSessionDetails = useCallback(async (sessionId) => {
+    const request = ++detailRequest.current;
+    selectedSessionId.current = sessionId;
+    analysisRequest.current += 1;
+    setAiAnalyzing(false);
+    setActiveSession(null);
+    setSessionLogs([]);
     try {
-      setLoading(true);
-      const res = await inventoryApi.getSessions();
-      const list = res?.data || res?.sessions || [];
-      setSessions(list);
-      if (list.length > 0) {
-        loadSessionDetails(list[0]._id);
-      } else {
-        setActiveSession(null);
-        setSessionLogs([]);
-      }
-    } catch (err) {
-      toast.error('Lỗi khi tải các đợt kiểm kê: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadSessionDetails = async (sessionId) => {
-    try {
+      setAiAnalysis(null);
       const res = await inventoryApi.getSessionById(sessionId);
+      if (request !== detailRequest.current) return;
       if (res && res.success && res.data) {
         setActiveSession(res.data);
         setSessionLogs(res.data.logs || []);
       }
     } catch (err) {
-      toast.error('Lỗi khi tải chi tiết đợt kiểm kê: ' + err.message);
+      if (request === detailRequest.current) showError('Lỗi khi tải chi tiết đợt kiểm kê: ' + err.message);
+    }
+  }, [showError]);
+
+  const fetchSessions = useCallback(async () => {
+    try {
+      const res = await inventoryApi.getSessions();
+      const list = res?.data || res?.sessions || [];
+      setSessions(list);
+      if (list.length > 0) {
+        const selected = list.find((session) => session._id === selectedSessionId.current);
+        await loadSessionDetails(selected?._id || list[0]._id);
+      } else {
+        selectedSessionId.current = null;
+        detailRequest.current += 1;
+        analysisRequest.current += 1;
+        setAiAnalysis(null);
+        setAiAnalyzing(false);
+        setActiveSession(null);
+        setSessionLogs([]);
+      }
+    } catch (err) {
+      showError('Lỗi khi tải các đợt kiểm kê: ' + err.message);
+    }
+  }, [showError, loadSessionDetails]);
+
+
+
+  const handleAiAnalyzeSession = async () => {
+    if (!activeSession?._id) return;
+    const request = ++analysisRequest.current;
+    try {
+      setAiAnalyzing(true);
+      setAiAnalysis(null);
+      const res = await inventoryApi.aiAnalyze(activeSession._id);
+      if (request !== analysisRequest.current) return;
+      if (res && res.success && res.analysis) {
+        setAiAnalysis(res.analysis);
+        toast.success('AI đã hoàn tất phân tích bất thường & điểm nóng lệch kiểm kê!');
+      }
+    } catch (err) {
+      if (request === analysisRequest.current) showError('Không thể chạy AI Phân tích kiểm kê: ' + err.message);
+    } finally {
+      if (request === analysisRequest.current) setAiAnalyzing(false);
     }
   };
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchRooms();
     fetchSessions();
-  }, []);
+    return () => {
+      detailRequest.current += 1;
+      analysisRequest.current += 1;
+    };
+  }, [fetchRooms, fetchSessions]);
 
   const handleCreateSessionSubmit = async (e) => {
     e.preventDefault();
     if (!newSessionName.trim()) {
-      toast.error('Vui lòng nhập tên đợt kiểm kê.');
+      showError('Vui lòng nhập tên đợt kiểm kê.');
       return;
     }
     if (scopeType === 'room' && !scopeRoomId) {
-      toast.error('Vui lòng chọn phòng/kho cần kiểm kê.');
+      showError('Vui lòng chọn phòng/kho cần kiểm kê.');
       return;
     }
 
@@ -123,7 +167,7 @@ export const InventoryPage = () => {
         await fetchSessions();
       }
     } catch (err) {
-      toast.error('Lỗi khi tạo đợt kiểm kê: ' + err.message);
+      showError('Lỗi khi tạo đợt kiểm kê: ' + err.message);
     } finally {
       setSubmittingSession(false);
     }
@@ -132,11 +176,11 @@ export const InventoryPage = () => {
   const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!qrInput.trim()) {
-      toast.error('Vui lòng quét hoặc nhập mã QR thiết bị.');
+      showError('Vui lòng quét hoặc nhập mã QR thiết bị.');
       return;
     }
     if (!activeSession) {
-      toast.error('Vui lòng chọn hoặc tạo đợt kiểm kê đang hoạt động.');
+      showError('Vui lòng chọn hoặc tạo đợt kiểm kê đang hoạt động.');
       return;
     }
 
@@ -158,17 +202,17 @@ export const InventoryPage = () => {
         } else if (log.status === 'wrong_location') {
           toast.warning(`[SAI VỊ TRÍ PHÒNG] Thiết bị thuộc phòng khác nhưng được tìm thấy tại phòng này!`);
         } else if (log.status === 'damaged') {
-          toast.error(`[HỎNG HÓC] Đã ghi nhận hỏng và tự động tạo phiếu sửa chữa!`);
+          showError(`[HỎNG HÓC] Đã ghi nhận hỏng và tự động tạo phiếu sửa chữa!`);
         } else if (log.status === 'missing') {
           toast.warning(`[THẤT LẠC] Đã ghi nhận thiết bị vắng mặt / thất lạc tại phòng!`);
         }
         setQrInput('');
         setScanMode('auto');
         setDamageNote('');
-        await loadSessionDetails(activeSession._id);
+        if (selectedSessionId.current === activeSession._id) await loadSessionDetails(activeSession._id);
       }
     } catch (err) {
-      toast.error('Lỗi khi kiểm kê thiết bị: ' + err.message);
+      showError('Lỗi khi kiểm kê thiết bị: ' + err.message);
     } finally {
       setScanning(false);
     }
@@ -180,15 +224,14 @@ export const InventoryPage = () => {
       const res = await inventoryApi.reconcile(activeSession._id);
       if (res && res.success) {
         toast.success(res.message || 'Đã chốt đối soát số liệu kiểm kê thành công!');
-        await loadSessionDetails(activeSession._id);
         await fetchSessions();
       }
     } catch (err) {
-      toast.error('Lỗi khi chốt kiểm kê: ' + err.message);
+      showError('Lỗi khi chốt kiểm kê: ' + err.message);
     }
   };
 
-  // UC-3.11: Export Inventory Report with Digital Signature
+  // UC-3.11: Export Inventory Report with Content Checksum
   const handleOpenExportReport = async () => {
     if (!activeSession) return;
     try {
@@ -196,12 +239,11 @@ export const InventoryPage = () => {
       const res = await inventoryApi.exportReport(activeSession._id);
       if (res && res.success && res.report) {
         setReportData(res.report);
-        setIsDigitallySigned(true);
         setShowReportModal(true);
-        toast.success(res.message || 'Đã tổng hợp Biên bản kiểm kê & chữ ký số SHA-256!');
+        toast.success(res.message || 'Đã tổng hợp biên bản kiểm kê và mã kiểm tra nội dung!');
       }
     } catch (err) {
-      toast.error('Không thể xuất biên bản kiểm kê: ' + err.message);
+      showError('Không thể xuất biên bản kiểm kê: ' + err.message);
     } finally {
       setExportingReport(false);
     }
@@ -227,7 +269,7 @@ export const InventoryPage = () => {
       ['Mã Biên Bản', reportData.report_code],
       ['Đợt Kiểm Kê', reportData.session?.name || ''],
       ['Tòa Nhà', reportData.building],
-      ['Chữ Ký Số SHA-256', reportData.digital_signature?.hash || ''],
+      ['Mã kiểm tra nội dung SHA-256', reportData.integrity?.hash || ''],
       [],
       ['Mã Tài Sản', 'Tên Thiết Bị', 'Phòng Quy Định', 'Phòng Quét Thực Tế', 'Kết Quả Đối Soát', 'Người Kiểm Kê', 'Ghi Chú']
     ];
@@ -276,14 +318,14 @@ export const InventoryPage = () => {
         } else if (mode === 'missing') {
           toast.warning(`[THẤT LẠC] Đã đánh dấu thiếu thiết bị [${eq.code}]!`);
         } else if (mode === 'damaged') {
-          toast.error(`[HỎNG HÓC] Đã ghi nhận hỏng [${eq.code}] & tự tạo phiếu sửa chữa!`);
+          showError(`[HỎNG HÓC] Đã ghi nhận hỏng [${eq.code}] & tự tạo phiếu sửa chữa!`);
         } else {
           toast.success(`[KHỚP VỊ TRÍ] Đã đối soát khớp [${eq.code}]!`);
         }
         await loadSessionDetails(activeSession._id);
       }
     } catch (err) {
-      toast.error('Lỗi khi quét nhanh: ' + err.message);
+      showError('Lỗi khi quét nhanh: ' + err.message);
     } finally {
       setScanning(false);
     }
@@ -317,14 +359,14 @@ export const InventoryPage = () => {
               ĐỐI SOÁT THỰC ĐỊA
             </span>
             <span style={{ fontSize: '12px', color: 'var(--ink-secondary)', fontWeight: 700 }}>
-              KIỂM KÊ ĐỊNH KỲ TÒA A1, QUÉT MÃ QR ĐỐI SOÁT &amp; BIÊN BẢN KÝ SỐ
+              KIỂM KÊ ĐỊNH KỲ TÒA A1, QUÉT MÃ QR ĐỐI SOÁT &amp; BIÊN BẢN KIỂM KÊ
             </span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
             Kiểm Kê CSVC &amp; Đối Soát Mã QR Thực Địa (Tòa Nhà A1)
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: '13.5px', color: 'var(--ink-secondary)', fontWeight: 500 }}>
-            Khởi tạo đợt kiểm kê theo phòng/tầng, quét QR đối soát 4 trạng thái (Khớp / Sai phòng / Hỏng hóc / Thất lạc) và xuất biên bản ký số PDF.
+            Khởi tạo đợt kiểm kê theo phòng/tầng, quét QR đối soát 4 trạng thái (Khớp / Sai phòng / Hỏng hóc / Thất lạc) và xuất biên bản PDF.
           </p>
         </div>
 
@@ -348,7 +390,7 @@ export const InventoryPage = () => {
               }}
             >
               <Icons.Download size={16} />
-              <span>{exportingReport ? 'Đang Xuất...' : 'Xuất Biên Bản & Ký Số PDF'}</span>
+              <span>{exportingReport ? 'Đang Xuất...' : 'Xuất Biên Bản PDF'}</span>
             </button>
           )}
 
@@ -439,6 +481,27 @@ export const InventoryPage = () => {
 
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <button
+                    type="button"
+                    onClick={handleAiAnalyzeSession}
+                    disabled={aiAnalyzing}
+                    className="laser-btn laser-btn-secondary"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 14px',
+                      fontSize: '12.5px',
+                      fontWeight: 800,
+                      color: 'var(--laser-cyan)',
+                      background: 'var(--surface-2)',
+                      border: '1.5px solid var(--border-focus)'
+                    }}
+                  >
+                    <Icons.Sparkles size={15} />
+                    <span>{aiAnalyzing ? 'AI Đang Rà Soát...' : 'AI Phân Tích Lệch Kiểm Kê'}</span>
+                  </button>
+
+                  <button
                     onClick={handleOpenExportReport}
                     disabled={exportingReport}
                     className="laser-btn laser-btn-secondary"
@@ -503,18 +566,145 @@ export const InventoryPage = () => {
               </div>
             </div>
 
+            {/* AI Inventory Discrepancy & Zombie Asset Intelligence Panel */}
+            {aiAnalysis && (
+              <div
+                style={{
+                  background: 'var(--surface-card)',
+                  border: '1.5px solid var(--border-focus)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '18px 20px',
+                  boxShadow: 'var(--shadow-sm)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 9px', borderRadius: '4px', fontSize: '11px', fontWeight: 800, background: 'var(--status-info-bg)', color: 'var(--status-info-color)', border: '1px solid var(--status-info-border)' }}>
+                      <Icons.Sparkles size={13} />
+                      <span>{aiAnalysis.engine === 'gemini' ? 'GEMINI INVENTORY AUDITOR' : 'RUO AI INVENTORY AUDITOR'}</span>
+                    </span>
+                    <span
+                      style={{
+                        padding: '3px 9px',
+                        borderRadius: '4px',
+                        fontSize: '11.5px',
+                        fontWeight: 800,
+                        background:
+                          aiAnalysis.risk_level === 'critical'
+                            ? 'var(--status-danger-bg)'
+                            : aiAnalysis.risk_level === 'high' || aiAnalysis.risk_level === 'medium'
+                              ? 'var(--status-warning-bg)'
+                              : 'var(--status-success-bg)',
+                        color:
+                          aiAnalysis.risk_level === 'critical'
+                            ? 'var(--status-danger-color)'
+                            : aiAnalysis.risk_level === 'high' || aiAnalysis.risk_level === 'medium'
+                              ? 'var(--status-warning-color)'
+                              : 'var(--status-success-color)',
+                        border: `1px solid ${
+                          aiAnalysis.risk_level === 'critical'
+                            ? 'var(--status-danger-border)'
+                            : aiAnalysis.risk_level === 'high' || aiAnalysis.risk_level === 'medium'
+                              ? 'var(--status-warning-border)'
+                              : 'var(--status-success-border)'
+                        }`
+                      }}
+                    >
+                      Mức rủi ro: {String(aiAnalysis.risk_level || 'low').toUpperCase()} • Điểm dữ liệu đã kiểm tra: {aiAnalysis.health_score}/100
+                    </span>
+                    {aiAnalysis.metrics?.expected_count > 0 && (
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                        Tiến độ kiểm kê: {aiAnalysis.metrics.completion_percent ?? 0}%
+                      </span>
+                    )}
+                    {aiAnalysis.metrics?.missing_value_vnd > 0 && (
+                      <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--status-danger-color)' }}>
+                        Rủi ro thất lạc: {Number(aiAnalysis.metrics.missing_value_vnd).toLocaleString('vi-VN')} VNĐ
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setAiAnalysis(null)}
+                    className="ruo-drawer-close-btn"
+                    title="Đóng bảng phân tích AI"
+                  >
+                    <Icons.X size={16} />
+                  </button>
+                </div>
+
+                <div style={{ fontSize: '13px', color: 'var(--ink-primary)', fontWeight: 600, background: 'var(--surface-2)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)' }}>
+                  {aiAnalysis.executive_summary}
+                </div>
+
+                {Array.isArray(aiAnalysis.zombie_assets) && aiAnalysis.zombie_assets.length > 0 && (
+                  <div style={{ background: 'var(--status-danger-bg)', border: '1.5px solid var(--status-danger-border)', borderRadius: 'var(--radius-md)', padding: '10px 14px', color: 'var(--status-danger-color)', fontSize: '12.5px' }}>
+                    <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <Icons.AlertTriangle size={15} />
+                      <span>CẢNH BÁO TÀI SẢN BÓNG MA (ĐÃ THANH LÝ NHƯNG VẪN XUẤT HIỆN THỰC ĐỊA):</span>
+                    </div>
+                    {aiAnalysis.zombie_assets.map((z) => (
+                      <div key={z.code} style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+                        • [{z.code}] {z.name} — Quét thấy tại phòng {z.scanned_room} ({Number(z.price || 0).toLocaleString('vi-VN')} đ)
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                  <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                    <div style={{ fontSize: '11.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-pure)', marginBottom: '8px' }}>
+                      Điểm Nóng Sai Lệch Theo Phòng
+                    </div>
+                    {Array.isArray(aiAnalysis.hotspots_by_room) && aiAnalysis.hotspots_by_room.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
+                        {aiAnalysis.hotspots_by_room.map((h) => (
+                          <div key={h.room_code} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'var(--surface-card)', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
+                            <div>
+                              <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--laser-cyan)' }}>{h.room_code}</strong>{' '}
+                              <span style={{ color: 'var(--ink-secondary)' }}>({h.missing} thiếu • {h.wrong_location} sai phòng • {h.damaged} hỏng)</span>
+                            </div>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700, color: 'var(--ink-muted)' }}>
+                              {Number(h.exposure_vnd || 0).toLocaleString('vi-VN')} đ
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Không phát hiện điểm nóng bất thường tại các phòng đã quét.</div>
+                    )}
+                  </div>
+
+                  <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                    <div style={{ fontSize: '11.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-pure)', marginBottom: '8px' }}>
+                      Khuyến Nghị Xử Lý Đối Soát
+                    </div>
+                    <ul style={{ margin: '0 0 0 18px', padding: 0, fontSize: '12px', color: 'var(--ink-secondary)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {(aiAnalysis.recommendations || []).map((rec, idx) => (
+                        <li key={idx}>{rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Locked Session Banner OR Field Scanner Toolbar (UC-3.10) */}
             {isSessionLocked ? (
               <div style={{ background: 'var(--status-success-bg)', border: '2px solid var(--status-success-border)', borderRadius: 'var(--radius-lg)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--status-success-color)', fontWeight: 800, fontSize: '13.5px' }}>
                   <Icons.Shield size={20} />
-                  <span>PHIÊN KIỂM KÊ ĐÃ CHỐT SỔ ĐỐI SOÁT — Đã khóa chức năng quét thêm để bảo toàn tính toàn vẹn của Biên bản ký số SHA-256.</span>
+                  <span>PHIÊN KIỂM KÊ ĐÃ CHỐT SỔ ĐỐI SOÁT — Đã khóa chức năng quét thêm để bảo toàn tính toàn vẹn của biên bản kiểm kê.</span>
                 </div>
               </div>
             ) : !canScan ? (
               <div style={{ background: 'var(--status-info-bg)', border: '1.5px solid var(--status-info-border)', borderRadius: 'var(--radius-lg)', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--status-info-color)', fontWeight: 700, fontSize: '13px' }}>
                 <Icons.Shield size={18} />
-                <span>CHẾ ĐỘ GIÁM SÁT &amp; CHỐT SỔ — Tác vụ quét mã QR thực địa do Kỹ thuật viên và Quản lý CSVC thực hiện. Bạn có thể theo dõi nhật ký đối soát, chốt sổ hoặc xuất biên bản ký số.</span>
+                <span>CHẾ ĐỘ GIÁM SÁT &amp; CHỐT SỔ — Tác vụ quét mã QR thực địa do Kỹ thuật viên và Quản lý CSVC thực hiện. Bạn có thể theo dõi nhật ký đối soát, chốt sổ hoặc xuất biên bản kiểm kê.</span>
               </div>
             ) : (
               <div style={{ background: 'var(--surface-card)', border: '2px solid var(--laser-cyan)', borderRadius: 'var(--radius-lg)', padding: '20px', boxShadow: 'var(--shadow-sm)' }}>
@@ -901,13 +1091,13 @@ export const InventoryPage = () => {
         </div>
       )}
 
-      {/* Modal: Export Inventory Report & Digital Signature (UC-3.11) */}
+      {/* Modal: Export Inventory Report & Content Checksum (UC-3.11) */}
       {showReportModal && reportData && (
         <div className="ruo-drawer-backdrop" onClick={() => setShowReportModal(false)}>
           <div className="ruo-drawer-panel" style={{ width: '880px', maxWidth: '96vw' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
-                <h2 className="ruo-drawer-title">Biên Bản Kiểm Kê CSVC &amp; Xác Thực Chữ Ký Số</h2>
+                <h2 className="ruo-drawer-title">Biên Bản Kiểm Kê CSVC</h2>
                 <p className="ruo-drawer-subtitle">
                   Mã biên bản: {reportData.report_code} • {reportData.building}
                 </p>
@@ -998,29 +1188,21 @@ export const InventoryPage = () => {
                   );
                 })}
 
-                {/* Digital Signature Block */}
+                {/* Content Checksum Block */}
                 <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '2px dashed var(--border-strong)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--status-success-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Icons.Shield size={16} />
-                      <span>CHỮ KÝ SỐ ĐIỆN TỬ XÁC THỰC BIÊN BẢN (SHA-256 DIGITAL SIGNATURE)</span>
+                      <span>MÃ KIỂM TRA NỘI DUNG BIÊN BẢN (SHA-256)</span>
                     </div>
                     <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--status-info-color)', background: 'var(--status-info-bg)', border: '1.5px solid var(--status-info-border)', padding: '3px 8px', borderRadius: '4px' }}>
-                      SHA-256: {reportData.digital_signature?.hash?.slice(0, 32)}...
+                      SHA-256: {reportData.integrity?.hash?.slice(0, 32)}...
                     </span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', textAlign: 'center' }}>
-                    {(reportData.digital_signature?.signers || []).map((sig, i) => (
-                      <div key={i} style={{ background: 'var(--surface-card)', border: '1.5px solid var(--status-success-border)', borderRadius: '6px', padding: '12px' }}>
-                        <div style={{ fontSize: '11.5px', fontWeight: 800, color: 'var(--ink-secondary)' }}>{sig.role}</div>
-                        <div style={{ margin: '8px auto', display: 'inline-block', padding: '3px 10px', borderRadius: '4px', background: 'var(--status-success-bg)', border: '1.5px solid var(--status-success-border)', color: 'var(--status-success-color)', fontSize: '10.5px', fontWeight: 800 }}>
-                          ✔ { isDigitallySigned ? 'ĐÃ KÝ SỐ XÁC THỰC' : sig.status }
-                        </div>
-                        <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--ink-pure)' }}>{sig.name}</div>
-                      </div>
-                    ))}
-                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--ink-secondary)', lineHeight: 1.6 }}>
+                    Mã SHA-256 dùng để đối chiếu nội dung bản xuất. Biên bản chưa được ký số và không xác nhận danh tính người ký.
+                  </p>
                 </div>
               </div>
             </div>
@@ -1047,7 +1229,7 @@ export const InventoryPage = () => {
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 20px', fontWeight: 800 }}
                 >
                   <Icons.CheckCircle size={15} />
-                  <span>In Biên Bản PDF Có Chữ Ký Số</span>
+                  <span>In Biên Bản / Lưu PDF</span>
                 </button>
               </div>
             </div>

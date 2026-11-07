@@ -102,14 +102,15 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
   const [avatar, setAvatar] = useState(currentUser?.avatar || 'TH');
   const [editStatus, setEditStatus] = useState({ loading: false, success: null, error: null });
 
-  // Sync state with currentUser when loaded or updated
-  useEffect(() => {
+  const [previousProfile, setPreviousProfile] = useState(currentUser);
+  if (currentUser !== previousProfile) {
+    setPreviousProfile(currentUser);
     if (currentUser?.name || currentUser?.fullName) {
       setFullName(currentUser.name || currentUser.fullName || '');
     }
     if (currentUser?.phone !== undefined) setPhone(currentUser?.phone || '');
     if (currentUser?.avatar !== undefined) setAvatar(currentUser?.avatar || 'TH');
-  }, [currentUser?.name, currentUser?.fullName, currentUser?.phone, currentUser?.avatar]);
+  }
 
   // Change password state (UC-1.4)
   const [oldPassword, setOldPassword] = useState('');
@@ -157,7 +158,6 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
     };
   }, [newPassword, confirmPassword]);
 
-  const isPasswordValid = Object.values(passwordCriteria).every(Boolean);
 
   if (!isOpen) return null;
 
@@ -318,7 +318,7 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
     );
     try {
       await logout(allDevices);
-    } catch (err) {
+    } catch {
       toast.error('Có lỗi xảy ra trong quá trình đăng xuất.');
     }
   };

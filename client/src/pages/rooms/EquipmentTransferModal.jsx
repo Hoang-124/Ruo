@@ -44,7 +44,7 @@ export const EquipmentTransferModal = ({ equipment, room, onClose, onOrdered }) 
       .catch((err) => !ignore && setSubmitError(err.message || 'Không tải được danh sách phòng nhận.'))
       .finally(() => !ignore && setLoadingRooms(false));
     return () => { ignore = true; };
-  }, [room._id]);
+  }, [room._id, room.code]);
 
   useEffect(() => {
     const onKeyDown = (event) => event.key === 'Escape' && !submitting && onClose();

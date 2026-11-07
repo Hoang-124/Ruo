@@ -7,10 +7,17 @@ import {
   reconcileSession,
   exportInventoryReport
 } from '../controllers/inventoryController.js';
-import { protect, requirePermission } from '../middlewares/authMiddleware.js';
+import { analyzeInventoryDiscrepancies } from '../controllers/aiController.js';
+import { protect, requirePermission, requireRole } from '../middlewares/authMiddleware.js';
+import { createRateLimiter } from '../middlewares/securityMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
+const aiRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 30,
+  message: 'Tần suất gọi AI Kiểm toán Kiểm kê vượt ngưỡng cho phép.'
+});
 
 // Support both /api/inventory/sessions and /api/inventory-sessions (UC-3.9)
 router.route('/sessions')
@@ -34,6 +41,22 @@ router.put('/:id/scan', protect, requirePermission('inventory:scan', USER_ROLES.
 // Reconcile session (Facility Manager, Admin)
 router.put('/sessions/:id/reconcile', protect, requirePermission('inventory:reconcile', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), reconcileSession);
 router.put('/:id/reconcile', protect, requirePermission('inventory:reconcile', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), reconcileSession);
+
+// AI Inventory Discrepancy & Zombie Asset Analyst (Feature #4A)
+router.post(
+  '/sessions/:id/ai-analyze',
+  protect,
+  aiRateLimiter,
+  requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN, USER_ROLES.TECHNICIAN),
+  analyzeInventoryDiscrepancies
+);
+router.post(
+  '/:id/ai-analyze',
+  protect,
+  aiRateLimiter,
+  requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN, USER_ROLES.TECHNICIAN),
+  analyzeInventoryDiscrepancies
+);
 
 // Get session details
 router.get('/sessions/:id', protect, getSessionById);
