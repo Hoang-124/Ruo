@@ -10,7 +10,10 @@ import { useToast } from '../../context/ToastContext';
  * Supports interactive RBAC role changes, status updates, and audit trail.
  * Strict Native SVG Only.
  */
-export const UserDetailDrawer = ({
+export const UserDetailDrawer = (props) => props.isOpen && props.user
+  ? <UserDetailContent key={props.user._id} {...props} /> : null;
+
+const UserDetailContent = ({
   user,
   isOpen,
   onClose,
@@ -22,23 +25,25 @@ export const UserDetailDrawer = ({
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'rbac' | 'history'
   const [activities, setActivities] = useState([]);
-  const [loadingActivities, setLoadingActivities] = useState(false);
+  const [loadedUserId, setLoadedUserId] = useState(null);
+  const loadingActivities = isOpen && Boolean(user?._id) && loadedUserId !== user._id;
   const [userData, setUserData] = useState(user);
 
   // Edit Mode & Form State (UC-10.3 RBAC Update)
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({
-    full_name: '',
-    role: USER_ROLES.LECTURER,
-    status: 'active',
-    department: '',
-    phone: '',
-    repute_score: 100
+    full_name: user.full_name || '',
+    role: user.role || USER_ROLES.LECTURER,
+    status: user.status || 'active',
+    department: user.department || '',
+    phone: user.phone || '',
+    repute_score: user.repute_score ?? 100
   });
 
-  // Sync internal user data and edit form when user prop changes
-  useEffect(() => {
+  const [previousUser, setPreviousUser] = useState(user);
+  if (user !== previousUser) {
+    setPreviousUser(user);
     if (user) {
       setUserData(user);
       setEditForm({
@@ -51,14 +56,15 @@ export const UserDetailDrawer = ({
       });
       setIsEditing(false);
     }
-  }, [user]);
+  }
 
   // Load detailed user info & audit activities on open (GET /api/auth/users/:id)
   useEffect(() => {
     if (isOpen && user?._id) {
-      setLoadingActivities(true);
+      let active = true;
       authApi.getUserById(user._id)
         .then(res => {
+          if (!active) return;
           if (res.success) {
             if (res.user) {
               setUserData(res.user);
@@ -78,8 +84,9 @@ export const UserDetailDrawer = ({
           console.warn('Lỗi tải nhật ký hoạt động người dùng:', err.message);
         })
         .finally(() => {
-          setLoadingActivities(false);
+          if (active) setLoadedUserId(user._id);
         });
+      return () => { active = false; };
     }
   }, [isOpen, user?._id]);
 

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { disposalApi } from '../../lib/api';
 
 export const DisposalApprovalPage = () => {
   const { toast } = useToast();
+  const { error: showError } = toast;
   const [loading, setLoading] = useState(true);
   const [proposals, setProposals] = useState([]);
   const [filterStatus, setFilterStatus] = useState('ALL');
@@ -20,7 +21,7 @@ export const DisposalApprovalPage = () => {
   const [recoveryValue, setRecoveryValue] = useState(0);
   const [rejectReason, setRejectReason] = useState('');
 
-  const fetchDisposals = async () => {
+  const fetchDisposals = useCallback(async () => {
     try {
       setLoading(true);
       const res = await disposalApi.list();
@@ -28,15 +29,17 @@ export const DisposalApprovalPage = () => {
         setProposals(res.proposals || []);
       }
     } catch (err) {
-      toast.error('Không thể tải danh sách hồ sơ thanh lý: ' + err.message);
+      showError('Không thể tải danh sách hồ sơ thanh lý: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchDisposals();
-  }, []);
+  }, [fetchDisposals]);
 
   const openApprove = (p) => {
     setSelectedProposal(p);
@@ -55,7 +58,7 @@ export const DisposalApprovalPage = () => {
   const handleApproveSubmit = async (e) => {
     e.preventDefault();
     if (!decisionNumber.trim()) {
-      toast.error('Vui lòng nhập số quyết định phê duyệt của Ban Giám Hiệu.');
+      showError('Vui lòng nhập số quyết định phê duyệt của Ban Giám Hiệu.');
       return;
     }
 
@@ -68,7 +71,7 @@ export const DisposalApprovalPage = () => {
         await fetchDisposals();
       }
     } catch (err) {
-      toast.error('Lỗi khi phê duyệt hồ sơ: ' + err.message);
+      showError('Lỗi khi phê duyệt hồ sơ: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -77,7 +80,7 @@ export const DisposalApprovalPage = () => {
   const handleRejectSubmit = async (e) => {
     e.preventDefault();
     if (!rejectReason.trim()) {
-      toast.error('Vui lòng nhập lý do từ chối hồ sơ thanh lý.');
+      showError('Vui lòng nhập lý do từ chối hồ sơ thanh lý.');
       return;
     }
 
@@ -90,7 +93,7 @@ export const DisposalApprovalPage = () => {
         await fetchDisposals();
       }
     } catch (err) {
-      toast.error('Lỗi khi từ chối hồ sơ: ' + err.message);
+      showError('Lỗi khi từ chối hồ sơ: ' + err.message);
     } finally {
       setSubmitting(false);
     }

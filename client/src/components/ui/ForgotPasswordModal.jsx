@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
@@ -74,20 +74,30 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
-  const [successMsg, setSuccessMsg] = useState(null);
 
   // 15-minute countdown timer (900 seconds)
   const [timeLeft, setTimeLeft] = useState(900);
 
   useEffect(() => {
     if (step === 2) {
-      setTimeLeft(900);
       const timer = setInterval(() => {
         setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
       }, 1000);
       return () => clearInterval(timer);
     }
   }, [step]);
+
+  const resetModal = useCallback(() => {
+    setStep(1);
+    setOtp('');
+    setDebugOtp('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setErrorMsg(null);
+
+    onClose();
+  }, [onClose]);
+
 
   // Close modal on Escape key - safeguard progress in Step 2 & 3
   useEffect(() => {
@@ -103,7 +113,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, verifyingOtp, sendingOtp, resettingPassword, step]);
+  }, [isOpen, verifyingOtp, sendingOtp, resettingPassword, step, resetModal, toast]);
 
   // Format mm:ss
   const formatTimer = (seconds) => {
@@ -137,13 +147,14 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
     try {
       const res = await forgotPassword(email);
       if (res && res.success) {
-        setSuccessMsg(res.message);
+
         if (res.debugOtp) {
           setDebugOtp(res.debugOtp);
         } else {
           setDebugOtp('');
         }
         setIsRealMailSent(Boolean(res.isRealMailSent));
+        setTimeLeft(900);
         setStep(2);
         toast.info(res.message || 'Mã xác thực OTP (6 chữ số) đã được gửi.', 'Đã Gửi OTP');
       } else {
@@ -173,7 +184,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
     try {
       const res = await verifyResetOtp(email, otp);
       if (res && res.success) {
-        setSuccessMsg(res.message);
+
         setStep(3);
         toast.success('Xác thực mã OTP thành công! Vui lòng tạo mật khẩu mới.', 'Xác Thực OTP');
       } else {
@@ -209,16 +220,6 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
     }
   };
 
-  const resetModal = () => {
-    setStep(1);
-    setOtp('');
-    setDebugOtp('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setErrorMsg(null);
-    setSuccessMsg(null);
-    onClose();
-  };
 
   // Prevent accidental loss of progress when clicking outside
   const handleBackdropClick = (e) => {

@@ -34,14 +34,16 @@ const getMonthOffset = (date, months) => {
   return new Date(Date.UTC(year, month, day));
 };
 
-const getPlanSchedule = (plan, now = new Date()) => {
+export const getPlanSchedule = (plan, now = new Date()) => {
   const start = new Date(plan.start_date);
   const months = plan.frequency === 'quarterly' ? 3 : 1;
   const monthDifference = (now.getUTCFullYear() - start.getUTCFullYear()) * 12
     + now.getUTCMonth() - start.getUTCMonth();
-  const cycleIndex = Math.max(0, Math.floor(monthDifference / months));
+  let cycleIndex = Math.max(0, Math.floor(monthDifference / months));
+  // Before this month's anniversary, the previous cycle is still current.
+  if (cycleIndex > 0 && getMonthOffset(start, cycleIndex * months) > now) cycleIndex -= 1;
   const currentCycle = getMonthOffset(start, cycleIndex * months);
-  const isStarted = currentCycle <= now;
+  const isStarted = start <= now;
   return {
     current_cycle_start: (isStarted ? currentCycle : start).toISOString(),
     next_due_at: getMonthOffset(start, (cycleIndex + (isStarted ? 1 : 0)) * months).toISOString(),
@@ -184,11 +186,11 @@ export const logMaintenanceResult = async (req, res) => {
     const plan = await MaintenancePlan.findOne({ _id: id, is_active: true });
     if (!plan) return res.status(404).json({ success: false, message: 'Không tìm thấy kế hoạch đang hoạt động.' });
     const equipment = await Equipment.findById(equipment_id);
-    if (!equipment || !equipment.room_id || !plan.room_ids.some((roomId) => roomId.equals(equipment.room_id))) {
+    if (!equipment || !equipment.room_id || !plan.room_ids.some((roomId) => (roomId?.equals ? roomId.equals(equipment.room_id) : String(roomId) === String(equipment.room_id)))) {
       return res.status(400).json({ success: false, message: 'Thiết bị không thuộc phòng trong kế hoạch bảo dưỡng.' });
     }
     if (equipment.status === EQUIPMENT_STATUSES.DISPOSED
-      || (plan.category_ids.length && !plan.category_ids.some((categoryId) => categoryId.equals(equipment.category_id)))) {
+      || (plan.category_ids.length && !plan.category_ids.some((categoryId) => (categoryId?.equals ? categoryId.equals(equipment.category_id) : String(categoryId) === String(equipment.category_id))))) {
       return res.status(400).json({ success: false, message: 'Thiết bị không thuộc phạm vi loại thiết bị của kế hoạch.' });
     }
     const schedule = getPlanSchedule(plan);

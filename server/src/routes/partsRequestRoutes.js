@@ -5,7 +5,7 @@ import {
   approvePartsRequest,
   rejectPartsRequest
 } from '../controllers/sparePartController.js';
-import { protect, requireRole } from '../middlewares/authMiddleware.js';
+import { protect, requireRole, requirePermission } from '../middlewares/authMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
@@ -16,12 +16,12 @@ router.use(protect);
 router.get('/', getPartsRequests);
 
 // Request spare parts (Technician, Facility Manager, Admin)
-router.post('/', requireRole(USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requestSpareParts);
+router.post('/', requireRole(USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('parts:request', USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requestSpareParts);
 
 // Approve parts request (Facility Manager, Admin)
-router.put('/:id/approve', requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), approvePartsRequest);
+router.put('/:id/approve', requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('parts:approve', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), approvePartsRequest);
 
 // Reject parts request (Facility Manager, Admin)
-router.put('/:id/reject', requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), rejectPartsRequest);
+router.put('/:id/reject', requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('parts:approve', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), rejectPartsRequest);
 
 export default router;
