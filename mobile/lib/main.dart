@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/api.dart';
+import 'features/operations.dart';
 import 'features/reports.dart';
 import 'features/rooms.dart';
 import 'ui/common.dart';
@@ -476,6 +477,9 @@ class _WorkspaceState extends State<Workspace> {
         ('Tổng quan', RuoIcon.dashboard, DashboardPage(api: widget.api)),
         ('Báo cáo', RuoIcon.chart, ReportsPage(api: widget.api)),
       ],
+      if (['admin', 'facility_manager', 'technician']
+          .contains(widget.api.user?['role']))
+        ('Nghiệp vụ', RuoIcon.transfer, OperationsPage(api: widget.api)),
     ];
     final safeTab = _tab.clamp(0, tabs.length - 1);
 

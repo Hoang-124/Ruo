@@ -2,7 +2,7 @@
 
 Ứng dụng Android **Flutter / Dart (`.dart`)**, mở trực tiếp thư mục `mobile` bằng **Android Studio** (plugin Flutter + Dart). Toàn bộ giao diện, hệ màu **Ruo UEMS V3.0**, bộ biểu tượng vector thuần (`CustomPainter`) và bản vẽ mặt bằng kiến trúc 2D nằm trong `lib/`; phần Kotlin (`MainActivity.kt`) chỉ mở bộ chọn tệp lưu CSV (SAF) và trình in PDF hệ thống của Android. Kết nối trực tiếp REST API Node.js / Express / MongoDB hiện có của dự án Ruo.
 
-## Phạm vi thực hiện (17 hạng mục assigned của Tùng theo `Ruo - Task.pdf`)
+## Phạm vi Flutter Mobile
 
 Đối chiếu theo **RUO — MASTER TASK MATRIX** (`Ruo - Task.pdf`, khớp 100% mã nguồn `server/` & `client/`):
 
@@ -26,7 +26,17 @@
 | **UC-8.8** | Sự cố quá hạn SLA, lọc mức độ (`all / minor / major / critical`), phân trang | `admin`, `facility_manager` |
 | **UC-8.9** | Xuất danh sách tài sản hoặc kết quả đợt kiểm kê ra **CSV UTF-8 BOM (Excel)** hoặc **In / Lưu PDF** | `admin`, `facility_manager` |
 
-Đăng nhập, tự động làm mới phiên (`refresh-token`), đăng xuất và đổi mật khẩu bắt buộc (`force_change_pw`) đóng vai trò nền tảng xác thực để gọi API. Không lấn sang module quản lý người dùng, tạo/sửa thiết bị, quét QR kiểm kê, phiếu điều chuyển, xử lý sửa chữa hay hội đồng thanh lý của các thành viên khác.
+Đăng nhập, tự động làm mới phiên (`refresh-token`), đăng xuất và đổi mật khẩu bắt buộc (`force_change_pw`) là nền tảng xác thực. Tab **Nghiệp vụ** mở rộng giao diện di động theo quyền tài khoản:
+
+| Phân hệ | Chức năng Flutter |
+| --- | --- |
+| Danh mục | Admin CRUD loại thiết bị, tòa nhà A1, nhà cung cấp và đơn vị sửa chữa; backend kiểm soát dữ liệu tham chiếu và trả lỗi validation. |
+| Điều chuyển | KTV/Quản lý tạo phiếu; Quản lý duyệt/từ chối; KTV xác nhận hoàn tất; tra cứu lịch sử. |
+| Bảo dưỡng | Quản lý lập kế hoạch theo tầng và chu kỳ; KTV ghi kết quả checklist, ghi chú lỗi. |
+| Thanh lý | KTV/Quản lý đề xuất; Quản lý thẩm định; Admin nhập quyết định BGH; Quản lý lập dự trù; KTV tiếp nhận thiết bị thay thế. |
+| Kiểm kê & QR | Tạo đợt kiểm kê, ghi nhận mã QR/mã tài sản, phân loại khớp/sai vị trí/hỏng/thất lạc, chốt đối soát, xem biên bản SHA-256 và tra cứu QR. |
+
+Quét QR trong màn hình kiểm kê hiện nhận mã từ đầu đọc QR dạng bàn phím hoặc nhập thủ công; tra cứu QR gọi API thiết bị đang có. Giao diện không sử dụng camera vì project chưa cài plugin camera/barcode.
 
 ## Chạy trên Android Studio với dự án Ruo hiện có
 
@@ -83,12 +93,13 @@ flutter drive --driver=test_driver/integration_test.dart --target=integration_te
 
 ## Cấu trúc mã nguồn Dart (`mobile/lib/`)
 
-- `lib/main.dart`: khởi tạo ứng dụng, chuyển đổi Sáng/Tối, đăng nhập, đổi mật khẩu bắt buộc, điều hướng 4 tab theo RBAC.
+- `lib/main.dart`: khởi tạo ứng dụng, chuyển đổi Sáng/Tối, đăng nhập, đổi mật khẩu bắt buộc, điều hướng các tab theo RBAC.
 - `lib/core/api.dart`: HTTP client, chuẩn hóa URL, tự động xoay vòng `refresh-token`, xử lý lỗi tiếng Việt.
 - `lib/core/exports.dart` & `android/.../MainActivity.kt`: `MethodChannel` gọi hộp thoại lưu CSV và trình in PDF gốc của Android.
 - `lib/features/cad_blueprint.dart`: bản vẽ kiến trúc 2D Tòa A1 5 tầng (`CustomPainter` + `InteractiveViewer`), ánh xạ `Pxxx` ↔ `A1-xxx`.
 - `lib/features/rooms.dart`: mặt bằng CAD (`CadPage`), danh sách/bộ lọc phòng (`RoomsPage`), chi tiết & chặn thiết bị (`RoomDetailPage`), form tạo/sửa phòng (`RoomFormPage`).
 - `lib/features/reports.dart`: tổng quan KPI/chi phí/sức khỏe (`DashboardPage`) và 6 chế độ báo cáo/xuất file (`ReportsPage`).
+- `lib/features/operations.dart`: giao diện danh mục, điều chuyển, bảo dưỡng, quy trình thanh lý, kiểm kê và tra cứu QR.
 - `lib/ui/tokens.dart`: hệ thống token màu sắc & typography Ruo UEMS V3.0 (Light Slate & Dark Warm Obsidian).
 - `lib/ui/vectors.dart`: hệ thống icon vector & logo kiến trúc `RuoLogoMark` thuần Dart `CustomPainter` (không dùng thư viện icon ngoài).
 - `lib/ui/common.dart`: thành phần dùng chung (`StatusBadge`, `SectionTitle`, `DataCard`, `EmptyNotice`, `AsyncPanel`).

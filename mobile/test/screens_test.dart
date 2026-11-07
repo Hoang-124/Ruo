@@ -90,7 +90,7 @@ void main() {
         final management = ['admin', 'facility_manager'].contains(role);
         expect(
           find.byType(NavigationDestination),
-          findsNWidgets(management ? 4 : 2),
+          findsNWidgets(management ? 5 : role == 'technician' ? 3 : 2),
         );
         await tester.tap(
           find.widgetWithText(NavigationDestination, 'Phòng học'),
