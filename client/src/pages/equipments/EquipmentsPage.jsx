@@ -1,56 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffectEvent, useCallback, useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { disposalApi, equipmentApi, masterDataApi } from '../../lib/api';
 
-// Pure Native SVG 2D QR Matrix Generator (Deterministic from string seed, zero external libraries)
-const NativeQrMatrixSvg = ({ value = 'QR-EQ-2026-001', size = 148 }) => {
-  const gridSize = 21;
-  const cells = [];
-
-  // Deterministic hash function for non-finder cells
-  const seedStr = String(value || 'RUO-UEMS');
-  const isFinderPattern = (r, c) => {
-    const topLeft = r < 7 && c < 7;
-    const topRight = r < 7 && c >= gridSize - 7;
-    const bottomLeft = r >= gridSize - 7 && c < 7;
-    return topLeft || topRight || bottomLeft;
-  };
-
-  const getFinderBit = (r, c) => {
-    const lr = r >= gridSize - 7 ? r - (gridSize - 7) : r;
-    const lc = c >= gridSize - 7 ? c - (gridSize - 7) : c;
-    if (lr === 0 || lr === 6 || lc === 0 || lc === 6) return true;
-    if (lr >= 2 && lr <= 4 && lc >= 2 && lc <= 4) return true;
-    return false;
-  };
-
-  for (let r = 0; r < gridSize; r++) {
-    for (let c = 0; c < gridSize; c++) {
-      let filled = false;
-      if (isFinderPattern(r, c)) {
-        filled = getFinderBit(r, c);
-      } else if (r === 6 || c === 6) {
-        filled = (r + c) % 2 === 0;
-      } else {
-        const charIdx = (r * gridSize + c) % seedStr.length;
-        const code = seedStr.charCodeAt(charIdx);
-        filled = ((code * (r + 3) + c * 17 + charIdx * 31) % 7) < 3;
-      }
-      if (filled) {
-        cells.push(<rect key={`${r}-${c}`} x={c} y={r} width={1} height={1} fill="#000000" />);
-      }
-    }
-  }
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${gridSize} ${gridSize}`} shapeRendering="crispEdges" style={{ display: 'block' }}>
-      <rect width={gridSize} height={gridSize} fill="#ffffff" />
-      {cells}
-    </svg>
-  );
-};
+import { EquipmentQr } from '../../components/common/EquipmentQr';
 
 const STATUS_LABEL_MAP = {
   in_use: 'Đang sử dụng',
@@ -76,6 +30,7 @@ const WARRANTY_STATUS_MAP = {
 
 export const EquipmentsPage = () => {
   const { toast } = useToast();
+  const { error: showError } = toast;
   const { currentUser, hasPermission } = useAuth();
 
   const userRole = currentUser?.role || 'facility_manager';
@@ -117,10 +72,6 @@ export const EquipmentsPage = () => {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-
-  // Fast QR Lookup state
-  const [fastQrInput, setFastQrInput] = useState('');
-  const [qrLookupLoading, setQrLookupLoading] = useState(false);
 
   // Modals & Drawers
   const [selectedEq, setSelectedEq] = useState(null);
@@ -189,7 +140,7 @@ export const EquipmentsPage = () => {
   const [validationResult, setValidationResult] = useState(null);
   const [validatingBatch, setValidatingBatch] = useState(false);
 
-  const fetchMasterData = async () => {
+  const fetchMasterData = useCallback(async () => {
     try {
       const [catRes, roomRes, supRes] = await Promise.all([
         masterDataApi.getCategories(),
@@ -202,9 +153,9 @@ export const EquipmentsPage = () => {
     } catch (err) {
       console.warn('Master data load warning:', err.message);
     }
-  };
+  }, []);
 
-  const fetchEquipments = async (overrides = {}) => {
+  const fetchEquipments = useCallback(async (overrides = {}) => {
     try {
       setLoading(true);
       const effPage = overrides.page !== undefined ? overrides.page : page;
@@ -237,13 +188,13 @@ export const EquipmentsPage = () => {
         setStatusCounts(res.statusCounts);
       }
     } catch (err) {
-      toast.error('Không thể tải danh sách thiết bị: ' + err.message);
+      showError('Không thể tải danh sách thiết bị: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, statusFilter, categoryFilter, roomFilter, floorFilter, warrantyFilter, minPrice, maxPrice, showError]);
 
-  const fetchDisposalWorkflow = async () => {
+  const fetchDisposalWorkflow = useCallback(async () => {
     try {
       const res = await disposalApi.list();
       if (res?.success) {
@@ -251,20 +202,28 @@ export const EquipmentsPage = () => {
         setDisposalProposals(res.proposals || []);
       }
     } catch (err) {
-      toast.error('Không thể tải dữ liệu quy trình thanh lý: ' + err.message);
+      showError('Không thể tải dữ liệu quy trình thanh lý: ' + err.message);
     }
-  };
+  }, [showError]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchMasterData();
-  }, []);
+  }, [fetchMasterData]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     if (canUseDisposalWorkflow) fetchDisposalWorkflow();
-  }, [canUseDisposalWorkflow]);
+  }, [canUseDisposalWorkflow, fetchDisposalWorkflow]);
 
+  // Search and price fields are drafts until submitted; changing paging/filter controls loads their current values.
+  const loadFilteredEquipments = useEffectEvent(() => fetchEquipments());
   useEffect(() => {
-    fetchEquipments();
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
+    loadFilteredEquipments();
   }, [page, statusFilter, categoryFilter, roomFilter, floorFilter, warrantyFilter]);
 
   const handleSearchSubmit = (e) => {
@@ -313,7 +272,7 @@ export const EquipmentsPage = () => {
   // Export filtered directory to CSV with Vietnamese UTF-8 BOM (UC-3.2)
   const handleExportCsv = () => {
     if (!equipments || equipments.length === 0) {
-      toast.error('Không có dữ liệu thiết bị phù hợp để xuất file!');
+      showError('Không có dữ liệu thiết bị phù hợp để xuất file!');
       return;
     }
     const headers = ['Mã Tài Sản', 'Mã QR Định Danh', 'Tên Thiết Bị', 'Chủng Loại', 'Phòng Học', 'Tầng', 'Hãng / Model', 'Số Serial', 'Nguyên Giá (VNĐ)', 'Trạng Thái', 'Hạn Bảo Hành'];
@@ -341,25 +300,6 @@ export const EquipmentsPage = () => {
     link.click();
     document.body.removeChild(link);
     toast.success(`Đã xuất báo cáo CSV thành công (${equipments.length} bản ghi)!`);
-  };
-
-  // Fast QR Lookup handler (QR Code Generator & Scan UC)
-  const handleFastQrLookup = async (e) => {
-    e.preventDefault();
-    if (!fastQrInput.trim()) return;
-    try {
-      setQrLookupLoading(true);
-      const res = await equipmentApi.getByQr(fastQrInput.trim());
-      if (res?.success && res?.equipment) {
-        toast.success(`Đã tra cứu nhanh mã QR: [${res.equipment.code}] ${res.equipment.name}`);
-        setFastQrInput('');
-        openDetail(res.equipment);
-      }
-    } catch (err) {
-      toast.error('Không tìm thấy thiết bị với mã QR / Mã tài sản: ' + fastQrInput);
-    } finally {
-      setQrLookupLoading(false);
-    }
   };
 
   const openCreate = () => {
@@ -442,7 +382,7 @@ export const EquipmentsPage = () => {
   const handleDisposalProposalSubmit = async (e) => {
     e.preventDefault();
     if (!selectedDisposalCandidate || !disposalReason.trim()) {
-      toast.error('Vui lòng nhập lý do đề xuất thanh lý.');
+      showError('Vui lòng nhập lý do đề xuất thanh lý.');
       return;
     }
     try {
@@ -460,7 +400,7 @@ export const EquipmentsPage = () => {
         await Promise.all([fetchEquipments(), fetchDisposalWorkflow()]);
       }
     } catch (err) {
-      toast.error('Không thể gửi đề xuất thanh lý: ' + err.message);
+      showError('Không thể gửi đề xuất thanh lý: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -478,15 +418,15 @@ export const EquipmentsPage = () => {
     const price = Number(replacementReceiptForm.price);
     const budget = Number(selectedReceiptProposal.procurement?.budget);
     if (!replacementReceiptForm.code.trim()) {
-      toast.error('Vui lòng nhập mã tài sản mới.');
+      showError('Vui lòng nhập mã tài sản mới.');
       return;
     }
     if (!Number.isFinite(price) || price <= 0) {
-      toast.error('Nguyên giá thực tế phải lớn hơn 0.');
+      showError('Nguyên giá thực tế phải lớn hơn 0.');
       return;
     }
     if (!Number.isFinite(budget) || price > budget) {
-      toast.error('Nguyên giá thực tế không được vượt ngân sách dự trù.');
+      showError('Nguyên giá thực tế không được vượt ngân sách dự trù.');
       return;
     }
 
@@ -506,7 +446,7 @@ export const EquipmentsPage = () => {
         await Promise.all([fetchEquipments(), fetchDisposalWorkflow()]);
       }
     } catch (err) {
-      toast.error('Không thể tiếp nhận thiết bị thay thế: ' + err.message);
+      showError('Không thể tiếp nhận thiết bị thay thế: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -532,7 +472,7 @@ export const EquipmentsPage = () => {
         }
       }
     } catch (err) {
-      toast.error('Không thể tải chi tiết vòng đời thiết bị: ' + err.message);
+      showError('Không thể tải chi tiết vòng đời thiết bị: ' + err.message);
     } finally {
       setDetailLoading(false);
     }
@@ -542,13 +482,13 @@ export const EquipmentsPage = () => {
     e.preventDefault();
     if (formData.purchase_date && formData.warranty_expiry) {
       if (new Date(formData.warranty_expiry) < new Date(formData.purchase_date)) {
-        toast.error('Lỗi logic thời gian: Hạn bảo hành không được nhỏ hơn Ngày mua thiết bị!');
+        showError('Lỗi logic thời gian: Hạn bảo hành không được nhỏ hơn Ngày mua thiết bị!');
         return;
       }
     }
     const depRate = Number(formData.depreciation_rate ?? 20);
     if (Number.isNaN(depRate) || depRate < 0 || depRate > 100) {
-      toast.error('Tỷ lệ khấu hao (%/năm) phải nằm trong khoảng từ 0% đến 100%!');
+      showError('Tỷ lệ khấu hao (%/năm) phải nằm trong khoảng từ 0% đến 100%!');
       return;
     }
 
@@ -569,7 +509,7 @@ export const EquipmentsPage = () => {
         fetchEquipments();
       }
     } catch (err) {
-      toast.error('Lỗi khi tạo thiết bị: ' + err.message);
+      showError('Lỗi khi tạo thiết bị: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -580,17 +520,17 @@ export const EquipmentsPage = () => {
     if (!selectedEq) return;
     if (formData.purchase_date && formData.warranty_expiry) {
       if (new Date(formData.warranty_expiry) < new Date(formData.purchase_date)) {
-        toast.error('Lỗi logic thời gian: Hạn bảo hành không được nhỏ hơn Ngày mua thiết bị!');
+        showError('Lỗi logic thời gian: Hạn bảo hành không được nhỏ hơn Ngày mua thiết bị!');
         return;
       }
     }
     const depRate = Number(formData.depreciation_rate ?? 20);
     if (Number.isNaN(depRate) || depRate < 0 || depRate > 100) {
-      toast.error('Tỷ lệ khấu hao (%/năm) phải nằm trong khoảng từ 0% đến 100%!');
+      showError('Tỷ lệ khấu hao (%/năm) phải nằm trong khoảng từ 0% đến 100%!');
       return;
     }
     if (selectedEq.status === 'disposed' && formData.room_id) {
-      toast.error('Tài sản đã thanh lý (DISPOSED) không thể phân bổ lại vào phòng học đang vận hành!');
+      showError('Tài sản đã thanh lý (DISPOSED) không thể phân bổ lại vào phòng học đang vận hành!');
       return;
     }
 
@@ -619,7 +559,7 @@ export const EquipmentsPage = () => {
         }
       }
     } catch (err) {
-      toast.error('Lỗi khi cập nhật thiết bị: ' + err.message);
+      showError('Lỗi khi cập nhật thiết bị: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -640,7 +580,7 @@ export const EquipmentsPage = () => {
         }
       }
     } catch (err) {
-      toast.error('Lỗi khi cập nhật bảo hành: ' + err.message);
+      showError('Lỗi khi cập nhật bảo hành: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -655,7 +595,7 @@ export const EquipmentsPage = () => {
         fetchEquipments();
       }
     } catch (err) {
-      toast.error('Lỗi khi quét hạn bảo hành: ' + err.message);
+      showError('Lỗi khi quét hạn bảo hành: ' + err.message);
     } finally {
       setScanningWarranty(false);
     }
@@ -681,7 +621,7 @@ export const EquipmentsPage = () => {
         }
       }
     } catch (err) {
-      toast.error('Lỗi khi thanh lý thiết bị: ' + err.message);
+      showError('Lỗi khi thanh lý thiết bị: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -697,7 +637,7 @@ export const EquipmentsPage = () => {
       try {
         const arr = JSON.parse(cleaned);
         return Array.isArray(arr) ? arr : [];
-      } catch (_) {
+      } catch {
         // Fallback to CSV parser
       }
     }
@@ -977,7 +917,7 @@ export const EquipmentsPage = () => {
         handleBatchTextChange(csvConverted);
         toast.success(`Đã giải mã trực tiếp tệp Excel [${file.name}] vào lưới xem trước!`);
       } catch (err) {
-        toast.error('Không thể đọc tệp .xlsx: ' + err.message);
+        showError('Không thể đọc tệp .xlsx: ' + err.message);
       }
       return;
     }
@@ -1049,7 +989,7 @@ export const EquipmentsPage = () => {
   const handleValidateBatch = async () => {
     const items = parsedBatchItems.length > 0 ? parsedBatchItems : parseBatchInputText(batchRawText);
     if (!items || items.length === 0) {
-      toast.error('Vui lòng tải tệp CSV/Excel hoặc nhập dữ liệu trước khi kiểm tra.');
+      showError('Vui lòng tải tệp CSV/Excel hoặc nhập dữ liệu trước khi kiểm tra.');
       return;
     }
 
@@ -1066,7 +1006,7 @@ export const EquipmentsPage = () => {
         toast.warning(res.message || `Phát hiện ${res.errorCount} lỗi dữ liệu trên các dòng.`);
       }
     } catch (err) {
-      toast.error('Lỗi khi kiểm tra dữ liệu: ' + err.message);
+      showError('Lỗi khi kiểm tra dữ liệu: ' + err.message);
     } finally {
       setValidatingBatch(false);
     }
@@ -1077,7 +1017,7 @@ export const EquipmentsPage = () => {
     e.preventDefault();
     const items = parsedBatchItems.length > 0 ? parsedBatchItems : parseBatchInputText(batchRawText);
     if (!items || items.length === 0) {
-      toast.error('Không có dữ liệu thiết bị để nhập hàng loạt.');
+      showError('Không có dữ liệu thiết bị để nhập hàng loạt.');
       return;
     }
 
@@ -1100,7 +1040,7 @@ export const EquipmentsPage = () => {
       if (err.data?.previewRows) {
         setValidationResult(err.data);
       }
-      toast.error('Lỗi khi nhập hàng loạt: ' + err.message);
+      showError('Lỗi khi nhập hàng loạt: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -1984,7 +1924,6 @@ export const EquipmentsPage = () => {
                 {equipments.map((eq) => {
                   const roomInfo = eq.room_id ? `${eq.room_id.code} (${eq.room_id.name})` : 'Kho dự phòng';
                   const catInfo = eq.category_id?.name || 'Chung';
-                  const isWarrantyActive = eq.warranty_expiry && new Date(eq.warranty_expiry) > new Date();
                   const disposalCandidate = disposalCandidates.find((candidate) => String(candidate._id) === String(eq._id));
                   const activeDisposal = disposalProposals.find((proposal) =>
                     String(proposal.equipment_id?._id || proposal.equipment_id) === String(eq._id) &&
@@ -2575,7 +2514,7 @@ export const EquipmentsPage = () => {
                     justifyContent: 'center',
                     flexShrink: 0
                   }}>
-                    <NativeQrMatrixSvg 
+                    <EquipmentQr
                       value={formData.qr_code || (formData.code ? `QR-${formData.code.toUpperCase().trim()}` : 'QR-RUO-PREVIEW')} 
                       size={60} 
                     />
@@ -3130,7 +3069,7 @@ export const EquipmentsPage = () => {
 
                 {/* Deterministic 2D QR SVG Matrix */}
                 <div style={{ width: '164px', height: '164px', margin: '0 auto 12px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px' }}>
-                  <NativeQrMatrixSvg value={selectedEq.qr_code || `QR-${selectedEq.code}`} size={148} />
+                  <EquipmentQr value={selectedEq.qr_code || `QR-${selectedEq.code}`} size={148} />
                 </div>
 
                 <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '15px', letterSpacing: '0.05em' }}>

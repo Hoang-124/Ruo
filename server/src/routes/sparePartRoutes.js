@@ -10,7 +10,7 @@ import {
   approvePartsRequest,
   rejectPartsRequest
 } from '../controllers/sparePartController.js';
-import { protect, requireRole } from '../middlewares/authMiddleware.js';
+import { protect, requireRole, requirePermission } from '../middlewares/authMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
@@ -19,27 +19,27 @@ const router = express.Router();
 router.get('/', protect, getSpareParts);
 
 // Create new spare part (Facility Manager, Admin) (UC-5.12)
-router.post('/', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), createSparePart);
+router.post('/', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('spare_part:update', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), createSparePart);
 
 // Update spare part details (Facility Manager, Admin) (UC-5.12)
-router.put('/:id', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), updateSparePart);
+router.put('/:id', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('spare_part:update', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), updateSparePart);
 
 // Delete spare part (Facility Manager, Admin) (UC-5.12)
-router.delete('/:id', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), deleteSparePart);
+router.delete('/:id', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('spare_part:update', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), deleteSparePart);
 
 // Update spare parts stock (Facility Manager, Admin)
-router.put('/:id/stock', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), updateSparePartStock);
+router.put('/:id/stock', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('spare_part:update', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), updateSparePartStock);
 
 // View parts requests (Technician, Facility Manager, Admin)
 router.get('/requests', protect, getPartsRequests);
 
 // Request spare parts (Technician, Facility Manager, Admin)
-router.post('/requests', protect, requireRole(USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requestSpareParts);
+router.post('/requests', protect, requireRole(USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('parts:request', USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requestSpareParts);
 
 // Approve parts request (Facility Manager, Admin)
-router.put('/requests/:id/approve', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), approvePartsRequest);
+router.put('/requests/:id/approve', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('parts:approve', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), approvePartsRequest);
 
 // Reject parts request (Facility Manager, Admin)
-router.put('/requests/:id/reject', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), rejectPartsRequest);
+router.put('/requests/:id/reject', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('parts:approve', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), rejectPartsRequest);
 
 export default router;

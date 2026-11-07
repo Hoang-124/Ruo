@@ -1,3 +1,4 @@
+import { runTransaction, workflowError } from '../services/transaction.js';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { Disposal } from '../models/Disposal.js';
@@ -375,69 +376,73 @@ export const completeDisposalReceipt = async (req, res) => {
     if (!String(code || '').trim() || price === undefined || price === null || String(price).trim() === '' || !Number.isFinite(Number(price)) || Number(price) <= 0) {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập mã tài sản và nguyên giá hợp lệ của thiết bị mới.' });
     }
-    const proposal = await Disposal.findById(req.params.id);
-    if (!proposal) return res.status(404).json({ success: false, message: 'Không tìm thấy hồ sơ thanh lý.' });
-    assertTransition('DISPOSAL', proposal.status, DISPOSAL_STATUSES.COMPLETED, req.user.role);
-    const originalEquipment = await Equipment.findById(proposal.equipment_id);
-    if (!originalEquipment) return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị cần thanh lý.' });
-    if (!proposal.procurement?.category_id) {
-      return res.status(409).json({ success: false, message: 'Hồ sơ chưa có thông tin dự trù mua sắm.' });
-    }
-    const budget = Number(proposal.procurement.budget);
-    if (!Number.isFinite(budget) || budget < 0 || Number(price) > budget) {
-      return res.status(422).json({ success: false, message: 'Nguyên giá thiết bị nhận vượt ngân sách dự trù; cần cập nhật/phê duyệt lại dự trù trước khi tiếp nhận.' });
-    }
+    const { proposal, originalEquipment, replacement } = await runTransaction(async (session) => {
+      const proposal = await Disposal.findById(req.params.id, null, { session });
+      if (!proposal) throw workflowError(404, 'Không tìm thấy hồ sơ thanh lý.');
+      assertTransition('DISPOSAL', proposal.status, DISPOSAL_STATUSES.COMPLETED, req.user.role);
+      const originalEquipment = await Equipment.findById(proposal.equipment_id, null, { session });
+      if (!originalEquipment) throw workflowError(404, 'Không tìm thấy thiết bị cần thanh lý.');
+      if (!proposal.procurement?.category_id) {
+        throw workflowError(409, 'Hồ sơ chưa có thông tin dự trù mua sắm.');
+      }
+      const budget = Number(proposal.procurement.budget);
+      if (!Number.isFinite(budget) || budget < 0 || Number(price) > budget) {
+        throw workflowError(422, 'Nguyên giá thiết bị nhận vượt ngân sách dự trù; cần cập nhật/phê duyệt lại dự trù trước khi tiếp nhận.');
+      }
 
-    const cleanCode = String(code).trim().toUpperCase();
-    const duplicateCode = await Equipment.findOne({ code: cleanCode });
-    if (duplicateCode) return res.status(409).json({ success: false, message: `Mã tài sản ${cleanCode} đã tồn tại.` });
-    const category = await Category.findById(proposal.procurement.category_id);
-    if (!category) return res.status(409).json({ success: false, message: 'Danh mục dự trù không còn tồn tại.' });
-    if (proposal.procurement.room_id && !await Room.findById(proposal.procurement.room_id)) {
-      return res.status(409).json({ success: false, message: 'Phòng dự trù không còn tồn tại.' });
-    }
-    if (!proposal.procurement.room_id) {
-      return res.status(409).json({ success: false, message: 'Thiết bị thay thế cần được phân bổ vào phòng trước khi tiếp nhận.' });
-    }
+      const cleanCode = String(code).trim().toUpperCase();
+      const duplicateCode = await Equipment.findOne({ code: cleanCode }, null, { session });
+      if (duplicateCode) throw workflowError(409, `Mã tài sản ${cleanCode} đã tồn tại.`);
+      const category = await Category.findById(proposal.procurement.category_id, null, { session });
+      if (!category) throw workflowError(409, 'Danh mục dự trù không còn tồn tại.');
+      if (proposal.procurement.room_id && !await Room.findById(proposal.procurement.room_id, null, { session })) {
+        throw workflowError(409, 'Phòng dự trù không còn tồn tại.');
+      }
+      if (!proposal.procurement.room_id) {
+        throw workflowError(409, 'Thiết bị thay thế cần được phân bổ vào phòng trước khi tiếp nhận.');
+      }
 
-    let qrCode = `QR-${cleanCode}`;
-    if (await Equipment.exists({ qr_code: qrCode })) {
-      qrCode = `QR-${cleanCode}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-    }
-    const replacement = await Equipment.create({
-      code: cleanCode,
-      qr_code: qrCode,
-      name: proposal.procurement.replacement_name,
-      serial_number: String(serial_number).trim(),
-      brand: String(brand).trim(),
-      model: String(model).trim(),
-      category_id: proposal.procurement.category_id,
-      room_id: proposal.procurement.room_id,
-      price: Number(price),
-      remaining_value: Number(price),
-      purchase_date: new Date(),
-      status: EQUIPMENT_STATUSES.IN_USE
+      let qrCode = `QR-${cleanCode}`;
+      if (await Equipment.findOne({ qr_code: qrCode }, null, { session })) {
+        qrCode = `QR-${cleanCode}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      }
+      const [replacement] = await Equipment.create([{
+        code: cleanCode,
+        qr_code: qrCode,
+        name: proposal.procurement.replacement_name,
+        serial_number: String(serial_number).trim(),
+        brand: String(brand).trim(),
+        model: String(model).trim(),
+        category_id: proposal.procurement.category_id,
+        room_id: proposal.procurement.room_id,
+        price: Number(price),
+        remaining_value: Number(price),
+        purchase_date: new Date(),
+        status: EQUIPMENT_STATUSES.IN_USE
+      }], { session });
+      await EquipmentMovement.create([{
+        equipment_id: replacement._id,
+        type: MOVEMENT_TYPES.REPLACEMENT,
+        from_room_id: null,
+        to_room_id: proposal.procurement.room_id,
+        ordered_by: req.user._id,
+        performed_by: req.user._id,
+        status: MOVEMENT_STATUSES.COMPLETED,
+        reason: `Tiếp nhận thay thế tài sản ${originalEquipment.code}`,
+        completed_at: new Date()
+      }], { session });
+
+      proposal.status = DISPOSAL_STATUSES.COMPLETED;
+      proposal.replacement_equipment_id = replacement._id;
+      proposal.received_by = req.user._id;
+      proposal.received_at = new Date();
+      proposal.completed_at = proposal.received_at;
+      await proposal.save({ session });
+      originalEquipment.status = EQUIPMENT_STATUSES.DISPOSED;
+      await originalEquipment.save({ session });
+
+      return { proposal, originalEquipment, replacement };
     });
-    await EquipmentMovement.create({
-      equipment_id: replacement._id,
-      type: MOVEMENT_TYPES.REPLACEMENT,
-      from_room_id: null,
-      to_room_id: proposal.procurement.room_id,
-      ordered_by: req.user._id,
-      performed_by: req.user._id,
-      status: MOVEMENT_STATUSES.COMPLETED,
-      reason: `Tiếp nhận thay thế tài sản ${originalEquipment.code}`,
-      completed_at: new Date()
-    });
-
-    proposal.status = DISPOSAL_STATUSES.COMPLETED;
-    proposal.replacement_equipment_id = replacement._id;
-    proposal.received_by = req.user._id;
-    proposal.received_at = new Date();
-    proposal.completed_at = proposal.received_at;
-    await proposal.save();
-    originalEquipment.status = EQUIPMENT_STATUSES.DISPOSED;
-    await originalEquipment.save();
 
     await auditDisposal(req, proposal, 'DISPOSAL_RECEIPT', {
       status: proposal.status,

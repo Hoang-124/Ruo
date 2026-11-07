@@ -10,12 +10,6 @@ import {
   DAMAGE_LEVELS
 } from '../config/constants.js';
 
-const canCallModel = (Model, methodName) => {
-  if (!Model || typeof Model[methodName] !== 'function') return false;
-  if (mongoose.connection.readyState === 1) return true;
-  return Model[methodName] !== mongoose.Model[methodName];
-};
-
 // Helper: Resolve all room ObjectIds covered by an InventorySession in Building A1
 const resolveSessionRoomIds = async (session) => {
   if (!session) return [];
@@ -27,13 +21,9 @@ const resolveSessionRoomIds = async (session) => {
   if (session.scope_type === 'floor' && session.scope_floor) {
     roomFilter.floor = Number(session.scope_floor);
   }
-  try {
-    if (!canCallModel(Room, 'find')) return [];
-    const scopedRooms = await Room.find(roomFilter).select('_id');
-    return Array.isArray(scopedRooms) ? scopedRooms.map((r) => r._id) : [];
-  } catch (_) {
-    return [];
-  }
+  if (session.scope_type === 'room') return [];
+  const scopedRooms = await Room.find(roomFilter).select('_id');
+  return scopedRooms.map((r) => r._id);
 };
 
 // @desc    Get all inventory sessions (UC: Conduct inventory session)
@@ -104,16 +94,8 @@ export const createSession = async (req, res) => {
         });
       }
     } else if ((normalizedScopeType === 'building' || normalizedScopeType === 'all') && resolvedScopeIds.length === 0) {
-      try {
-        if (canCallModel(Room, 'find')) {
-          const allBuildingRooms = await Room.find({ building: 'A1' }).select('_id');
-          if (Array.isArray(allBuildingRooms) && allBuildingRooms.length > 0) {
-            resolvedScopeIds = allBuildingRooms.map((r) => r._id);
-          }
-        }
-      } catch (_) {
-        resolvedScopeIds = [];
-      }
+      const allBuildingRooms = await Room.find({ building: 'A1' }).select('_id');
+      resolvedScopeIds = allBuildingRooms.map((r) => r._id);
     }
 
     const session = await InventorySession.create({
@@ -164,9 +146,9 @@ export const getSessionById = async (req, res) => {
     // Compute Expected Equipments in the session's scoped rooms so technicians can see what remains unscanned
     let expectedEquipments = [];
     let unscannedEquipments = [];
-    try {
+    {
       const roomIds = await resolveSessionRoomIds(session);
-      if (roomIds.length > 0 && canCallModel(Equipment, 'find')) {
+      if (roomIds.length > 0) {
         const rawExpected = await Equipment.find({
           room_id: { $in: roomIds },
           status: { $nin: [EQUIPMENT_STATUSES.DISPOSED, EQUIPMENT_STATUSES.LOST] }
@@ -197,9 +179,6 @@ export const getSessionById = async (req, res) => {
           unscannedEquipments = expectedEquipments.filter((eq) => !eq.is_scanned);
         }
       }
-    } catch (_) {
-      expectedEquipments = [];
-      unscannedEquipments = [];
     }
 
     const expectedCount = expectedEquipments.length;
@@ -235,20 +214,17 @@ export const getSessionById = async (req, res) => {
 // @route   PUT /api/inventory-sessions/:id/scan or POST /api/inventory/sessions/:id/scan
 export const scanEquipmentInRoom = async (req, res) => {
   try {
-    // 1. Verify session is open for scanning (cannot scan into a reconciled/closed session)
-    let session = null;
-    try {
-      if (canCallModel(InventorySession, 'findById')) {
-        session = await InventorySession.findById(req.params.id);
-      }
-    } catch (_) {
-      session = null;
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Mã đợt kiểm kê không hợp lệ.' });
     }
-
-    if (session && (session.status === INVENTORY_STATUSES.RECONCILED || session.status === INVENTORY_STATUSES.COMPLETED)) {
+    const session = await InventorySession.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đợt kiểm kê.' });
+    }
+    if (session.status !== INVENTORY_STATUSES.IN_PROGRESS) {
       return res.status(400).json({
         success: false,
-        message: 'Đợt kiểm kê này đã chốt sổ đối soát (RECONCILED), không thể quét thêm hoặc sửa đổi dữ liệu.'
+        message: 'Chỉ được quét thiết bị trong đợt kiểm kê đang tiến hành.'
       });
     }
 
@@ -261,7 +237,7 @@ export const scanEquipmentInRoom = async (req, res) => {
       scan_status,
       damage_note = '',
       note = ''
-    } = req.body;
+    } = req.body || {};
 
     if (!equipment_id && (!qr_code || !String(qr_code).trim())) {
       return res.status(400).json({
@@ -271,7 +247,7 @@ export const scanEquipmentInRoom = async (req, res) => {
     }
 
     let targetEquipment = null;
-    if (equipment_id && mongoose.Types.ObjectId.isValid(equipment_id) && canCallModel(Equipment, 'findById')) {
+    if (equipment_id && mongoose.Types.ObjectId.isValid(equipment_id)) {
       targetEquipment = await Equipment.findById(equipment_id);
     }
     if (!targetEquipment && (qr_code || equipment_id)) {
@@ -285,17 +261,23 @@ export const scanEquipmentInRoom = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy thiết bị với mã QR này.' });
     }
 
-    // Resolve scanned_room_id if passed as room code (e.g., "P201")
-    let resolvedScannedRoomId = scanned_room_id || null;
-    if (resolvedScannedRoomId && !mongoose.Types.ObjectId.isValid(resolvedScannedRoomId)) {
-      try {
-        if (canCallModel(Room, 'findOne')) {
-          const roomDoc = await Room.findOne({ code: String(resolvedScannedRoomId).toUpperCase().trim() });
-          resolvedScannedRoomId = roomDoc ? roomDoc._id : null;
-        }
-      } catch (_) {
-        resolvedScannedRoomId = null;
-      }
+    // A misplaced asset may be registered elsewhere, but its observed room must
+    // belong to this session. Never turn an unknown room into a matched scan.
+    const roomInput = scanned_room_id || targetEquipment.room_id;
+    const scannedRoom = roomInput
+      ? (mongoose.isValidObjectId(roomInput)
+        ? await Room.findById(roomInput)
+        : await Room.findOne({ code: String(roomInput).toUpperCase().trim() }))
+      : null;
+    if (!scannedRoom) {
+      return res.status(400).json({ success: false, message: 'Phòng quét không tồn tại.' });
+    }
+    const resolvedScannedRoomId = scannedRoom._id;
+    const scopeRoomIds = new Set((await resolveSessionRoomIds(session)).map(String));
+    if (!scopeRoomIds.has(String(resolvedScannedRoomId))
+      || ((is_missing || scan_status === INVENTORY_LOG_STATUSES.MISSING)
+        && !scopeRoomIds.has(String(targetEquipment.room_id)))) {
+      return res.status(400).json({ success: false, message: 'Thiết bị hoặc phòng quét nằm ngoài phạm vi đợt kiểm kê.' });
     }
 
     const eqRoomIdStr = targetEquipment.room_id ? String(targetEquipment.room_id._id || targetEquipment.room_id) : null;
@@ -326,22 +308,10 @@ export const scanEquipmentInRoom = async (req, res) => {
     // Auto-create repair ticket if equipment is found DAMAGED during field inventory (idempotent: reuse open ticket if one already exists)
     let autoRepair = null;
     if (status === INVENTORY_LOG_STATUSES.DAMAGED) {
-      if (targetEquipment.status !== EQUIPMENT_STATUSES.DISPOSED) {
-        targetEquipment.status = EQUIPMENT_STATUSES.BROKEN;
-        await targetEquipment.save();
-      }
-
-      let existingOpenRepair = null;
-      try {
-        if (canCallModel(Repair, 'findOne')) {
-          existingOpenRepair = await Repair.findOne({
-            equipment_id: targetEquipment._id,
-            status: { $in: [REPAIR_STATUSES.REPORTED, REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] }
-          });
-        }
-      } catch (_) {
-        existingOpenRepair = null;
-      }
+      const existingOpenRepair = await Repair.findOne({
+        equipment_id: targetEquipment._id,
+        status: { $in: [REPAIR_STATUSES.REPORTED, REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] }
+      });
 
       if (existingOpenRepair) {
         autoRepair = existingOpenRepair;
@@ -354,6 +324,10 @@ export const scanEquipmentInRoom = async (req, res) => {
           damage_level: DAMAGE_LEVELS.MINOR,
           status: REPAIR_STATUSES.REPORTED
         });
+      }
+      if (targetEquipment.status !== EQUIPMENT_STATUSES.DISPOSED) {
+        targetEquipment.status = EQUIPMENT_STATUSES.BROKEN;
+        await targetEquipment.save();
       }
     }
 
@@ -369,12 +343,11 @@ export const scanEquipmentInRoom = async (req, res) => {
         repair_id: autoRepair ? autoRepair._id : null,
         note: finalNote
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true, runValidators: true }
     );
 
     // Live-sync session.summary so the session header shows accurate counts immediately
-    try {
-      if (session && canCallModel(InventoryLog, 'find')) {
+    {
         const currentLogs = await InventoryLog.find({ session_id: session._id }).select('status');
         if (Array.isArray(currentLogs)) {
           session.summary = {
@@ -385,9 +358,6 @@ export const scanEquipmentInRoom = async (req, res) => {
           };
           await session.save();
         }
-      }
-    } catch (_) {
-      // Ignore if session.save is not mocked in unit test
     }
 
     const statusMessageMap = {
@@ -420,7 +390,7 @@ export const reconcileSession = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đợt kiểm kê.' });
     }
 
-    if (session.status === INVENTORY_STATUSES.RECONCILED && !req.body?.force) {
+    if (session.status !== INVENTORY_STATUSES.IN_PROGRESS) {
       return res.status(400).json({
         success: false,
         message: 'Đợt kiểm kê này đã được chốt sổ đối soát trước đó.'
@@ -446,7 +416,7 @@ export const reconcileSession = async (req, res) => {
     );
 
     if (missingEquipments.length > 0) {
-      if (canCallModel(InventoryLog, 'bulkWrite')) {
+      {
         const scannedAt = new Date();
         await InventoryLog.bulkWrite(
           missingEquipments.map((eq) => ({
@@ -466,20 +436,6 @@ export const reconcileSession = async (req, res) => {
           })),
           { ordered: false }
         );
-      } else {
-        for (const eq of missingEquipments) {
-          await InventoryLog.findOneAndUpdate(
-            { session_id: session._id, equipment_id: eq._id },
-            {
-              scanned_room_id: eq.room_id,
-              scanned_by: req.user._id,
-              scanned_at: new Date(),
-              status: INVENTORY_LOG_STATUSES.MISSING,
-              note: 'Chưa được quét QR khi chốt đối soát — đánh dấu vắng mặt/thất lạc'
-            },
-            { upsert: true, new: true }
-          );
-        }
       }
     }
 
@@ -517,7 +473,7 @@ export const reconcileSession = async (req, res) => {
   }
 };
 
-// @desc    Export full inventory reconciliation report with digital signature (UC-3.11: Inventory Report)
+// @desc    Export inventory report with a full-content checksum (UC-3.11: Inventory Report)
 // @route   GET /api/inventory-sessions/:id/export or GET /api/inventory/sessions/:id/export
 export const exportInventoryReport = async (req, res) => {
   try {
@@ -563,7 +519,7 @@ export const exportInventoryReport = async (req, res) => {
 
     // Also include any unscanned expected items if report is previewed before reconciliation
     let unscannedItems = [];
-    try {
+    {
       const roomIds = await resolveSessionRoomIds(session);
       if (roomIds.length > 0 && Equipment && typeof Equipment.find === 'function') {
         const expectedEqs = await Equipment.find({
@@ -592,8 +548,6 @@ export const exportInventoryReport = async (req, res) => {
             }));
         }
       }
-    } catch (_) {
-      unscannedItems = [];
     }
 
     const summary = {
@@ -607,15 +561,6 @@ export const exportInventoryReport = async (req, res) => {
 
     const exportedAt = new Date().toISOString();
     const reportCode = `BBKK-A1-${new Date(session.date || session.created_at || Date.now()).getFullYear()}-${String(session._id).slice(-6).toUpperCase()}`;
-
-    const signaturePayload = JSON.stringify({
-      reportCode,
-      sessionId: String(session._id),
-      sessionName: session.name,
-      summary,
-      exportedBy: req.user?.code || 'SYSTEM'
-    });
-    const signatureHash = crypto.createHash('sha256').update(signaturePayload).digest('hex');
 
     const report = {
       report_code: reportCode,
@@ -644,23 +589,20 @@ export const exportInventoryReport = async (req, res) => {
         missing_items: missingItems,
         damaged_items: damagedItems,
         unscanned_items: unscannedItems
-      },
-      digital_signature: {
-        algorithm: 'SHA-256',
-        hash: signatureHash,
-        signed_at: exportedAt,
-        verification_status: 'VERIFIED_IMMUTABLE',
-        signers: [
-          { role: 'Trưởng Ban Kiểm Kê (Quản Lý CSVC)', name: session.created_by?.full_name || req.user?.full_name || 'Quản lý CSVC', status: 'ĐÃ KÝ SỐ' },
-          { role: 'Ủy Viên Kỹ Thuật (KTV Thực Địa)', name: logs[0]?.scanned_by?.full_name || 'Tổ Kỹ Thuật Tòa A1', status: 'ĐÃ KÝ SỐ' },
-          { role: 'Phê Duyệt Ban Giám Hiệu', name: 'Ban Giám Hiệu Trường ĐH (Tòa A1)', status: session.status === 'reconciled' ? 'ĐÃ XÁC THỰC' : 'CHỜ CHỐT SỔ' }
-        ]
       }
+    };
+    // Covers the entire exported JSON snapshot; this is not a digital signature.
+    report.integrity = {
+      algorithm: 'SHA-256',
+      hash: crypto.createHash('sha256').update(JSON.stringify(report)).digest('hex'),
+      payload_encoding: 'JSON.stringify(report without integrity)',
+      verification_status: 'CHECKSUM_ONLY',
+      digitally_signed: false
     };
 
     res.json({
       success: true,
-      message: `Xuất biên bản kiểm kê [${reportCode}] kèm chữ ký số SHA-256 thành công.`,
+      message: `Xuất biên bản kiểm kê [${reportCode}] kèm mã kiểm tra nội dung SHA-256 thành công.`,
       report
     });
   } catch (error) {

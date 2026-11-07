@@ -613,8 +613,9 @@ async function runTests() {
       { status: () => ({ json: (d) => { exportBody = d; } }), json: (d) => { exportBody = d; } }
     );
     assert.strictEqual(exportBody.success, true);
-    assert.strictEqual(exportBody.report.digital_signature.algorithm, 'SHA-256');
-    assert.strictEqual(exportBody.report.digital_signature.hash.length, 64);
+    assert.strictEqual(exportBody.report.integrity.algorithm, 'SHA-256');
+    assert.strictEqual(exportBody.report.integrity.hash.length, 64);
+    assert.strictEqual(exportBody.report.integrity.digitally_signed, false);
     console.log('  ✔ Test 9 ĐẠT: Khởi tạo kiểm kê, phát hiện tài sản Zombie, khóa sổ sau đối soát & ký số SHA-256 hoàn tất.');
   }
 
