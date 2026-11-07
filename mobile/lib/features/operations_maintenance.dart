@@ -111,6 +111,7 @@ class _MaintenancePageState extends State<MaintenancePage> {
                 children: [
                   DropdownButtonFormField<String>(
                     initialValue: selectedEquipment,
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Thiết bị'),
                     items: equipment
                         .map(
@@ -118,6 +119,8 @@ class _MaintenancePageState extends State<MaintenancePage> {
                             value: value(item['_id']),
                             child: Text(
                               '${value(item['code'])} · ${value(item['name'])}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         )
@@ -244,38 +247,94 @@ class _MaintenancePageState extends State<MaintenancePage> {
             return const EmptyNotice('Chưa có kế hoạch bảo dưỡng.');
           }
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (final plan in plans)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          value(plan['title']),
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${value(plan['building'])} · Tầng ${value(plan['floor'])} · ${value(plan['frequency']) == 'quarterly' ? 'Hàng quý' : 'Hàng tháng'}',
-                        ),
-                        Text(
-                          'Đến hạn: ${formatVnDate(asMap(plan['schedule'])['next_due_at'])}',
-                        ),
-                        if (_role == 'technician')
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: OutlinedButton.icon(
-                              onPressed: () => _logResult(
-                                plan,
-                                _planEquipment(plan, equipment),
-                              ),
-                              icon: const Icon(Icons.checklist),
-                              label: const Text('Ghi kết quả'),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Card(
+                    child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    value(plan['title']),
+                                    style: Theme.of(context).textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w800),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Chip(
+                                  avatar: const Icon(
+                                    Icons.event_repeat,
+                                    size: 16,
+                                  ),
+                                  label: Text(
+                                    value(plan['frequency']) == 'quarterly'
+                                        ? 'Hàng quý'
+                                        : 'Hàng tháng',
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ],
                             ),
-                          ),
-                      ],
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _PlanInfoChip(
+                                  icon: Icons.location_on_outlined,
+                                  label:
+                                      '${value(plan['building'])} · Tầng ${value(plan['floor'])}',
+                                ),
+                                _PlanInfoChip(
+                                  icon: Icons.meeting_room_outlined,
+                                  label:
+                                      '${asList(plan['room_ids']).length} phòng',
+                                ),
+                                _PlanInfoChip(
+                                  icon: Icons.devices_other_outlined,
+                                  label:
+                                      '${_planEquipment(plan, equipment).length} thiết bị',
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            const Divider(height: 1),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                const Icon(Icons.calendar_today_outlined, size: 17),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Kỳ tiếp theo: ${formatVnDate(asMap(plan['schedule'])['next_due_at'])}',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_role == 'technician')
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _logResult(
+                                    plan,
+                                    _planEquipment(plan, equipment),
+                                  ),
+                                  icon: const Icon(Icons.checklist),
+                                  label: const Text('Ghi kết quả'),
+                                ),
+                              ),
+                          ],
+                        ),
                     ),
                   ),
                 ),
@@ -297,4 +356,18 @@ class _MaintenancePageState extends State<MaintenancePage> {
       return roomIds.contains(roomId);
     }).toList();
   }
+}
+
+class _PlanInfoChip extends StatelessWidget {
+  const _PlanInfoChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Chip(
+    avatar: Icon(icon, size: 16),
+    label: Text(label),
+    visualDensity: VisualDensity.compact,
+  );
 }

@@ -12,60 +12,227 @@ class DisposalsPage extends StatefulWidget {
   State<DisposalsPage> createState() => _DisposalsPageState();
 }
 
-class _DisposalsPageState extends State<DisposalsPage> {
-  int _revision = 0;
-  String get _role => value(widget.api.user?['role'], fallback: '');
+class _DisposalProposalDialog extends StatefulWidget {
+  const _DisposalProposalDialog({required this.equipment});
 
-  Future<void> _propose(Json equipment) async {
-    final reason = TextEditingController();
-    final recovery = TextEditingController(text: '0');
-    final body = await showDialog<Json>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Đề xuất thanh lý ${value(equipment['code'])}'),
-        content: Column(
+  final Json equipment;
+
+  @override
+  State<_DisposalProposalDialog> createState() =>
+      _DisposalProposalDialogState();
+}
+
+class _DisposalProposalDialogState extends State<_DisposalProposalDialog> {
+  final _reason = TextEditingController();
+  final _recovery = TextEditingController(text: '0');
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    _recovery.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final reason = _reason.text.trim();
+    final recovery = num.tryParse(_recovery.text.trim());
+    if (reason.isEmpty || recovery == null || recovery < 0) return;
+
+    Navigator.pop(context, {
+      'equipment_id': widget.equipment['_id'],
+      'reason': reason,
+      'recovery_value': recovery,
+      if (widget.equipment['unrepairable_repair_id'] != null)
+        'repair_id': widget.equipment['unrepairable_repair_id'],
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text('Đề xuất thanh lý ${value(widget.equipment['code'])}'),
+    content: SizedBox(
+      width: 440,
+      child: SingleChildScrollView(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Chỉ số R: ${value(equipment['r_ratio'])}%'),
+            Text('Chỉ số R: ${value(widget.equipment['r_ratio'])}%'),
             TextField(
-              controller: reason,
+              controller: _reason,
               minLines: 2,
               maxLines: 4,
               decoration: const InputDecoration(labelText: 'Lý do đề xuất'),
             ),
             TextField(
-              controller: recovery,
+              controller: _recovery,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(labelText: 'Giá trị thu hồi'),
             ),
           ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(onPressed: _submit, child: const Text('Gửi thẩm định')),
+    ],
+  );
+}
+
+class _DisposalWorkflowFormDialog extends StatefulWidget {
+  const _DisposalWorkflowFormDialog({
+    required this.title,
+    required this.fields,
+  });
+
+  final String title;
+  final List<(String, String, String)> fields;
+
+  @override
+  State<_DisposalWorkflowFormDialog> createState() =>
+      _DisposalWorkflowFormDialogState();
+}
+
+class _DisposalWorkflowFormDialogState
+    extends State<_DisposalWorkflowFormDialog> {
+  static const _requiredFields = {
+    'reject_reason',
+    'decision_number',
+    'replacement_name',
+    'budget',
+    'code',
+    'price',
+  };
+
+  late final _controllers = {
+    for (final field in widget.fields) field.$1: TextEditingController(),
+  };
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    Navigator.pop(context, {
+      for (final field in widget.fields)
+        field.$1: field.$3 == 'number'
+            ? num.tryParse(_controllers[field.$1]!.text.trim())
+            : _controllers[field.$1]!.text.trim(),
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final field in widget.fields)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: TextFormField(
+                  controller: _controllers[field.$1],
+                  keyboardType: field.$3 == 'number'
+                      ? const TextInputType.numberWithOptions(decimal: true)
+                      : TextInputType.text,
+                  decoration: InputDecoration(labelText: field.$2),
+                  validator: (raw) {
+                    final text = (raw ?? '').trim();
+                    if (_requiredFields.contains(field.$1) && text.isEmpty) {
+                      return 'Vui lòng nhập thông tin này.';
+                    }
+                    if (field.$3 == 'number' && text.isNotEmpty) {
+                      final number = num.tryParse(text);
+                      if (number == null ||
+                          number < 0 ||
+                          (field.$1 == 'price' && number == 0)) {
+                        return 'Nhập giá trị số hợp lệ.';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(onPressed: _save, child: const Text('Lưu')),
+    ],
+  );
+}
+
+class _DisposalsPageState extends State<DisposalsPage> {
+  int _revision = 0;
+  String get _role => value(widget.api.user?['role'], fallback: '');
+
+  Future<void> _startProposal(List<Json> candidates) async {
+    if (candidates.isEmpty) {
+      _message(
+        'Chưa có thiết bị đủ điều kiện: cần R ≥ 60% hoặc kết luận không thể sửa.',
+      );
+      return;
+    }
+    if (candidates.length == 1) {
+      await _propose(candidates.first);
+      return;
+    }
+
+    final selected = await showDialog<Json>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Chọn thiết bị đề xuất thanh lý'),
+        content: SizedBox(
+          width: 440,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final item in candidates)
+                ListTile(
+                  title: Text(
+                    '${value(item['code'])} · ${value(item['name'])}',
+                  ),
+                  subtitle: Text(
+                    'R ${value(item['r_ratio'])}% · Chi phí sửa ${money(item['repair_cost'])}',
+                  ),
+                  onTap: () => Navigator.pop(dialogContext, item),
+                ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Hủy'),
           ),
-          FilledButton(
-            onPressed: () {
-              if (reason.text.trim().isEmpty ||
-                  (num.tryParse(recovery.text.trim()) ?? -1) < 0) {
-                return;
-              }
-              Navigator.pop(dialogContext, {
-                'equipment_id': equipment['_id'],
-                'reason': reason.text.trim(),
-                'recovery_value': num.parse(recovery.text.trim()),
-                if (equipment['unrepairable_repair_id'] != null)
-                  'repair_id': equipment['unrepairable_repair_id'],
-              });
-            },
-            child: const Text('Gửi thẩm định'),
-          ),
         ],
       ),
     );
-    reason.dispose();
-    recovery.dispose();
+    if (selected != null) await _propose(selected);
+  }
+
+  Future<void> _propose(Json equipment) async {
+    final body = await showDialog<Json>(
+      context: context,
+      builder: (_) => _DisposalProposalDialog(equipment: equipment),
+    );
     if (body == null) return;
     await _run(() => widget.api.send('POST', '/disposals', body));
   }
@@ -74,82 +241,10 @@ class _DisposalsPageState extends State<DisposalsPage> {
     String title,
     List<(String, String, String)> fields,
   ) async {
-    final controllers = {
-      for (final item in fields) item.$1: TextEditingController(),
-    };
-    final formKey = GlobalKey<FormState>();
-    const requiredFields = {
-      'reject_reason',
-      'decision_number',
-      'replacement_name',
-      'budget',
-      'code',
-      'price',
-    };
-    final result = await showDialog<Json>(
+    return showDialog<Json>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final field in fields)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: TextFormField(
-                      controller: controllers[field.$1],
-                      keyboardType: field.$3 == 'number'
-                          ? const TextInputType.numberWithOptions(decimal: true)
-                          : TextInputType.text,
-                      decoration: InputDecoration(labelText: field.$2),
-                      validator: (raw) {
-                        final text = (raw ?? '').trim();
-                        if (requiredFields.contains(field.$1) && text.isEmpty) {
-                          return 'Vui lòng nhập thông tin này.';
-                        }
-                        if (field.$3 == 'number' && text.isNotEmpty) {
-                          final number = num.tryParse(text);
-                          if (number == null ||
-                              number < 0 ||
-                              (field.$1 == 'price' && number == 0)) {
-                            return 'Nhập giá trị số hợp lệ.';
-                          }
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (!formKey.currentState!.validate()) return;
-              Navigator.pop(dialogContext, {
-                for (final field in fields)
-                  field.$1: field.$3 == 'number'
-                      ? num.tryParse(controllers[field.$1]!.text.trim())
-                      : controllers[field.$1]!.text.trim(),
-              });
-            },
-            child: const Text('Lưu'),
-          ),
-        ],
-      ),
+      builder: (_) => _DisposalWorkflowFormDialog(title: title, fields: fields),
     );
-    for (final controller in controllers.values) {
-      controller.dispose();
-    }
-    return result;
   }
 
   Future<void> _act(Json proposal, String action) async {
@@ -237,6 +332,19 @@ class _DisposalsPageState extends State<DisposalsPage> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_role == 'technician' || _role == 'facility_manager')
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      key: const Key('create_disposal_proposal'),
+                      onPressed: () => _startProposal(candidates),
+                      icon: const Icon(Icons.add_circle_outline),
+                      label: const Text('Tạo đề xuất thanh lý'),
+                    ),
+                  ),
+                ),
               if (_role == 'technician' || _role == 'facility_manager') ...[
                 const Text(
                   'Thiết bị đủ điều kiện đề xuất',
@@ -249,17 +357,20 @@ class _DisposalsPageState extends State<DisposalsPage> {
                 else
                   for (final item in candidates)
                     Card(
-                      child: ListTile(
-                        title: Text(
-                          '${value(item['code'])} · ${value(item['name'])}',
-                        ),
-                        subtitle: Text(
-                          'R ${value(item['r_ratio'])}% · Chi phí sửa ${money(item['repair_cost'])}',
-                        ),
-                        trailing: IconButton(
-                          tooltip: 'Đề xuất thanh lý',
-                          onPressed: () => _propose(item),
-                          icon: const Icon(Icons.send_outlined),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          title: Text(
+                            '${value(item['code'])} · ${value(item['name'])}',
+                          ),
+                          subtitle: Text(
+                            'R ${value(item['r_ratio'])}% · Chi phí sửa ${money(item['repair_cost'])}',
+                          ),
+                          trailing: OutlinedButton.icon(
+                            onPressed: () => _propose(item),
+                            icon: const Icon(Icons.send_outlined),
+                            label: const Text('Đề xuất'),
+                          ),
                         ),
                       ),
                     ),

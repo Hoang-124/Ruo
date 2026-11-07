@@ -162,6 +162,77 @@ void main() {
     },
   );
 
+  testWidgets(
+    'room details displays recorded preventive maintenance separately from repairs',
+    (tester) async {
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/maint-history')) {
+            return reply({
+              'maintenanceHistory': [
+                {
+                  '_id': 'maintenance-1',
+                  'plan_id': {'title': 'Bảo dưỡng TV hàng tháng'},
+                  'equipment_id': {
+                    'code': 'TV-101',
+                    'name': 'Smart TV phòng học',
+                  },
+                  'check_date': '2026-11-07T10:00:00.000Z',
+                  'checked_by': {'full_name': 'Nguyễn Văn Kỹ thuật'},
+                  'status': 'passed',
+                  'checklist_results': [
+                    {'item': 'Kiểm tra hình ảnh', 'passed': true, 'notes': ''},
+                    {
+                      'item': 'Kiểm tra cổng HDMI',
+                      'passed': false,
+                      'notes': 'Cổng HDMI 2 lỏng',
+                    },
+                  ],
+                  'notes': 'Đã vệ sinh màn hình',
+                  'repair_id': {'ticket_code': 'REP-101'},
+                },
+              ],
+              'repairHistory': [],
+            });
+          }
+          return reply({
+            'room': room,
+            'equipments': [],
+            'maintenanceHistory': [],
+            'movementHistory': [],
+            'summary': {
+              'equipmentCount': 0,
+              'needsAttention': 0,
+              'openRepairs': 0,
+            },
+          });
+        }),
+      );
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: RoomDetailPage(api: api, code: 'P101'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lịch sử bảo dưỡng định kỳ'), findsOneWidget);
+      expect(find.text('Bảo dưỡng TV hàng tháng'), findsOneWidget);
+      expect(
+        find.textContaining('TV-101 · Smart TV phòng học'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Kiểm tra hình ảnh'), findsOneWidget);
+      expect(find.textContaining('Cổng HDMI 2 lỏng'), findsOneWidget);
+      expect(find.textContaining('Nguyễn Văn Kỹ thuật'), findsOneWidget);
+      expect(find.textContaining('REP-101'), findsOneWidget);
+      expect(find.text('Lịch sử sửa chữa'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('theme toggle switches cleanly between Light and Dark mode', (
     tester,
   ) async {

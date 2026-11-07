@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:ruo_mobile/core/api.dart';
 import 'package:ruo_mobile/features/field_equipment.dart';
@@ -7,11 +10,15 @@ import 'package:ruo_mobile/features/field_inventory.dart';
 import 'package:ruo_mobile/features/field_notifications.dart';
 import 'package:ruo_mobile/features/field_profile.dart';
 import 'package:ruo_mobile/features/field_repairs.dart';
+import 'package:ruo_mobile/features/operations_disposals.dart';
+import 'package:ruo_mobile/features/operations_maintenance.dart';
+import 'package:ruo_mobile/ui/common.dart';
 import 'package:ruo_mobile/ui/tokens.dart';
 
 void main() {
-  testWidgets('QrScannerPage renders scanner viewfinder and test asset chips',
-      (tester) async {
+  testWidgets('QrScannerPage renders scanner viewfinder and test asset chips', (
+    tester,
+  ) async {
     final api = RuoApi(client: MockClient((_) async => throw Exception()));
     addTearDown(api.dispose);
     tester.view.physicalSize = const Size(1080, 2400);
@@ -32,45 +39,45 @@ void main() {
     expect(find.text('Quét QR Định Danh Thiết Bị'), findsOneWidget);
     expect(find.byKey(const Key('btn_open_actual_camera')), findsOneWidget);
     expect(find.byKey(const Key('btn_sample_qr_codes')), findsOneWidget);
-    expect(
-      find.widgetWithText(ActionChip, 'EQ-101-ACCASS-01'),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(ActionChip, 'EQ-101-ACCASS-01'), findsOneWidget);
     expect(find.widgetWithText(ActionChip, 'EQ-101-PRJ-01'), findsOneWidget);
     expect(find.widgetWithText(ActionChip, 'A1-101'), findsOneWidget);
   });
 
-  testWidgets('ReportIncidentDialog renders 4-tier SLA options and triggers callback',
-      (tester) async {
-    final api = RuoApi(client: MockClient((_) async => throw Exception()));
-    addTearDown(api.dispose);
+  testWidgets(
+    'ReportIncidentDialog renders 4-tier SLA options and triggers callback',
+    (tester) async {
+      final api = RuoApi(client: MockClient((_) async => throw Exception()));
+      addTearDown(api.dispose);
 
-    final eq = {
-      'code': 'EQ-101-ACCASS-01',
-      'name': 'Điều hòa Daikin Cassette 4HP',
-      'room_code': 'A1-101',
-    };
+      final eq = {
+        'code': 'EQ-101-ACCASS-01',
+        'name': 'Điều hòa Daikin Cassette 4HP',
+        'room_code': 'A1-101',
+      };
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: RuoTokens.theme(Brightness.dark),
-        home: Scaffold(
-          body: ReportIncidentDialog(api: api, equipment: eq),
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(
+            body: ReportIncidentDialog(api: api, equipment: eq),
+          ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    expect(find.text('Báo Hỏng Thiết Bị (SLA)'), findsOneWidget);
-    expect(find.text('Cấp 1 · Khẩn cấp'), findsOneWidget);
-    expect(find.text('Cấp 2 · Gián đoạn'), findsOneWidget);
-    expect(find.text('Cấp 3 · Suy giảm'), findsOneWidget);
-    expect(find.text('Cấp 4 · Nhẹ/Định kỳ'), findsOneWidget);
-    expect(find.text('Gửi báo hỏng'), findsOneWidget);
-  });
+      expect(find.text('Báo Hỏng Thiết Bị (SLA)'), findsOneWidget);
+      expect(find.text('Cấp 1 · Khẩn cấp'), findsOneWidget);
+      expect(find.text('Cấp 2 · Gián đoạn'), findsOneWidget);
+      expect(find.text('Cấp 3 · Suy giảm'), findsOneWidget);
+      expect(find.text('Cấp 4 · Nhẹ/Định kỳ'), findsOneWidget);
+      expect(find.text('Gửi báo hỏng'), findsOneWidget);
+    },
+  );
 
-  testWidgets('TechnicianTasksPage renders SLA Kanban and filter tabs',
-      (tester) async {
+  testWidgets('TechnicianTasksPage renders SLA Kanban and filter tabs', (
+    tester,
+  ) async {
     final api = RuoApi(client: MockClient((_) async => throw Exception()));
     addTearDown(api.dispose);
 
@@ -90,27 +97,30 @@ void main() {
     expect(find.text('Tiếp nhận'), findsWidgets);
   });
 
-  testWidgets('ClassroomAuditPage renders room inventory checklist and KPI cards',
-      (tester) async {
-    final api = RuoApi(client: MockClient((_) async => throw Exception()));
-    addTearDown(api.dispose);
+  testWidgets(
+    'ClassroomAuditPage renders room inventory checklist and KPI cards',
+    (tester) async {
+      final api = RuoApi(client: MockClient((_) async => throw Exception()));
+      addTearDown(api.dispose);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: RuoTokens.theme(Brightness.dark),
-        home: Scaffold(body: ClassroomAuditPage(api: api)),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(body: ClassroomAuditPage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Kiểm Kê Phòng Học Thực Địa'), findsOneWidget);
-    expect(find.text('Tổng tài sản'), findsOneWidget);
-    expect(find.text('Đã quét khớp'), findsOneWidget);
-    expect(find.text('Khớp tất cả'), findsOneWidget);
-  });
+      expect(find.text('Kiểm Kê Phòng Học Thực Địa'), findsOneWidget);
+      expect(find.text('Tổng tài sản'), findsOneWidget);
+      expect(find.text('Đã quét khớp'), findsOneWidget);
+      expect(find.text('Khớp tất cả'), findsOneWidget);
+    },
+  );
 
-  testWidgets('NotificationsPage renders real-time SLA breach notifications',
-      (tester) async {
+  testWidgets('NotificationsPage renders real-time SLA breach notifications', (
+    tester,
+  ) async {
     final api = RuoApi(client: MockClient((_) async => throw Exception()));
     addTearDown(api.dispose);
 
@@ -127,8 +137,9 @@ void main() {
     expect(find.textContaining('Cảnh báo vi phạm SLA'), findsOneWidget);
   });
 
-  testWidgets('ProfilePage renders user role, credentials and logout button',
-      (tester) async {
+  testWidgets('ProfilePage renders user role, credentials and logout button', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(800, 1800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -156,4 +167,254 @@ void main() {
     expect(find.text('Giảng viên'), findsOneWidget);
     expect(find.byKey(const Key('profile_logout_btn')), findsOneWidget);
   });
+
+  testWidgets('maintenance result dialog fits a narrow mobile viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final api = RuoApi(
+      client: MockClient(
+        (_) async => http.Response(
+          '{"plans":[{"_id":"plan-1","title":"Kế hoạch","building":"A1","floor":1,"frequency":"monthly","room_ids":["room-1"],"checklist":["Kiểm tra tình trạng thiết bị"],"schedule":{}}],"equipment":[{"_id":"equipment-1","code":"EQ-101","name":"Điều hòa trung tâm công suất lớn dùng cho phòng thực hành tầng một","room_id":"room-1"}]}',
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        ),
+      ),
+    );
+    api.user = {'role': 'technician'};
+    addTearDown(api.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RuoTokens.theme(Brightness.light),
+        home: Scaffold(body: MaintenancePage(api: api)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ghi kết quả'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ghi nhận kiểm tra'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('manager maintenance plans fill the available content width', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(412, 915);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final api = RuoApi(
+      client: MockClient(
+        (_) async => http.Response(
+          '{"plans":[{"_id":"plan-1","title":"Bảo dưỡng máy chiếu","building":"A1","floor":1,"frequency":"monthly","room_ids":[{"_id":"room-1","code":"P101"}],"category_ids":[],"schedule":{"next_due_at":"2026-11-20T00:00:00.000Z"}}],"equipment":[{"_id":"equipment-1","code":"EQ-101","name":"Máy chiếu","room_id":{"_id":"room-1","code":"P101"}}]}',
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        ),
+      ),
+    );
+    api.user = {'role': 'facility_manager'};
+    addTearDown(api.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RuoTokens.theme(Brightness.dark),
+        home: Scaffold(body: MaintenancePage(api: api)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tạo kế hoạch'), findsOneWidget);
+    expect(find.text('Bảo dưỡng máy chiếu'), findsOneWidget);
+    expect(find.text('1 phòng'), findsOneWidget);
+    expect(find.text('1 thiết bị'), findsOneWidget);
+    expect(tester.getSize(find.byType(Card).last).width, greaterThan(370));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'technician always sees disposal proposal action and its reason',
+    (tester) async {
+      Json? submitted;
+      var hasCandidate = false;
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.method == 'POST') {
+            submitted = jsonDecode(request.body) as Json;
+            return http.Response(
+              '{"success":true,"message":"Đã gửi đề xuất."}',
+              201,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response(
+            jsonEncode({
+              'candidates': hasCandidate
+                  ? [
+                      {
+                        '_id': 'equipment-1',
+                        'code': 'EQ-101',
+                        'name': 'Máy chiếu',
+                        'r_ratio': 65,
+                        'repair_cost': 6500000,
+                        'price': 10000000,
+                      },
+                    ]
+                  : [],
+              'proposals': [],
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }),
+      );
+      api.user = {'role': 'technician'};
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(body: DisposalsPage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('create_disposal_proposal')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('create_disposal_proposal')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'Chưa có thiết bị đủ điều kiện: cần R ≥ 60% hoặc kết luận không thể sửa.',
+        ),
+        findsOneWidget,
+      );
+
+      hasCandidate = true;
+      await tester.tap(find.byType(IconButton).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('create_disposal_proposal')));
+      await tester.pumpAndSettle();
+      expect(find.text('Đề xuất thanh lý EQ-101'), findsOneWidget);
+
+      await tester.enterText(
+        find.byType(TextField).first,
+        'Không thể sửa chữa',
+      );
+      await tester.tap(find.text('Gửi thẩm định'));
+      await tester.pumpAndSettle();
+
+      expect(submitted?['equipment_id'], 'equipment-1');
+      expect(submitted?['reason'], 'Không thể sửa chữa');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('replacement equipment receipt keeps form controllers alive', (
+    tester,
+  ) async {
+    Json? submitted;
+    final api = RuoApi(
+      client: MockClient((request) async {
+        if (request.method == 'PUT') {
+          submitted = jsonDecode(request.body) as Json;
+          return http.Response(
+            '{"success":true,"message":"Đã tiếp nhận thiết bị."}',
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'proposals': [
+              {
+                '_id': 'proposal-1',
+                'status': 'procurement_planned',
+                'equipment_id': {'code': 'OLD-101', 'name': 'Máy chiếu cũ'},
+                'r_ratio': 75,
+                'reason': 'Không thể sửa chữa',
+              },
+            ],
+            'candidates': [],
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+    api.user = {'role': 'technician'};
+    addTearDown(api.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RuoTokens.theme(Brightness.dark),
+        home: Scaffold(body: DisposalsPage(api: api)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tiếp nhận & tạo QR'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'NEW-101');
+    await tester.enterText(find.byType(TextFormField).at(1), 'SN-NEW-101');
+    await tester.enterText(find.byType(TextFormField).at(2), 'Sony');
+    await tester.enterText(find.byType(TextFormField).at(3), 'Laser');
+    await tester.enterText(find.byType(TextFormField).at(4), '25000000');
+    await tester.tap(find.text('Lưu'));
+    await tester.pumpAndSettle();
+
+    expect(submitted?['code'], 'NEW-101');
+    expect(submitted?['serial_number'], 'SN-NEW-101');
+    expect(submitted?['price'], 25000000);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'AsyncPanel retry callback reloads without returning a Future from setState',
+    (tester) async {
+      var attempts = 0;
+      final api = RuoApi(
+        client: MockClient((_) async {
+          attempts++;
+          if (attempts == 1) throw Exception('Tạm thời mất kết nối');
+          return http.Response(
+            '{"success":true,"items":[]}',
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }),
+      );
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AsyncPanel(
+              load: () => api.get('/test'),
+              builder: (_) => const Text('Tải thành công'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Thử lại'), findsOneWidget);
+
+      await tester.tap(find.text('Thử lại'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tải thành công'), findsOneWidget);
+      expect(attempts, 2);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

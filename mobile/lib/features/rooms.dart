@@ -110,7 +110,8 @@ class _RoomsPageState extends State<RoomsPage> {
         const SectionTitle(
           'Phòng học',
           eyebrow: 'DANH MỤC KHÔNG GIAN · TÒA A1',
-          subtitle: 'Tra cứu phòng học, phòng thực hành, kho và thiết bị bố trí',
+          subtitle:
+              'Tra cứu phòng học, phòng thực hành, kho và thiết bị bố trí',
         ),
         const SizedBox(height: 8),
         TextField(
@@ -213,9 +214,9 @@ class _RoomsPageState extends State<RoomsPage> {
                 Text(
                   '${rooms.length} phòng',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: scheme.onSurfaceVariant,
-                      ),
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 if (rooms.isEmpty)
@@ -256,21 +257,21 @@ class _Filter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: 164,
-        child: DropdownButtonFormField<String>(
-          key: ValueKey('$label:$selected'),
-          initialValue: selected,
-          isExpanded: true,
-          icon: const RuoVectorIcon(RuoIcon.chevronDown, size: 16),
-          decoration: InputDecoration(labelText: label),
-          items: [
-            const DropdownMenuItem(value: '', child: Text('Tất cả')),
-            for (final e in entries.entries)
-              DropdownMenuItem(value: e.key, child: Text(e.value)),
-          ],
-          onChanged: (s) => onChanged(s ?? ''),
-        ),
-      );
+    width: 164,
+    child: DropdownButtonFormField<String>(
+      key: ValueKey('$label:$selected'),
+      initialValue: selected,
+      isExpanded: true,
+      icon: const RuoVectorIcon(RuoIcon.chevronDown, size: 16),
+      decoration: InputDecoration(labelText: label),
+      items: [
+        const DropdownMenuItem(value: '', child: Text('Tất cả')),
+        for (final e in entries.entries)
+          DropdownMenuItem(value: e.key, child: Text(e.value)),
+      ],
+      onChanged: (s) => onChanged(s ?? ''),
+    ),
+  );
 }
 
 class CadPage extends StatefulWidget {
@@ -374,7 +375,9 @@ class _CadPageState extends State<CadPage> {
                           MaterialPageRoute<void>(
                             builder: (_) => Scaffold(
                               appBar: AppBar(
-                                title: Text('Kiểm kê phòng ${value(room['code'])}'),
+                                title: Text(
+                                  'Kiểm kê phòng ${value(room['code'])}',
+                                ),
                               ),
                               body: ClassroomAuditPage(
                                 api: widget.api,
@@ -384,10 +387,7 @@ class _CadPageState extends State<CadPage> {
                           ),
                         );
                       },
-                      icon: const RuoVectorIcon(
-                        RuoIcon.inventory,
-                        size: 16,
-                      ),
+                      icon: const RuoVectorIcon(RuoIcon.inventory, size: 16),
                       label: const Text('Kiểm kê'),
                     ),
                   ),
@@ -513,9 +513,8 @@ class _CadPageState extends State<CadPage> {
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFDC2626).withValues(
-                              alpha: 0.22,
-                            ),
+                            color: const Color(0xFFDC2626)
+                                .withValues(alpha: 0.22),
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(color: const Color(0xFFF87171)),
                           ),
@@ -566,7 +565,11 @@ class _CadPageState extends State<CadPage> {
                             ),
                           ),
                         ),
-                        for (var row = 0; row < (rooms.length / 2).ceil(); row++)
+                        for (
+                          var row = 0;
+                          row < (rooms.length / 2).ceil();
+                          row++
+                        )
                           Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: Row(
@@ -1121,6 +1124,91 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                       ),
                     ),
                   const SizedBox(height: 16),
+                  const SectionTitle(
+                    'Lịch sử bảo dưỡng định kỳ',
+                    subtitle:
+                        'Các kết quả checklist đã được ghi nhận cho phòng.',
+                  ),
+                  AsyncPanel(
+                    key: ValueKey('maintenance-history-$_revision'),
+                    load: () => widget.api.get(
+                      '/facilities/rooms/${Uri.encodeComponent(widget.code)}/maint-history',
+                    ),
+                    builder: (history) {
+                      final records = asList(history['maintenanceHistory']);
+                      if (records.isEmpty) {
+                        return const EmptyNotice(
+                          'Chưa có kết quả bảo dưỡng định kỳ được ghi nhận.',
+                          icon: RuoIcon.check,
+                        );
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (final record in records)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: DataCard(
+                                title: value(
+                                  asMap(record['plan_id'])['title'],
+                                  fallback: 'Bảo dưỡng định kỳ',
+                                ),
+                                subtitle:
+                                    '${value(asMap(record['equipment_id'])['code'])} · ${value(asMap(record['equipment_id'])['name'])} · ${formatVnDate(record['check_date'], fallback: '—')}',
+                                trailing: StatusBadge(
+                                  value(record['status']),
+                                  labelOverride: record['status'] == 'passed'
+                                      ? 'Đạt'
+                                      : record['status'] == 'failed'
+                                      ? 'Phát hiện lỗi'
+                                      : null,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    for (final result in asList(
+                                      record['checklist_results'],
+                                    ))
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 4,
+                                        ),
+                                        child: Text(
+                                          '${result['passed'] == true ? '✓' : '✕'} ${value(result['item'])}${value(result['notes'], fallback: '').isEmpty ? '' : ' — ${result['notes']}'}',
+                                        ),
+                                      ),
+                                    if (value(
+                                      record['notes'],
+                                      fallback: '',
+                                    ).isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          'Ghi chú: ${record['notes']}',
+                                        ),
+                                      ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        'Người kiểm tra: ${value(asMap(record['checked_by'])['full_name'])}',
+                                      ),
+                                    ),
+                                    if (asMap(record['repair_id']).isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          'Phiếu sửa chữa phát sinh: ${value(asMap(record['repair_id'])['ticket_code'])}',
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
                   SectionTitle(
                     'Lịch sử sửa chữa',
                     subtitle:
@@ -1277,11 +1365,7 @@ class _RoomFormPageState extends State<RoomFormPage> {
       'room_type': _type,
       'capacity': parsedCapacity,
       'description': trimmedDesc,
-      if (creating) ...{
-        'code': code,
-        'building': 'A1',
-        'floor': _floor,
-      },
+      if (creating) ...{'code': code, 'building': 'A1', 'floor': _floor},
     };
     setState(() => _saving = true);
     try {
