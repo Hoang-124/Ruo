@@ -25,7 +25,7 @@ import { InventorySession } from '../src/models/InventorySession.js';
 import { InventoryLog } from '../src/models/InventoryLog.js';
 
 // Only the randomly named database created by this test is dropped. Never seed application data.
-const uri = process.env.TEST_MONGO_URI || 'mongodb://127.0.0.1:27028';
+const uri = process.env.TEST_MONGO_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
 const database = `ruo_task_test_${randomUUID().replaceAll('-', '')}`;
 let server, base, room, emptyRoom, equipment, category, users;
 const tokens = {};

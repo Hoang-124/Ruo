@@ -397,7 +397,15 @@ export const confirmMovement = async (req, res) => {
           status: { $nin: blockedStatuses }
         },
         { $set: equipmentUpdate }
-      );
+      ).catch(async (updateErr) => {
+        if (!resuming) {
+          await EquipmentMovement.updateOne(
+            { _id: movement._id, status: MOVEMENT_STATUSES.COMPLETING },
+            { $set: { status: previousStatus } }
+          ).catch(() => {});
+        }
+        throw updateErr;
+      });
       if (moved.matchedCount === 0) {
         const latestEquipment = await Equipment.findById(equipment._id);
         const alreadyMoved = resuming &&

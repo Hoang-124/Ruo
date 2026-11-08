@@ -6,7 +6,7 @@ import { connectDB } from '../src/config/db.js';
 
 test('normal startup preserves legacy users/audit records and never creates demo accounts', async () => {
   const database = `ruo_task_test_${randomUUID().replaceAll('-', '')}`;
-  const uri = process.env.TEST_MONGO_URI || 'mongodb://127.0.0.1:27028';
+  const uri = process.env.TEST_MONGO_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
   const previousUri = process.env.MONGO_URI;
   try {
     await mongoose.connect(uri, { dbName: database, serverSelectionTimeoutMS: 5000 });

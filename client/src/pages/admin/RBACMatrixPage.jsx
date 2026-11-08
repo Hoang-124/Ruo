@@ -653,7 +653,9 @@ export const RBACMatrixPage = () => {
               className="ruo-motion-card"
               style={{
                 background: isSelected ? r.bg : 'var(--surface-card)',
-                border: `2px solid ${isSelected ? r.border : 'var(--border-default)'}`,
+                borderRight: `2px solid ${isSelected ? r.border : 'var(--border-default)'}`,
+                borderBottom: `2px solid ${isSelected ? r.border : 'var(--border-default)'}`,
+                borderLeft: `2px solid ${isSelected ? r.border : 'var(--border-default)'}`,
                 borderTop: `4px solid ${r.solidBg}`,
                 borderRadius: 'var(--radius-md)',
                 padding: '18px',

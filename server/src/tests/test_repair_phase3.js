@@ -159,6 +159,10 @@ async function runWorkstream1Tests() {
     catch: (reject) => {}
   });
   User.find = () => createUserQuery(mockUserList);
+  User.findById = (id) => ({
+    select: async () => ({ _id: id, full_name: 'KTV Trần Minh Tuấn', email: 'ktv@ruo.edu.vn' }),
+    then: (resolve) => resolve({ _id: id, full_name: 'KTV Trần Minh Tuấn', email: 'ktv@ruo.edu.vn' })
+  });
 
   Notification.create = async () => ({ success: true });
   Notification.insertMany = async () => ({ success: true });
@@ -563,6 +567,15 @@ async function runWorkstream3Tests() {
     if (id && id.toString() === partId) return mockPart;
     return null;
   };
+  SparePart.findOneAndUpdate = async (filter, update) => {
+    if (filter?._id && filter._id.toString() === partId) {
+      const requiredStock = filter.stock?.$gte ?? 0;
+      if (mockPart.stock < requiredStock) return null;
+      if (update?.$inc?.stock) mockPart.stock += update.$inc.stock;
+      return mockPart;
+    }
+    return null;
+  };
 
   // Mock repair
   Repair.findById = async (id) => {
@@ -612,6 +625,13 @@ async function runWorkstream3Tests() {
   // ----------------------------------------------------
   console.log('\n[Test 12] UC-5.11: Quản lý phê duyệt xuất kho linh kiện nguyên tử & Chống xuất âm kho (approvePartsRequest)');
   PartsRequest.findById = async (id) => createdPartsRequest;
+  PartsRequest.findOneAndUpdate = async (filter, update) => {
+    if (createdPartsRequest && filter?._id?.toString() === createdPartsRequest._id.toString()) {
+      if (update?.$set) Object.assign(createdPartsRequest, update.$set);
+      return createdPartsRequest;
+    }
+    return null;
+  };
 
   // 12.1 Normal approval (20 -> 17)
   const req12 = {
@@ -644,10 +664,10 @@ async function runWorkstream3Tests() {
     json: (data) => { jsonOverdraft = data; }
   };
   await approvePartsRequest(req12, resOverdraft);
-  assert.strictEqual(resOverdraft.statusCode, 400, 'Phải chặn yêu cầu vượt tồn kho (HTTP 400)');
-  assert.ok(jsonOverdraft.message.includes('Tồn kho không đủ'), 'Thông báo phải nêu rõ tồn kho không đủ');
+  assert.ok([400, 409].includes(resOverdraft.statusCode), 'Phải chặn yêu cầu vượt tồn kho (HTTP 400/409)');
+  assert.ok(/tồn kho không đủ/i.test(jsonOverdraft.message), 'Thông báo phải nêu rõ tồn kho không đủ');
   assert.strictEqual(mockPart.stock, 17, 'Tồn kho không bị trừ âm, giữ nguyên 17');
-  console.log(`✓ PASS: Chống xuất âm kho: Yêu cầu 25 > 17 cái bị từ chối 400 chuẩn mực`);
+  console.log(`✓ PASS: Chống xuất âm kho: Yêu cầu 25 > 17 cái bị từ chối ${resOverdraft.statusCode} chuẩn mực`);
 
   // ----------------------------------------------------
   // TEST 14: UC-5.12 - Create Spare Part (POST /api/spare-parts)

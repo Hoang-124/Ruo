@@ -406,42 +406,94 @@ export const completeDisposalReceipt = async (req, res) => {
       if (await Equipment.findOne({ qr_code: qrCode }, null, { session })) {
         qrCode = `QR-${cleanCode}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
       }
-      const [replacement] = await Equipment.create([{
-        code: cleanCode,
-        qr_code: qrCode,
-        name: proposal.procurement.replacement_name,
-        serial_number: String(serial_number).trim(),
-        brand: String(brand).trim(),
-        model: String(model).trim(),
-        category_id: proposal.procurement.category_id,
-        room_id: proposal.procurement.room_id,
-        price: Number(price),
-        remaining_value: Number(price),
-        purchase_date: new Date(),
-        status: EQUIPMENT_STATUSES.IN_USE
-      }], { session });
-      await EquipmentMovement.create([{
-        equipment_id: replacement._id,
-        type: MOVEMENT_TYPES.REPLACEMENT,
-        from_room_id: null,
-        to_room_id: proposal.procurement.room_id,
-        ordered_by: req.user._id,
-        performed_by: req.user._id,
-        status: MOVEMENT_STATUSES.COMPLETED,
-        reason: `Tiếp nhận thay thế tài sản ${originalEquipment.code}`,
-        completed_at: new Date()
-      }], { session });
 
-      proposal.status = DISPOSAL_STATUSES.COMPLETED;
-      proposal.replacement_equipment_id = replacement._id;
-      proposal.received_by = req.user._id;
-      proposal.received_at = new Date();
-      proposal.completed_at = proposal.received_at;
-      await proposal.save({ session });
-      originalEquipment.status = EQUIPMENT_STATUSES.DISPOSED;
-      await originalEquipment.save({ session });
+      if (typeof Disposal.findOneAndUpdate === 'function' && mongoose.connection.readyState === 1) {
+        const claimedProposal = await Disposal.findOneAndUpdate(
+          { _id: proposal._id, status: proposal.status },
+          {
+            $set: {
+              status: DISPOSAL_STATUSES.COMPLETED,
+              received_by: req.user._id,
+              received_at: new Date(),
+              completed_at: new Date()
+            }
+          },
+          { session, new: true }
+        );
+        if (!claimedProposal) {
+          throw workflowError(409, 'Hồ sơ thanh lý đang được xử lý hoặc đã hoàn tất.');
+        }
+      }
 
-      return { proposal, originalEquipment, replacement };
+      let replacement = null;
+      let createdMovement = null;
+      try {
+        [replacement] = await Equipment.create([{
+          code: cleanCode,
+          qr_code: qrCode,
+          name: proposal.procurement.replacement_name,
+          serial_number: String(serial_number).trim(),
+          brand: String(brand).trim(),
+          model: String(model).trim(),
+          category_id: proposal.procurement.category_id,
+          room_id: proposal.procurement.room_id,
+          price: Number(price),
+          remaining_value: Number(price),
+          purchase_date: new Date(),
+          status: EQUIPMENT_STATUSES.IN_USE
+        }], { session });
+        const movementResult = await EquipmentMovement.create([{
+          equipment_id: replacement._id,
+          type: MOVEMENT_TYPES.REPLACEMENT,
+          from_room_id: null,
+          to_room_id: proposal.procurement.room_id,
+          ordered_by: req.user._id,
+          performed_by: req.user._id,
+          status: MOVEMENT_STATUSES.COMPLETED,
+          reason: `Tiếp nhận thay thế tài sản ${originalEquipment.code}`,
+          completed_at: new Date()
+        }], { session });
+        if (Array.isArray(movementResult)) {
+          [createdMovement] = movementResult;
+        }
+
+        proposal.status = DISPOSAL_STATUSES.COMPLETED;
+        proposal.replacement_equipment_id = replacement._id;
+        proposal.received_by = req.user._id;
+        proposal.received_at = new Date();
+        proposal.completed_at = proposal.received_at;
+        await proposal.save({ session });
+        originalEquipment.status = EQUIPMENT_STATUSES.DISPOSED;
+        await originalEquipment.save({ session });
+
+        return { proposal, originalEquipment, replacement };
+      } catch (innerError) {
+        if (!session) {
+          if (createdMovement?._id) {
+            await EquipmentMovement.deleteOne({ _id: createdMovement._id }).catch(() => {});
+          }
+          if (replacement?._id) {
+            await Equipment.deleteOne({ _id: replacement._id }).catch(() => {});
+          }
+          await Disposal.updateOne(
+            { _id: proposal._id },
+            {
+              $set: {
+                status: DISPOSAL_STATUSES.PROCUREMENT_PLANNED,
+                replacement_equipment_id: null,
+                received_by: null,
+                received_at: null,
+                completed_at: null
+              }
+            }
+          ).catch(() => {});
+          await Equipment.updateOne(
+            { _id: originalEquipment._id },
+            { $set: { status: EQUIPMENT_STATUSES.PENDING_DISPOSAL } }
+          ).catch(() => {});
+        }
+        throw innerError;
+      }
     });
 
     await auditDisposal(req, proposal, 'DISPOSAL_RECEIPT', {

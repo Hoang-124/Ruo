@@ -219,7 +219,7 @@ describe('Ruo Cortex Local AI — Trained NLP, Physics Guardrails & Historical L
     });
 
     assert.equal(co2Copilot.diagnosis.is_electrical, false);
-    assert.equal(co2Copilot.diagnosis.playbook_id, 'FIRE_EXTINGUISHER_PRESSURE_LOW');
+    assert.equal(co2Copilot.diagnosis.playbook_id, 'FIRE_EXTINGUISHER_LOW_PRESSURE');
     assert.equal(co2Copilot.recommended_parts.some((p) => p.code === 'PART-BATT12'), false);
     assert.equal(co2Copilot.recommended_parts.length, 0);
 

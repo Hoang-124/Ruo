@@ -425,6 +425,9 @@ export async function buildRepairCopilot({
   const playbookPartCodes = new Set(playbook.partCodes || []);
   const normDesc = normalizeVietnameseText(`${desc} ${equipment?.name || ''}`);
   const asciiDesc = stripDiacritics(normDesc);
+  const hasExplicitPlaybookPartMatch = (Array.isArray(spareParts) ? spareParts : []).some((sp) =>
+    playbookPartCodes.has(String(sp.code || '').toUpperCase())
+  );
 
   const scoredParts = (Array.isArray(spareParts) ? spareParts : []).map((sp) => {
     const partCodeUpper = String(sp.code || '').toUpperCase();
@@ -444,27 +447,30 @@ export async function buildRepairCopilot({
     for (const kw of allowedPartKeywords) {
       const kwAsc = stripDiacritics(kw);
       if (partText.includes(kw) || partAscii.includes(kwAsc)) {
-        if (normDesc.includes(kw) || asciiDesc.includes(kwAsc)) {
+        const isGenericEquipNoun = ['máy chiếu', 'điều hòa', 'máy in', 'camera'].includes(kw);
+        if (!isGenericEquipNoun && (normDesc.includes(kw) || asciiDesc.includes(kwAsc))) {
           score += 36;
-        } else if (playbookPartCodes.size === 0) {
+        } else if (!hasExplicitPlaybookPartMatch) {
           score += 22;
         } else {
-          score += 8;
+          score += 6;
         }
       }
     }
 
     for (const pkw of playbook.keywords) {
-      if (pkw.length >= 4 && partText.includes(pkw)) {
+      if (pkw.length >= 4 && !['máy chiếu', 'điều hòa', 'máy in', 'camera'].includes(pkw) && partText.includes(pkw)) {
         score += 18;
       }
     }
 
     const eqWords = normalizeVietnameseText(equipment?.name || '')
       .split(/\s+/)
-      .filter((w) => w.length >= 4 && !['thiết', 'phòng', 'giảng', 'đường', 'sinh', 'viên', 'bình', 'máy', 'cụm', 'thống', 'điện', 'tường', 'trần'].includes(w));
+      .filter((w) => w.length >= 4 && !['thiết', 'phòng', 'giảng', 'đường', 'sinh', 'viên', 'bình', 'máy', 'cụm', 'thống', 'điện', 'tường', 'trần', 'chiếu', 'điều', 'lạnh', 'mạng', 'hình', 'kích', 'thước', 'panasonic', 'sony', 'epson', 'daikin', 'samsung'].includes(w));
     for (const w of eqWords) {
-      if (partText.includes(w)) score += 12;
+      if (partText.includes(w) && (playbookPartCodes.size === 0 || normDesc.includes(w))) {
+        score += 10;
+      }
     }
 
     if (score > 0 && (sp.stock || 0) > 0) score += 5;
