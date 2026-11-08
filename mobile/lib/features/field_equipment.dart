@@ -288,8 +288,9 @@ class _QrScannerPageState extends State<QrScannerPage>
   }
 
   Widget _buildScannerError(MobileScannerException error) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      color: Colors.black,
+      color: dark ? RuoTokens.slate900 : const Color(0xFFF8FAFC),
       padding: const EdgeInsets.all(16),
       child: Center(
         child: Column(
@@ -298,13 +299,13 @@ class _QrScannerPageState extends State<QrScannerPage>
             const RuoVectorIcon(
               RuoIcon.alert,
               size: 32,
-              color: Colors.amber,
+              color: RuoTokens.brand600,
             ),
             const SizedBox(height: 8),
             Text(
               'Máy ảnh: ${error.errorCode.name}',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: dark ? Colors.white : RuoTokens.slate900,
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
               ),
@@ -312,17 +313,16 @@ class _QrScannerPageState extends State<QrScannerPage>
             const SizedBox(height: 4),
             Text(
               error.errorDetails?.message ??
-                  'Vui lòng cấp quyền máy ảnh cho ứng dụng Ruo.',
+                  'Vui lòng cấp quyền máy ảnh hoặc chọn mã QR mẫu bên dưới.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
+              style: TextStyle(
+                color: dark ? Colors.white70 : RuoTokens.slate600,
+                fontSize: 11.5,
+              ),
             ),
             const SizedBox(height: 10),
             OutlinedButton(
               onPressed: () => _scannerController?.start(),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: RuoTokens.brand300,
-                side: const BorderSide(color: RuoTokens.brand400),
-              ),
               child: const Text('Thử lại'),
             ),
           ],
@@ -332,27 +332,28 @@ class _QrScannerPageState extends State<QrScannerPage>
   }
 
   Widget _buildTestPlaceholder() {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      color: Colors.black,
+      color: dark ? RuoTokens.slate900 : const Color(0xFFF8FAFC),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Opacity(
-              opacity: 0.25,
-              child: const RuoVectorIcon(
+              opacity: 0.35,
+              child: RuoVectorIcon(
                 RuoIcon.qrCode,
                 size: 80,
-                color: Colors.white,
+                color: dark ? Colors.white : RuoTokens.brand600,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Khung Ngắm Máy Ảnh Thực Tế (Live Camera)',
               style: TextStyle(
-                color: Colors.white70,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+                color: dark ? Colors.white70 : RuoTokens.slate600,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -381,17 +382,17 @@ class _QrScannerPageState extends State<QrScannerPage>
             width: double.infinity,
             constraints: const BoxConstraints(maxWidth: 380, maxHeight: 310),
             decoration: BoxDecoration(
-              color: dark ? RuoTokens.slate900 : RuoTokens.slate950,
+              color: dark ? RuoTokens.slate900 : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: _torch
                     ? RuoTokens.brand400
-                    : scheme.outlineVariant.withValues(alpha: 0.6),
-                width: _torch ? 2 : 1,
+                    : scheme.outlineVariant,
+                width: _torch ? 2 : 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
+                  color: Colors.black.withValues(alpha: dark ? 0.35 : 0.08),
                   blurRadius: 18,
                   offset: const Offset(0, 8),
                 ),

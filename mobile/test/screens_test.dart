@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:ruo_mobile/core/api.dart';
-import 'package:ruo_mobile/features/cad_blueprint.dart';
 import 'package:ruo_mobile/features/rooms.dart';
 import 'package:ruo_mobile/main.dart';
 import 'package:ruo_mobile/ui/tokens.dart';
@@ -58,7 +57,7 @@ void main() {
       await tester.tap(find.byKey(const Key('login_submit')));
       await tester.pumpAndSettle();
       expect(api.signedIn, true);
-      expect(find.byType(FloorPlanCanvas), findsOneWidget);
+      expect(find.byType(CadPage), findsOneWidget);
       expect(find.text('P101'), findsOneWidget);
       expect(find.byKey(const Key('login_submit')), findsNothing);
       expect(tester.takeException(), isNull);

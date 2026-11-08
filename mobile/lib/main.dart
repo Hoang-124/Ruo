@@ -35,15 +35,13 @@ Future<void> main() async {
 }
 
 ThemeMode _decodeThemeMode(String? raw) => switch (raw) {
-      'light' => ThemeMode.light,
       'dark' => ThemeMode.dark,
-      _ => ThemeMode.system,
+      _ => ThemeMode.light,
     };
 
 String _encodeThemeMode(ThemeMode mode) => switch (mode) {
-      ThemeMode.light => 'light',
       ThemeMode.dark => 'dark',
-      ThemeMode.system => 'system',
+      _ => 'light',
     };
 
 class RuoApp extends StatefulWidget {
@@ -536,18 +534,18 @@ class _WorkspaceState extends State<Workspace> {
     final tabs = <(String, RuoIcon, Widget)>[
       if (isTechnician) ...[
         ('SLA Sửa Chữa', RuoIcon.wrench, TechnicianTasksPage(api: widget.api)),
-        ('Mặt bằng', RuoIcon.blueprint, CadPage(api: widget.api)),
+        ('Tầng & Phòng', RuoIcon.blueprint, CadPage(api: widget.api)),
         ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
         ('Kiểm Kê', RuoIcon.inventory, ClassroomAuditPage(api: widget.api)),
         ('Hồ sơ', RuoIcon.user, ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme)),
       ] else if (isLecturer) ...[
-        ('Mặt bằng', RuoIcon.blueprint, CadPage(api: widget.api)),
+        ('Tầng & Phòng', RuoIcon.blueprint, CadPage(api: widget.api)),
         ('Quét QR', RuoIcon.qrCode, QrScannerPage(api: widget.api)),
         ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
         ('Thông báo', RuoIcon.bell, NotificationsPage(api: widget.api)),
         ('Hồ sơ', RuoIcon.user, ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme)),
       ] else ...[
-        ('Mặt bằng', RuoIcon.blueprint, CadPage(api: widget.api)),
+        ('Tầng & Phòng', RuoIcon.blueprint, CadPage(api: widget.api)),
         ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
         ('SLA Sửa Chữa', RuoIcon.wrench, TechnicianTasksPage(api: widget.api)),
         ('Kiểm Kê', RuoIcon.inventory, ClassroomAuditPage(api: widget.api)),

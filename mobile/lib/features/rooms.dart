@@ -418,13 +418,13 @@ class _CadPageState extends State<CadPage> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       children: [
         SectionTitle(
-          'Không gian A1',
-          eyebrow: 'MẶT BẰNG KIẾN TRÚC 2D · TRANG ĐẦU TIÊN',
+          'Giám sát phòng theo tầng · Tòa A1',
+          eyebrow: 'ĐIỀU HÀNH KHÔNG GIAN · 5 TẦNG',
           subtitle:
               floorTitles[_floor] ??
-              'Sơ đồ 5 tầng · Chạm vào phòng để xem thiết bị',
+              'Chọn tầng 1–5 · Chạm vào thẻ phòng để xem thiết bị & báo hỏng nhanh',
           trailing: IconButton(
-            tooltip: 'Cập nhật sơ đồ',
+            tooltip: 'Cập nhật trạng thái phòng',
             onPressed: () => setState(() => _revision++),
             icon: RuoVectorIcon(
               RuoIcon.refresh,
@@ -463,44 +463,54 @@ class _CadPageState extends State<CadPage> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+                    horizontal: 18,
+                    vertical: 16,
                   ),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: dark
-                          ? const [Color(0xFF1F1A17), Color(0xFF2B211B)]
-                          : const [Color(0xFF0F172A), Color(0xFF1E293B)],
-                    ),
-                    borderRadius: BorderRadius.circular(14),
+                    color: dark ? const Color(0xFF1E293B) : const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: RuoTokens.brand500.withValues(alpha: 0.40),
+                      color: dark
+                          ? RuoTokens.brand400.withValues(alpha: 0.45)
+                          : RuoTokens.brand300,
+                      width: 1.4,
                     ),
                   ),
                   child: Row(
                     children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: RuoTokens.brand600.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const RuoVectorIcon(
+                          RuoIcon.door,
+                          size: 22,
+                          color: RuoTokens.brand600,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'TẦNG $_floor / TÒA NHÀ A1',
-                              style: const TextStyle(
-                                color: RuoTokens.brand400,
+                              'TẦNG $_floor · TÒA NHÀ A1',
+                              style: TextStyle(
+                                color: scheme.primary,
                                 fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.1,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 3),
                             Text(
-                              '${rooms.length} phòng · ${value(current['openReportCount'], fallback: '0')} phiếu đang mở',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 17.5,
-                                fontWeight: FontWeight.w800,
+                              '${rooms.length} phòng hoạt động · ${value(current['openReportCount'], fallback: '0')} phiếu sự cố đang mở',
+                              style: TextStyle(
+                                color: scheme.onSurface,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
                           ],
@@ -513,15 +523,14 @@ class _CadPageState extends State<CadPage> {
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFDC2626)
-                                .withValues(alpha: 0.22),
+                            color: RuoTokens.rose600.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: const Color(0xFFF87171)),
+                            border: Border.all(color: RuoTokens.rose600),
                           ),
                           child: Text(
                             '${value(current['alertRoomCount'], fallback: '1')} cảnh báo',
                             style: const TextStyle(
-                              color: Color(0xFFFECACA),
+                              color: RuoTokens.rose600,
                               fontSize: 11.5,
                               fontWeight: FontWeight.w800,
                             ),
@@ -530,12 +539,6 @@ class _CadPageState extends State<CadPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                FloorPlanCanvas(
-                  floor: _floor,
-                  rooms: rooms,
-                  onSelectRoom: _preview,
-                ),
                 const SizedBox(height: 14),
                 if (rooms.isEmpty)
                   const EmptyNotice(
@@ -543,22 +546,22 @@ class _CadPageState extends State<CadPage> {
                   ),
                 if (rooms.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: dark
                           ? RuoTokens.darkSurface
-                          : RuoTokens.lightSurfaceSubtle,
-                      borderRadius: BorderRadius.circular(14),
+                          : RuoTokens.lightSurface,
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: scheme.outlineVariant),
                     ),
                     child: Column(
                       children: [
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.only(bottom: 12),
                           child: Text(
-                            'DANH SÁCH Ô PHÒNG TẦNG $_floor · CHẠM ĐỂ XEM THIẾT BỊ',
+                            'DANH SÁCH PHÒNG TẦNG $_floor · CHẠM ĐỂ XEM THIẾT BỊ & THAO TÁC',
                             style: TextStyle(
-                              fontSize: 10.5,
+                              fontSize: 11,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.6,
                               color: scheme.onSurfaceVariant,

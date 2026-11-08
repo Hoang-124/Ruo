@@ -37,16 +37,16 @@ class RuoTokens {
   static const lightInkSecondary = Color(0xFF334155);
   static const lightInkMuted = Color(0xFF64748B);
 
-  // Dark Surfaces & Ink (Warm Obsidian)
-  static const darkBg = Color(0xFF0C0A09);
-  static const darkSurface = Color(0xFF171412);
-  static const darkSurfaceElevated = Color(0xFF211D1A);
-  static const darkSurfaceHeader = Color(0xFF1F1A17);
-  static const darkBorderSubtle = Color(0xFF2E2723);
-  static const darkBorderDefault = Color(0xFF443B35);
-  static const darkInkPrimary = Color(0xFFFAFAF9);
-  static const darkInkSecondary = Color(0xFFE7E5E4);
-  static const darkInkMuted = Color(0xFFA8A29E);
+  // Dark Surfaces & Ink (High-Visibility Architectural Slate)
+  static const darkBg = Color(0xFF0F172A);
+  static const darkSurface = Color(0xFF1E293B);
+  static const darkSurfaceElevated = Color(0xFF334155);
+  static const darkSurfaceHeader = Color(0xFF1E293B);
+  static const darkBorderSubtle = Color(0xFF334155);
+  static const darkBorderDefault = Color(0xFF475569);
+  static const darkInkPrimary = Color(0xFFF8FAFC);
+  static const darkInkSecondary = Color(0xFFE2E8F0);
+  static const darkInkMuted = Color(0xFF94A3B8);
 
   static ThemeData theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
