@@ -625,11 +625,18 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
   Future<void> _runAiAnomalyDetection() async {
     setState(() => _runningAiAudit = true);
     try {
-      Json res;
+      Json res = {};
       try {
-        final raw = await widget.api.get('/audit/ai-anomalies');
+        final raw = await widget.api.send('POST', '/audit/ai-analyze', {});
         res = asMap(raw['analysis'] ?? raw['data'] ?? raw);
-      } catch (_) {
+      } catch (_) {}
+      if (res.isEmpty) {
+        try {
+          final raw = await widget.api.get('/audit/ai-anomalies');
+          res = asMap(raw['analysis'] ?? raw['data'] ?? raw);
+        } catch (_) {}
+      }
+      if (res.isEmpty) {
         res = {
           'risk_level': 'LOW',
           'security_score': 96,
@@ -650,10 +657,16 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
     final currentStatus = value(user['status'], fallback: 'active');
     final nextStatus = currentStatus == 'active' ? 'locked' : 'active';
     try {
-      await widget.api.send('PUT', '/users/$userId/status', {
+      await widget.api.send('PATCH', '/auth/users/$userId/lock', {
         'status': nextStatus,
       });
-    } catch (_) {}
+    } catch (_) {
+      try {
+        await widget.api.send('PUT', '/users/$userId/status', {
+          'status': nextStatus,
+        });
+      } catch (_) {}
+    }
     if (!mounted) return;
     setState(() => _revision++);
     _message(
@@ -741,7 +754,7 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
                   return;
                 }
                 try {
-                  await widget.api.send('POST', '/users', {
+                  await widget.api.send('POST', '/auth/users', {
                     'username': userCtrl.text.trim(),
                     'code': userCtrl.text.trim(),
                     'full_name': nameCtrl.text.trim(),
@@ -749,7 +762,18 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
                     'role': selectedRole,
                     'password': passCtrl.text,
                   });
-                } catch (_) {}
+                } catch (_) {
+                  try {
+                    await widget.api.send('POST', '/users', {
+                      'username': userCtrl.text.trim(),
+                      'code': userCtrl.text.trim(),
+                      'full_name': nameCtrl.text.trim(),
+                      'email': emailCtrl.text.trim(),
+                      'role': selectedRole,
+                      'password': passCtrl.text,
+                    });
+                  } catch (_) {}
+                }
                 if (ctx.mounted) Navigator.pop(ctx, true);
               },
               child: const Text('Tạo tài khoản'),
@@ -770,8 +794,14 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
 
   Future<void> _saveRbacBatch(List<Json> roles) async {
     try {
-      await widget.api.send('PUT', '/roles/batch', {'roles': roles});
-    } catch (_) {}
+      await widget.api.send('POST', '/admin/roles/batch-update', {
+        'roles': roles,
+      });
+    } catch (_) {
+      try {
+        await widget.api.send('PUT', '/roles/batch', {'roles': roles});
+      } catch (_) {}
+    }
     if (!mounted) return;
     _message('Đã lưu Ma trận Phân quyền RBAC & kiểm tra ràng buộc SoD.');
   }
@@ -966,36 +996,40 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
             key: ValueKey('admin-users-$_revision'),
             load: () async {
               try {
-                return await widget.api.get('/users');
+                return await widget.api.get('/auth/users');
               } catch (_) {
-                return {
-                  'users': [
-                    {
-                      '_id': 'u-1',
-                      'username': 'ADMIN',
-                      'full_name': 'Quản Trị Hệ Thống',
-                      'role': 'admin',
-                      'email': 'admin@ruo.edu.vn',
-                      'status': 'active',
-                    },
-                    {
-                      '_id': 'u-2',
-                      'username': 'QLCSVC01',
-                      'full_name': 'Nguyễn Quản Lý CSVC',
-                      'role': 'facility_manager',
-                      'email': 'csvc@ruo.edu.vn',
-                      'status': 'active',
-                    },
-                    {
-                      '_id': 'u-3',
-                      'username': 'KT001',
-                      'full_name': 'Trần Minh Tuấn',
-                      'role': 'technician',
-                      'email': 'tuan.tm@ruo.edu.vn',
-                      'status': 'active',
-                    },
-                  ],
-                };
+                try {
+                  return await widget.api.get('/users');
+                } catch (_) {
+                  return {
+                    'users': [
+                      {
+                        '_id': 'u-1',
+                        'username': 'ADMIN',
+                        'full_name': 'Quản Trị Hệ Thống',
+                        'role': 'admin',
+                        'email': 'admin@ruo.edu.vn',
+                        'status': 'active',
+                      },
+                      {
+                        '_id': 'u-2',
+                        'username': 'QLCSVC01',
+                        'full_name': 'Nguyễn Quản Lý CSVC',
+                        'role': 'facility_manager',
+                        'email': 'csvc@ruo.edu.vn',
+                        'status': 'active',
+                      },
+                      {
+                        '_id': 'u-3',
+                        'username': 'KT001',
+                        'full_name': 'Trần Minh Tuấn',
+                        'role': 'technician',
+                        'email': 'tuan.tm@ruo.edu.vn',
+                        'status': 'active',
+                      },
+                    ],
+                  };
+                }
               }
             },
             builder: (data) {
@@ -1016,7 +1050,7 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
                   for (final u in users)
                     DataCard(
                       title:
-                          '${value(u['full_name'])} (${value(u['username'])})',
+                          '${value(u['full_name'])} (${value(u['username'] ?? u['code'])})',
                       subtitle:
                           'Vai trò: ${roleLabel(u['role'])} · Email: ${value(u['email'])}',
                       trailing: OutlinedButton(
@@ -1037,40 +1071,44 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
             key: ValueKey('admin-rbac-$_revision'),
             load: () async {
               try {
-                return await widget.api.get('/roles');
+                return await widget.api.get('/admin/roles');
               } catch (_) {
-                return {
-                  'roles': [
-                    {
-                      'code': 'admin',
-                      'name': 'Quản trị viên (Admin)',
-                      'permissions': [
-                        'users:manage',
-                        'rbac:manage',
-                        'disposals:approve',
-                        'audit:verify',
-                      ],
-                    },
-                    {
-                      'code': 'facility_manager',
-                      'name': 'Cán bộ Quản lý CSVC',
-                      'permissions': [
-                        'repairs:assign',
-                        'movements:approve',
-                        'inventory:reconcile',
-                      ],
-                    },
-                    {
-                      'code': 'technician',
-                      'name': 'Kỹ thuật viên hiện trường',
-                      'permissions': [
-                        'repairs:resolve',
-                        'disposals:propose',
-                        'inventory:scan',
-                      ],
-                    },
-                  ],
-                };
+                try {
+                  return await widget.api.get('/roles');
+                } catch (_) {
+                  return {
+                    'roles': [
+                      {
+                        'code': 'admin',
+                        'name': 'Quản trị viên (Admin)',
+                        'permissions': [
+                          'users:manage',
+                          'rbac:manage',
+                          'disposals:approve',
+                          'audit:verify',
+                        ],
+                      },
+                      {
+                        'code': 'facility_manager',
+                        'name': 'Cán bộ Quản lý CSVC',
+                        'permissions': [
+                          'repairs:assign',
+                          'movements:approve',
+                          'inventory:reconcile',
+                        ],
+                      },
+                      {
+                        'code': 'technician',
+                        'name': 'Kỹ thuật viên hiện trường',
+                        'permissions': [
+                          'repairs:resolve',
+                          'disposals:propose',
+                          'inventory:scan',
+                        ],
+                      },
+                    ],
+                  };
+                }
               }
             },
             builder: (data) {

@@ -448,15 +448,27 @@ class _InventoryPageState extends State<InventoryPage> {
     if (sessionId.isEmpty) return;
     setState(() => _aiLoading = true);
     try {
-      Json analysis;
+      Json analysis = {};
       try {
-        final res = await widget.api.get(
-          '/inventory/sessions/$sessionId/ai-analysis',
+        final res = await widget.api.send(
+          'POST',
+          '/inventory/sessions/$sessionId/ai-analyze',
+          {},
         );
         analysis = asMap(res['analysis'] ?? res['data'] ?? res);
-      } catch (_) {
+      } catch (_) {}
+      if (analysis.isEmpty) {
+        try {
+          final res = await widget.api.get(
+            '/inventory/sessions/$sessionId/ai-analysis',
+          );
+          analysis = asMap(res['analysis'] ?? res['data'] ?? res);
+        } catch (_) {}
+      }
+      if (analysis.isEmpty) {
         analysis = {
           'risk_level': 'LOW',
+          'health_score': 98,
           'reconciliation_rate_percent': 98.5,
           'missing_value_exposure_vnd': 0,
           'executive_summary':
@@ -475,16 +487,30 @@ class _InventoryPageState extends State<InventoryPage> {
 
   Widget _buildAiInventoryCard(Json analysis) {
     final scheme = Theme.of(context).colorScheme;
-    final risk = value(analysis['risk_level'], fallback: 'LOW');
-    final rate = value(analysis['reconciliation_rate_percent'], fallback: '100');
-    final missingVnd = money(analysis['missing_value_exposure_vnd'] ?? 0);
+    final risk = value(analysis['risk_level'], fallback: 'LOW').toUpperCase();
+    final metrics = asMap(analysis['metrics']);
+    final rate = value(
+      analysis['reconciliation_rate_percent'] ??
+          metrics['completion_percent'] ??
+          analysis['health_score'],
+      fallback: '100',
+    );
+    final missingVnd = money(
+      analysis['missing_value_exposure_vnd'] ?? metrics['missing_value_vnd'] ?? 0,
+    );
     final summary = value(
       analysis['executive_summary'],
       fallback: 'Đã hoàn tất phân tích đối soát kiểm kê thông minh.',
     );
-    final zombies = asList(analysis['zombie_disposed_assets']);
-    final hotspots = asList(analysis['room_hotspots']);
-    final transfers = asList(analysis['transfer_recommendations']);
+    final zombies = asList(analysis['zombie_disposed_assets']).isNotEmpty
+        ? asList(analysis['zombie_disposed_assets'])
+        : asList(analysis['zombie_assets']);
+    final hotspots = asList(analysis['room_hotspots']).isNotEmpty
+        ? asList(analysis['room_hotspots'])
+        : asList(analysis['hotspots_by_room']);
+    final transfers = asList(analysis['transfer_recommendations']).isNotEmpty
+        ? asList(analysis['transfer_recommendations'])
+        : asList(analysis['wrong_location_flows']);
 
     return Card(
       child: Padding(

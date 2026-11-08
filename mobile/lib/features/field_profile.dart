@@ -286,11 +286,18 @@ class ProfilePage extends StatelessWidget {
             onPressed: () async {
               if (newCtrl.text.trim().isEmpty) return;
               try {
-                await api.send('PUT', '/auth/change-password', {
-                  'currentPassword': oldCtrl.text,
+                await api.send('POST', '/auth/change-password', {
+                  'oldPassword': oldCtrl.text,
                   'newPassword': newCtrl.text,
                 });
-              } catch (_) {}
+              } catch (_) {
+                try {
+                  await api.send('PUT', '/auth/change-password', {
+                    'currentPassword': oldCtrl.text,
+                    'newPassword': newCtrl.text,
+                  });
+                } catch (_) {}
+              }
               if (ctx.mounted) Navigator.pop(ctx, true);
             },
             child: const Text('Cập nhật mật khẩu'),

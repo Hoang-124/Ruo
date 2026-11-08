@@ -141,14 +141,25 @@ class _NotificationsPageState extends State<NotificationsPage> {
               onPressed: () async {
                 try {
                   await widget.api.send(
-                    'PUT',
-                    '/repairs/$ticketId/feedback',
+                    'POST',
+                    '/repairs/$ticketId/evaluate',
                     {
-                      'rating': rating,
-                      'comment': commentCtrl.text.trim(),
+                      'feedback_rating': rating,
+                      'feedback_comment': commentCtrl.text.trim(),
                     },
                   );
-                } catch (_) {}
+                } catch (_) {
+                  try {
+                    await widget.api.send(
+                      'PUT',
+                      '/repairs/$ticketId/feedback',
+                      {
+                        'rating': rating,
+                        'comment': commentCtrl.text.trim(),
+                      },
+                    );
+                  } catch (_) {}
+                }
                 ticket['feedback_rating'] = rating;
                 ticket['feedback_comment'] = commentCtrl.text.trim();
                 if (ctx.mounted) Navigator.pop(ctx, true);

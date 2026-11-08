@@ -44,7 +44,7 @@ void main() {
   });
 
   testWidgets(
-    'ReportIncidentDialog renders 4-tier SLA options and triggers callback',
+    'ReportIncidentDialog renders 3 canonical damage levels (48h / 24h / 8h) matching Web',
     (tester) async {
       final api = RuoApi(client: MockClient((_) async => throw Exception()));
       addTearDown(api.dispose);
@@ -66,10 +66,12 @@ void main() {
       await tester.pump();
 
       expect(find.text('Báo Hỏng Thiết Bị (SLA)'), findsOneWidget);
-      expect(find.text('Cấp 1 · Khẩn cấp'), findsOneWidget);
-      expect(find.text('Cấp 2 · Gián đoạn'), findsOneWidget);
-      expect(find.text('Cấp 3 · Suy giảm'), findsOneWidget);
-      expect(find.text('Cấp 4 · Nhẹ/Định kỳ'), findsOneWidget);
+      expect(find.text('Hỏng Nhẹ (Minor)'), findsOneWidget);
+      expect(find.text('Xử lý trong 48 giờ'), findsOneWidget);
+      expect(find.text('Hỏng Nặng (Major)'), findsOneWidget);
+      expect(find.text('Xử lý trong 24 giờ'), findsOneWidget);
+      expect(find.text('Khẩn Cấp (Critical)'), findsOneWidget);
+      expect(find.text('Xử lý khẩn cấp 8 giờ (24/7)'), findsOneWidget);
       expect(find.text('Gửi báo hỏng'), findsOneWidget);
     },
   );

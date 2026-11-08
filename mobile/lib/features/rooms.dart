@@ -182,6 +182,23 @@ class _RoomsPageState extends State<RoomsPage> {
               icon: const RuoVectorIcon(RuoIcon.refresh, size: 16),
               label: const Text('Làm mới'),
             ),
+            FilledButton.tonalIcon(
+              key: const Key('btn_open_report_issue_page'),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => Scaffold(
+                      appBar: AppBar(
+                        title: const Text('Báo hỏng thiết bị phòng học'),
+                      ),
+                      body: ReportIssueMobilePage(api: widget.api),
+                    ),
+                  ),
+                );
+              },
+              icon: const RuoVectorIcon(RuoIcon.alert, size: 15),
+              label: const Text('Báo hỏng thiết bị'),
+            ),
             if ([_query, _floor, _type, _status].any((s) => s.isNotEmpty))
               TextButton(
                 onPressed: () {
