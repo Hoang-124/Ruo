@@ -1,3 +1,4 @@
+import { runTransaction, workflowError } from '../services/transaction.js';
 import mongoose from 'mongoose';
 import { EquipmentMovement } from '../models/EquipmentMovement.js';
 import { Equipment } from '../models/Equipment.js';
@@ -322,45 +323,58 @@ export const confirmMovement = async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ success: false, message: 'ID phiếu điều chuyển không đúng định dạng.' });
     }
-    const movement = await EquipmentMovement.findById(req.params.id);
-    if (!movement) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy lệnh điều chuyển.' });
-    }
-
-    assertTransition('TRANSFER', movement.status, MOVEMENT_STATUSES.COMPLETED, req.user.role);
-    if (movement.assigned_to && movement.assigned_to.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Phiếu này được giao cho Kỹ thuật viên khác.' });
-    }
-    const equipment = await Equipment.findById(movement.equipment_id);
-    if (!equipment) {
-      return res.status(404).json({ success: false, message: 'Thiết bị không còn tồn tại.' });
-    }
-
-    // Recheck at execution time: the room may have closed since the order was approved.
-    if (movement.type !== MOVEMENT_TYPES.REPAIR_OUT) {
-      const destination = await Room.findById(movement.to_room_id);
-      if (!destination || destination.status === ROOM_STATUSES.INACTIVE) {
-        return res.status(409).json({ success: false, message: 'Phòng đích không tồn tại hoặc đã ngừng sử dụng. Vui lòng chọn phòng khác.' });
+    const movement = await runTransaction(async (session) => {
+      const movement = await EquipmentMovement.findById(req.params.id, null, { session });
+      if (!movement) {
+        throw workflowError(404, 'Không tìm thấy lệnh điều chuyển.');
       }
-    }
 
-    movement.performed_by = req.user._id;
-    movement.status = MOVEMENT_STATUSES.COMPLETED;
-    movement.completed_at = new Date();
-    movement.completion_notes = String(req.body?.notes || '').trim().slice(0, 500);
-    await movement.save();
+      assertTransition('TRANSFER', movement.status, MOVEMENT_STATUSES.COMPLETED, req.user.role);
+      if (movement.assigned_to && movement.assigned_to.toString() !== req.user._id.toString()) {
+        throw workflowError(403, 'Phiếu này được giao cho Kỹ thuật viên khác.');
+      }
+      const equipment = await Equipment.findById(movement.equipment_id, null, { session });
+      if (!equipment) {
+        throw workflowError(404, 'Thiết bị không còn tồn tại.');
+      }
 
-    // Physically update equipment location
-    equipment.room_id = movement.to_room_id;
-    if (movement.type === MOVEMENT_TYPES.REPLACEMENT || movement.type === MOVEMENT_TYPES.TRANSFER || movement.type === MOVEMENT_TYPES.REPAIR_RETURN) {
-      equipment.status = EQUIPMENT_STATUSES.IN_USE;
-    } else if (movement.type === MOVEMENT_TYPES.TO_STOCK) {
-      equipment.status = EQUIPMENT_STATUSES.IN_STOCK;
-    } else if (movement.type === MOVEMENT_TYPES.REPAIR_OUT) {
-      equipment.room_id = null; // external
-    }
-    await equipment.save();
+      if ([EQUIPMENT_STATUSES.DISPOSED, EQUIPMENT_STATUSES.LOST, EQUIPMENT_STATUSES.PENDING_DISPOSAL].includes(equipment.status)) {
+        throw workflowError(409, 'Thiết bị đã thanh lý, thất lạc hoặc đang chờ thanh lý; không thể hoàn tất điều chuyển.');
+      }
+      if (String(equipment.room_id || '') !== String(movement.from_room_id || '')) {
+        throw workflowError(409, 'Vị trí thiết bị đã thay đổi; cần lập lại phiếu điều chuyển.');
+      }
 
+      // Recheck at execution time: the room may have closed since the order was approved.
+      if (movement.type !== MOVEMENT_TYPES.REPAIR_OUT) {
+        const destination = await Room.findById(movement.to_room_id, null, { session });
+        if (!destination || destination.status === ROOM_STATUSES.INACTIVE) {
+          throw workflowError(409, 'Phòng đích không tồn tại hoặc đã ngừng sử dụng. Vui lòng chọn phòng khác.');
+        }
+      }
+
+      movement.performed_by = req.user._id;
+      movement.status = MOVEMENT_STATUSES.COMPLETED;
+      movement.completed_at = new Date();
+      movement.completion_notes = String(req.body?.notes || '').trim().slice(0, 500);
+      await movement.save({ session });
+
+      // Physically update equipment location
+      equipment.room_id = movement.to_room_id;
+      if (movement.type === MOVEMENT_TYPES.REPLACEMENT || movement.type === MOVEMENT_TYPES.TRANSFER || movement.type === MOVEMENT_TYPES.REPAIR_RETURN) {
+        equipment.status = EQUIPMENT_STATUSES.IN_USE;
+      } else if (movement.type === MOVEMENT_TYPES.TO_STOCK) {
+        equipment.status = EQUIPMENT_STATUSES.IN_STOCK;
+      } else if (movement.type === MOVEMENT_TYPES.REPAIR_OUT) {
+        equipment.room_id = null; // external
+      }
+      await equipment.save({ session });
+
+      return movement;
+    });
+
+    // The transaction session has ended; population must use a fresh read.
+    movement.$session?.(null);
     await movement.populate([
       { path: 'equipment_id', select: 'code name brand model status' },
       { path: 'from_room_id', select: 'code name building floor' },

@@ -6,6 +6,8 @@ import { Notification } from '../models/Notification.js';
 import { User } from '../models/User.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { assertTransition } from '../domain/stateMachines.js';
+import { runTransaction } from '../services/transaction.js';
+import { normalizePartsRequestItems } from '../services/partsRequestItems.js';
 import { 
   USER_ROLES, 
   PARTS_REQUEST_STATUSES 
@@ -224,6 +226,7 @@ export const requestSpareParts = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã phiếu sửa chữa và danh sách linh kiện.' });
     }
 
+    const normalizedItems = normalizePartsRequestItems(items);
     const repair = await Repair.findById(repair_id);
     if (!repair) {
       return res.status(404).json({ success: false, message: 'Phiếu sửa chữa không tồn tại.' });
@@ -232,12 +235,7 @@ export const requestSpareParts = async (req, res) => {
     const partsRequest = await PartsRequest.create({
       repair_id: repair._id,
       requested_by: req.user._id,
-      items: items.map(it => ({
-        part_id: it.part_id,
-        qty: Number(it.qty || it.quantity || 1),
-        quantity: Number(it.qty || it.quantity || 1),
-        unit_price: Number(it.unit_price || 0)
-      })),
+      items: normalizedItems,
       status: PARTS_REQUEST_STATUSES.PENDING
     });
 
@@ -256,7 +254,7 @@ export const requestSpareParts = async (req, res) => {
 
     res.status(201).json({ success: true, message: 'Gửi yêu cầu linh kiện thành công.', partsRequest });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(error.statusCode || 500).json({ success: false, message: error.message });
   }
 };
 
@@ -264,48 +262,37 @@ export const requestSpareParts = async (req, res) => {
 // @route   PUT /api/spare-parts/requests/:id/approve
 export const approvePartsRequest = async (req, res) => {
   try {
-    const partsRequest = await PartsRequest.findById(req.params.id);
-    if (!partsRequest) {
-      return res.status(404).json({ success: false, message: 'Yêu cầu linh kiện không tồn tại.' });
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Mã yêu cầu linh kiện không hợp lệ.' });
     }
-
-    assertTransition('PARTS_REQUEST', partsRequest.status, PARTS_REQUEST_STATUSES.APPROVED, req.user.role);
-
-    // 1. Kiểm tra tính sẵn sàng của tồn kho trước khi xuất (Atomic pre-validation)
-    for (const item of partsRequest.items) {
-      const part = await SparePart.findById(item.part_id);
-      if (!part) {
-        return res.status(404).json({ success: false, message: 'Linh kiện trong phiếu không tồn tại trong kho.' });
-      }
-      const qtyToDeduct = Number(item.qty || item.quantity || 1);
-      if (part.stock < qtyToDeduct) {
-        return res.status(400).json({
-          success: false,
-          message: `Tồn kho không đủ để xuất linh kiện [${part.name}]: hiện còn ${part.stock}, yêu cầu xuất ${qtyToDeduct}.`
-        });
-      }
-    }
-
-    // 2. Trừ số lượng tồn kho và cảnh báo định mức tối thiểu
-    const warnings = [];
-    for (const item of partsRequest.items) {
-      const part = await SparePart.findById(item.part_id);
-      if (part) {
-        // Preserve the actual issue price for historical reports; never trust a submitted price.
-        item.unit_price = part.price;
-        const qtyToDeduct = Number(item.qty || item.quantity || 1);
-        part.stock = Math.max(0, part.stock - qtyToDeduct);
-        if (part.stock <= part.min_stock) {
-          warnings.push(`Linh kiện ${part.name} (${part.code}) còn ${part.stock} cái, dưới mức tối thiểu (${part.min_stock}).`);
+    const { partsRequest, warnings } = await runTransaction(async (session) => {
+      const request = await PartsRequest.findById(req.params.id, null, { session });
+      if (!request) throw Object.assign(new Error('Yêu cầu linh kiện không tồn tại.'), { statusCode: 404 });
+      assertTransition('PARTS_REQUEST', request.status, PARTS_REQUEST_STATUSES.APPROVED, req.user.role);
+      const items = normalizePartsRequestItems(request.items);
+      const warnings = [];
+      for (const item of items) {
+        const part = await SparePart.findOneAndUpdate(
+          { _id: item.part_id, stock: { $gte: item.qty } },
+          { $inc: { stock: -item.qty } },
+          { session, new: true, runValidators: true }
+        );
+        if (!part) {
+          throw Object.assign(new Error('Linh kiện không tồn tại hoặc tồn kho không đủ để cấp phát.'), { statusCode: 409 });
         }
-        await part.save();
+        item.unit_price = part.price;
+        if (part.stock <= part.min_stock) {
+          warnings.push('Linh kiện ' + part.name + ' (' + part.code + ') còn ' + part.stock + ' cái, dưới mức tối thiểu (' + part.min_stock + ').');
+        }
       }
-    }
-
-    partsRequest.status = PARTS_REQUEST_STATUSES.APPROVED;
-    partsRequest.approved_by = req.user._id;
-    partsRequest.approved_at = new Date();
-    await partsRequest.save();
+      const approved = await PartsRequest.findOneAndUpdate(
+        { _id: request._id, status: PARTS_REQUEST_STATUSES.PENDING },
+        { $set: { items, status: PARTS_REQUEST_STATUSES.APPROVED, approved_by: req.user._id, approved_at: new Date() } },
+        { session, new: true, runValidators: true }
+      );
+      if (!approved) throw Object.assign(new Error('Yêu cầu đã được xử lý; vui lòng tải lại.'), { statusCode: 409 });
+      return { partsRequest: approved, warnings };
+    });
 
     await AuditLog.logAction({
       user_id: req.user._id,

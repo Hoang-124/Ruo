@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -7,7 +7,10 @@ import { repairApi } from '../../lib/api';
 
 export const LecturerTicketsPage = ({ onNavigateTab }) => {
   const { toast } = useToast();
+  const { error: showError } = toast;
   const { currentUser } = useAuth();
+  const userIdentity = useMemo(() => ({ _id: currentUser?._id, id: currentUser?.id, code: currentUser?.code, email: currentUser?.email }),
+    [currentUser?._id, currentUser?.id, currentUser?.code, currentUser?.email]);
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -19,26 +22,28 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
   const [ratingComment, setRatingComment] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
 
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     try {
       setLoading(true);
-      const currentUserId = String(currentUser?._id || currentUser?.id || '');
+      const userIdentityId = String(userIdentity?._id || userIdentity?.id || '');
       const res = await repairApi.list(
-        currentUserId && currentUserId !== 'guest' ? { reported_by: currentUserId } : {}
+        userIdentityId && userIdentityId !== 'guest' ? { reported_by: userIdentityId } : {}
       );
       if (res && res.success) {
-        setTickets((res.repairs || []).filter((r) => isSameUser(r.reported_by, currentUser)));
+        setTickets((res.repairs || []).filter((r) => isSameUser(r.reported_by, userIdentity)));
       }
     } catch (err) {
-      toast.error('Không thể tải danh sách phiếu báo hỏng: ' + err.message);
+      showError('Không thể tải danh sách phiếu báo hỏng: ' + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError, userIdentity]);
 
   useEffect(() => {
+    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
+    // eslint-disable-next-line react/set-state-in-effect
     fetchTickets();
-  }, [currentUser?._id, currentUser?.id, currentUser?.code]);
+  }, [fetchTickets]);
 
   const openRating = (ticket) => {
     setSelectedTicket(ticket);
@@ -62,7 +67,7 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
         await fetchTickets();
       }
     } catch (err) {
-      toast.error('Lỗi khi gửi đánh giá: ' + err.message);
+      showError('Lỗi khi gửi đánh giá: ' + err.message);
     } finally {
       setSubmittingRating(false);
     }

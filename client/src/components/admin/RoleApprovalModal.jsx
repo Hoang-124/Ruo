@@ -10,7 +10,10 @@ import { ROLE_METADATA, USER_ROLES } from '../../config/navigation';
  * 
  * Strict Native SVG Only.
  */
-export const RoleApprovalModal = ({
+export const RoleApprovalModal = (props) => props.isOpen && props.user
+  ? <RoleApprovalModalContent key={props.user._id + ':' + (props.initialAction || 'approve')} {...props} /> : null;
+
+const RoleApprovalModalContent = ({
   user,
   initialAction = 'approve', // 'approve' | 'reject'
   isOpen,
@@ -22,16 +25,6 @@ export const RoleApprovalModal = ({
   const [selectedRole, setSelectedRole] = useState(user?.requested_role || USER_ROLES.FACILITY_MANAGER);
   const [note, setNote] = useState('');
   const [errorMsg, setErrorMsg] = useState(null);
-
-  // Sync state if user or initialAction changes
-  React.useEffect(() => {
-    if (user) {
-      setAction(initialAction);
-      setSelectedRole(user.requested_role || USER_ROLES.FACILITY_MANAGER);
-      setNote('');
-      setErrorMsg(null);
-    }
-  }, [user, initialAction, isOpen]);
 
   // Handle ESC key to close
   React.useEffect(() => {

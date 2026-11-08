@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { masterDataApi, equipmentApi, repairApi } from '../../lib/api';
 
 export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselectedRoom }) => {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+  const { error: showError } = toast;
   const [rooms, setRooms] = useState([]);
-  const [equipments, setEquipments] = useState([]);
+  const [equipmentResult, setEquipmentResult] = useState({ roomId: null, items: [] });
   const [submitting, setSubmitting] = useState(false);
+  const [triaging, setTriaging] = useState(false);
+  const [triageResult, setTriageResult] = useState(null);
+  const triageRequest = useRef(0);
 
   const [formData, setFormData] = useState({
     room_id: preselectedRoom?._id || '',
@@ -18,68 +21,123 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
     incident_images: ''
   });
 
-  useEffect(() => {
-    fetchRooms();
-  }, []);
+  const equipments = equipmentResult.roomId === formData.room_id ? equipmentResult.items : [];
+  const prefillKey = JSON.stringify([preselectedRoom?._id, preselectedEquipment?._id]);
+  const [previousPrefill, setPreviousPrefill] = useState(prefillKey);
+  if (previousPrefill !== prefillKey) {
+    setPreviousPrefill(prefillKey);
+    setFormData(prev => ({ ...prev,
+      room_id: preselectedRoom?._id || prev.room_id,
+      equipment_id: preselectedEquipment?._id || prev.equipment_id
+    }));
+  }
+  const triageContext = JSON.stringify([formData.room_id, formData.equipment_id, formData.incident_description, formData.incident_images]);
+  const [previousTriageContext, setPreviousTriageContext] = useState(triageContext);
+  if (previousTriageContext !== triageContext) {
+    setPreviousTriageContext(triageContext);
+    setTriageResult(null);
+    setTriaging(false);
+  }
 
   useEffect(() => {
-    if (formData.room_id) {
-      fetchRoomEquipments(formData.room_id);
-    } else {
-      setEquipments([]);
-    }
-  }, [formData.room_id]);
-
-  useEffect(() => {
-    if (preselectedRoom?._id) {
-      setFormData(prev => ({ ...prev, room_id: preselectedRoom._id }));
-    }
-    if (preselectedEquipment?._id) {
-      setFormData(prev => ({ ...prev, equipment_id: preselectedEquipment._id }));
-    }
-  }, [preselectedRoom, preselectedEquipment]);
-
-  const fetchRooms = async () => {
-    try {
-      setLoading(true);
-      const res = await masterDataApi.getRooms({ limit: 100 });
+    let active = true;
+    masterDataApi.getRooms({ limit: 100 }).then(res => {
+      if (!active) return;
       const availableRooms = (res?.rooms || []).filter(r => (r.room_type || r.type) !== 'warehouse');
       setRooms(availableRooms);
-      if (!formData.room_id && availableRooms.length > 0) {
-        setFormData(prev => ({ ...prev, room_id: availableRooms[0]._id }));
+      if (availableRooms.length) setFormData(prev => prev.room_id ? prev : ({ ...prev, room_id: availableRooms[0]._id }));
+    }).catch(err => { if (active) showError('Lỗi khi tải danh sách phòng: ' + err.message); });
+    return () => { active = false; };
+  }, [showError]);
+
+  useEffect(() => {
+    let active = true;
+    if (formData.room_id) {
+      equipmentApi.list({ room: formData.room_id, limit: 100 }).then(res => {
+        if (!active) return;
+        const list = res?.equipments || [];
+        setEquipmentResult({ roomId: formData.room_id, items: list });
+        setFormData(prev => ({ ...prev, equipment_id: list.some(item => item._id === prev.equipment_id) ? prev.equipment_id : (list[0]?._id || '') }));
+      }).catch(err => { if (active) showError('Không thể tải thiết bị của phòng: ' + err.message); });
+    }
+    return () => { active = false; };
+  }, [formData.room_id, showError]);
+
+  useEffect(() => {
+    triageRequest.current += 1;
+    return () => { triageRequest.current += 1; };
+  }, [triageContext]);
+
+  const handleAiTriage = async () => {
+    if (!formData.incident_description.trim()) {
+      showError('Vui lòng nhập mô tả hiện tượng sự cố để AI phân tích.');
+      return;
+    }
+    const request = ++triageRequest.current;
+    try {
+      setTriaging(true);
+      setTriageResult(null);
+      const imagesArray = formData.incident_images
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const res = await repairApi.aiTriage({
+        room_id: formData.room_id,
+        equipment_id: formData.equipment_id,
+        incident_description: formData.incident_description.trim(),
+        incident_images: imagesArray,
+        room_equipments: equipments.map((eq) => ({
+          _id: eq._id,
+          code: eq.code,
+          name: eq.name,
+          brand: eq.brand,
+          model: eq.model,
+          category_id: eq.category_id
+        }))
+      });
+
+      if (request !== triageRequest.current) return;
+      if (res && res.success && res.triage) {
+        setTriageResult(res.triage);
+        toast.success('AI đã phân tích mức độ ưu tiên, kiểm tra trùng lặp và chuẩn hóa mô tả!');
       }
     } catch (err) {
-      toast.error('Lỗi khi tải danh sách phòng: ' + err.message);
+      if (request === triageRequest.current) showError('Không thể chạy AI Phân loại sự cố: ' + err.message);
     } finally {
-      setLoading(false);
+      if (request === triageRequest.current) setTriaging(false);
     }
   };
 
-  const fetchRoomEquipments = async (roomId) => {
-    try {
-      const res = await equipmentApi.list({ room: roomId, limit: 100 });
-      const eqList = res?.equipments || [];
-      setEquipments(eqList);
-      if (!formData.equipment_id && eqList.length > 0) {
-        setFormData(prev => ({ ...prev, equipment_id: eqList[0]._id }));
-      }
-    } catch (err) {
-      console.warn('Load room equipment warning:', err.message);
-    }
+  const handleApplyTriage = () => {
+    if (!triageResult) return;
+    const suggestedEqId = triageResult.equipment_mismatch?.suggested_equipment?._id;
+    const canSwitchEq = Boolean(suggestedEqId && equipments.some((eq) => eq._id === suggestedEqId));
+    setFormData((prev) => ({
+      ...prev,
+      equipment_id: canSwitchEq ? suggestedEqId : prev.equipment_id,
+      damage_level: triageResult.suggested_damage_level || prev.damage_level,
+      incident_description: triageResult.refined_description || prev.incident_description
+    }));
+    toast.success(
+      canSwitchEq
+        ? 'Đã chuyển đúng thiết bị khớp mô tả và áp dụng chuẩn hóa kỹ thuật từ AI!'
+        : 'Đã áp dụng mức độ ưu tiên và mô tả kỹ thuật chuẩn từ AI!'
+    );
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.room_id) {
-      toast.error('Vui lòng chọn phòng học xảy ra sự cố.');
+      showError('Vui lòng chọn phòng học xảy ra sự cố.');
       return;
     }
     if (!formData.equipment_id) {
-      toast.error('Vui lòng chọn thiết bị gặp sự cố.');
+      showError('Vui lòng chọn thiết bị gặp sự cố.');
       return;
     }
     if (!formData.incident_description.trim()) {
-      toast.error('Vui lòng nhập mô tả chi tiết sự cố hỏng hóc.');
+      showError('Vui lòng nhập mô tả chi tiết sự cố hỏng hóc.');
       return;
     }
 
@@ -106,7 +164,7 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
         }
       }
     } catch (err) {
-      toast.error('Lỗi khi gửi báo hỏng: ' + err.message);
+      showError('Lỗi khi gửi báo hỏng: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -203,7 +261,7 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
               {[
                 { key: 'minor', label: 'Hỏng Nhẹ (Minor)', desc: 'Ảnh hưởng nhỏ, phòng vẫn học được', color: '#10B981', sla: 'Xử lý trong 48 giờ' },
                 { key: 'major', label: 'Hỏng Nặng (Major)', desc: 'Gián đoạn giảng dạy, cần thay thế', color: '#F59E0B', sla: 'Xử lý trong 24 giờ' },
-                { key: 'critical', label: 'Khẩn Cấp (Critical)', desc: 'Mất an toàn, chập cháy, tê liệt', color: '#EF4444', sla: 'Xử lý khẩn cấp 4 giờ' }
+                { key: 'critical', label: 'Khẩn Cấp (Critical)', desc: 'Mất an toàn, chập cháy, tê liệt', color: '#EF4444', sla: 'Xử lý khẩn cấp 8 giờ (24/7)' }
               ].map(lvl => (
                 <div
                   key={lvl.key}
@@ -228,11 +286,34 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
             </div>
           </div>
 
-          {/* Incident Description */}
+          {/* Incident Description + AI Triage Copilot */}
           <div>
-            <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: 'var(--ink-pure)' }}>
-              4. Mô Tả Chi Tiết Sự Cố *
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--ink-pure)' }}>
+                4. Mô Tả Chi Tiết Sự Cố *
+              </label>
+              <button
+                type="button"
+                onClick={handleAiTriage}
+                disabled={triaging}
+                className="laser-btn laser-btn-secondary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: 'var(--laser-cyan)',
+                  border: '1px solid var(--border-focus)',
+                  background: 'var(--surface-2)'
+                }}
+              >
+                <Icons.Sparkles size={14} />
+                <span>{triaging ? 'AI Đang Phân Tích...' : 'AI Phân Loại & Kiểm Tra Trùng Lặp'}</span>
+              </button>
+            </div>
             <textarea
               required
               rows={4}
@@ -242,6 +323,190 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
               className="ruo-portal-input"
               style={{ width: '100%', resize: 'vertical' }}
             />
+
+            {triageResult && (
+              <div
+                style={{
+                  marginTop: '12px',
+                  background: 'var(--surface-2)',
+                  border: '1.5px solid var(--border-focus)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '14px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: 'var(--status-info-bg)', color: 'var(--status-info-color)', border: '1px solid var(--status-info-border)' }}>
+                      <Icons.Sparkles size={12} />
+                      <span>{triageResult.engine === 'gemini' ? 'GEMINI HYBRID AI' : 'RUO CORTEX LOCAL AI'}</span>
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11.5px',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background:
+                          triageResult.suggested_damage_level === 'critical'
+                            ? 'var(--status-danger-bg)'
+                            : triageResult.suggested_damage_level === 'major'
+                              ? 'var(--status-warning-bg)'
+                              : 'var(--status-success-bg)',
+                        color:
+                          triageResult.suggested_damage_level === 'critical'
+                            ? 'var(--status-danger-color)'
+                            : triageResult.suggested_damage_level === 'major'
+                              ? 'var(--status-warning-color)'
+                              : 'var(--status-success-color)',
+                        border: `1px solid ${
+                          triageResult.suggested_damage_level === 'critical'
+                            ? 'var(--status-danger-border)'
+                            : triageResult.suggested_damage_level === 'major'
+                              ? 'var(--status-warning-border)'
+                              : 'var(--status-success-border)'
+                        }`
+                      }}
+                    >
+                      Đề xuất: {triageResult.suggested_damage_level?.toUpperCase()} • SLA {triageResult.sla_label}
+                    </span>
+                    {triageResult.fault_classification?.playbook_title && (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: 'var(--surface-card)',
+                          color: 'var(--ink-secondary)',
+                          border: '1px solid var(--border-default)'
+                        }}
+                      >
+                        {triageResult.fault_classification.playbook_title}
+                      </span>
+                    )}
+                    <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--ink-muted)' }}>
+                      Độ tin cậy: {triageResult.confidence}%
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleApplyTriage}
+                    className="laser-btn laser-btn-primary"
+                    style={{ padding: '5px 12px', fontSize: '11.5px', fontWeight: 700, borderRadius: 'var(--radius-sm)' }}
+                  >
+                    Áp Dụng Gợi Ý AI
+                  </button>
+                </div>
+
+                {triageResult.equipment_mismatch?.detected && (
+                  <div
+                    style={{
+                      background: 'var(--status-warning-bg)',
+                      border: '1px solid var(--status-warning-border)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '10px 12px',
+                      fontSize: '12px',
+                      color: 'var(--status-warning-color)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '10px',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: '240px' }}>
+                      <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        <Icons.AlertTriangle size={14} />
+                        <span>Phát hiện lệch đối tượng giữa Mô tả và Thiết bị đang chọn!</span>
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--ink-secondary)' }}>
+                        {triageResult.equipment_mismatch.message} AI đã tự động áp dụng quy tắc an toàn vật lý cho{' '}
+                        <strong>{triageResult.equipment_mismatch.mentioned_label}</strong>.
+                      </div>
+                    </div>
+                    {triageResult.equipment_mismatch.suggested_equipment?._id
+                      && equipments.some((eq) => eq._id === triageResult.equipment_mismatch.suggested_equipment._id) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetEq = triageResult.equipment_mismatch.suggested_equipment;
+                          setFormData((prev) => ({
+                            ...prev,
+                            equipment_id: targetEq._id,
+                            damage_level: triageResult.suggested_damage_level || prev.damage_level,
+                            incident_description: triageResult.refined_description || prev.incident_description
+                          }));
+                          toast.success(`Đã chuyển sang thiết bị [${targetEq.code}] ${targetEq.name} và áp dụng gợi ý AI!`);
+                        }}
+                        className="laser-btn laser-btn-secondary"
+                        style={{
+                          padding: '5px 10px',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          borderRadius: 'var(--radius-sm)',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Chuyển sang [{triageResult.equipment_mismatch.suggested_equipment.code}]
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {Array.isArray(triageResult.duplicate_tickets) && triageResult.duplicate_tickets.length > 0 && (
+                  <div
+                    style={{
+                      background: 'var(--status-warning-bg)',
+                      border: '1px solid var(--status-warning-border)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '10px 12px',
+                      fontSize: '12px',
+                      color: 'var(--status-warning-color)'
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <Icons.AlertTriangle size={14} />
+                      <span>
+                        {triageResult.has_exact_duplicate
+                          ? 'Cảnh báo trùng lặp: Thiết bị này đang có phiếu báo hỏng chưa đóng!'
+                          : 'Lưu ý: Phòng học này đang có phiếu sự cố mở liên quan:'}
+                      </span>
+                    </div>
+                    {triageResult.duplicate_tickets.slice(0, 2).map((dup) => (
+                      <div key={dup._id || dup.ticket_code} style={{ fontSize: '11.5px', color: 'var(--ink-secondary)', marginTop: '2px' }}>
+                        • <strong style={{ fontFamily: 'var(--font-mono)' }}>{dup.ticket_code}</strong> ({dup.status}): {dup.incident_description}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ fontSize: '12.5px', color: 'var(--ink-secondary)' }}>
+                  <strong style={{ color: 'var(--ink-pure)' }}>Nhận định kỹ thuật:</strong> {triageResult.reasoning}
+                </div>
+
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: '12px', color: 'var(--ink-primary)' }}>
+                  <div style={{ fontSize: '10.5px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--ink-muted)', marginBottom: '3px' }}>
+                    Mô tả chuẩn hóa gợi ý
+                  </div>
+                  <div>{triageResult.refined_description}</div>
+                </div>
+
+                {Array.isArray(triageResult.quick_checks) && triageResult.quick_checks.length > 0 && (
+                  <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                    <strong style={{ color: 'var(--ink-secondary)' }}>Hướng dẫn xử lý nhanh tại chỗ:</strong>
+                    <ul style={{ margin: '4px 0 0 18px', padding: 0 }}>
+                      {triageResult.quick_checks.map((tip, i) => (
+                        <li key={i} style={{ marginBottom: '2px' }}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Incident Images Simulator */}

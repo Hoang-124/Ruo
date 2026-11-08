@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Icons } from '../common/SvgIcons';
 
-export const DEMO_ACCOUNTS = [
+const DEMO_ACCOUNTS = [
   {
     role: 'admin',
     roleLabel: 'Admin BGH',
