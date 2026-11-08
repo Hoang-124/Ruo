@@ -1,0 +1,125 @@
+{"id":"G001","text":"Máy chiếu bốc khói đen và có mùi khét nhựa","category":"CAT-DISPLAY","expected_severity":"critical","tags":["accented","fire"]}
+{"id":"G002","text":"may chieu boc khoi mu mit giua gio hoc","category":"CAT-DISPLAY","expected_severity":"critical","tags":["no_diacritics","fire"]}
+{"id":"G003","text":"Ổ cắm âm sàn tóe lửa khi sinh viên cắm sạc laptop","category":"CAT-POWER","expected_severity":"critical","tags":["accented","fire"]}
+{"id":"G004","text":"o cam am san toe lua khi cam sac","category":"CAT-POWER","expected_severity":"critical","tags":["no_diacritics","fire"]}
+{"id":"G005","text":"Sinh viên bị giật điện khi chạm vào vỏ case máy tính","category":"CAT-IT","expected_severity":"critical","tags":["accented","shock"]}
+{"id":"G006","text":"sv bi giat khi cham vo case may tinh","category":"CAT-IT","expected_severity":"critical","tags":["no_diacritics","shorthand","shock"]}
+{"id":"G007","text":"Chân bàn sắt bị rò điện, chạm vào thấy tê tay","category":"CAT-FURN","expected_severity":"critical","tags":["accented","shock"]}
+{"id":"G008","text":"Trần thạch cao phòng học bị sập một mảng lớn","category":null,"expected_severity":"critical","tags":["structural","no_equipment"]}
+{"id":"G009","text":"Tấm trần sắp rơi, đang treo lơ lửng phía trên bàn sinh viên","category":null,"expected_severity":"critical","tags":["structural","no_equipment"]}
+{"id":"G010","text":"Kính cửa sổ bị vỡ, mảnh kính rơi xuống lối đi","category":null,"expected_severity":"critical","tags":["structural","no_equipment"]}
+{"id":"G011","text":"Phòng học bị ngập nước do vỡ ống cấp trên trần","category":null,"expected_severity":"critical","tags":["flood","no_equipment"]}
+{"id":"G012","text":"phong lab bi ngap nuoc toan bo san","category":null,"expected_severity":"critical","tags":["no_diacritics","flood","no_equipment"]}
+{"id":"G013","text":"Cửa từ phòng thi bị kẹt, nhốt sinh viên bên trong","category":"CAT-SEC","expected_severity":"critical","tags":["entrapment"]}
+{"id":"G014","text":"khoa tu bi loi nhot nguoi trong phong server","category":"CAT-SEC","expected_severity":"critical","tags":["no_diacritics","entrapment"]}
+{"id":"G015","text":"Bình CO2 bị xì khí liên tục ở van","category":"CAT-FIRE","expected_severity":"critical","tags":["pccc"]}
+{"id":"G016","text":"Bình chữa cháy bột ngoài hành lang bị nổ bình","category":"CAT-FIRE","expected_severity":"critical","tags":["pccc"]}
+{"id":"G017","text":"Tủ điện tầng 3 phát nổ lớn rồi mất điện cả dãy phòng","category":"CAT-POWER","expected_severity":"critical","tags":["fire"]}
+{"id":"G018","text":"Dây điện trên trần bị chập cháy, có tia lửa bắn ra","category":"CAT-POWER","expected_severity":"critical","tags":["fire"]}
+{"id":"G019","text":"Rèm cửa bị bén lửa từ đèn sân khấu","category":"CAT-FURN","expected_severity":"critical","tags":["fire"]}
+{"id":"G020","text":"cai ghe xoay bi chay xem o goc phong","category":"CAT-FURN","expected_severity":"critical","tags":["no_diacritics","fire"]}
+{"id":"G021","text":"Máy tính để bàn bốc khói ở bộ nguồn","category":"CAT-IT","expected_severity":"critical","tags":["fire"]}
+{"id":"G022","text":"Ổ cứng NAS nóng ran và có mùi khét","category":"CAT-IT","expected_severity":"critical","tags":["fire"]}
+{"id":"G023","text":"Amply hội trường có mùi khét rồi tắt ngúm","category":"CAT-AUDIO","expected_severity":"critical","tags":["fire"]}
+{"id":"G024","text":"Máy in khói bốc ra từ khay giấy, khét lẹt","category":"CAT-OFFICE","expected_severity":"critical","tags":["fire"]}
+{"id":"G025","text":"Đèn panel trên trần phát nổ, mảnh vỡ rơi xuống bàn","category":"CAT-POWER","expected_severity":"critical","tags":["fire"]}
+{"id":"G026","text":"Đèn sự cố ở cầu thang bị chập, bốc khói trắng","category":"CAT-POWER","expected_severity":"critical","tags":["fire"]}
+{"id":"G027","text":"Máy sốc tim AED báo lỗi, không phóng điện được khi cấp cứu","category":"CAT-SPEC","expected_severity":"critical","tags":["medical"]}
+{"id":"G028","text":"Camera ốp trần bốc khói, cháy dây nguồn","category":"CAT-SEC","expected_severity":"critical","tags":["fire"]}
+{"id":"G029","text":"Bộ phát wifi trên trần có mùi khét và tia lửa","category":"CAT-NET","expected_severity":"critical","tags":["fire"]}
+{"id":"G030","text":"Switch trong tủ rack bị chập điện, khét lẹt cả phòng","category":"CAT-NET","expected_severity":"critical","tags":["fire"]}
+{"id":"G031","text":"Điều hòa không mát và bốc khói ở dàn lạnh","category":"CAT-HVAC","expected_severity":"critical","tags":["negation","fire"]}
+{"id":"G032","text":"Máy chiếu không lên hình rồi có mùi khét","category":"CAT-DISPLAY","expected_severity":"critical","tags":["negation","fire"]}
+{"id":"G033","text":"Máy tính không khởi động được sau đó bốc khói ở nguồn","category":"CAT-IT","expected_severity":"critical","tags":["negation","fire"]}
+{"id":"G034","text":"dieu hoa hong boc khoi","category":"CAT-HVAC","expected_severity":"critical","tags":["no_diacritics","negation","fire"]}
+{"id":"G035","text":"máy lạnh hông mát mà còn có mùi khét","category":"CAT-HVAC","expected_severity":"critical","tags":["negation","fire"]}
+{"id":"G036","text":"Giờ học buổi sáng diễn ra bình thường, giảng viên trình chiếu bài giảng, sinh viên làm bài tập nhóm và thảo luận sôi nổi, máy chiếu và điều hòa hoạt động ổn định trong suốt hai tiết đầu, đến giữa tiết thứ ba thì ổ cắm cạnh bục giảng đột nhiên bốc khói và có tiếng nổ nhỏ","category":"CAT-POWER","expected_severity":"critical","tags":["long_text","fire"]}
+{"id":"G037","text":"Có khói bốc ra từ cục nóng điều hòa ngoài ban công","category":"CAT-HVAC","expected_severity":"critical","tags":["fire"]}
+{"id":"G038","text":"Quạt hút phòng thí nghiệm cháy động cơ, khét lẹt","category":"CAT-HVAC","expected_severity":"critical","tags":["fire"]}
+{"id":"G039","text":"Tủ báo cháy kêu liên tục và có mùi khét bên trong tủ","category":"CAT-FIRE","expected_severity":"critical","tags":["fire"]}
+{"id":"G040","text":"Ghế sinh viên gãy sập làm một bạn ngã bị thương","category":"CAT-FURN","expected_severity":"critical","tags":["injury"]}
+{"id":"G041","text":"Giá sách sắt bị nghiêng sắp đổ vào lối đi","category":"CAT-FURN","expected_severity":"critical","tags":["structural"]}
+{"id":"G042","text":"mc boc khoi","category":"CAT-DISPLAY","expected_severity":"critical","tags":["shorthand","no_diacritics","fire"]}
+{"id":"G043","text":"Có mùi khét nồng nặc trong phòng nhưng chưa rõ từ đâu","category":null,"expected_severity":"critical","tags":["fire","no_equipment"]}
+{"id":"G044","text":"Mất điện toàn phòng, aptomat tổng không đóng lại được","category":"CAT-POWER","expected_severity":"critical","tags":["power"]}
+{"id":"G045","text":"Ổ điện bị chập nổ đen cả mặt ổ","category":"CAT-POWER","expected_severity":"critical","tags":["fire"]}
+{"id":"G046","text":"Ti vi màn hình lớn bốc cháy ở góc phòng hội thảo","category":"CAT-DISPLAY","expected_severity":"critical","tags":["fire"]}
+{"id":"G047","text":"Máy photocopy có tia lửa và khói khi chạy","category":"CAT-OFFICE","expected_severity":"critical","tags":["fire","homograph"]}
+{"id":"G048","text":"Cầu dao tổng nóng chảy vỏ nhựa, khét","category":"CAT-POWER","expected_severity":"critical","tags":["fire","homograph"]}
+{"id":"G049","text":"Bình nước nóng lạnh rò điện, sinh viên bị tê khi lấy nước","category":"CAT-OFFICE","expected_severity":"critical","tags":["shock"]}
+{"id":"G050","text":"Thang cáp trên trần bị đứt, treo lơ lửng trên lối đi","category":null,"expected_severity":"critical","tags":["structural","no_equipment"]}
+{"id":"G051","text":"Máy chiếu không bốc khói, chỉ bị mờ hình","category":"CAT-DISPLAY","expected_severity":"minor","tags":["negation"]}
+{"id":"G052","text":"Không có mùi khét, máy tính chỉ chạy chậm","category":"CAT-IT","expected_severity":"minor","tags":["negation","homograph"]}
+{"id":"G053","text":"Ổ cắm không có khói hay tia lửa nhưng bị lỏng chân cắm","category":"CAT-POWER","expected_severity":"minor","tags":["negation"]}
+{"id":"G054","text":"Chưa thấy khói và lửa, chỉ có tiếng kêu lạ ở điều hòa","category":"CAT-HVAC","expected_severity":"minor","tags":["negation"]}
+{"id":"G055","text":"ko co mui khet, may in chi ket giay","category":"CAT-OFFICE","expected_severity":"minor","tags":["negation","no_diacritics","shorthand"]}
+{"id":"G056","text":"khong co khoi hay lua, chi la den bao loi nhap nhay","category":"CAT-DISPLAY","expected_severity":"minor","tags":["negation","no_diacritics"]}
+{"id":"G057","text":"Máy tính không bị chập điện, chỉ là bàn phím liệt vài phím","category":"CAT-IT","expected_severity":"minor","tags":["negation"]}
+{"id":"G058","text":"Bàn sinh viên bị tróc sơn, không cháy, không có khói","category":"CAT-FURN","expected_severity":"minor","tags":["negation"]}
+{"id":"G059","text":"Kính cửa sổ không bị vỡ, chỉ hơi kẹt bản lề","category":null,"expected_severity":"minor","tags":["negation","no_equipment"]}
+{"id":"G060","text":"Phòng không ngập nước, chỉ đọng một vũng nhỏ cạnh cửa","category":null,"expected_severity":"minor","tags":["negation","no_equipment"]}
+{"id":"G061","text":"Sinh viên không bị giật, chỉ thấy vỏ máy hơi ấm","category":"CAT-IT","expected_severity":"minor","tags":["negation"]}
+{"id":"G062","text":"dieu hoa khong co mui khet nhung keu to","category":"CAT-HVAC","expected_severity":"minor","tags":["negation","no_diacritics"]}
+{"id":"G063","text":"Quạt dàn lạnh vẫn chạy nhưng điều hòa không mát","category":"CAT-HVAC","expected_severity":"major","tags":["homograph"]}
+{"id":"G064","text":"Máy chiếu bị cháy bóng đèn, không lên hình","category":"CAT-DISPLAY","expected_severity":"major","tags":["burnout"]}
+{"id":"G065","text":"may chieu chay bong den roi","category":"CAT-DISPLAY","expected_severity":"major","tags":["burnout","no_diacritics"]}
+{"id":"G066","text":"Điều hòa chảy nước xuống sàn lớp học","category":"CAT-HVAC","expected_severity":"major","tags":["homograph"]}
+{"id":"G067","text":"Loa nổ lụp bụp khi tăng âm lượng","category":"CAT-AUDIO","expected_severity":"minor","tags":["burnout","homograph"]}
+{"id":"G068","text":"Máy in chạy chậm, bản in bị mờ","category":"CAT-OFFICE","expected_severity":"minor","tags":["homograph"]}
+{"id":"G069","text":"Màn hình máy tính bị cháy điểm ảnh một góc nhỏ","category":"CAT-IT","expected_severity":"minor","tags":["burnout"]}
+{"id":"G070","text":"Nỗ lực khởi động lại nhiều lần nhưng máy tính vẫn treo","category":"CAT-IT","expected_severity":"major","tags":["homograph"]}
+{"id":"G071","text":"Một bóng đèn tuýp bị cháy bóng, góc phòng hơi tối","category":"CAT-POWER","expected_severity":"minor","tags":["burnout"]}
+{"id":"G072","text":"Cầu chì máy chiếu bị cháy, không bật được","category":"CAT-DISPLAY","expected_severity":"major","tags":["burnout"]}
+{"id":"G073","text":"Tivi bị cháy màu, hình ám xanh","category":"CAT-DISPLAY","expected_severity":"minor","tags":["burnout"]}
+{"id":"G074","text":"Mic không dây bị rè và nổ lách tách","category":"CAT-AUDIO","expected_severity":"minor","tags":["burnout","homograph"]}
+{"id":"G075","text":"Quạt máy chạy kêu to nhưng vẫn mát","category":"CAT-HVAC","expected_severity":"minor","tags":["homograph"]}
+{"id":"G076","text":"Bóng đèn chiếu sáng sân khấu bị cháy bóng","category":"CAT-POWER","expected_severity":"minor","tags":["burnout"]}
+{"id":"G077","text":"Máy chiếu không lên nguồn, đèn báo không sáng","category":"CAT-DISPLAY","expected_severity":"major","tags":["accented"]}
+{"id":"G078","text":"may chieu ko len hinh, bao no signal","category":"CAT-DISPLAY","expected_severity":"major","tags":["no_diacritics","shorthand"]}
+{"id":"G079","text":"Điều hòa không mát, chỉ thổi gió nóng","category":"CAT-HVAC","expected_severity":"major","tags":["accented"]}
+{"id":"G080","text":"đh ko mát, gv phản ánh lớp rất nóng","category":"CAT-HVAC","expected_severity":"major","tags":["shorthand"]}
+{"id":"G081","text":"Máy tính phòng lab báo màn hình xanh liên tục","category":"CAT-IT","expected_severity":"major","tags":["accented"]}
+{"id":"G082","text":"Cả phòng mất mạng, không truy cập được LMS","category":"CAT-NET","expected_severity":"major","tags":["accented"]}
+{"id":"G083","text":"mat wifi toan tang 4","category":"CAT-NET","expected_severity":"major","tags":["no_diacritics"]}
+{"id":"G084","text":"Camera hành lang mất hình trên đầu ghi","category":"CAT-SEC","expected_severity":"major","tags":["accented"]}
+{"id":"G085","text":"Máy in báo lỗi đỏ, không in được","category":"CAT-OFFICE","expected_severity":"major","tags":["accented"]}
+{"id":"G086","text":"Loa hội trường mất tiếng hoàn toàn trước buổi lễ","category":"CAT-AUDIO","expected_severity":"major","tags":["accented"]}
+{"id":"G087","text":"Đèn panel cả dãy bàn đầu không sáng","category":"CAT-POWER","expected_severity":"major","tags":["accented"]}
+{"id":"G088","text":"Aptomat phòng 402 nhảy liên tục","category":"CAT-POWER","expected_severity":"major","tags":["accented"]}
+{"id":"G089","text":"Bàn giảng viên gãy chân, không đặt được máy tính","category":"CAT-FURN","expected_severity":"major","tags":["accented"]}
+{"id":"G090","text":"Màn chiếu điện bị kẹt, không hạ xuống được","category":"CAT-DISPLAY","expected_severity":"major","tags":["accented"]}
+{"id":"G091","text":"Bình chữa cháy bột tụt áp, kim chỉ vạch đỏ","category":"CAT-FIRE","expected_severity":"major","tags":["accented"]}
+{"id":"G092","text":"Đầu báo khói báo lỗi, không nhận tín hiệu","category":"CAT-FIRE","expected_severity":"major","tags":["accented"]}
+{"id":"G093","text":"Máy chấm công không nhận vân tay","category":"CAT-OFFICE","expected_severity":"minor","tags":["accented"]}
+{"id":"G094","text":"Máy đo huyết áp phòng y tế không lên nguồn","category":"CAT-SPEC","expected_severity":"major","tags":["accented"]}
+{"id":"G095","text":"Giường bệnh phòng y tế gãy chốt nâng","category":"CAT-SPEC","expected_severity":"major","tags":["accented"]}
+{"id":"G096","text":"Máy chiếu bị sọc ngang, chữ không đọc được","category":"CAT-DISPLAY","expected_severity":"major","tags":["accented"]}
+{"id":"G097","text":"Switch tầng 2 chết cổng, 10 máy mất mạng","category":"CAT-NET","expected_severity":"major","tags":["accented"]}
+{"id":"G098","text":"Đầu ghi camera không lưu được dữ liệu","category":"CAT-SEC","expected_severity":"major","tags":["accented"]}
+{"id":"G099","text":"Micro không dây mất kết nối, không dùng được","category":"CAT-AUDIO","expected_severity":"major","tags":["accented"]}
+{"id":"G100","text":"Máy lọc nước không ra nước","category":"CAT-OFFICE","expected_severity":"minor","tags":["accented"]}
+{"id":"G101","text":"Ghế sinh viên kêu cót két khi ngồi","category":"CAT-FURN","expected_severity":"minor","tags":["accented"]}
+{"id":"G102","text":"Mặt bàn bị trầy xước nhẹ","category":"CAT-FURN","expected_severity":"minor","tags":["accented"]}
+{"id":"G103","text":"Rèm cửa bị tuột một móc treo","category":"CAT-FURN","expected_severity":"minor","tags":["accented"]}
+{"id":"G104","text":"Điều khiển máy chiếu hết pin","category":"CAT-DISPLAY","expected_severity":"minor","tags":["accented"]}
+{"id":"G105","text":"Điều hòa kêu hơi to khi mới bật","category":"CAT-HVAC","expected_severity":"minor","tags":["accented"]}
+{"id":"G106","text":"Chuột máy tính bị đơ nút phải","category":"CAT-IT","expected_severity":"minor","tags":["accented"]}
+{"id":"G107","text":"Bàn phím mất vài phím chữ","category":"CAT-IT","expected_severity":"minor","tags":["accented"]}
+{"id":"G108","text":"Loa bị rè nhẹ ở âm lượng lớn","category":"CAT-AUDIO","expected_severity":"minor","tags":["accented"]}
+{"id":"G109","text":"Máy in in hơi mờ, cần thay mực","category":"CAT-OFFICE","expected_severity":"minor","tags":["accented"]}
+{"id":"G110","text":"Một đèn LED panel nhấp nháy","category":"CAT-POWER","expected_severity":"minor","tags":["accented"]}
+{"id":"G111","text":"Camera hơi mờ do bám bụi","category":"CAT-SEC","expected_severity":"minor","tags":["accented"]}
+{"id":"G112","text":"Wifi phòng học hơi chậm giờ cao điểm","category":"CAT-NET","expected_severity":"minor","tags":["accented"]}
+{"id":"G113","text":"Tủ locker bị kẹt khóa","category":"CAT-FURN","expected_severity":"minor","tags":["accented"]}
+{"id":"G114","text":"Ổ cắm hơi lỏng, phích cắm dễ rơi","category":"CAT-POWER","expected_severity":"minor","tags":["accented"]}
+{"id":"G115","text":"Bình chữa cháy bị bám bụi, tem kiểm định mờ","category":"CAT-FIRE","expected_severity":"minor","tags":["accented"]}
+{"id":"G116","text":"ghe xoay bi long oc vit","category":"CAT-FURN","expected_severity":"minor","tags":["no_diacritics"]}
+{"id":"G117","text":"may in bi ket giay","category":"CAT-OFFICE","expected_severity":"minor","tags":["no_diacritics"]}
+{"id":"G118","text":"den tuyp nhap nhay","category":"CAT-POWER","expected_severity":"minor","tags":["no_diacritics"]}
+{"id":"G119","text":"Quạt thông gió kêu lạch cạch","category":"CAT-HVAC","expected_severity":"minor","tags":["accented"]}
+{"id":"G120","text":"Màn hình kiosk bị trầy","category":"CAT-IT","expected_severity":"minor","tags":["accented"]}
+{"id":"G121","text":"Cây nước nóng lạnh nước không đủ lạnh","category":"CAT-OFFICE","expected_severity":"minor","tags":["accented"]}
+{"id":"G122","text":"Tủ thuốc phòng y tế bị lệch cánh","category":"CAT-SPEC","expected_severity":"minor","tags":["accented"]}
+{"id":"G123","text":"Bục giảng bị bong lớp ván phủ","category":"CAT-FURN","expected_severity":"minor","tags":["accented"]}
+{"id":"G124","text":"Máy chiếu hơi mờ ở góc trái","category":"CAT-DISPLAY","expected_severity":"minor","tags":["accented"]}
+{"id":"G125","text":"Điện thoại IP bàn giảng viên không có âm báo","category":"CAT-NET","expected_severity":"minor","tags":["accented"]}

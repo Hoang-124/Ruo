@@ -1,0 +1,60 @@
+{
+  "total": 125,
+  "severity_accuracy": 0.832,
+  "category_accuracy": 0.9828,
+  "hazard_recall": 1,
+  "false_critical_rate": 0.0533,
+  "by_tag": {
+    "accented": {
+      "accuracy": 0.766
+    },
+    "burnout": {
+      "accuracy": 0.6667
+    },
+    "entrapment": {
+      "accuracy": 1
+    },
+    "fire": {
+      "accuracy": 1
+    },
+    "flood": {
+      "accuracy": 1
+    },
+    "homograph": {
+      "accuracy": 0.8
+    },
+    "injury": {
+      "accuracy": 1
+    },
+    "long_text": {
+      "accuracy": 1
+    },
+    "medical": {
+      "accuracy": 1
+    },
+    "negation": {
+      "accuracy": 0.5882
+    },
+    "no_diacritics": {
+      "accuracy": 0.9412
+    },
+    "no_equipment": {
+      "accuracy": 0.8889
+    },
+    "pccc": {
+      "accuracy": 1
+    },
+    "power": {
+      "accuracy": 1
+    },
+    "shock": {
+      "accuracy": 1
+    },
+    "shorthand": {
+      "accuracy": 1
+    },
+    "structural": {
+      "accuracy": 1
+    }
+  }
+}
