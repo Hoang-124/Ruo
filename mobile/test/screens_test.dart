@@ -87,10 +87,14 @@ void main() {
         await api.login('x', 'y');
         await tester.pumpWidget(RuoApp(api: api));
         await tester.pumpAndSettle();
-        final management = ['admin', 'facility_manager'].contains(role);
+        final expectedDestinations = switch (role) {
+          'admin' || 'facility_manager' => 6,
+          'technician' || 'lecturer' => 5,
+          _ => 5,
+        };
         expect(
           find.byType(NavigationDestination),
-          findsNWidgets(management ? 4 : 2),
+          findsNWidgets(expectedDestinations),
         );
         await tester.tap(
           find.widgetWithText(NavigationDestination, 'Phòng học'),

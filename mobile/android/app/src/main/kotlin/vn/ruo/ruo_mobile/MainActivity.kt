@@ -4,8 +4,12 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.print.PrintManager
+import android.util.Log
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -17,6 +21,38 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vn.ruo.mobile/scanner").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "scanBarcode" -> {
+                    try {
+                        val options = GmsBarcodeScannerOptions.Builder()
+                            .setBarcodeFormats(
+                                Barcode.FORMAT_QR_CODE,
+                                Barcode.FORMAT_CODE_128,
+                                Barcode.FORMAT_CODE_39
+                            )
+                            .enableAutoZoom()
+                            .build()
+                        val scanner = GmsBarcodeScanning.getClient(this, options)
+                        scanner.startScan()
+                            .addOnSuccessListener { barcode ->
+                                result.success(barcode.rawValue)
+                            }
+                            .addOnCanceledListener {
+                                result.success(null)
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("RuoScanner", "Scan failure listener triggered", e)
+                                result.error("SCAN_ERROR", e.message ?: "Quét mã thất bại.", null)
+                            }
+                    } catch (e: Exception) {
+                        Log.e("RuoScanner", "Scanner startScan caught exception", e)
+                        result.error("SCAN_INIT_ERROR", e.message ?: "Không khởi động được máy quét.", null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vn.ruo.mobile/documents").setMethodCallHandler { call, result ->
             when (call.method) {
                 "saveCsv" -> {
