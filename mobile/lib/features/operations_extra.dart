@@ -616,7 +616,9 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
   bool _verifyingChain = false;
   bool _runningAiAudit = false;
   Json? _chainResult;
+  String? _chainError;
   Json? _aiAuditResult;
+  String? _aiAuditError;
 
   String get _role => value(widget.api.user?['role'], fallback: '');
   bool get _isAdmin => _role == 'admin';
@@ -625,49 +627,52 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
   Future<void> _verifyHashChain() async {
-    setState(() => _verifyingChain = true);
+    setState(() {
+      _verifyingChain = true;
+      _chainResult = null;
+      _chainError = null;
+    });
     try {
-      Json res;
-      try {
-        res = await widget.api.get('/audit/verify-chain');
-      } catch (_) {
-        res = {
-          'valid': true,
-          'checked_count': 48,
-          'message': 'Chuỗi băm bất biến SHA-256 toàn vẹn 100% (48/48 bản ghi khớp chữ ký số).',
-        };
+      final res = await widget.api.get('/audit/verify-chain');
+      final verification = asMap(res['verification']);
+      if (verification['isValid'] is! bool) {
+        throw const ApiException(0, 'Máy chủ không trả về kết quả xác thực.');
       }
       if (!mounted) return;
-      setState(() => _chainResult = res);
+      setState(() => _chainResult = verification);
+    } catch (error) {
+      // A failed verification is "unknown", never "intact".
+      if (!mounted) return;
+      setState(() {
+        _chainError =
+            'Không thể xác thực chuỗi SHA-256: ${error is ApiException ? error.message : 'mất kết nối máy chủ.'}';
+      });
     } finally {
       if (mounted) setState(() => _verifyingChain = false);
     }
   }
 
   Future<void> _runAiAnomalyDetection() async {
-    setState(() => _runningAiAudit = true);
+    setState(() {
+      _runningAiAudit = true;
+      _aiAuditError = null;
+    });
     try {
-      Json res = {};
-      try {
-        final raw = await widget.api.send('POST', '/audit/ai-analyze', {});
-        res = asMap(raw['analysis'] ?? raw['data'] ?? raw);
-      } catch (_) {}
-      if (res.isEmpty) {
-        try {
-          final raw = await widget.api.get('/audit/ai-anomalies');
-          res = asMap(raw['analysis'] ?? raw['data'] ?? raw);
-        } catch (_) {}
-      }
-      if (res.isEmpty) {
-        res = {
-          'risk_level': 'LOW',
-          'security_score': 96,
-          'executive_summary': 'Ruo Cortex Local AI (#4B): Điểm an ninh đạt 96/100. Không phát hiện xung đột phân tách nhiệm vụ (SoD) hoặc leo thang đặc quyền trái phép.',
-          'anomalies': [],
-        };
-      }
+      final raw = await widget.api.send('POST', '/audit/ai-analyze', {});
+      final res = asMap(raw['analysis'] ?? raw['data'] ?? raw);
       if (!mounted) return;
-      setState(() => _aiAuditResult = res);
+      setState(() {
+        _aiAuditResult = res.isEmpty ? null : res;
+        _aiAuditError = res.isEmpty
+            ? aiFailureMessage(const ApiException(0, 'Máy chủ không trả về kết quả.'))
+            : null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _aiAuditResult = null;
+        _aiAuditError = aiFailureMessage(error);
+      });
     } finally {
       if (mounted) setState(() => _runningAiAudit = false);
     }
@@ -681,12 +686,14 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
       await widget.api.send('PATCH', '/auth/users/$userId/lock', {
         'status': nextStatus,
       });
-    } catch (_) {
-      try {
-        await widget.api.send('PUT', '/users/$userId/status', {
-          'status': nextStatus,
-        });
-      } catch (_) {}
+    } catch (error) {
+      if (!mounted) return;
+      _message(
+        error is ApiException
+            ? error.message
+            : 'Không kết nối được máy chủ. Trạng thái tài khoản chưa thay đổi.',
+      );
+      return;
     }
     if (!mounted) return;
     setState(() => _revision++);
@@ -899,29 +906,39 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
               ),
             ],
           ),
+          if (_chainError != null)
+            AiErrorNotice(_chainError!, key: const Key('chain_verify_error')),
           if (_chainResult != null) ...[
             const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: RuoTokens.emerald600.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: RuoTokens.emerald600),
-              ),
-              child: Text(
-                value(
-                  _chainResult!['message'],
-                  fallback:
-                      'Chuỗi SHA-256 toàn vẹn (${value(_chainResult!['checked_count'], fallback: '100%')} bản ghi).',
-                ),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12.5,
-                  color: RuoTokens.emerald600,
-                ),
-              ),
+            Builder(
+              builder: (context) {
+                final intact = _chainResult!['isValid'] == true;
+                final tone = intact ? RuoTokens.emerald600 : RuoTokens.rose600;
+                final text = intact
+                    ? 'Chuỗi băm bất biến SHA-256 toàn vẹn: ${value(_chainResult!['totalLogs'], fallback: '0')} bản ghi hợp lệ.'
+                    : 'PHÁT HIỆN CAN THIỆP SỔ CÁI tại khối #${value(_chainResult!['brokenAt'])}: ${value(_chainResult!['message'])}';
+                return Container(
+                  key: const Key('chain_verify_result'),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: tone.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: tone),
+                  ),
+                  child: Text(
+                    text,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.5,
+                      color: tone,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
+          if (_aiAuditError != null)
+            AiErrorNotice(_aiAuditError!, key: const Key('ai_audit_error')),
           if (_aiAuditResult != null) ...[
             const SizedBox(height: 10),
             Card(
@@ -947,7 +964,7 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
                             fallback: 'LOW',
                           ).toLowerCase(),
                           labelOverride:
-                              'Điểm An Ninh: ${value(_aiAuditResult!['security_score'], fallback: '96')}/100',
+                              'Điểm An Ninh: ${value(_aiAuditResult!['security_score'])}/100',
                         ),
                       ],
                     ),

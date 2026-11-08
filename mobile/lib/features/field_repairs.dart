@@ -7,6 +7,11 @@ import '../ui/common.dart';
 import '../ui/tokens.dart';
 import '../ui/vectors.dart';
 
+final _objectIdPattern = RegExp(r'^[a-fA-F0-9]{24}$');
+
+/// The AI endpoints validate Mongo ObjectIds; never send equipment/room codes as IDs.
+bool _isObjectId(Object? id) => id != null && _objectIdPattern.hasMatch('$id');
+
 class ReportIncidentDialog extends StatefulWidget {
   const ReportIncidentDialog({
     super.key,
@@ -33,6 +38,7 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
   bool _aiBusy = false;
   bool _hasPhoto = true;
   String? _error;
+  String? _aiError;
   Json? _aiTriage;
   List<Json> _rooms = [];
   List<Json> _roomEquipments = [];
@@ -138,6 +144,7 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
     setState(() {
       _aiBusy = true;
       _error = null;
+      _aiError = null;
     });
     try {
       final eqId =
@@ -152,62 +159,29 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty)
           .toList();
-      Json result = {};
       try {
         final res = await widget.api.send('POST', '/repairs/ai-triage', {
           'incident_description': desc,
           'description': desc,
-          'equipment_id': ?eqId,
-          'room_id': ?roomId,
+          if (_isObjectId(eqId)) 'equipment_id': '$eqId',
+          if (_isObjectId(roomId)) 'room_id': '$roomId',
           'incident_images': images,
-          if (_roomEquipments.isNotEmpty) 'room_equipments': _roomEquipments,
         });
-        result = asMap(res['triage'] ?? res['data'] ?? res);
-      } catch (_) {}
-
-      if (result.isEmpty) {
-        try {
-          final res = await widget.api.send('POST', '/ai/incident-triage', {
-            'incident_description': desc,
-            'description': desc,
-            'equipment_id': ?eqId,
-            'room_id': ?roomId,
-          });
-          result = asMap(res['triage'] ?? res['data'] ?? res);
-        } catch (_) {}
+        final result = asMap(res['triage'] ?? res['data'] ?? res);
+        if (!mounted) return;
+        setState(() {
+          _aiTriage = result.isEmpty ? null : result;
+          _aiError = result.isEmpty
+              ? aiFailureMessage(const ApiException(0, 'Máy chủ không trả về kết quả.'))
+              : null;
+        });
+      } catch (error) {
+        if (!mounted) return;
+        setState(() {
+          _aiTriage = null;
+          _aiError = aiFailureMessage(error);
+        });
       }
-
-      if (result.isEmpty) {
-        final lower = desc.toLowerCase();
-        final isCritical =
-            lower.contains('chập') ||
-            lower.contains('khói') ||
-            lower.contains('rò điện') ||
-            lower.contains('nổ');
-        result = {
-          'suggested_damage_level': isCritical ? 'critical' : 'major',
-          'damage_level': isCritical ? 'critical' : 'major',
-          'sla_label': isCritical
-              ? 'Khẩn cấp 8 giờ (24/7)'
-              : '24 giờ hành chính',
-          'confidence': 91,
-          'fault_classification': {
-            'playbook_title': isCritical
-                ? 'Sự cố an toàn điện / nguy cơ cháy nổ khẩn cấp'
-                : 'Sự cố cơ điện / suy giảm hiệu suất vận hành thiết bị',
-          },
-          'reasoning': isCritical
-              ? 'CẢNH BÁO AN TOÀN: Ngắt aptomat nguồn thiết bị ngay lập tức và cách ly khu vực (SLA 8 giờ 24/7).'
-              : 'Nhận diện lỗi cơ điện làm gián đoạn trực tiếp công năng phục vụ giảng dạy (SLA 24 giờ hành chính).',
-          'quick_checks': [
-            'Tạm ngừng vận hành thiết bị, giữ nguyên hiện trường để KTV kiểm tra.',
-          ],
-          'refined_description':
-              '[AI Chuẩn Hóa] $desc — Thiết bị: ${value(widget.equipment['code'], fallback: 'EQ-101')}',
-        };
-      }
-      if (!mounted) return;
-      setState(() => _aiTriage = result);
     } finally {
       if (mounted) setState(() => _aiBusy = false);
     }
@@ -583,6 +557,8 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
                   ),
                 ),
               ),
+              if (_aiError != null)
+                AiErrorNotice(_aiError!, key: const Key('ai_triage_error')),
               if (_aiTriage != null) ...[
                 const SizedBox(height: 8),
                 _buildAiTriageCard(context, _aiTriage!),
@@ -1042,6 +1018,7 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
   String _damageLevel = 'minor';
   bool _busy = false;
   bool _aiBusy = false;
+  String? _aiError;
   Json? _aiTriage;
   List<Json> _rooms = [];
   List<Json> _equipments = [];
@@ -1191,6 +1168,7 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
     setState(() {
       _aiBusy = true;
       _aiTriage = null;
+      _aiError = null;
     });
     try {
       final images = _imageController.text
@@ -1198,44 +1176,26 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty)
           .toList();
-      Json result = {};
       try {
         final res = await widget.api.send('POST', '/repairs/ai-triage', {
-          'room_id': _selectedRoomId,
-          'equipment_id': _selectedEquipmentId,
+          if (_isObjectId(_selectedRoomId)) 'room_id': _selectedRoomId,
+          if (_isObjectId(_selectedEquipmentId))
+            'equipment_id': _selectedEquipmentId,
           'incident_description': desc,
           'incident_images': images,
-          'room_equipments': _equipments,
         });
-        result = asMap(res['triage'] ?? res['data'] ?? res);
-      } catch (_) {}
-      if (result.isEmpty) {
-        final lower = desc.toLowerCase();
-        final isCritical =
-            lower.contains('chập') ||
-            lower.contains('khói') ||
-            lower.contains('rò điện') ||
-            lower.contains('nổ');
-        result = {
-          'engine': 'local',
-          'suggested_damage_level': isCritical ? 'critical' : 'major',
-          'sla_label': isCritical ? 'Khẩn cấp 8 giờ (24/7)' : '24 giờ',
-          'confidence': 92,
-          'fault_classification': {
-            'playbook_title': isCritical
-                ? 'Sự cố an toàn điện / nguy cơ cháy nổ'
-                : 'Sự cố thiết bị giảng đường',
-          },
-          'reasoning': 'AI đã phân tích mức độ ưu tiên, kiểm tra trùng lặp và chuẩn hóa mô tả kỹ thuật.',
-          'refined_description': '[AI Chuẩn Hóa] $desc',
-          'quick_checks': [
-            '1. Kiểm tra cầu dao / nguồn cấp thiết bị tại phòng học.',
-            '2. Giữ nguyên hiện trạng để Kỹ thuật viên tiếp nhận theo SLA.',
-          ],
-        };
+        final result = asMap(res['triage'] ?? res['data'] ?? res);
+        if (!mounted) return;
+        setState(() {
+          _aiTriage = result.isEmpty ? null : result;
+          _aiError = result.isEmpty
+              ? aiFailureMessage(const ApiException(0, 'Máy chủ không trả về kết quả.'))
+              : null;
+        });
+      } catch (error) {
+        if (!mounted) return;
+        setState(() => _aiError = aiFailureMessage(error));
       }
-      if (!mounted) return;
-      setState(() => _aiTriage = result);
     } finally {
       if (mounted) setState(() => _aiBusy = false);
     }
@@ -1619,6 +1579,8 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
                   hintText: 'VD: Máy chiếu bật không lên nguồn, đèn nhấp nháy đỏ liên tục; quạt tản nhiệt kêu to bất thường khi bật cầu dao...',
                 ),
               ),
+              if (_aiError != null)
+                AiErrorNotice(_aiError!, key: const Key('ai_triage_error')),
               if (_aiTriage != null) ...[
                 const SizedBox(height: 10),
                 Container(
@@ -2230,9 +2192,10 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
   bool _loadingAi = false;
   bool _busyAction = false;
   Json? _copilot;
+  String? _copilotError;
   final _noteController = TextEditingController();
   final _costController = TextEditingController(text: '0');
-  String _selectedTechId = 'KT001';
+  String _selectedTechId = '';
   String _selectedDamageLevel = 'minor';
   String _selectedSpareEqId = '';
   String _resolveOutcome = 'repaired';
@@ -2302,95 +2265,64 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
     return asMap(_copilot?['disposal_advisory']);
   }
 
-  Future<void> _fetchCopilot() async {
-    setState(() => _loadingAi = true);
-    final ticketId =
-        widget.ticket['_id'] ??
-        widget.ticket['id'] ??
-        widget.ticket['ticket_code'];
+  /// Runs a ticket mutation and only mirrors it locally after the server confirms;
+  /// a rejected request (403/409/offline) must never look like a success.
+  Future<void> _runTicketAction({
+    required Future<Json> Function() request,
+    required void Function(Json response) applyLocally,
+    required String successMessage,
+  }) async {
+    setState(() => _busyAction = true);
     try {
-      try {
-        final res = await widget.api.send(
-          'POST',
-          '/repairs/$ticketId/ai-copilot',
-          {},
-        );
-        final data = asMap(res['copilot'] ?? res['data'] ?? res);
-        if (data.isNotEmpty) {
-          _copilot = data;
-        }
-      } catch (_) {}
-      if (_copilot == null || _copilot!.isEmpty) {
-        try {
-          final res = await widget.api.get('/repairs/$ticketId/ai-copilot');
-          final data = asMap(res['copilot'] ?? res['data'] ?? res);
-          if (data.isNotEmpty) {
-            _copilot = data;
-          }
-        } catch (_) {}
+      final res = await request();
+      if (!mounted) return;
+      setState(() => applyLocally(res));
+      widget.onUpdated?.call();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: RuoTokens.emerald700,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is ApiException
+                ? error.message
+                : 'Không kết nối được máy chủ. Thao tác chưa được lưu.',
+          ),
+          backgroundColor: RuoTokens.rose600,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busyAction = false);
+    }
+  }
+
+  Future<void> _fetchCopilot() async {
+    final ticketId = widget.ticket['_id'] ?? widget.ticket['id'];
+    setState(() {
+      _loadingAi = true;
+      _copilotError = null;
+    });
+    try {
+      final res = await widget.api.send(
+        'POST',
+        '/repairs/$ticketId/ai-copilot',
+        {},
+      );
+      final data = asMap(res['copilot'] ?? res['data'] ?? res);
+      if (data.isEmpty) {
+        throw const ApiException(0, 'Máy chủ không trả về kết quả.');
       }
-      _copilot ??= {
-        'diagnosis': {
-          'fault_label': 'Chẩn đoán kỹ thuật tự động (Ruo Cortex Local AI)',
-          'playbook_title': 'Chẩn đoán kỹ thuật tự động (Ruo Cortex Local AI)',
-          'root_cause': 'Hao mòn cơ khí quạt lồng sóc / suy giảm linh kiện công suất sau chu kỳ vận hành cao.',
-          'safety_protocol': 'Ngắt nguồn CB nhánh trước khi mở mặt nạ thiết bị và đeo găng bảo hộ cách điện.',
-          'troubleshooting_steps': [
-            '1. Kiểm tra nguồn cấp và đo dòng khởi động bằng ampe kìm.',
-            '2. Tháo vệ sinh cụm tản nhiệt / kiểm tra bạc đạn và dây cáp tín hiệu.',
-            '3. Chạy thử tải 15 phút và đối chiếu thông số chuẩn nhà sản xuất.',
-          ],
-          'suggested_log_notes': 'Đã kiểm tra hiện trường, xác định nguyên nhân gốc và đang thay thế vật tư tiêu hao.',
-          'suggested_outcome_notes': 'Đã thay thế linh kiện chuẩn hãng, cân chỉnh thông số và chạy thử tải ổn định 100%.',
-        },
-        'recommended_technicians': [
-          {
-            '_id': 'KT001',
-            'full_name': 'Kỹ Thuật Viên Trần Minh Tuấn (KT001)',
-            'match_score': 92,
-            'active_tickets': 1,
-            'repair_unit': 'Tổ Kỹ Thuật Điện - Điện Tử',
-          },
-          {
-            '_id': 'KT002',
-            'full_name': 'Kỹ Thuật Viên Lê Hoàng Nam (KT002)',
-            'match_score': 84,
-            'active_tickets': 2,
-            'repair_unit': 'Tổ Kỹ Thuật Bảo Trì Tổng Hợp',
-          },
-        ],
-        'recommended_parts': [
-          {
-            'code': 'PART-CAP45',
-            'name': 'Tụ đề máy nén / quạt dàn lạnh 45uF',
-            'stock': 12,
-            'quantity': 12,
-            'unit': 'Cái',
-          },
-        ],
-        'recommended_replacements': [
-          {
-            '_id': 'EQ-KHO-01-SPARE-01',
-            'code': 'EQ-KHO-01-ACCASS-01',
-            'name': 'Thiết bị dự phòng kho KHO-01 cùng chủng loại',
-          },
-        ],
-        'disposal_evaluation': {
-          'r_ratio_percent': 22.5,
-          'threshold_percent': 60,
-          'should_propose_disposal': false,
-          'recommendation': 'Tỷ lệ hao mòn R = 22.5% (< 60%) — Khuyến nghị sửa chữa phục hồi.',
-        },
-        'ai_drafts': {
-          'progress_note': 'Đã kiểm tra hiện trường, xác định nguyên nhân gốc và đang thay thế vật tư tiêu hao.',
-          'resolved_note': 'Đã thay thế linh kiện chuẩn hãng, cân chỉnh thông số và chạy thử tải ổn định 100%.',
-        },
-      };
+      _copilot = data;
       final techs = _extractTechs();
       if (techs.isNotEmpty) {
         _selectedTechId = value(
           techs.first['_id'] ?? techs.first['id'],
-          fallback: 'KT001',
+          fallback: '',
         );
       }
       final dispatch = asMap(_copilot?['dispatch_recommendation']);
@@ -2400,142 +2332,104 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
       }
       final diagnosis = asMap(_copilot?['diagnosis']);
       final drafts = asMap(_copilot?['ai_drafts']);
-      if (_noteController.text.isEmpty) {
-        _noteController.text = value(
-          diagnosis['suggested_outcome_notes'] ??
-              diagnosis['suggested_log_notes'] ??
-              drafts['resolved_note'] ??
-              drafts['progress_note'],
-          fallback: 'Đã kiểm tra kỹ thuật và khắc phục sự cố theo quy trình.',
-        );
+      // Only prefill with server-generated drafts; never invent a "repaired" claim.
+      final draft = value(
+        diagnosis['suggested_outcome_notes'] ??
+            diagnosis['suggested_log_notes'] ??
+            drafts['resolved_note'] ??
+            drafts['progress_note'],
+        fallback: '',
+      );
+      if (_noteController.text.isEmpty && draft.isNotEmpty) {
+        _noteController.text = draft;
       }
+    } catch (error) {
+      _copilot = null;
+      _copilotError = aiFailureMessage(error);
     } finally {
       if (mounted) setState(() => _loadingAi = false);
     }
   }
 
   Future<void> _assignTechnician() async {
-    setState(() => _busyAction = true);
     final ticketId = widget.ticket['_id'] ?? widget.ticket['id'];
+    if (!_isObjectId(_selectedTechId)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chưa có kỹ thuật viên hợp lệ để giao việc.')),
+      );
+      return;
+    }
     final techs = _extractTechs();
     final chosenTech = techs.firstWhere(
       (item) => value(item['_id'] ?? item['id']) == _selectedTechId,
       orElse: () => {'_id': _selectedTechId, 'full_name': _selectedTechId},
     );
-    try {
-      try {
-        final res = await widget.api.send('PUT', '/repairs/$ticketId/assign', {
-          'assigned_to': _selectedTechId,
-          'damage_level': _selectedDamageLevel,
-          if (_selectedSpareEqId.isNotEmpty)
-            'replacement_equipment_id': _selectedSpareEqId,
-        });
+    final techName = value(chosenTech['full_name'], fallback: _selectedTechId);
+    await _runTicketAction(
+      request: () => widget.api.send('PUT', '/repairs/$ticketId/assign', {
+        'assigned_to': _selectedTechId,
+        'damage_level': _selectedDamageLevel,
+        if (_selectedSpareEqId.isNotEmpty)
+          'replacement_equipment_id': _selectedSpareEqId,
+      }),
+      applyLocally: (res) {
         final updated = asMap(res['repair'] ?? res['data']);
-        if (updated.isNotEmpty) {
-          widget.ticket.addAll(updated);
-        }
-      } catch (_) {}
-      setState(() {
+        if (updated.isNotEmpty) widget.ticket.addAll(updated);
         widget.ticket['status'] = 'assigned';
         widget.ticket['damage_level'] = _selectedDamageLevel;
         widget.ticket['assigned_to'] = {
           '_id': _selectedTechId,
-          'full_name': value(
-            chosenTech['full_name'],
-            fallback: _selectedTechId,
-          ),
+          'full_name': techName,
         };
-      });
-      widget.onUpdated?.call();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Đã giao việc cho ${value(chosenTech['full_name'], fallback: _selectedTechId)}',
-          ),
-          backgroundColor: RuoTokens.emerald700,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _busyAction = false);
-    }
+      },
+      successMessage: 'Đã giao việc cho $techName',
+    );
   }
 
   Future<void> _logProgress() async {
-    setState(() => _busyAction = true);
     final ticketId = widget.ticket['_id'] ?? widget.ticket['id'];
     final costVal = int.tryParse(_costController.text.trim()) ?? 0;
-    try {
-      try {
-        await widget.api.send('PUT', '/repairs/$ticketId/progress', {
-          'action': 'in_progress',
-          'note': _noteController.text.trim(),
-          'notes': _noteController.text.trim(),
-          'cost': costVal,
-        });
-      } catch (_) {}
-      setState(() {
-        widget.ticket['status'] = 'in_progress';
-      });
-      widget.onUpdated?.call();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã ghi nhật ký tiến độ sửa chữa.')),
-      );
-    } finally {
-      if (mounted) setState(() => _busyAction = false);
-    }
+    await _runTicketAction(
+      request: () => widget.api.send('PUT', '/repairs/$ticketId/progress', {
+        'action': 'in_progress',
+        'note': _noteController.text.trim(),
+        'notes': _noteController.text.trim(),
+        'cost': costVal,
+      }),
+      applyLocally: (_) => widget.ticket['status'] = 'in_progress',
+      successMessage: 'Đã ghi nhật ký tiến độ sửa chữa.',
+    );
   }
 
   Future<void> _resolveWithOutcome() async {
-    setState(() => _busyAction = true);
     final ticketId = widget.ticket['_id'] ?? widget.ticket['id'];
-    try {
-      try {
-        await widget.api.send('PUT', '/repairs/$ticketId/resolve', {
-          'outcome': _resolveOutcome,
-          'notes': _noteController.text.trim(),
-        });
-      } catch (_) {}
-      setState(() {
+    await _runTicketAction(
+      request: () => widget.api.send('PUT', '/repairs/$ticketId/resolve', {
+        'outcome': _resolveOutcome,
+        'notes': _noteController.text.trim(),
+      }),
+      applyLocally: (_) {
         widget.ticket['status'] = _resolveOutcome == 'unrepairable'
             ? 'unrepairable'
             : 'resolved';
         widget.ticket['outcome'] = _resolveOutcome;
-      });
-      widget.onUpdated?.call();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã báo cáo kết quả xử lý sự cố.')),
-      );
-    } finally {
-      if (mounted) setState(() => _busyAction = false);
-    }
+      },
+      successMessage: 'Đã báo cáo kết quả xử lý sự cố.',
+    );
   }
 
   Future<void> _closeTicket() async {
-    setState(() => _busyAction = true);
     final ticketId = widget.ticket['_id'] ?? widget.ticket['id'];
-    try {
-      try {
-        await widget.api.send('PUT', '/repairs/$ticketId/close', {
-          if (_destinationRoomId.isNotEmpty)
-            'destination_room_id': _destinationRoomId,
-          'close_notes': _noteController.text.trim(),
-          'notes': _noteController.text.trim(),
-        });
-      } catch (_) {}
-      setState(() {
-        widget.ticket['status'] = 'closed';
-      });
-      widget.onUpdated?.call();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã nghiệm thu & đóng phiếu sửa chữa.')),
-      );
-    } finally {
-      if (mounted) setState(() => _busyAction = false);
-    }
+    await _runTicketAction(
+      request: () => widget.api.send('PUT', '/repairs/$ticketId/close', {
+        if (_destinationRoomId.isNotEmpty)
+          'destination_room_id': _destinationRoomId,
+        'close_notes': _noteController.text.trim(),
+        'notes': _noteController.text.trim(),
+      }),
+      applyLocally: (_) => widget.ticket['status'] = 'closed',
+      successMessage: 'Đã nghiệm thu & đóng phiếu sửa chữa.',
+    );
   }
 
   @override
@@ -2666,6 +2560,11 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
                     const Padding(
                       padding: EdgeInsets.all(12),
                       child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_copilotError != null)
+                    AiErrorNotice(
+                      _copilotError!,
+                      key: const Key('ai_copilot_error'),
                     )
                   else ...[
                     Text(

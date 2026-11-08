@@ -569,7 +569,7 @@ void main() {
     (tester) async {
       final api = RuoApi(
         client: MockClient((request) async {
-          if (request.url.path.endsWith('/ai/incident-triage')) {
+          if (request.url.path.endsWith('/repairs/ai-triage')) {
             return http.Response(
               jsonEncode({
                 'success': true,
@@ -668,7 +668,7 @@ void main() {
                   },
                   'recommended_technicians': [
                     {
-                      '_id': 'KT001',
+                      '_id': '65a000000000000000000001',
                       'full_name': 'KTV Trần Minh Tuấn (KT001)',
                       'match_score': 95,
                     },
@@ -714,7 +714,7 @@ void main() {
       await tester.tap(find.byKey(const Key('btn_assign_technician_submit')));
       await tester.pumpAndSettle();
 
-      expect(assignedBody?['assigned_to'], 'KT001');
+      expect(assignedBody?['assigned_to'], '65a000000000000000000001');
       expect(
         find.textContaining('KTV phụ trách: KTV Trần Minh Tuấn (KT001)'),
         findsOneWidget,
@@ -760,7 +760,8 @@ void main() {
               headers: {'content-type': 'application/json; charset=utf-8'},
             );
           }
-          if (request.url.path.endsWith('/ai-analysis')) {
+          if (request.method == 'POST' &&
+              request.url.path.endsWith('/inventory/sessions/sess-1/ai-analyze')) {
             return http.Response(
               jsonEncode({
                 'analysis': {
@@ -768,6 +769,31 @@ void main() {
                   'reconciliation_rate_percent': 85,
                   'missing_value_exposure_vnd': 12500000,
                   'executive_summary': 'Phát hiện 1 thiết bị sai vị trí phòng học cần điều chuyển.',
+                },
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.url.path.endsWith('/audit/verify-chain')) {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'verification': {'isValid': true, 'totalLogs': 48},
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'POST' &&
+              request.url.path.endsWith('/audit/ai-analyze')) {
+            return http.Response(
+              jsonEncode({
+                'analysis': {
+                  'risk_level': 'medium',
+                  'security_score': 82,
+                  'executive_summary': 'Ghi nhận 2 thay đổi RBAC cần đối chiếu.',
+                  'anomalies': [],
                 },
               }),
               200,
@@ -823,10 +849,115 @@ void main() {
       await tester.tap(find.byKey(const Key('btn_verify_sha256_chain')));
       await tester.pumpAndSettle();
       expect(find.textContaining('Chuỗi băm bất biến SHA-256'), findsOneWidget);
+      expect(find.textContaining('48 bản ghi hợp lệ'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('btn_audit_ai_anomalies')));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Điểm an ninh đạt 96/100'), findsOneWidget);
+      expect(find.textContaining('Điểm An Ninh: 82/100'), findsOneWidget);
+      expect(
+        find.text('Ghi nhận 2 thay đổi RBAC cần đối chiếu.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'AI and integrity screens never fabricate results when the server fails or reports tampering',
+    (tester) async {
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/audit/verify-chain')) {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'verification': {
+                  'isValid': false,
+                  'totalLogs': 48,
+                  'brokenAt': 17,
+                  'message': 'Sai lệch liên kết previous_hash tại bản ghi seq=17.',
+                },
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.url.path.endsWith('/audit/ai-analyze')) {
+            return http.Response(
+              jsonEncode({'success': false, 'message': 'Không có quyền.'}),
+              403,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      api.user = {'role': 'admin'};
+      addTearDown(api.dispose);
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.light),
+          home: Scaffold(body: AdminGovernanceMobilePage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('btn_verify_sha256_chain')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('PHÁT HIỆN CAN THIỆP SỔ CÁI tại khối #17'), findsOneWidget);
+      expect(find.textContaining('toàn vẹn'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('btn_audit_ai_anomalies')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('ai_audit_error')), findsOneWidget);
+      expect(find.textContaining('Điểm An Ninh'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'incident triage shows an error instead of an invented diagnosis when AI fails',
+    (tester) async {
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/repairs/ai-triage')) {
+            return http.Response(
+              jsonEncode({'success': false, 'message': 'Máy chủ AI quá tải.'}),
+              500,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.light),
+          home: Scaffold(
+            body: ReportIncidentDialog(
+              api: api,
+              equipment: const {'code': 'EQ-101-DESKSTU-01', 'name': 'Bàn sinh viên'},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('btn_ai_incident_triage')));
+      await tester.tap(find.byKey(const Key('btn_ai_incident_triage')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('ai_triage_error')), findsOneWidget);
+      expect(find.textContaining('Máy chủ AI quá tải.'), findsOneWidget);
+      expect(find.byKey(const Key('btn_apply_ai_triage')), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

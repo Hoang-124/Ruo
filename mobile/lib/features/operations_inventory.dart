@@ -19,6 +19,7 @@ class _InventoryPageState extends State<InventoryPage> {
   String? _scanRoomId;
   bool _aiLoading = false;
   Json? _aiAnalysis;
+  String? _aiError;
   final _qr = TextEditingController();
   final _note = TextEditingController();
   String get _role => value(widget.api.user?['role'], fallback: '');
@@ -438,6 +439,8 @@ class _InventoryPageState extends State<InventoryPage> {
                 ),
               ],
             ),
+            if (_aiError != null)
+              AiErrorNotice(_aiError!, key: const Key('ai_inventory_error')),
             if (_aiAnalysis != null) ...[
               const SizedBox(height: 12),
               _buildAiInventoryCard(_aiAnalysis!),
@@ -450,39 +453,31 @@ class _InventoryPageState extends State<InventoryPage> {
 
   Future<void> _runAiInventoryAnalysis(String sessionId) async {
     if (sessionId.isEmpty) return;
-    setState(() => _aiLoading = true);
+    setState(() {
+      _aiLoading = true;
+      _aiError = null;
+    });
     try {
-      Json analysis = {};
-      try {
-        final res = await widget.api.send(
-          'POST',
-          '/inventory/sessions/$sessionId/ai-analyze',
-          {},
-        );
-        analysis = asMap(res['analysis'] ?? res['data'] ?? res);
-      } catch (_) {}
-      if (analysis.isEmpty) {
-        try {
-          final res = await widget.api.get(
-            '/inventory/sessions/$sessionId/ai-analysis',
-          );
-          analysis = asMap(res['analysis'] ?? res['data'] ?? res);
-        } catch (_) {}
-      }
-      if (analysis.isEmpty) {
-        analysis = {
-          'risk_level': 'LOW',
-          'health_score': 98,
-          'reconciliation_rate_percent': 98.5,
-          'missing_value_exposure_vnd': 0,
-          'executive_summary': 'Ruo Cortex Local AI (#4A): Tỷ lệ khớp kiểm kê đạt 98.5%. Không phát hiện tài sản thanh lý tái xuất hiện (zombie asset).',
-          'zombie_disposed_assets': [],
-          'room_hotspots': [],
-          'transfer_recommendations': [],
-        };
-      }
+      final res = await widget.api.send(
+        'POST',
+        '/inventory/sessions/$sessionId/ai-analyze',
+        {},
+      );
+      final analysis = asMap(res['analysis'] ?? res['data'] ?? res);
       if (!mounted) return;
-      setState(() => _aiAnalysis = analysis);
+      setState(() {
+        _aiAnalysis = analysis.isEmpty ? null : analysis;
+        _aiError = analysis.isEmpty
+            ? aiFailureMessage(const ApiException(0, 'Máy chủ không trả về kết quả.'))
+            : null;
+      });
+    } catch (error) {
+      // Never show a fabricated "98.5% matched" audit when the analysis failed.
+      if (!mounted) return;
+      setState(() {
+        _aiAnalysis = null;
+        _aiError = aiFailureMessage(error);
+      });
     } finally {
       if (mounted) setState(() => _aiLoading = false);
     }

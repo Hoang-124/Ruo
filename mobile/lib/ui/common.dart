@@ -210,6 +210,43 @@ class SectionTitle extends StatelessWidget {
   }
 }
 
+/// Human-readable reason for a failed AI request. AI screens must surface this
+/// instead of inventing a "local" result that looks like a real analysis.
+String aiFailureMessage(Object error) {
+  final reason = error is ApiException && error.message.trim().isNotEmpty
+      ? error.message.trim()
+      : 'Không kết nối được máy chủ AI.';
+  return 'Không thể chạy phân tích AI: $reason Vui lòng thử lại.';
+}
+
+class AiErrorNotice extends StatelessWidget {
+  const AiErrorNotice(this.message, {super.key});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: scheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.error.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(
+          color: scheme.onErrorContainer,
+          fontSize: 13,
+          height: 1.4,
+        ),
+      ),
+    );
+  }
+}
+
 class EmptyNotice extends StatelessWidget {
   const EmptyNotice(this.message, {super.key, this.icon = RuoIcon.blueprint});
   final String message;
