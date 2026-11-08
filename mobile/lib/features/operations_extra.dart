@@ -72,7 +72,9 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
               TextField(
                 controller: priceCtrl,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Nguyên giá (VNĐ)'),
+                decoration: const InputDecoration(
+                  labelText: 'Nguyên giá (VNĐ)',
+                ),
               ),
             ],
           ),
@@ -84,7 +86,8 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
           ),
           FilledButton(
             onPressed: () async {
-              if (codeCtrl.text.trim().isEmpty || nameCtrl.text.trim().isEmpty) {
+              if (codeCtrl.text.trim().isEmpty ||
+                  nameCtrl.text.trim().isEmpty) {
                 return;
               }
               try {
@@ -133,7 +136,8 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
         SectionTitle(
           'Kho Thiết Bị & Tài Sản',
           eyebrow: 'ASSET DIRECTORY & KHO-01',
-          subtitle: 'Quản lý vòng đời toàn bộ thiết bị giảng đường & kho dự phòng',
+          subtitle:
+              'Quản lý vòng đời toàn bộ thiết bị giảng đường & kho dự phòng',
           trailing: IconButton(
             onPressed: () => setState(() => _revision++),
             icon: const RuoVectorIcon(RuoIcon.refresh, size: 19),
@@ -203,7 +207,10 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
                     'code': 'EQ-KHO-01-PRJSTD-02',
                     'name': 'Máy chiếu siêu gần giảng đường #2 (Panasonic PT-TW370)',
                     'status': 'in_stock',
-                    'room_id': {'code': 'KHO-01', 'name': 'Kho Vật Tư Dự Phòng'},
+                    'room_id': {
+                      'code': 'KHO-01',
+                      'name': 'Kho Vật Tư Dự Phòng',
+                    },
                     'price': 18500000,
                   },
                   {
@@ -230,7 +237,9 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
                     title: '${value(eq['code'])} · ${value(eq['name'])}',
                     subtitle:
                         'Vị trí: ${_roomDisplay(eq['room_id'])} · Nguyên giá: ${money(eq['price'])}',
-                    trailing: StatusBadge(value(eq['status'], fallback: 'in_use')),
+                    trailing: StatusBadge(
+                      value(eq['status'], fallback: 'in_use'),
+                    ),
                   ),
               ],
             );
@@ -242,7 +251,10 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
 
   String _roomDisplay(dynamic room) {
     if (room is Map) {
-      return value(room['code'], fallback: value(room['name'], fallback: 'KHO-01'));
+      return value(
+        room['code'],
+        fallback: value(room['name'], fallback: 'KHO-01'),
+      );
     }
     return 'KHO-01 (Kho dự phòng)';
   }
@@ -286,7 +298,9 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: selectedPartId,
-                  decoration: const InputDecoration(labelText: 'Chọn linh kiện'),
+                  decoration: const InputDecoration(
+                    labelText: 'Chọn linh kiện',
+                  ),
                   items: parts
                       .map(
                         (p) => DropdownMenuItem(
@@ -306,13 +320,17 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
                 TextField(
                   controller: qtyCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Số lượng yêu cầu'),
+                  decoration: const InputDecoration(
+                    labelText: 'Số lượng yêu cầu',
+                  ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: reasonCtrl,
                   maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Lý do cấp phát'),
+                  decoration: const InputDecoration(
+                    labelText: 'Lý do cấp phát',
+                  ),
                 ),
               ],
             ),
@@ -373,7 +391,8 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
                 await widget.api.send('PUT', '/spare-parts/$partId/stock', {
                   'quantity_change': add,
                   'adjustment': add,
-                  'quantity': (part['quantity'] is num
+                  'quantity':
+                      (part['quantity'] is num
                           ? (part['quantity'] as num).toInt()
                           : 0) +
                       add,
@@ -541,7 +560,9 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
             builder: (data) {
               final reqs = asList(data['requests'] ?? data['data']);
               if (reqs.isEmpty) {
-                return const EmptyNotice('Chưa có phiếu yêu cầu cấp phát vật tư.');
+                return const EmptyNotice(
+                  'Chưa có phiếu yêu cầu cấp phát vật tư.',
+                );
               }
               return Column(
                 children: [
@@ -551,7 +572,9 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
                           '${value(asMap(r['spare_part_id'] ?? r['part_id'])['code'], fallback: 'PART')} · SL: ${value(r['quantity'])}',
                       subtitle:
                           'Người yêu cầu: ${value(asMap(r['requested_by'])['full_name'], fallback: 'KTV')} · Lý do: ${value(r['reason'])}',
-                      trailing: StatusBadge(value(r['status'], fallback: 'pending')),
+                      trailing: StatusBadge(
+                        value(r['status'], fallback: 'pending'),
+                      ),
                       child: (_canApprove && value(r['status']) == 'pending')
                           ? Wrap(
                               spacing: 8,
@@ -611,8 +634,7 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
         res = {
           'valid': true,
           'checked_count': 48,
-          'message':
-              'Chuỗi băm bất biến SHA-256 toàn vẹn 100% (48/48 bản ghi khớp chữ ký số).',
+          'message': 'Chuỗi băm bất biến SHA-256 toàn vẹn 100% (48/48 bản ghi khớp chữ ký số).',
         };
       }
       if (!mounted) return;
@@ -640,8 +662,7 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
         res = {
           'risk_level': 'LOW',
           'security_score': 96,
-          'executive_summary':
-              'Ruo Cortex Local AI (#4B): Điểm an ninh đạt 96/100. Không phát hiện xung đột phân tách nhiệm vụ (SoD) hoặc leo thang đặc quyền trái phép.',
+          'executive_summary': 'Ruo Cortex Local AI (#4B): Điểm an ninh đạt 96/100. Không phát hiện xung đột phân tách nhiệm vụ (SoD) hoặc leo thang đặc quyền trái phép.',
           'anomalies': [],
         };
       }
@@ -712,9 +733,14 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
                 DropdownButtonFormField<String>(
                   isExpanded: true,
                   initialValue: selectedRole,
-                  decoration: const InputDecoration(labelText: 'Vai trò hệ thống'),
+                  decoration: const InputDecoration(
+                    labelText: 'Vai trò hệ thống',
+                  ),
                   items: const [
-                    DropdownMenuItem(value: 'lecturer', child: Text('Giảng viên')),
+                    DropdownMenuItem(
+                      value: 'lecturer',
+                      child: Text('Giảng viên'),
+                    ),
                     DropdownMenuItem(
                       value: 'technician',
                       child: Text('Kỹ thuật viên'),
@@ -815,8 +841,7 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
         SectionTitle(
           'Kiểm Toán Bảo Mật & Quản Trị RBAC',
           eyebrow: 'SECURITY · SHA-256 · AI #4B · RBAC',
-          subtitle:
-              'Xác thực chuỗi băm bất biến, AI phát hiện bất thường & phân quyền hệ thống',
+          subtitle: 'Xác thực chuỗi băm bất biến, AI phát hiện bất thường & phân quyền hệ thống',
           trailing: IconButton(
             onPressed: () => setState(() => _revision++),
             icon: const RuoVectorIcon(RuoIcon.refresh, size: 19),
@@ -917,8 +942,10 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
                           ),
                         ),
                         StatusBadge(
-                          value(_aiAuditResult!['risk_level'], fallback: 'LOW')
-                              .toLowerCase(),
+                          value(
+                            _aiAuditResult!['risk_level'],
+                            fallback: 'LOW',
+                          ).toLowerCase(),
                           labelOverride:
                               'Điểm An Ninh: ${value(_aiAuditResult!['security_score'], fallback: '96')}/100',
                         ),
@@ -928,7 +955,8 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
                     Text(
                       value(
                         _aiAuditResult!['executive_summary'],
-                        fallback: 'Không phát hiện hành vi xâm phạm chuỗi kiểm toán.',
+                        fallback:
+                            'Không phát hiện hành vi xâm phạm chuỗi kiểm toán.',
                       ),
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
@@ -1119,13 +1147,18 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: 0.4,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: scheme.outlineVariant),
                     ),
                     child: const Text(
                       'Kiểm soát Phân tách Nhiệm vụ (SoD — Segregation of Duties): Nghiêm cấm một vai trò vừa có quyền Lập đề xuất thanh lý (disposals:propose) vừa có quyền Phê duyệt thanh lý (disposals:approve).',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),

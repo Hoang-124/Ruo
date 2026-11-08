@@ -162,10 +162,7 @@ class RuoTokens {
           foregroundColor: Colors.white,
           minimumSize: const Size(48, 48),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -243,11 +240,7 @@ class StatusTone {
                 border: Color(0xFF059669),
                 solid: Color(0xFF059669),
               ),
-      'maintenance' ||
-      'repairing' ||
-      'in_progress' ||
-      'assigned' ||
-      'major' =>
+      'maintenance' || 'repairing' || 'in_progress' || 'assigned' || 'major' =>
         dark
             ? const StatusTone(
                 fg: Color(0xFFFDBA74),
@@ -261,32 +254,34 @@ class StatusTone {
                 border: Color(0xFFEA580C),
                 solid: Color(0xFFEA580C),
               ),
-      'in_stock' || 'pending' || 'awaiting_approval' || 'minor' => dark
-          ? const StatusTone(
-              fg: Color(0xFFFDE68A),
-              bg: Color(0x8C78350F),
-              border: Color(0xFFF59E0B),
-              solid: Color(0xFFD97706),
-            )
-          : const StatusTone(
-              fg: Color(0xFFB45309),
-              bg: Color(0xFFFEF3C7),
-              border: Color(0xFFD97706),
-              solid: Color(0xFFD97706),
-            ),
-      'pending_disposal' => dark
-          ? const StatusTone(
-              fg: Color(0xFFDDD6FE),
-              bg: Color(0x8C4C1D95),
-              border: Color(0xFF8B5CF6),
-              solid: Color(0xFF7C3AED),
-            )
-          : const StatusTone(
-              fg: Color(0xFF5B21B6),
-              bg: Color(0xFFEDE9FE),
-              border: Color(0xFF7C3AED),
-              solid: Color(0xFF7C3AED),
-            ),
+      'in_stock' || 'pending' || 'awaiting_approval' || 'minor' =>
+        dark
+            ? const StatusTone(
+                fg: Color(0xFFFDE68A),
+                bg: Color(0x8C78350F),
+                border: Color(0xFFF59E0B),
+                solid: Color(0xFFD97706),
+              )
+            : const StatusTone(
+                fg: Color(0xFFB45309),
+                bg: Color(0xFFFEF3C7),
+                border: Color(0xFFD97706),
+                solid: Color(0xFFD97706),
+              ),
+      'pending_disposal' =>
+        dark
+            ? const StatusTone(
+                fg: Color(0xFFDDD6FE),
+                bg: Color(0x8C4C1D95),
+                border: Color(0xFF8B5CF6),
+                solid: Color(0xFF7C3AED),
+              )
+            : const StatusTone(
+                fg: Color(0xFF5B21B6),
+                bg: Color(0xFFEDE9FE),
+                border: Color(0xFF7C3AED),
+                solid: Color(0xFF7C3AED),
+              ),
       'broken' ||
       'reported' ||
       'critical' ||
@@ -307,19 +302,20 @@ class StatusTone {
                 border: Color(0xFFDC2626),
                 solid: Color(0xFFDC2626),
               ),
-      _ => dark
-          ? const StatusTone(
-              fg: Color(0xFFE7E5E4),
-              bg: Color(0xA644403C),
-              border: Color(0xFFA8A29E),
-              solid: Color(0xFF78716C),
-            )
-          : const StatusTone(
-              fg: Color(0xFF334155),
-              bg: Color(0xFFF1F5F9),
-              border: Color(0xFF94A3B8),
-              solid: Color(0xFF64748B),
-            ),
+      _ =>
+        dark
+            ? const StatusTone(
+                fg: Color(0xFFE7E5E4),
+                bg: Color(0xA644403C),
+                border: Color(0xFFA8A29E),
+                solid: Color(0xFF78716C),
+              )
+            : const StatusTone(
+                fg: Color(0xFF334155),
+                bg: Color(0xFFF1F5F9),
+                border: Color(0xFF94A3B8),
+                solid: Color(0xFF64748B),
+              ),
     };
   }
 }

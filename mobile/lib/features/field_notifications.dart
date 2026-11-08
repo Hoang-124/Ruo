@@ -29,9 +29,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       try {
         final res = await widget.api.get('/notifications');
         final list = asList(
-          res['notifications'] ??
-              res['data']?['notifications'] ??
-              res['data'],
+          res['notifications'] ?? res['data']?['notifications'] ?? res['data'],
         );
         if (list.isNotEmpty) {
           _notifications = list;
@@ -60,7 +58,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
       {
         '_id': 'rep-lec-1',
         'ticket_code': 'REP-MW5Q9911-309',
-        'incident_description': 'Điều hòa phòng học mát yếu, đã được KTV vệ sinh nạp gas',
+        'incident_description':
+            'Điều hòa phòng học mát yếu, đã được KTV vệ sinh nạp gas',
         'status': 'closed',
         'equipment_id': {
           'code': 'EQ-101-ACCASS-01',
@@ -90,7 +89,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> _rateTicketDialog(Json ticket) async {
-    int rating = (ticket['feedback_rating'] is num &&
+    int rating =
+        (ticket['feedback_rating'] is num &&
             (ticket['feedback_rating'] as num) > 0)
         ? (ticket['feedback_rating'] as num).toInt()
         : 5;
@@ -140,23 +140,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
               key: const Key('btn_submit_ticket_rating'),
               onPressed: () async {
                 try {
-                  await widget.api.send(
-                    'POST',
-                    '/repairs/$ticketId/evaluate',
-                    {
-                      'feedback_rating': rating,
-                      'feedback_comment': commentCtrl.text.trim(),
-                    },
-                  );
+                  await widget.api.send('POST', '/repairs/$ticketId/evaluate', {
+                    'feedback_rating': rating,
+                    'feedback_comment': commentCtrl.text.trim(),
+                  });
                 } catch (_) {
                   try {
                     await widget.api.send(
                       'PUT',
                       '/repairs/$ticketId/feedback',
-                      {
-                        'rating': rating,
-                        'comment': commentCtrl.text.trim(),
-                      },
+                      {'rating': rating, 'comment': commentCtrl.text.trim()},
                     );
                   } catch (_) {}
                 }
@@ -193,7 +186,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
         'message': 'Ca sửa chữa [REP-MW5R220A-042] (Máy chiếu Sony Laser P102) đã vượt quá 4 giờ cam kết SLA. Yêu cầu xử lý ngay!',
         'type': 'sla_breach',
         'is_read': false,
-        'created_at': now.subtract(const Duration(minutes: 25)).toIso8601String(),
+        'created_at': now
+            .subtract(const Duration(minutes: 25))
+            .toIso8601String(),
       },
       {
         'id': 'notif-2',
@@ -242,7 +237,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = _notifications.where((n) => n['is_read'] != true).length;
+    final unreadCount = _notifications
+        .where((n) => n['is_read'] != true)
+        .length;
 
     final filtered = _notifications.where((n) {
       if (_filterTab == 1) {
@@ -295,8 +292,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           else if (filtered.isEmpty)
             const EmptyNotice('Không có thông báo nào trong phân loại này.')
           else
-            for (final n in filtered)
-              _notifCard(context, n),
+            for (final n in filtered) _notifCard(context, n),
         ],
       ),
     );
@@ -359,20 +355,24 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final iconColor = isSla
         ? RuoTokens.rose600
         : n['type'] == 'task_assigned'
-            ? RuoTokens.amber600
-            : RuoTokens.emerald600;
+        ? RuoTokens.amber600
+        : RuoTokens.emerald600;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: !isRead
-            ? (isSla ? RuoTokens.rose600.withValues(alpha: 0.08) : scheme.surface)
+            ? (isSla
+                  ? RuoTokens.rose600.withValues(alpha: 0.08)
+                  : scheme.surface)
             : scheme.surface.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: !isRead
-              ? (isSla ? RuoTokens.rose600 : scheme.primary.withValues(alpha: 0.4))
+              ? (isSla
+                    ? RuoTokens.rose600
+                    : scheme.primary.withValues(alpha: 0.4))
               : scheme.outlineVariant,
           width: !isRead ? 1.5 : 1,
         ),
@@ -404,7 +404,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       child: Text(
                         value(n['title']),
                         style: TextStyle(
-                          fontWeight: !isRead ? FontWeight.w900 : FontWeight.w700,
+                          fontWeight: !isRead
+                              ? FontWeight.w900
+                              : FontWeight.w700,
                           fontSize: 14,
                           color: isSla ? RuoTokens.rose600 : scheme.onSurface,
                         ),

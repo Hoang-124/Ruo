@@ -48,32 +48,41 @@ void main() {
     expect(reportYear(DateTime.utc(2025, 12, 31, 17)), 2026);
   });
 
-  test('NativeExports handles user cancellation cleanly and wraps save errors', () async {
-    const channel = MethodChannel('vn.ruo.mobile/documents');
-    addTearDown(
-      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, null),
-    );
+  test(
+    'NativeExports handles user cancellation cleanly and wraps save errors',
+    () async {
+      const channel = MethodChannel('vn.ruo.mobile/documents');
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null),
+      );
 
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (call) async {
-      throw PlatformException(code: 'CANCELLED', message: 'Đã hủy lưu tệp.');
-    });
-    expect(await NativeExports.saveCsv('a,b', 'test.csv'), false);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            throw PlatformException(
+              code: 'CANCELLED',
+              message: 'Đã hủy lưu tệp.',
+            );
+          });
+      expect(await NativeExports.saveCsv('a,b', 'test.csv'), false);
 
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (call) async {
-      throw PlatformException(code: 'SAVE', message: 'Không thể ghi tệp.');
-    });
-    await expectLater(
-      NativeExports.saveCsv('a,b', 'test.csv'),
-      throwsA(
-        isA<ApiException>().having(
-          (e) => e.message,
-          'message',
-          'Không thể ghi tệp.',
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            throw PlatformException(
+              code: 'SAVE',
+              message: 'Không thể ghi tệp.',
+            );
+          });
+      await expectLater(
+        NativeExports.saveCsv('a,b', 'test.csv'),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            'Không thể ghi tệp.',
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 }

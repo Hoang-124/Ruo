@@ -46,7 +46,9 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
       try {
         List<Json> list = [];
         try {
-          final roomRes = await widget.api.get('/facilities/rooms/$_selectedRoom');
+          final roomRes = await widget.api.get(
+            '/facilities/rooms/$_selectedRoom',
+          );
           list = asList(
             roomRes['equipments'] ??
                 roomRes['data']?['equipments'] ??
@@ -60,9 +62,7 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
             'limit': '50',
           });
           list = asList(
-            res['equipments'] ??
-                res['data']?['equipments'] ??
-                res['data'],
+            res['equipments'] ?? res['data']?['equipments'] ?? res['data'],
           );
         }
 
@@ -76,7 +76,11 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
       }
       _verifiedCodes.clear();
       // Pre-check some items to demonstrate realistic inventory state
-      for (var i = 0; i < (_items.length > 2 ? _items.length - 1 : _items.length); i++) {
+      for (
+        var i = 0;
+        i < (_items.length > 2 ? _items.length - 1 : _items.length);
+        i++
+      ) {
         final c = value(_items[i]['code']);
         if (c.isNotEmpty) _verifiedCodes.add(c);
       }
@@ -89,37 +93,49 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
     final floor = room.contains('-') ? room.split('-')[1][0] : '1';
     return [
       {
-        'code': 'EQ-$floor' '01-ACCASS-01',
+        'code':
+            'EQ-$floor'
+            '01-ACCASS-01',
         'name': 'Điều hòa Daikin Cassette 4HP',
         'category': 'Điều hòa',
         'status': 'in_use',
       },
       {
-        'code': 'EQ-$floor' '01-ACCASS-02',
+        'code':
+            'EQ-$floor'
+            '01-ACCASS-02',
         'name': 'Điều hòa Daikin Cassette 4HP',
         'category': 'Điều hòa',
         'status': 'in_use',
       },
       {
-        'code': 'EQ-$floor' '01-PRJ-01',
+        'code':
+            'EQ-$floor'
+            '01-PRJ-01',
         'name': 'Máy chiếu Sony Laser 5000 Lumens',
         'category': 'Trình chiếu',
         'status': 'in_use',
       },
       {
-        'code': 'EQ-$floor' '01-SCR-01',
+        'code':
+            'EQ-$floor'
+            '01-SCR-01',
         'name': 'Màn chiếu điện tử 150 inch',
         'category': 'Trình chiếu',
         'status': 'in_use',
       },
       {
-        'code': 'EQ-$floor' '01-AMP-01',
+        'code':
+            'EQ-$floor'
+            '01-AMP-01',
         'name': 'Âm ly TOA 120W & Micro không dây',
         'category': 'Âm thanh',
         'status': 'in_use',
       },
       {
-        'code': 'EQ-$floor' '01-CAM-01',
+        'code':
+            'EQ-$floor'
+            '01-CAM-01',
         'name': 'Camera PTZ Hội nghị trực tuyến',
         'category': 'Camera',
         'status': 'broken',
@@ -151,7 +167,11 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
       builder: (ctx) => AlertDialog(
         title: Row(
           children: [
-            const RuoVectorIcon(RuoIcon.check, size: 22, color: RuoTokens.emerald600),
+            const RuoVectorIcon(
+              RuoIcon.check,
+              size: 22,
+              color: RuoTokens.emerald600,
+            ),
             const SizedBox(width: 10),
             const Text('Đã Lưu Đối Soát Kiểm Kê'),
           ],
@@ -209,7 +229,10 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
                       value: r.$1,
                       child: Text(
                         '${r.$1} · ${r.$2}',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
+                        ),
                       ),
                     ),
                 ],
@@ -282,12 +305,18 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: _busy ? null : _submitAudit,
-            icon: const RuoVectorIcon(RuoIcon.check, size: 18, color: Colors.white),
+            icon: const RuoVectorIcon(
+              RuoIcon.check,
+              size: 18,
+              color: Colors.white,
+            ),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             label: Text(
-              _busy ? 'Đang lưu biên bản…' : 'Hoàn tất kiểm kê phòng $_selectedRoom',
+              _busy
+                  ? 'Đang lưu biên bản…'
+                  : 'Hoàn tất kiểm kê phòng $_selectedRoom',
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
             ),
           ),
@@ -296,7 +325,12 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
     );
   }
 
-  Widget _kpiCard(BuildContext context, String label, String value, Color color) {
+  Widget _kpiCard(
+    BuildContext context,
+    String label,
+    String value,
+    Color color,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
@@ -314,7 +348,11 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -372,12 +410,18 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
                 children: [
                   Text(
                     value(item['name']),
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     code,
-                    style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

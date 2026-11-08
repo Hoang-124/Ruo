@@ -17,8 +17,8 @@ import 'ui/vectors.dart';
 
 String get _defaultLocalHost =>
     (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
-        ? '10.0.2.2'
-        : '127.0.0.1';
+    ? '10.0.2.2'
+    : '127.0.0.1';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,21 +28,21 @@ Future<void> main() async {
   final initialUrl = (savedUrl != null && savedUrl.isNotEmpty)
       ? savedUrl
       : (configured.isNotEmpty
-          ? configured
-          : 'http://$_defaultLocalHost:5000/api');
+            ? configured
+            : 'http://$_defaultLocalHost:5000/api');
   final api = RuoApi(baseUrl: initialUrl);
   runApp(RuoApp(api: api, preferences: preferences));
 }
 
 ThemeMode _decodeThemeMode(String? raw) => switch (raw) {
-      'dark' => ThemeMode.dark,
-      _ => ThemeMode.light,
-    };
+  'dark' => ThemeMode.dark,
+  _ => ThemeMode.light,
+};
 
 String _encodeThemeMode(ThemeMode mode) => switch (mode) {
-      ThemeMode.dark => 'dark',
-      _ => 'light',
-    };
+  ThemeMode.dark => 'dark',
+  _ => 'light',
+};
 
 class RuoApp extends StatefulWidget {
   const RuoApp({super.key, required this.api, this.preferences});
@@ -72,30 +72,27 @@ class _RuoAppState extends State<RuoApp> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-        listenable: widget.api,
-        builder: (context, _) => MaterialApp(
-          key: ValueKey(
-            '${widget.api.signedIn}-${widget.api.user?['id']}-${widget.api.mustChangePassword}',
-          ),
-          debugShowCheckedModeBanner: false,
-          title: 'Ruo · Cơ sở vật chất',
-          theme: RuoTokens.theme(Brightness.light),
-          darkTheme: RuoTokens.theme(Brightness.dark),
-          themeMode: _themeMode,
-          home: !widget.api.signedIn
-              ? LoginPage(
-                  api: widget.api,
-                  preferences: widget.preferences,
-                  onToggleTheme: _cycleTheme,
-                )
-              : widget.api.mustChangePassword
-                  ? PasswordPage(api: widget.api)
-                  : Workspace(
-                      api: widget.api,
-                      onToggleTheme: _cycleTheme,
-                    ),
-        ),
-      );
+    listenable: widget.api,
+    builder: (context, _) => MaterialApp(
+      key: ValueKey(
+        '${widget.api.signedIn}-${widget.api.user?['id']}-${widget.api.mustChangePassword}',
+      ),
+      debugShowCheckedModeBanner: false,
+      title: 'Ruo · Cơ sở vật chất',
+      theme: RuoTokens.theme(Brightness.light),
+      darkTheme: RuoTokens.theme(Brightness.dark),
+      themeMode: _themeMode,
+      home: !widget.api.signedIn
+          ? LoginPage(
+              api: widget.api,
+              preferences: widget.preferences,
+              onToggleTheme: _cycleTheme,
+            )
+          : widget.api.mustChangePassword
+          ? PasswordPage(api: widget.api)
+          : Workspace(api: widget.api, onToggleTheme: _cycleTheme),
+    ),
+  );
 }
 
 class LoginPage extends StatefulWidget {
@@ -334,7 +331,10 @@ class _LoginPageState extends State<LoginPage> {
                           },
                         ),
                         ActionChip(
-                          avatar: const RuoVectorIcon(RuoIcon.dashboard, size: 14),
+                          avatar: const RuoVectorIcon(
+                            RuoIcon.dashboard,
+                            size: 14,
+                          ),
                           label: const Text('QL001 (Quản lý)'),
                           onPressed: () {
                             _identifier.text = 'QL001';
@@ -343,7 +343,10 @@ class _LoginPageState extends State<LoginPage> {
                           },
                         ),
                         ActionChip(
-                          avatar: const RuoVectorIcon(RuoIcon.blueprint, size: 14),
+                          avatar: const RuoVectorIcon(
+                            RuoIcon.blueprint,
+                            size: 14,
+                          ),
                           label: const Text('AD001 (Quản trị)'),
                           onPressed: () {
                             _identifier.text = 'AD001';
@@ -486,7 +489,9 @@ class _LoginPageState extends State<LoginPage> {
                     FilledButton(
                       key: const Key('login_submit'),
                       onPressed: _busy ? null : _login,
-                      child: Text(_busy ? 'Đang đăng nhập…' : 'ĐĂNG NHẬP VÀO HỆ THỐNG'),
+                      child: Text(
+                        _busy ? 'Đang đăng nhập…' : 'ĐĂNG NHẬP VÀO HỆ THỐNG',
+                      ),
                     ),
                     const SizedBox(height: 22),
                     Text(
@@ -537,13 +542,21 @@ class _WorkspaceState extends State<Workspace> {
         ('Tầng & Phòng', RuoIcon.blueprint, CadPage(api: widget.api)),
         ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
         ('Kiểm Kê', RuoIcon.inventory, ClassroomAuditPage(api: widget.api)),
-        ('Hồ sơ', RuoIcon.user, ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme)),
+        (
+          'Hồ sơ',
+          RuoIcon.user,
+          ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme),
+        ),
       ] else if (isLecturer) ...[
         ('Tầng & Phòng', RuoIcon.blueprint, CadPage(api: widget.api)),
         ('Quét QR', RuoIcon.qrCode, QrScannerPage(api: widget.api)),
         ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
         ('Thông báo', RuoIcon.bell, NotificationsPage(api: widget.api)),
-        ('Hồ sơ', RuoIcon.user, ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme)),
+        (
+          'Hồ sơ',
+          RuoIcon.user,
+          ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme),
+        ),
       ] else ...[
         ('Tầng & Phòng', RuoIcon.blueprint, CadPage(api: widget.api)),
         ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
@@ -552,10 +565,17 @@ class _WorkspaceState extends State<Workspace> {
         if (widget.api.canReport) ...[
           ('Báo cáo', RuoIcon.chart, ReportsPage(api: widget.api)),
         ],
-        ('Hồ sơ', RuoIcon.user, ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme)),
+        (
+          'Hồ sơ',
+          RuoIcon.user,
+          ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme),
+        ),
       ],
-      if (['admin', 'facility_manager', 'technician']
-          .contains(widget.api.user?['role']))
+      if ([
+        'admin',
+        'facility_manager',
+        'technician',
+      ].contains(widget.api.user?['role']))
         ('Nghiệp vụ', RuoIcon.transfer, OperationsPage(api: widget.api)),
     ];
     final safeTab = _tab.clamp(0, tabs.length - 1);
@@ -758,74 +778,63 @@ class _PasswordPageState extends State<PasswordPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Đổi mật khẩu bắt buộc')),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              const Text(
-                'Tài khoản dùng mật khẩu tạm thời. Đổi mật khẩu trước khi truy cập dữ liệu.',
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: oldPassword,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Mật khẩu hiện tại',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: newPassword,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Mật khẩu mới',
-                  helperText:
-                      'Ít nhất 8 ký tự, hoa, thường, số và ký tự đặc biệt.',
-                ),
-              ),
-              if (message != null)
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(
-                    message!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: busy
-                    ? null
-                    : () async {
-                        setState(() => busy = true);
-                        try {
-                          await widget.api.send(
-                            'POST',
-                            '/auth/change-password',
-                            {
-                              'oldPassword': oldPassword.text,
-                              'newPassword': newPassword.text,
-                            },
-                          );
-                          widget.api.clearSession();
-                        } catch (e) {
-                          if (mounted) setState(() => message = e.toString());
-                        } finally {
-                          if (mounted) setState(() => busy = false);
-                        }
-                      },
-                child: Text(
-                  busy ? 'Đang lưu…' : 'Đổi mật khẩu và đăng nhập lại',
-                ),
-              ),
-              TextButton(
-                onPressed: widget.api.clearSession,
-                child: const Text('Về đăng nhập'),
-              ),
-            ],
+    appBar: AppBar(title: const Text('Đổi mật khẩu bắt buộc')),
+    body: SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          const Text(
+            'Tài khoản dùng mật khẩu tạm thời. Đổi mật khẩu trước khi truy cập dữ liệu.',
           ),
-        ),
-      );
+          const SizedBox(height: 20),
+          TextField(
+            controller: oldPassword,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại'),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: newPassword,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Mật khẩu mới',
+              helperText: 'Ít nhất 8 ký tự, hoa, thường, số và ký tự đặc biệt.',
+            ),
+          ),
+          if (message != null)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                message!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: busy
+                ? null
+                : () async {
+                    setState(() => busy = true);
+                    try {
+                      await widget.api.send('POST', '/auth/change-password', {
+                        'oldPassword': oldPassword.text,
+                        'newPassword': newPassword.text,
+                      });
+                      widget.api.clearSession();
+                    } catch (e) {
+                      if (mounted) setState(() => message = e.toString());
+                    } finally {
+                      if (mounted) setState(() => busy = false);
+                    }
+                  },
+            child: Text(busy ? 'Đang lưu…' : 'Đổi mật khẩu và đăng nhập lại'),
+          ),
+          TextButton(
+            onPressed: widget.api.clearSession,
+            child: const Text('Về đăng nhập'),
+          ),
+        ],
+      ),
+    ),
+  );
 }

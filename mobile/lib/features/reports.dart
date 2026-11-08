@@ -64,30 +64,30 @@ Widget _select<T>(
 }
 
 Widget _yearPicker(int year, ValueChanged<int> changed) => Row(
-      children: [
-        OutlinedButton.icon(
-          onPressed: year > 2000 ? () => changed(year - 1) : null,
-          icon: const RuoVectorIcon(RuoIcon.chevronLeft, size: 15),
-          label: const Text('Năm trước'),
+  children: [
+    OutlinedButton.icon(
+      onPressed: year > 2000 ? () => changed(year - 1) : null,
+      icon: const RuoVectorIcon(RuoIcon.chevronLeft, size: 15),
+      label: const Text('Năm trước'),
+    ),
+    Expanded(
+      child: Text(
+        '$year',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w900,
+          fontFeatures: [FontFeature.tabularFigures()],
         ),
-        Expanded(
-          child: Text(
-            '$year',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              fontFeatures: [FontFeature.tabularFigures()],
-            ),
-          ),
-        ),
-        OutlinedButton.icon(
-          onPressed: year < 2100 ? () => changed(year + 1) : null,
-          icon: const RuoVectorIcon(RuoIcon.chevronRight, size: 15),
-          label: const Text('Năm sau'),
-        ),
-      ],
-    );
+      ),
+    ),
+    OutlinedButton.icon(
+      onPressed: year < 2100 ? () => changed(year + 1) : null,
+      icon: const RuoVectorIcon(RuoIcon.chevronRight, size: 15),
+      label: const Text('Năm sau'),
+    ),
+  ],
+);
 
 Widget _pager(Json data, int page, ValueChanged<int> changed) {
   final totalPages = reportNumber(data['totalPages']).toInt().clamp(1, 999999);
@@ -227,9 +227,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(height: 4),
                 Text(
                   'Cập nhật ${formatVnDateTime(data['generatedAt'])} · ${value(m['totalRooms'])} phòng',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],
             );
@@ -554,23 +553,23 @@ class _LegendSwatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-          ),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(3),
+        ),
+      ),
+      const SizedBox(width: 6),
+      Text(
+        label,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+      ),
+    ],
+  );
 }
 
 class ReportsPage extends StatefulWidget {
@@ -606,18 +605,18 @@ class _ReportsPageState extends State<ReportsPage> {
       'room' => widget.api.get('/reports/by-room'),
       'status' => widget.api.get('/reports/by-status'),
       'frequency' => widget.api.get('/reports/repair-frequency', {
-          'year': '$year',
-        }),
+        'year': '$year',
+      }),
       'warranty' => widget.api.get('/reports/warranty-expiring', {
-          'days': '$days',
-          'page': '$page',
-          'limit': '20',
-        }),
+        'days': '$days',
+        'page': '$page',
+        'limit': '20',
+      }),
       'overdue' => widget.api.get('/reports/overdue-repairs', {
-          'severity': severity,
-          'page': '$page',
-          'limit': '20',
-        }),
+        'severity': severity,
+        'page': '$page',
+        'limit': '20',
+      }),
       _ => throw StateError('Báo cáo không hợp lệ'),
     };
   }
@@ -753,84 +752,83 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   List<Widget> _exportControls() => [
-        _select(
-          'Dữ liệu cần xuất',
-          exportType,
-          const {
-            'equipment': 'Danh sách tài sản',
-            'inventory': 'Kết quả một đợt kiểm kê',
-          },
-          (v) => setState(() {
-            exportType = v;
-            sessionId = null;
-            exportMessage = null;
-          }),
+    _select(
+      'Dữ liệu cần xuất',
+      exportType,
+      const {
+        'equipment': 'Danh sách tài sản',
+        'inventory': 'Kết quả một đợt kiểm kê',
+      },
+      (v) => setState(() {
+        exportType = v;
+        sessionId = null;
+        exportMessage = null;
+      }),
+    ),
+    _space(),
+    if (exportType == 'inventory')
+      AsyncPanel(
+        key: const ValueKey('export-sessions'),
+        load: () => widget.api.get('/inventory-sessions'),
+        builder: (data) {
+          final sessions = asList(data['data']);
+          if (sessions.isEmpty) {
+            return const EmptyNotice('Chưa có đợt kiểm kê để xuất.');
+          }
+          final validSession = sessions.any((s) => value(s['_id']) == sessionId)
+              ? sessionId!
+              : '';
+          return _select<String>('Chọn đợt kiểm kê', validSession, {
+            '': 'Chưa chọn',
+            for (final s in sessions)
+              value(s['_id']):
+                  '${value(s['name'])} · ${formatVnDate(s['date'])}',
+          }, (v) => setState(() => sessionId = v.isEmpty ? null : v));
+        },
+      ),
+    _space(),
+    const DataCard(
+      title: 'Định dạng xuất chuẩn tiếng Việt',
+      subtitle: 'CSV UTF-8 có BOM cho Microsoft Excel & bản in PDF A4',
+      child: Text(
+        'CSV giữ nguyên dấu tiếng Việt khi mở bằng Excel. Khi nhấn “In / Lưu PDF”, chọn máy in “Save as PDF / Lưu dưới dạng PDF” trên Android.',
+        style: TextStyle(fontSize: 12.5, height: 1.45),
+      ),
+    ),
+    _space(),
+    FilledButton.icon(
+      onPressed: exporting ? null : () => _export(false),
+      icon: const RuoVectorIcon(
+        RuoIcon.download,
+        size: 17,
+        color: Colors.white,
+      ),
+      label: Text(exporting ? 'Đang chuẩn bị…' : 'Lưu CSV (Excel)'),
+    ),
+    _space(10),
+    OutlinedButton.icon(
+      onPressed: exporting ? null : () => _export(true),
+      icon: const RuoVectorIcon(RuoIcon.printer, size: 17),
+      label: const Text('In / Lưu PDF'),
+    ),
+    if (exportMessage != null)
+      Padding(
+        padding: const EdgeInsets.only(top: 14),
+        child: DataCard(
+          title: 'Trạng thái xuất',
+          child: Text(exportMessage!, semanticsLabel: exportMessage),
         ),
-        _space(),
-        if (exportType == 'inventory')
-          AsyncPanel(
-            key: const ValueKey('export-sessions'),
-            load: () => widget.api.get('/inventory-sessions'),
-            builder: (data) {
-              final sessions = asList(data['data']);
-              if (sessions.isEmpty) {
-                return const EmptyNotice('Chưa có đợt kiểm kê để xuất.');
-              }
-              final validSession =
-                  sessions.any((s) => value(s['_id']) == sessionId)
-                  ? sessionId!
-                  : '';
-              return _select<String>('Chọn đợt kiểm kê', validSession, {
-                '': 'Chưa chọn',
-                for (final s in sessions)
-                  value(s['_id']):
-                      '${value(s['name'])} · ${formatVnDate(s['date'])}',
-              }, (v) => setState(() => sessionId = v.isEmpty ? null : v));
-            },
-          ),
-        _space(),
-        const DataCard(
-          title: 'Định dạng xuất chuẩn tiếng Việt',
-          subtitle: 'CSV UTF-8 có BOM cho Microsoft Excel & bản in PDF A4',
-          child: Text(
-            'CSV giữ nguyên dấu tiếng Việt khi mở bằng Excel. Khi nhấn “In / Lưu PDF”, chọn máy in “Save as PDF / Lưu dưới dạng PDF” trên Android.',
-            style: TextStyle(fontSize: 12.5, height: 1.45),
-          ),
-        ),
-        _space(),
-        FilledButton.icon(
-          onPressed: exporting ? null : () => _export(false),
-          icon: const RuoVectorIcon(
-            RuoIcon.download,
-            size: 17,
-            color: Colors.white,
-          ),
-          label: Text(exporting ? 'Đang chuẩn bị…' : 'Lưu CSV (Excel)'),
-        ),
-        _space(10),
-        OutlinedButton.icon(
-          onPressed: exporting ? null : () => _export(true),
-          icon: const RuoVectorIcon(RuoIcon.printer, size: 17),
-          label: const Text('In / Lưu PDF'),
-        ),
-        if (exportMessage != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 14),
-            child: DataCard(
-              title: 'Trạng thái xuất',
-              child: Text(exportMessage!, semanticsLabel: exportMessage),
-            ),
-          ),
-      ];
+      ),
+  ];
 
   Widget _result(Json data) => switch (report) {
-        'room' => _rooms(data),
-        'status' => _statuses(data),
-        'frequency' => _frequency(data),
-        'warranty' => _warranty(data),
-        'overdue' => _overdue(data),
-        _ => const SizedBox.shrink(),
-      };
+    'room' => _rooms(data),
+    'status' => _statuses(data),
+    'frequency' => _frequency(data),
+    'warranty' => _warranty(data),
+    'overdue' => _overdue(data),
+    _ => const SizedBox.shrink(),
+  };
 
   Widget _rooms(Json data) {
     final rows = asList(data['rooms']);
@@ -928,26 +926,26 @@ class _ReportsPageState extends State<ReportsPage> {
     final rooms = asList(data['byRoom']);
 
     Widget group(String heading, List<Json> rows) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SectionTitle(heading),
-            if (rows.isEmpty)
-              const EmptyNotice('Không có sự cố trong năm đã chọn.'),
-            for (final r in rows)
-              DataCard(
-                title: '${value(r['code'])} · ${value(r['name'])}',
-                subtitle:
-                    '${value(r['failureCount'])} sự cố / ${value(r['affectedEquipment'])} thiết bị',
-                child: Text(
-                  'Trung bình ${value(r['incidentsPerEquipment'])} sự cố / thiết bị',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionTitle(heading),
+        if (rows.isEmpty)
+          const EmptyNotice('Không có sự cố trong năm đã chọn.'),
+        for (final r in rows)
+          DataCard(
+            title: '${value(r['code'])} · ${value(r['name'])}',
+            subtitle:
+                '${value(r['failureCount'])} sự cố / ${value(r['affectedEquipment'])} thiết bị',
+            child: Text(
+              'Trung bình ${value(r['incidentsPerEquipment'])} sự cố / thiết bị',
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
               ),
-          ],
-        );
+            ),
+          ),
+      ],
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

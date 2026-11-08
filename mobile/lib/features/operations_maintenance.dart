@@ -254,87 +254,88 @@ class _MaintenancePageState extends State<MaintenancePage> {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Card(
                     child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    value(plan['title']),
-                                    style: Theme.of(context).textTheme.titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.w800),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Chip(
-                                  avatar: const Icon(
-                                    Icons.event_repeat,
-                                    size: 16,
-                                  ),
-                                  label: Text(
-                                    value(plan['frequency']) == 'quarterly'
-                                        ? 'Hàng quý'
-                                        : 'Hàng tháng',
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _PlanInfoChip(
-                                  icon: Icons.location_on_outlined,
-                                  label:
-                                      '${value(plan['building'])} · Tầng ${value(plan['floor'])}',
-                                ),
-                                _PlanInfoChip(
-                                  icon: Icons.meeting_room_outlined,
-                                  label:
-                                      '${asList(plan['room_ids']).length} phòng',
-                                ),
-                                _PlanInfoChip(
-                                  icon: Icons.devices_other_outlined,
-                                  label:
-                                      '${_planEquipment(plan, equipment).length} thiết bị',
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            const Divider(height: 1),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                const Icon(Icons.calendar_today_outlined, size: 17),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Kỳ tiếp theo: ${formatVnDate(asMap(plan['schedule'])['next_due_at'])}',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (_role == 'technician')
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _logResult(
-                                    plan,
-                                    _planEquipment(plan, equipment),
-                                  ),
-                                  icon: const Icon(Icons.checklist),
-                                  label: const Text('Ghi kết quả'),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  value(plan['title']),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800),
                                 ),
                               ),
-                          ],
-                        ),
+                              const SizedBox(width: 8),
+                              Chip(
+                                avatar: const Icon(
+                                  Icons.event_repeat,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  value(plan['frequency']) == 'quarterly'
+                                      ? 'Hàng quý'
+                                      : 'Hàng tháng',
+                                ),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _PlanInfoChip(
+                                icon: Icons.location_on_outlined,
+                                label:
+                                    '${value(plan['building'])} · Tầng ${value(plan['floor'])}',
+                              ),
+                              _PlanInfoChip(
+                                icon: Icons.meeting_room_outlined,
+                                label:
+                                    '${asList(plan['room_ids']).length} phòng',
+                              ),
+                              _PlanInfoChip(
+                                icon: Icons.devices_other_outlined,
+                                label:
+                                    '${_planEquipment(plan, equipment).length} thiết bị',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const Divider(height: 1),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.calendar_today_outlined,
+                                size: 17,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Kỳ tiếp theo: ${formatVnDate(asMap(plan['schedule'])['next_due_at'])}',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_role == 'technician')
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: OutlinedButton.icon(
+                                onPressed: () => _logResult(
+                                  plan,
+                                  _planEquipment(plan, equipment),
+                                ),
+                                icon: const Icon(Icons.checklist),
+                                label: const Text('Ghi kết quả'),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

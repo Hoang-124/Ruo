@@ -29,7 +29,12 @@ Map<String, Json> buildCadPodIndex(List<Json> rooms) {
   return index;
 }
 
-Json? lookupCadPod(Map<String, Json> podIndex, String blueprintCode, {int? floor, int? slot}) {
+Json? lookupCadPod(
+  Map<String, Json> podIndex,
+  String blueprintCode, {
+  int? floor,
+  int? slot,
+}) {
   final clean = blueprintCode.trim().toUpperCase();
   final direct = podIndex[clean] ?? podIndex[equivalentRoomCode(clean)];
   if (direct != null) return direct;
@@ -251,22 +256,31 @@ List<_CadSlot> _slotsForFloor(int floor) {
     _ => const ('A1-PĐT', 'PHÒNG ĐÀO TẠO'),
   };
 
-  List<_CadSlot> pair(String a, String b, double x, double yTop, double w, _DoorSide door, {int? pA, int? pB}) => [
-        _CadSlot(
-          code: 'A1-$p$a',
-          title: 'PH $p$a',
-          rect: Rect.fromLTWH(x, yTop, w, 45),
-          door: door,
-          pSlot: pA,
-        ),
-        _CadSlot(
-          code: 'A1-$p$b',
-          title: 'PH $p$b',
-          rect: Rect.fromLTWH(x, yTop + 49, w, 45),
-          door: door,
-          pSlot: pB,
-        ),
-      ];
+  List<_CadSlot> pair(
+    String a,
+    String b,
+    double x,
+    double yTop,
+    double w,
+    _DoorSide door, {
+    int? pA,
+    int? pB,
+  }) => [
+    _CadSlot(
+      code: 'A1-$p$a',
+      title: 'PH $p$a',
+      rect: Rect.fromLTWH(x, yTop, w, 45),
+      door: door,
+      pSlot: pA,
+    ),
+    _CadSlot(
+      code: 'A1-$p$b',
+      title: 'PH $p$b',
+      rect: Rect.fromLTWH(x, yTop + 49, w, 45),
+      door: door,
+      pSlot: pB,
+    ),
+  ];
 
   return [
     ...pair('01', '02', 24, 18, 140, _DoorSide.right, pA: 1, pB: 2),
@@ -373,7 +387,12 @@ class _FloorPlanCanvasState extends State<FloorPlanCanvas> {
     super.dispose();
   }
 
-  void _handleTap(Offset localPos, Size renderedSize, Map<String, Json> podIndex, List<_CadSlot> slots) {
+  void _handleTap(
+    Offset localPos,
+    Size renderedSize,
+    Map<String, Json> podIndex,
+    List<_CadSlot> slots,
+  ) {
     const viewX = 14.0, viewY = 10.0, viewW = 932.0, viewH = 530.0;
     final cadX = viewX + (localPos.dx / renderedSize.width) * viewW;
     final cadY = viewY + (localPos.dy / renderedSize.height) * viewH;
@@ -381,7 +400,12 @@ class _FloorPlanCanvasState extends State<FloorPlanCanvas> {
 
     for (final slot in slots) {
       if (slot.rect.contains(hit)) {
-        final live = lookupCadPod(podIndex, slot.code, floor: widget.floor, slot: slot.pSlot);
+        final live = lookupCadPod(
+          podIndex,
+          slot.code,
+          floor: widget.floor,
+          slot: slot.pSlot,
+        );
         if (live != null) {
           setState(() => _selectedCode = value(live['code']));
           widget.onSelectRoom(live);
@@ -472,8 +496,12 @@ class _FloorPlanCanvasState extends State<FloorPlanCanvas> {
                       maxScale: 3.0,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTapUp: (details) =>
-                            _handleTap(details.localPosition, size, podIndex, slots),
+                        onTapUp: (details) => _handleTap(
+                          details.localPosition,
+                          size,
+                          podIndex,
+                          slots,
+                        ),
                         child: CustomPaint(
                           size: size,
                           painter: _FloorBlueprintPainter(
@@ -536,10 +564,20 @@ class _FloorBlueprintPainter extends CustomPainter {
       maxLines: 1,
       ellipsis: '…',
     )..layout(maxWidth: maxWidth ?? double.infinity);
-    tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+    tp.paint(
+      canvas,
+      Offset(center.dx - tp.width / 2, center.dy - tp.height / 2),
+    );
   }
 
-  void _drawDashedLine(Canvas canvas, Offset a, Offset b, Paint paint, double dash, double gap) {
+  void _drawDashedLine(
+    Canvas canvas,
+    Offset a,
+    Offset b,
+    Paint paint,
+    double dash,
+    double gap,
+  ) {
     final dx = b.dx - a.dx;
     final dy = b.dy - a.dy;
     final dist = math.sqrt(dx * dx + dy * dy);
@@ -571,14 +609,20 @@ class _FloorBlueprintPainter extends CustomPainter {
       Paint()..color = palette.canvasBg,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(16, 12, 928, 526), const Radius.circular(6)),
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(16, 12, 928, 526),
+        const Radius.circular(6),
+      ),
       Paint()
         ..color = palette.shellStroke
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.2,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(20, 16, 920, 518), const Radius.circular(5)),
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(20, 16, 920, 518),
+        const Radius.circular(5),
+      ),
       Paint()
         ..color = palette.shellInner
         ..style = PaintingStyle.stroke
@@ -702,8 +746,22 @@ class _FloorBlueprintPainter extends CustomPainter {
     final dashPaint = Paint()
       ..color = palette.corridorDash
       ..strokeWidth = 1.1;
-    _drawDashedLine(canvas, const Offset(242, 168), const Offset(718, 384), dashPaint, 5, 5);
-    _drawDashedLine(canvas, const Offset(718, 168), const Offset(242, 384), dashPaint, 5, 5);
+    _drawDashedLine(
+      canvas,
+      const Offset(242, 168),
+      const Offset(718, 384),
+      dashPaint,
+      5,
+      5,
+    );
+    _drawDashedLine(
+      canvas,
+      const Offset(718, 168),
+      const Offset(242, 384),
+      dashPaint,
+      5,
+      5,
+    );
     final atriumBadge = RRect.fromRectAndRadius(
       const Rect.fromLTWH(376, 258, 208, 36),
       const Radius.circular(8),
@@ -789,37 +847,67 @@ class _FloorBlueprintPainter extends CustomPainter {
 
     // 5. Render Every Room Cell + UC-2.7 RoomPodCard Chips + Alert Dots
     for (final slot in slots) {
-      final pod = lookupCadPod(podIndex, slot.code, floor: floor, slot: slot.pSlot);
+      final pod = lookupCadPod(
+        podIndex,
+        slot.code,
+        floor: floor,
+        slot: slot.pSlot,
+      );
       final liveCode = pod != null ? value(pod['code']) : slot.code;
       final isSelected = selectedCode != null && selectedCode == liveCode;
-      final effectiveStatus = pod != null ? value(pod['effectiveStatus'], fallback: value(pod['status'], fallback: 'available')) : null;
-      final eqCount = pod != null ? (pod['equipmentCount'] is num ? (pod['equipmentCount'] as num).toInt() : 0) : 0;
-      final brokenCount = pod != null ? (pod['brokenCount'] is num ? (pod['brokenCount'] as num).toInt() : 0) : 0;
-      final openReports = pod != null ? (pod['openReportCount'] is num ? (pod['openReportCount'] as num).toInt() : 0) : 0;
-      final hasAlert = pod != null && (pod['hasAlert'] == true || brokenCount > 0 || openReports > 0 || effectiveStatus == 'maintenance');
-      final isReportAlert = brokenCount > 0 || openReports > 0 || pod?['alertSeverity'] == 'report';
+      final effectiveStatus = pod != null
+          ? value(
+              pod['effectiveStatus'],
+              fallback: value(pod['status'], fallback: 'available'),
+            )
+          : null;
+      final eqCount = pod != null
+          ? (pod['equipmentCount'] is num
+                ? (pod['equipmentCount'] as num).toInt()
+                : 0)
+          : 0;
+      final brokenCount = pod != null
+          ? (pod['brokenCount'] is num
+                ? (pod['brokenCount'] as num).toInt()
+                : 0)
+          : 0;
+      final openReports = pod != null
+          ? (pod['openReportCount'] is num
+                ? (pod['openReportCount'] as num).toInt()
+                : 0)
+          : 0;
+      final hasAlert =
+          pod != null &&
+          (pod['hasAlert'] == true ||
+              brokenCount > 0 ||
+              openReports > 0 ||
+              effectiveStatus == 'maintenance');
+      final isReportAlert =
+          brokenCount > 0 ||
+          openReports > 0 ||
+          pod?['alertSeverity'] == 'report';
 
       final fill = isSelected
           ? palette.roomSelectedBg
           : slot.isUtility
-              ? palette.utilityBg
-              : palette.roomBg;
+          ? palette.utilityBg
+          : palette.roomBg;
       final border = isSelected
           ? palette.roomAccent
           : effectiveStatus == 'inactive'
-              ? palette.utilityAccent
-              : effectiveStatus == 'maintenance'
-                  ? const Color(0xFFF59E0B)
-                  : slot.isUtility
-                      ? palette.utilityBorder
-                      : palette.roomBorder;
+          ? palette.utilityAccent
+          : effectiveStatus == 'maintenance'
+          ? const Color(0xFFF59E0B)
+          : slot.isUtility
+          ? palette.utilityBorder
+          : palette.roomBorder;
       final accent = slot.isUtility && pod == null
           ? palette.utilityAccent
           : effectiveStatus == 'inactive'
-              ? palette.utilityAccent
-              : effectiveStatus == 'available' && pod != null
-                  ? const Color(0xFF10B981)
-                  : palette.roomAccent;
+          ? palette.utilityAccent
+          : effectiveStatus == 'available' && pod != null
+          ? const Color(0xFF10B981)
+          : palette.roomAccent;
 
       final rr = RRect.fromRectAndRadius(slot.rect, const Radius.circular(5));
       canvas.drawRRect(rr, Paint()..color = fill);
@@ -848,8 +936,14 @@ class _FloorBlueprintPainter extends CustomPainter {
       // Alert dot (top-right)
       if (hasAlert) {
         final dotCenter = Offset(slot.rect.right - 11, slot.rect.top + 11);
-        final dotColor = isReportAlert ? const Color(0xFFE5484D) : const Color(0xFFF59E0B);
-        canvas.drawCircle(dotCenter, 7.2, Paint()..color = dotColor.withValues(alpha: 0.24));
+        final dotColor = isReportAlert
+            ? const Color(0xFFE5484D)
+            : const Color(0xFFF59E0B);
+        canvas.drawCircle(
+          dotCenter,
+          7.2,
+          Paint()..color = dotColor.withValues(alpha: 0.24),
+        );
         canvas.drawCircle(dotCenter, 4.2, Paint()..color = dotColor);
       }
 
@@ -858,12 +952,19 @@ class _FloorBlueprintPainter extends CustomPainter {
         final cx = slot.rect.right - (hasAlert ? 25.0 : 12.0);
         final cy = slot.rect.top + 11.0;
         final medPaint = Paint()..color = palette.roomAccent;
-        canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy), width: 2.6, height: 8.5), medPaint);
-        canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy), width: 8.5, height: 2.6), medPaint);
+        canvas.drawRect(
+          Rect.fromCenter(center: Offset(cx, cy), width: 2.6, height: 8.5),
+          medPaint,
+        );
+        canvas.drawRect(
+          Rect.fromCenter(center: Offset(cx, cy), width: 8.5, height: 2.6),
+          medPaint,
+        );
       }
 
       // Room Title (uses live code when mapped to P101..P508 on generic slots)
-      final displayTitle = pod != null && RegExp(r'^P[1-5]0[1-8]$').hasMatch(liveCode)
+      final displayTitle =
+          pod != null && RegExp(r'^P[1-5]0[1-8]$').hasMatch(liveCode)
           ? liveCode
           : slot.title;
       final compact = slot.rect.height < 56;
@@ -872,7 +973,8 @@ class _FloorBlueprintPainter extends CustomPainter {
           ? slot.rect.center.dy - 7
           : slot.rect.center.dy;
 
-      if (slot.titleLine2 != null && (pod == null || !RegExp(r'^P[1-5]0[1-8]$').hasMatch(liveCode))) {
+      if (slot.titleLine2 != null &&
+          (pod == null || !RegExp(r'^P[1-5]0[1-8]$').hasMatch(liveCode))) {
         _drawText(
           canvas,
           displayTitle,
@@ -905,7 +1007,10 @@ class _FloorBlueprintPainter extends CustomPainter {
         final shortCode = liveCode.replaceFirst(RegExp(r'^A1-'), '');
         final fullPod = slot.rect.height >= 68 && slot.rect.width >= 115;
         final mainLabel = fullPod ? '$shortCode · $eqCount TB' : '$eqCount TB';
-        final mainW = (mainLabel.length * 5.8 + 12).clamp(34.0, slot.rect.width - 12);
+        final mainW = (mainLabel.length * 5.8 + 12).clamp(
+          34.0,
+          slot.rect.width - 12,
+        );
         final chipY = slot.rect.bottom - 20;
         final mainRect = RRect.fromRectAndRadius(
           Rect.fromLTWH(slot.rect.right - 6 - mainW, chipY, mainW, 15),
@@ -942,7 +1047,10 @@ class _FloorBlueprintPainter extends CustomPainter {
               Rect.fromLTWH(brokenLeft, chipY, brokenW, 15),
               const Radius.circular(7.5),
             );
-            canvas.drawRRect(brokenRect, Paint()..color = const Color(0xFFE5484D));
+            canvas.drawRRect(
+              brokenRect,
+              Paint()..color = const Color(0xFFE5484D),
+            );
             _drawText(
               canvas,
               brokenLabel,

@@ -490,7 +490,8 @@ void main() {
                   {
                     '_id': 'mongo-rep-1',
                     'ticket_code': 'REP-REAL-101',
-                    'incident_description': 'Bình chữa cháy CO2 không có khí khi bóp cò',
+                    'incident_description':
+                        'Bình chữa cháy CO2 không có khí khi bóp cò',
                     'equipment_id': {
                       '_id': 'eq-co2-1',
                       'code': 'EQ-503-EXTCO2-01',
@@ -545,7 +546,9 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text('Phòng A1-202 · Mã TB: EQ-503-EXTCO2-01 · Phiếu [REP-REAL-101]'),
+        find.text(
+          'Phòng A1-202 · Mã TB: EQ-503-EXTCO2-01 · Phiếu [REP-REAL-101]',
+        ),
         findsOneWidget,
       );
 
@@ -604,7 +607,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.byKey(const Key('btn_ai_incident_triage')));
+      await tester.ensureVisible(
+        find.byKey(const Key('btn_ai_incident_triage')),
+      );
       await tester.tap(find.byKey(const Key('btn_ai_incident_triage')));
       await tester.pumpAndSettle();
 
@@ -762,8 +767,7 @@ void main() {
                   'risk_level': 'MEDIUM',
                   'reconciliation_rate_percent': 85,
                   'missing_value_exposure_vnd': 12500000,
-                  'executive_summary':
-                      'Phát hiện 1 thiết bị sai vị trí phòng học cần điều chuyển.',
+                  'executive_summary': 'Phát hiện 1 thiết bị sai vị trí phòng học cần điều chuyển.',
                 },
               }),
               200,
@@ -815,10 +819,7 @@ void main() {
       await tester.ensureVisible(find.text('Kiểm toán & RBAC'));
       await tester.tap(find.text('Kiểm toán & RBAC'));
       await tester.pumpAndSettle();
-      expect(
-        find.text('Kiểm Toán Bảo Mật & Quản Trị RBAC'),
-        findsOneWidget,
-      );
+      expect(find.text('Kiểm Toán Bảo Mật & Quản Trị RBAC'), findsOneWidget);
       await tester.tap(find.byKey(const Key('btn_verify_sha256_chain')));
       await tester.pumpAndSettle();
       expect(find.textContaining('Chuỗi băm bất biến SHA-256'), findsOneWidget);

@@ -139,10 +139,10 @@ class _QrScannerPageState extends State<QrScannerPage>
 
       if (found == null) {
         try {
-          final searchRes = await widget.api.get(
-            '/equipments',
-            {'search': clean, 'limit': '1'},
-          );
+          final searchRes = await widget.api.get('/equipments', {
+            'search': clean,
+            'limit': '1',
+          });
           final list = asList(
             searchRes['equipments'] ??
                 searchRes['data']?['equipments'] ??
@@ -153,11 +153,13 @@ class _QrScannerPageState extends State<QrScannerPage>
           }
         } catch (_) {
           try {
-            final searchRes = await widget.api.get(
-              '/equipment',
-              {'search': clean, 'limit': '1'},
+            final searchRes = await widget.api.get('/equipment', {
+              'search': clean,
+              'limit': '1',
+            });
+            final list = asList(
+              searchRes['data']?['equipments'] ?? searchRes['data'],
             );
-            final list = asList(searchRes['data']?['equipments'] ?? searchRes['data']);
             if (list.isNotEmpty) {
               found = list.first;
             }
@@ -176,8 +178,8 @@ class _QrScannerPageState extends State<QrScannerPage>
           'name': clean.contains('PRJ')
               ? 'Máy chiếu Sony Laser 5000 Lumens'
               : clean.contains('CAM')
-                  ? 'Camera PTZ Tracking Tự Động'
-                  : 'Điều hòa Daikin Inverter Cassette 4HP',
+              ? 'Camera PTZ Tracking Tự Động'
+              : 'Điều hòa Daikin Inverter Cassette 4HP',
           'category': 'Thiết bị điện tử',
           'room_code': 'A1-101',
           'serial_number': 'SN-$clean-VN',
@@ -264,7 +266,10 @@ class _QrScannerPageState extends State<QrScannerPage>
                       fontSize: 13,
                     ),
                   ),
-                  subtitle: Text(asset.$2, style: const TextStyle(fontSize: 12)),
+                  subtitle: Text(
+                    asset.$2,
+                    style: const TextStyle(fontSize: 12),
+                  ),
                   trailing: TextButton(
                     onPressed: () {
                       Navigator.pop(ctx);
@@ -385,9 +390,7 @@ class _QrScannerPageState extends State<QrScannerPage>
               color: dark ? RuoTokens.slate900 : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: _torch
-                    ? RuoTokens.brand400
-                    : scheme.outlineVariant,
+                color: _torch ? RuoTokens.brand400 : scheme.outlineVariant,
                 width: _torch ? 2 : 1.2,
               ),
               boxShadow: [
@@ -490,8 +493,9 @@ class _QrScannerPageState extends State<QrScannerPage>
                             child: RuoVectorIcon(
                               _torch ? RuoIcon.sun : RuoIcon.moon,
                               size: 18,
-                              color:
-                                  _torch ? RuoTokens.brand300 : Colors.white70,
+                              color: _torch
+                                  ? RuoTokens.brand300
+                                  : Colors.white70,
                             ),
                           ),
                         ),
@@ -534,9 +538,7 @@ class _QrScannerPageState extends State<QrScannerPage>
                         border: Border.all(color: Colors.white12),
                       ),
                       child: Text(
-                        _busy
-                            ? 'Đang đối soát dữ liệu máy chủ…'
-                            : 'Hướng máy ảnh vào mã QR trên màn hình hoặc thiết bị',
+                        _busy ? 'Đang đối soát dữ liệu máy chủ…' : 'Hướng máy ảnh vào mã QR trên màn hình hoặc thiết bị',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white,
@@ -713,13 +715,18 @@ class EquipmentDetailSheet extends StatelessWidget {
       equipment['category'] is Map
           ? equipment['category']['name']
           : (equipment['category'] ??
-              equipment['category_name'] ??
-              equipment['category_id']?['name']),
+                equipment['category_name'] ??
+                equipment['category_id']?['name']),
       fallback: 'Cơ sở vật chất',
     );
-    final serial = value(equipment['serial_number'] ?? equipment['serial'], fallback: 'DK-2024-9981-CS');
+    final serial = value(
+      equipment['serial_number'] ?? equipment['serial'],
+      fallback: 'DK-2024-9981-CS',
+    );
     final status = value(equipment['status'], fallback: 'in_use');
-    final warranty = formatVnDate(equipment['warranty_expiry'] ?? equipment['warranty_end']);
+    final warranty = formatVnDate(
+      equipment['warranty_expiry'] ?? equipment['warranty_end'],
+    );
 
     return SafeArea(
       child: SizedBox(
@@ -729,96 +736,97 @@ class EquipmentDetailSheet extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'HỒ SƠ TÀI SẢN CHI TIẾT',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                          color: scheme.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        name,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              height: 1.2,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-                StatusBadge(status),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: scheme.outlineVariant),
-              ),
-              child: Column(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _infoRow(context, 'Mã tài sản (Barcode)', code),
-                  const Divider(height: 20),
-                  _infoRow(context, 'Danh mục thiết bị', category),
-                  const Divider(height: 20),
-                  _infoRow(context, 'Vị trí hiện tại', 'Phòng $room'),
-                  const Divider(height: 20),
-                  _infoRow(context, 'Số sê-ri máy', serial),
-                  const Divider(height: 20),
-                  _infoRow(context, 'Thời hạn bảo hành', warranty),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'HỒ SƠ TÀI SẢN CHI TIẾT',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                            color: scheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          name,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                height: 1.2,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  StatusBadge(status),
                 ],
               ),
-            ),
-            const SizedBox(height: 22),
-            FilledButton.icon(
-              onPressed: () async {
-                Navigator.pop(context);
-                await showDialog<void>(
-                  context: context,
-                  builder: (_) => ReportIncidentDialog(
-                    api: api,
-                    equipment: equipment,
-                    onSuccess: onReportSuccess,
-                  ),
-                );
-              },
-              icon: const RuoVectorIcon(
-                RuoIcon.wrench,
-                size: 18,
-                color: Colors.white,
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: scheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: scheme.outlineVariant),
+                ),
+                child: Column(
+                  children: [
+                    _infoRow(context, 'Mã tài sản (Barcode)', code),
+                    const Divider(height: 20),
+                    _infoRow(context, 'Danh mục thiết bị', category),
+                    const Divider(height: 20),
+                    _infoRow(context, 'Vị trí hiện tại', 'Phòng $room'),
+                    const Divider(height: 20),
+                    _infoRow(context, 'Số sê-ri máy', serial),
+                    const Divider(height: 20),
+                    _infoRow(context, 'Thời hạn bảo hành', warranty),
+                  ],
+                ),
               ),
-              style: FilledButton.styleFrom(
-                backgroundColor: RuoTokens.rose600,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+              const SizedBox(height: 22),
+              FilledButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await showDialog<void>(
+                    context: context,
+                    builder: (_) => ReportIncidentDialog(
+                      api: api,
+                      equipment: equipment,
+                      onSuccess: onReportSuccess,
+                    ),
+                  );
+                },
+                icon: const RuoVectorIcon(
+                  RuoIcon.wrench,
+                  size: 18,
+                  color: Colors.white,
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: RuoTokens.rose600,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                label: const Text(
+                  'Báo hỏng / Yêu cầu sửa chữa (SLA)',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
+                ),
               ),
-              label: const Text(
-                'Báo hỏng / Yêu cầu sửa chữa (SLA)',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const RuoVectorIcon(RuoIcon.check, size: 16),
+                label: const Text('Đóng'),
               ),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const RuoVectorIcon(RuoIcon.check, size: 16),
-              label: const Text('Đóng'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _infoRow(BuildContext context, String label, String text) {
@@ -834,10 +842,7 @@ class EquipmentDetailSheet extends StatelessWidget {
         ),
         Text(
           text,
-          style: const TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w800,
-          ),
+          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
         ),
       ],
     );

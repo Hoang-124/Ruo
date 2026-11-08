@@ -437,9 +437,7 @@ class _CadPageState extends State<CadPage> {
         SectionTitle(
           'Giám sát phòng theo tầng · Tòa A1',
           eyebrow: 'ĐIỀU HÀNH KHÔNG GIAN · 5 TẦNG',
-          subtitle:
-              floorTitles[_floor] ??
-              'Chọn tầng 1–5 · Chạm vào thẻ phòng để xem thiết bị & báo hỏng nhanh',
+          subtitle: floorTitles[_floor] ?? 'Chọn tầng 1–5 · Chạm vào thẻ phòng để xem thiết bị & báo hỏng nhanh',
           trailing: IconButton(
             tooltip: 'Cập nhật trạng thái phòng',
             onPressed: () => setState(() => _revision++),
@@ -484,7 +482,9 @@ class _CadPageState extends State<CadPage> {
                     vertical: 16,
                   ),
                   decoration: BoxDecoration(
-                    color: dark ? const Color(0xFF1E293B) : const Color(0xFFFFF7ED),
+                    color: dark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFFFF7ED),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: dark

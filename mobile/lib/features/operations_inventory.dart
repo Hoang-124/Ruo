@@ -426,10 +426,14 @@ class _InventoryPageState extends State<InventoryPage> {
                 ),
                 OutlinedButton.icon(
                   key: const Key('btn_inventory_ai_analysis'),
-                  onPressed: _aiLoading ? null : () => _runAiInventoryAnalysis(sessionId),
+                  onPressed: _aiLoading
+                      ? null
+                      : () => _runAiInventoryAnalysis(sessionId),
                   icon: const RuoVectorIcon(RuoIcon.alert, size: 15),
                   label: Text(
-                    _aiLoading ? 'Đang phân tích…' : '✨ AI Phân Tích Lệch Kiểm Kê',
+                    _aiLoading
+                        ? 'Đang phân tích…'
+                        : '✨ AI Phân Tích Lệch Kiểm Kê',
                   ),
                 ),
               ],
@@ -471,8 +475,7 @@ class _InventoryPageState extends State<InventoryPage> {
           'health_score': 98,
           'reconciliation_rate_percent': 98.5,
           'missing_value_exposure_vnd': 0,
-          'executive_summary':
-              'Ruo Cortex Local AI (#4A): Tỷ lệ khớp kiểm kê đạt 98.5%. Không phát hiện tài sản thanh lý tái xuất hiện (zombie asset).',
+          'executive_summary': 'Ruo Cortex Local AI (#4A): Tỷ lệ khớp kiểm kê đạt 98.5%. Không phát hiện tài sản thanh lý tái xuất hiện (zombie asset).',
           'zombie_disposed_assets': [],
           'room_hotspots': [],
           'transfer_recommendations': [],
@@ -496,7 +499,9 @@ class _InventoryPageState extends State<InventoryPage> {
       fallback: '100',
     );
     final missingVnd = money(
-      analysis['missing_value_exposure_vnd'] ?? metrics['missing_value_vnd'] ?? 0,
+      analysis['missing_value_exposure_vnd'] ??
+          metrics['missing_value_vnd'] ??
+          0,
     );
     final summary = value(
       analysis['executive_summary'],
@@ -536,7 +541,10 @@ class _InventoryPageState extends State<InventoryPage> {
             const SizedBox(height: 6),
             Text(
               summary,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
             ),
             const SizedBox(height: 6),
             Text(

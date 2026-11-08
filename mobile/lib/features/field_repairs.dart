@@ -69,7 +69,9 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
     final roomRaw = widget.equipment['room_id'];
     _selectedRoomId = roomRaw is Map ? value(roomRaw['_id']) : value(roomRaw);
     _selectedEquipmentId = value(
-      widget.equipment['_id'] ?? widget.equipment['id'] ?? widget.equipment['code'],
+      widget.equipment['_id'] ??
+          widget.equipment['id'] ??
+          widget.equipment['code'],
     );
     _loadRoomsAndEquipments();
   }
@@ -138,7 +140,8 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
       _error = null;
     });
     try {
-      final eqId = _selectedEquipmentId ??
+      final eqId =
+          _selectedEquipmentId ??
           widget.equipment['_id'] ??
           widget.equipment['id'] ??
           widget.equipment['code'];
@@ -176,14 +179,17 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
 
       if (result.isEmpty) {
         final lower = desc.toLowerCase();
-        final isCritical = lower.contains('chập') ||
+        final isCritical =
+            lower.contains('chập') ||
             lower.contains('khói') ||
             lower.contains('rò điện') ||
             lower.contains('nổ');
         result = {
           'suggested_damage_level': isCritical ? 'critical' : 'major',
           'damage_level': isCritical ? 'critical' : 'major',
-          'sla_label': isCritical ? 'Khẩn cấp 8 giờ (24/7)' : '24 giờ hành chính',
+          'sla_label': isCritical
+              ? 'Khẩn cấp 8 giờ (24/7)'
+              : '24 giờ hành chính',
           'confidence': 91,
           'fault_classification': {
             'playbook_title': isCritical
@@ -243,7 +249,8 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
       (t) => t.$1 == _damageLevel,
       orElse: () => _damageLevels.first,
     );
-    var eqId = _selectedEquipmentId ??
+    var eqId =
+        _selectedEquipmentId ??
         widget.equipment['_id'] ??
         widget.equipment['id'] ??
         widget.equipment['code'];
@@ -264,8 +271,9 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
             widget.equipment['id'] == null &&
             widget.equipment['code'] != null) {
           try {
-            final lookup =
-                await widget.api.get('/equipments/qr/${widget.equipment['code']}');
+            final lookup = await widget.api.get(
+              '/equipments/qr/${widget.equipment['code']}',
+            );
             final foundEq = asMap(lookup['equipment'] ?? lookup['data']);
             if (foundEq['_id'] != null) {
               eqId = foundEq['_id'];
@@ -290,7 +298,8 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
           'incident_images': images,
           'has_photo': _hasPhoto || images.isNotEmpty,
         });
-        final createdCode = res['repair']?['ticket_code'] ??
+        final createdCode =
+            res['repair']?['ticket_code'] ??
             res['ticket_code'] ??
             res['data']?['ticket_code'];
         if (createdCode != null) {
@@ -411,7 +420,8 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   isExpanded: true,
-                  initialValue: _rooms.any((r) => value(r['_id']) == _selectedRoomId)
+                  initialValue:
+                      _rooms.any((r) => value(r['_id']) == _selectedRoomId)
                       ? _selectedRoomId
                       : value(_rooms.first['_id']),
                   decoration: const InputDecoration(
@@ -441,8 +451,10 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   isExpanded: true,
-                  initialValue: _roomEquipments
-                          .any((e) => value(e['_id']) == _selectedEquipmentId)
+                  initialValue:
+                      _roomEquipments.any(
+                        (e) => value(e['_id']) == _selectedEquipmentId,
+                      )
                       ? _selectedEquipmentId
                       : value(_roomEquipments.first['_id']),
                   decoration: const InputDecoration(
@@ -459,7 +471,8 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
                         ),
                       )
                       .toList(),
-                  onChanged: (eqId) => setState(() => _selectedEquipmentId = eqId),
+                  onChanged: (eqId) =>
+                      setState(() => _selectedEquipmentId = eqId),
                 ),
               ],
               const SizedBox(height: 14),
@@ -553,8 +566,7 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
                 maxLines: 3,
                 decoration: const InputDecoration(
                   labelText: '4. Mô Tả Chi Tiết Sự Cố *',
-                  hintText:
-                      'VD: Máy chiếu bật không lên nguồn, đèn nhấp nháy đỏ liên tục…',
+                  hintText: 'VD: Máy chiếu bật không lên nguồn, đèn nhấp nháy đỏ liên tục…',
                 ),
               ),
               const SizedBox(height: 8),
@@ -580,7 +592,8 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
                 controller: _imageController,
                 maxLines: 2,
                 decoration: const InputDecoration(
-                  labelText: '5. Đường Dẫn Hình Ảnh Hiện Trường (Không bắt buộc)',
+                  labelText:
+                      '5. Đường Dẫn Hình Ảnh Hiện Trường (Không bắt buộc)',
                   hintText: 'https://example.com/anh-hien-truong.jpg',
                 ),
               ),
@@ -616,8 +629,9 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
                               : 'Chạm để đính kèm ảnh thực tế qua camera',
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight:
-                                _hasPhoto ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: _hasPhoto
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             color: _hasPhoto
                                 ? scheme.onSurface
                                 : scheme.onSurfaceVariant,
@@ -680,8 +694,8 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
       fallback: dmg == 'critical'
           ? 'Khẩn cấp 8 giờ (24/7)'
           : dmg == 'major'
-              ? '24 giờ'
-              : '48 giờ',
+          ? '24 giờ'
+          : '48 giờ',
     );
     final faultCls = asMap(triage['fault_classification']);
     final faultTitle = value(
@@ -819,7 +833,10 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
             for (final qc in quickChecks)
               Text(
                 '• $qc',
-                style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
           ],
           const SizedBox(height: 8),
@@ -929,7 +946,10 @@ class ReportSuccessDialog extends StatelessWidget {
                           equipmentName,
                           textAlign: TextAlign.end,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                          ),
                         ),
                       ),
                     ],
@@ -938,24 +958,52 @@ class ReportSuccessDialog extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Phòng học:', style: TextStyle(fontSize: 12.5)),
-                      Text(roomCode, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                      const Text(
+                        'Phòng học:',
+                        style: TextStyle(fontSize: 12.5),
+                      ),
+                      Text(
+                        roomCode,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Cam kết SLA:', style: TextStyle(fontSize: 12.5)),
-                      Text(slaTierName, style: TextStyle(fontWeight: FontWeight.w800, color: slaColor, fontSize: 12.5)),
+                      const Text(
+                        'Cam kết SLA:',
+                        style: TextStyle(fontSize: 12.5),
+                      ),
+                      Text(
+                        slaTierName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: slaColor,
+                          fontSize: 12.5,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Hạn hoàn thành:', style: TextStyle(fontSize: 12.5)),
-                      Text(deadlineText, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
+                      const Text(
+                        'Hạn hoàn thành:',
+                        style: TextStyle(fontSize: 12.5),
+                      ),
+                      Text(
+                        deadlineText,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12.5,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -964,10 +1012,7 @@ class ReportSuccessDialog extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               'Bộ phận Kỹ thuật đã nhận thông báo điều phối tự động và sẽ xử lý trong thời hạn quy định.',
-              style: TextStyle(
-                fontSize: 11.5,
-                color: scheme.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ],
@@ -1136,7 +1181,9 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
     if (desc.isEmpty || _aiBusy) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vui lòng nhập mô tả hiện tượng sự cố để AI phân tích.'),
+          content: Text(
+            'Vui lòng nhập mô tả hiện tượng sự cố để AI phân tích.',
+          ),
         ),
       );
       return;
@@ -1164,7 +1211,8 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
       } catch (_) {}
       if (result.isEmpty) {
         final lower = desc.toLowerCase();
-        final isCritical = lower.contains('chập') ||
+        final isCritical =
+            lower.contains('chập') ||
             lower.contains('khói') ||
             lower.contains('rò điện') ||
             lower.contains('nổ');
@@ -1178,8 +1226,7 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
                 ? 'Sự cố an toàn điện / nguy cơ cháy nổ'
                 : 'Sự cố thiết bị giảng đường',
           },
-          'reasoning':
-              'AI đã phân tích mức độ ưu tiên, kiểm tra trùng lặp và chuẩn hóa mô tả kỹ thuật.',
+          'reasoning': 'AI đã phân tích mức độ ưu tiên, kiểm tra trùng lặp và chuẩn hóa mô tả kỹ thuật.',
           'refined_description': '[AI Chuẩn Hóa] $desc',
           'quick_checks': [
             '1. Kiểm tra cầu dao / nguồn cấp thiết bị tại phòng học.',
@@ -1330,8 +1377,7 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
         const SectionTitle(
           'Phiếu Báo Hỏng Thiết Bị Phòng Học',
           eyebrow: 'TIẾP NHẬN SỰ CỐ & BÁO HỎNG THỰC ĐỊA',
-          subtitle:
-              'Hệ thống tự động thông báo tới Cán bộ Quản lý CSVC và phân công KTV xử lý theo hạn cam kết SLA.',
+          subtitle: 'Hệ thống tự động thông báo tới Cán bộ Quản lý CSVC và phân công KTV xử lý theo hạn cam kết SLA.',
         ),
         const SizedBox(height: 14),
         Container(
@@ -1348,7 +1394,8 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
               if (_rooms.isNotEmpty)
                 DropdownButtonFormField<String>(
                   isExpanded: true,
-                  initialValue: _rooms.any((r) => value(r['_id']) == _selectedRoomId)
+                  initialValue:
+                      _rooms.any((r) => value(r['_id']) == _selectedRoomId)
                       ? _selectedRoomId
                       : value(_rooms.first['_id']),
                   decoration: const InputDecoration(
@@ -1379,7 +1426,9 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    color: scheme.surfaceContainerHighest.withValues(
+                      alpha: 0.4,
+                    ),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
@@ -1390,8 +1439,10 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
               else
                 DropdownButtonFormField<String>(
                   isExpanded: true,
-                  initialValue: _equipments
-                          .any((e) => value(e['_id']) == _selectedEquipmentId)
+                  initialValue:
+                      _equipments.any(
+                        (e) => value(e['_id']) == _selectedEquipmentId,
+                      )
                       ? _selectedEquipmentId
                       : value(_equipments.first['_id']),
                   decoration: const InputDecoration(
@@ -1408,14 +1459,20 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
                         ),
                       )
                       .toList(),
-                  onChanged: (eqId) => setState(() => _selectedEquipmentId = eqId),
+                  onChanged: (eqId) =>
+                      setState(() => _selectedEquipmentId = eqId),
                 ),
               if (selectedEq != null) ...[
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                    color: scheme.surfaceContainerHighest.withValues(
+                      alpha: 0.35,
+                    ),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: scheme.outlineVariant),
                   ),
@@ -1537,7 +1594,10 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
                   const Expanded(
                     child: Text(
                       '4. Mô Tả Chi Tiết Sự Cố *',
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   OutlinedButton.icon(
@@ -1556,8 +1616,7 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
                 controller: _descController,
                 maxLines: 4,
                 decoration: const InputDecoration(
-                  hintText:
-                      'VD: Máy chiếu bật không lên nguồn, đèn nhấp nháy đỏ liên tục; quạt tản nhiệt kêu to bất thường khi bật cầu dao...',
+                  hintText: 'VD: Máy chiếu bật không lên nguồn, đèn nhấp nháy đỏ liên tục; quạt tản nhiệt kêu to bất thường khi bật cầu dao...',
                 ),
               ),
               if (_aiTriage != null) ...[
@@ -1618,8 +1677,7 @@ class _ReportIssueMobilePageState extends State<ReportIssueMobilePage> {
                 controller: _imageController,
                 maxLines: 2,
                 decoration: const InputDecoration(
-                  labelText:
-                      '5. Đường Dẫn Hình Ảnh Hiện Trường (Không bắt buộc — mỗi URL 1 dòng)',
+                  labelText: '5. Đường Dẫn Hình Ảnh Hiện Trường (Không bắt buộc — mỗi URL 1 dòng)',
                   hintText: 'https://example.com/anh-hien-truong-1.jpg',
                 ),
               ),
@@ -1657,8 +1715,7 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
   Json? _slaStats;
 
   String get _role => value(widget.api.user?['role'], fallback: '');
-  bool get _isManagerOrAdmin =>
-      _role == 'admin' || _role == 'facility_manager';
+  bool get _isManagerOrAdmin => _role == 'admin' || _role == 'facility_manager';
 
   @override
   void initState() {
@@ -1699,7 +1756,11 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
     try {
       String msg = 'Đã quét SLA và gửi cảnh báo cho các phiếu quá hạn.';
       try {
-        final res = await widget.api.send('POST', '/repairs/sla/check-breaches', {});
+        final res = await widget.api.send(
+          'POST',
+          '/repairs/sla/check-breaches',
+          {},
+        );
         if (res['message'] != null) msg = value(res['message']);
       } catch (_) {}
       await _loadTickets();
@@ -1738,7 +1799,9 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
         'priority': 'critical',
         'status': 'in_progress',
         'created_at': now.subtract(const Duration(hours: 5)).toIso8601String(),
-        'sla_deadline': now.subtract(const Duration(hours: 1)).toIso8601String(),
+        'sla_deadline': now
+            .subtract(const Duration(hours: 1))
+            .toIso8601String(),
         'is_overdue': true,
       },
       {
@@ -1830,7 +1893,9 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
     }).toList();
 
     final overdueCount = _tickets
-        .where((t) => t['is_overdue'] == true || t['deadline_status'] == 'overdue')
+        .where(
+          (t) => t['is_overdue'] == true || t['deadline_status'] == 'overdue',
+        )
         .length;
     final complianceRate = _slaStats?['compliance_rate'] ?? 96.5;
 
@@ -1873,9 +1938,21 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _slaMetricItem('Tổng số phiếu', '${_tickets.length}', scheme.primary),
-                _slaMetricItem('Tỷ lệ đúng hạn SLA', '$complianceRate%', RuoTokens.emerald600),
-                _slaMetricItem('Quá hạn SLA', '$overdueCount', RuoTokens.rose600),
+                _slaMetricItem(
+                  'Tổng số phiếu',
+                  '${_tickets.length}',
+                  scheme.primary,
+                ),
+                _slaMetricItem(
+                  'Tỷ lệ đúng hạn SLA',
+                  '$complianceRate%',
+                  RuoTokens.emerald600,
+                ),
+                _slaMetricItem(
+                  'Quá hạn SLA',
+                  '$overdueCount',
+                  RuoTokens.rose600,
+                ),
               ],
             ),
           ),
@@ -1940,10 +2017,10 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
   }
 
   String _damageLevelLabel(String raw) => switch (raw) {
-        'critical' => 'Khẩn cấp (8h 24/7)',
-        'major' => 'Hỏng nặng (24h)',
-        _ => 'Hỏng nhẹ (48h)',
-      };
+    'critical' => 'Khẩn cấp (8h 24/7)',
+    'major' => 'Hỏng nặng (24h)',
+    _ => 'Hỏng nhẹ (48h)',
+  };
 
   Widget _ticketCard(BuildContext context, Json t) {
     final scheme = Theme.of(context).colorScheme;
@@ -2025,10 +2102,7 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
                       ],
                     ),
                   ),
-                  StatusBadge(
-                    dmg,
-                    labelOverride: _damageLevelLabel(dmg),
-                  ),
+                  StatusBadge(dmg, labelOverride: _damageLevelLabel(dmg)),
                 ],
               ),
               StatusBadge(status),
@@ -2166,8 +2240,7 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
   List<Json> _rooms = [];
 
   String get _role => value(widget.api.user?['role'], fallback: 'technician');
-  bool get _isManagerOrAdmin =>
-      _role == 'admin' || _role == 'facility_manager';
+  bool get _isManagerOrAdmin => _role == 'admin' || _role == 'facility_manager';
 
   @override
   void initState() {
@@ -2231,12 +2304,17 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
 
   Future<void> _fetchCopilot() async {
     setState(() => _loadingAi = true);
-    final ticketId = widget.ticket['_id'] ??
+    final ticketId =
+        widget.ticket['_id'] ??
         widget.ticket['id'] ??
         widget.ticket['ticket_code'];
     try {
       try {
-        final res = await widget.api.send('POST', '/repairs/$ticketId/ai-copilot', {});
+        final res = await widget.api.send(
+          'POST',
+          '/repairs/$ticketId/ai-copilot',
+          {},
+        );
         final data = asMap(res['copilot'] ?? res['data'] ?? res);
         if (data.isNotEmpty) {
           _copilot = data;
@@ -2255,19 +2333,15 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
         'diagnosis': {
           'fault_label': 'Chẩn đoán kỹ thuật tự động (Ruo Cortex Local AI)',
           'playbook_title': 'Chẩn đoán kỹ thuật tự động (Ruo Cortex Local AI)',
-          'root_cause':
-              'Hao mòn cơ khí quạt lồng sóc / suy giảm linh kiện công suất sau chu kỳ vận hành cao.',
-          'safety_protocol':
-              'Ngắt nguồn CB nhánh trước khi mở mặt nạ thiết bị và đeo găng bảo hộ cách điện.',
+          'root_cause': 'Hao mòn cơ khí quạt lồng sóc / suy giảm linh kiện công suất sau chu kỳ vận hành cao.',
+          'safety_protocol': 'Ngắt nguồn CB nhánh trước khi mở mặt nạ thiết bị và đeo găng bảo hộ cách điện.',
           'troubleshooting_steps': [
             '1. Kiểm tra nguồn cấp và đo dòng khởi động bằng ampe kìm.',
             '2. Tháo vệ sinh cụm tản nhiệt / kiểm tra bạc đạn và dây cáp tín hiệu.',
             '3. Chạy thử tải 15 phút và đối chiếu thông số chuẩn nhà sản xuất.',
           ],
-          'suggested_log_notes':
-              'Đã kiểm tra hiện trường, xác định nguyên nhân gốc và đang thay thế vật tư tiêu hao.',
-          'suggested_outcome_notes':
-              'Đã thay thế linh kiện chuẩn hãng, cân chỉnh thông số và chạy thử tải ổn định 100%.',
+          'suggested_log_notes': 'Đã kiểm tra hiện trường, xác định nguyên nhân gốc và đang thay thế vật tư tiêu hao.',
+          'suggested_outcome_notes': 'Đã thay thế linh kiện chuẩn hãng, cân chỉnh thông số và chạy thử tải ổn định 100%.',
         },
         'recommended_technicians': [
           {
@@ -2305,14 +2379,11 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
           'r_ratio_percent': 22.5,
           'threshold_percent': 60,
           'should_propose_disposal': false,
-          'recommendation':
-              'Tỷ lệ hao mòn R = 22.5% (< 60%) — Khuyến nghị sửa chữa phục hồi.',
+          'recommendation': 'Tỷ lệ hao mòn R = 22.5% (< 60%) — Khuyến nghị sửa chữa phục hồi.',
         },
         'ai_drafts': {
-          'progress_note':
-              'Đã kiểm tra hiện trường, xác định nguyên nhân gốc và đang thay thế vật tư tiêu hao.',
-          'resolved_note':
-              'Đã thay thế linh kiện chuẩn hãng, cân chỉnh thông số và chạy thử tải ổn định 100%.',
+          'progress_note': 'Đã kiểm tra hiện trường, xác định nguyên nhân gốc và đang thay thế vật tư tiêu hao.',
+          'resolved_note': 'Đã thay thế linh kiện chuẩn hãng, cân chỉnh thông số và chạy thử tải ổn định 100%.',
         },
       };
       final techs = _extractTechs();
@@ -2369,7 +2440,10 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
         widget.ticket['damage_level'] = _selectedDamageLevel;
         widget.ticket['assigned_to'] = {
           '_id': _selectedTechId,
-          'full_name': value(chosenTech['full_name'], fallback: _selectedTechId),
+          'full_name': value(
+            chosenTech['full_name'],
+            fallback: _selectedTechId,
+          ),
         };
       });
       widget.onUpdated?.call();
@@ -2424,8 +2498,9 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
         });
       } catch (_) {}
       setState(() {
-        widget.ticket['status'] =
-            _resolveOutcome == 'unrepairable' ? 'unrepairable' : 'resolved';
+        widget.ticket['status'] = _resolveOutcome == 'unrepairable'
+            ? 'unrepairable'
+            : 'resolved';
         widget.ticket['outcome'] = _resolveOutcome;
       });
       widget.onUpdated?.call();
@@ -2469,11 +2544,12 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
     final t = widget.ticket;
     final status = value(t['status'], fallback: 'reported');
     final diagnosis = asMap(_copilot?['diagnosis']);
-    final steps = (_copilot?['diagnosis'] is Map &&
+    final steps =
+        (_copilot?['diagnosis'] is Map &&
             (_copilot!['diagnosis'] as Map)['troubleshooting_steps'] is List)
         ? ((_copilot!['diagnosis'] as Map)['troubleshooting_steps'] as List)
-            .map((e) => e.toString())
-            .toList()
+              .map((e) => e.toString())
+              .toList()
         : <String>[];
     final techs = _extractTechs();
     final parts = asList(_copilot?['recommended_parts']);
@@ -2623,7 +2699,10 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
                       for (final step in steps)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 3),
-                          child: Text(step, style: const TextStyle(fontSize: 12)),
+                          child: Text(
+                            step,
+                            style: const TextStyle(fontSize: 12),
+                          ),
                         ),
                     ],
                     if (parts.isNotEmpty) ...[
@@ -2653,7 +2732,8 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: (disposalEval['should_propose_disposal'] ==
+                          color:
+                              (disposalEval['should_propose_disposal'] ==
                                       true ||
                                   disposalEval['exceeds_threshold'] == true)
                               ? RuoTokens.rose600
@@ -2679,9 +2759,10 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
               if (techs.isNotEmpty)
                 DropdownButtonFormField<String>(
                   isExpanded: true,
-                  initialValue: techs.any(
-                    (e) => value(e['_id'] ?? e['id']) == _selectedTechId,
-                  )
+                  initialValue:
+                      techs.any(
+                        (e) => value(e['_id'] ?? e['id']) == _selectedTechId,
+                      )
                       ? _selectedTechId
                       : value(techs.first['_id'] ?? techs.first['id']),
                   decoration: const InputDecoration(
@@ -2768,7 +2849,8 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
               controller: _noteController,
               maxLines: 2,
               decoration: const InputDecoration(
-                labelText: 'Nhật ký xử lý / Biên bản nghiệm thu (AI đã điền nháp)',
+                labelText:
+                    'Nhật ký xử lý / Biên bản nghiệm thu (AI đã điền nháp)',
               ),
             ),
             const SizedBox(height: 8),
@@ -2819,7 +2901,8 @@ class _TicketCopilotSheetState extends State<TicketCopilotSheet> {
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 isExpanded: true,
-                initialValue: _rooms.any((r) => value(r['_id']) == _destinationRoomId)
+                initialValue:
+                    _rooms.any((r) => value(r['_id']) == _destinationRoomId)
                     ? _destinationRoomId
                     : value(_rooms.first['_id']),
                 decoration: const InputDecoration(

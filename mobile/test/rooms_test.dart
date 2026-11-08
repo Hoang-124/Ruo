@@ -5,12 +5,12 @@ import 'package:ruo_mobile/features/rooms.dart';
 
 void main() {
   Map<String, dynamic> valid() => {
-        'code': 'P101',
-        'name': 'Phòng thực hành',
-        'capacity': '45',
-        'room_type': 'lab',
-        'description': '',
-      };
+    'code': 'P101',
+    'name': 'Phòng thực hành',
+    'capacity': '45',
+    'room_type': 'lab',
+    'description': '',
+  };
 
   test(
     'accepts every assigned A1 room range and normalized lowercase input',
@@ -26,21 +26,18 @@ void main() {
     },
   );
 
-  test(
-    'rejects nonexistent room indices, mismatched floors and noninteger capacity',
-    () {
-      for (final code in ['P109', 'P601', 'A1-101', '']) {
-        expect(validateRoomDraft(valid()..['code'] = code), contains('code'));
-      }
-      expect(validateRoomDraft(valid()..['floor'] = 2), contains('floor'));
-      for (final capacity in ['0', '501', '2.5', '-1', '', 'abc']) {
-        expect(
-          validateRoomDraft(valid()..['capacity'] = capacity),
-          contains('capacity'),
-        );
-      }
-    },
-  );
+  test('rejects nonexistent room indices, mismatched floors and noninteger capacity', () {
+    for (final code in ['P109', 'P601', 'A1-101', '']) {
+      expect(validateRoomDraft(valid()..['code'] = code), contains('code'));
+    }
+    expect(validateRoomDraft(valid()..['floor'] = 2), contains('floor'));
+    for (final capacity in ['0', '501', '2.5', '-1', '', 'abc']) {
+      expect(
+        validateRoomDraft(valid()..['capacity'] = capacity),
+        contains('capacity'),
+      );
+    }
+  });
 
   test('enforces meaningful names, known types and description limit', () {
     expect(validateRoomDraft(valid()..['name'] = '   '), contains('name'));
@@ -79,10 +76,7 @@ void main() {
       {'code': 'P203', 'equipmentCount': 2},
       {'code': 'A1-319', 'equipmentCount': 6},
     ]);
-    expect(
-      lookupCadPod(index, 'A1-PH-TB', floor: 1, slot: 1)?['code'],
-      'P101',
-    );
+    expect(lookupCadPod(index, 'A1-PH-TB', floor: 1, slot: 1)?['code'], 'P101');
     expect(lookupCadPod(index, 'A1-203')?['code'], 'P203');
     expect(lookupCadPod(index, 'A1-319')?['equipmentCount'], 6);
   });

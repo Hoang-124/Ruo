@@ -55,7 +55,10 @@ class RuoVectorIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resolved = color ?? IconTheme.of(context).color ?? Theme.of(context).colorScheme.onSurface;
+    final resolved =
+        color ??
+        IconTheme.of(context).color ??
+        Theme.of(context).colorScheme.onSurface;
     return SizedBox(
       width: size,
       height: size,
@@ -99,7 +102,10 @@ class _RuoIconPainter extends CustomPainter {
     switch (icon) {
       case RuoIcon.blueprint:
         canvas.drawRRect(
-          RRect.fromRectAndRadius(const Rect.fromLTWH(3, 3, 18, 18), const Radius.circular(3)),
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(3, 3, 18, 18),
+            const Radius.circular(3),
+          ),
           p,
         );
         canvas.drawLine(const Offset(3, 9.5), const Offset(21, 9.5), p);
@@ -120,33 +126,54 @@ class _RuoIconPainter extends CustomPainter {
         canvas.drawCircle(const Offset(13.8, 12), 1.1, fill);
       case RuoIcon.dashboard:
         canvas.drawRRect(
-          RRect.fromRectAndRadius(const Rect.fromLTWH(3, 3, 8, 9), const Radius.circular(2)),
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(3, 3, 8, 9),
+            const Radius.circular(2),
+          ),
           p,
         );
         canvas.drawRRect(
-          RRect.fromRectAndRadius(const Rect.fromLTWH(13, 3, 8, 5), const Radius.circular(2)),
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(13, 3, 8, 5),
+            const Radius.circular(2),
+          ),
           p,
         );
         canvas.drawRRect(
-          RRect.fromRectAndRadius(const Rect.fromLTWH(13, 10, 8, 11), const Radius.circular(2)),
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(13, 10, 8, 11),
+            const Radius.circular(2),
+          ),
           p,
         );
         canvas.drawRRect(
-          RRect.fromRectAndRadius(const Rect.fromLTWH(3, 14, 8, 7), const Radius.circular(2)),
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(3, 14, 8, 7),
+            const Radius.circular(2),
+          ),
           p,
         );
       case RuoIcon.chart:
         canvas.drawLine(const Offset(4, 20), const Offset(20, 20), p);
         canvas.drawRRect(
-          RRect.fromRectAndRadius(const Rect.fromLTWH(5.5, 11, 3.2, 9), const Radius.circular(1)),
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(5.5, 11, 3.2, 9),
+            const Radius.circular(1),
+          ),
           p,
         );
         canvas.drawRRect(
-          RRect.fromRectAndRadius(const Rect.fromLTWH(10.4, 6, 3.2, 14), const Radius.circular(1)),
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(10.4, 6, 3.2, 14),
+            const Radius.circular(1),
+          ),
           p,
         );
         canvas.drawRRect(
-          RRect.fromRectAndRadius(const Rect.fromLTWH(15.3, 9, 3.2, 11), const Radius.circular(1)),
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(15.3, 9, 3.2, 11),
+            const Radius.circular(1),
+          ),
           p,
         );
       case RuoIcon.search:
@@ -250,7 +277,10 @@ class _RuoIconPainter extends CustomPainter {
       case RuoIcon.printer:
         canvas.drawRect(const Rect.fromLTWH(7, 4, 10, 4.5), p);
         canvas.drawRRect(
-          RRect.fromRectAndRadius(const Rect.fromLTWH(4, 8.5, 16, 7.5), const Radius.circular(2)),
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(4, 8.5, 16, 7.5),
+            const Radius.circular(2),
+          ),
           p,
         );
         canvas.drawRect(const Rect.fromLTWH(7, 14, 10, 6), p);
@@ -291,11 +321,17 @@ class _RuoIconPainter extends CustomPainter {
         canvas.drawLine(const Offset(4, 4), const Offset(20, 20), p);
       case RuoIcon.server:
         canvas.drawRRect(
-          RRect.fromRectAndRadius(const Rect.fromLTWH(4, 4.5, 16, 6), const Radius.circular(2)),
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(4, 4.5, 16, 6),
+            const Radius.circular(2),
+          ),
           p,
         );
         canvas.drawRRect(
-          RRect.fromRectAndRadius(const Rect.fromLTWH(4, 13.5, 16, 6), const Radius.circular(2)),
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(4, 13.5, 16, 6),
+            const Radius.circular(2),
+          ),
           p,
         );
         canvas.drawCircle(const Offset(7.5, 7.5), 0.9, fill);
@@ -332,9 +368,15 @@ class _RuoIconPainter extends CustomPainter {
         canvas.drawPath(
           Path()
             ..moveTo(14.5, 6.5)
-            ..arcToPoint(const Offset(17.5, 9.5), radius: const Radius.circular(4))
+            ..arcToPoint(
+              const Offset(17.5, 9.5),
+              radius: const Radius.circular(4),
+            )
             ..lineTo(9, 18)
-            ..arcToPoint(const Offset(6, 15), radius: const Radius.circular(2.2))
+            ..arcToPoint(
+              const Offset(6, 15),
+              radius: const Radius.circular(2.2),
+            )
             ..close(),
           p,
         );
@@ -373,11 +415,29 @@ class _RuoIconPainter extends CustomPainter {
           p,
         );
       case RuoIcon.qrCode:
-        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(3, 3, 7, 7), const Radius.circular(1.5)), p);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(3, 3, 7, 7),
+            const Radius.circular(1.5),
+          ),
+          p,
+        );
         canvas.drawRect(const Rect.fromLTWH(5.2, 5.2, 2.6, 2.6), fill);
-        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(14, 3, 7, 7), const Radius.circular(1.5)), p);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(14, 3, 7, 7),
+            const Radius.circular(1.5),
+          ),
+          p,
+        );
         canvas.drawRect(const Rect.fromLTWH(16.2, 5.2, 2.6, 2.6), fill);
-        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(3, 14, 7, 7), const Radius.circular(1.5)), p);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(3, 14, 7, 7),
+            const Radius.circular(1.5),
+          ),
+          p,
+        );
         canvas.drawRect(const Rect.fromLTWH(5.2, 16.2, 2.6, 2.6), fill);
         canvas.drawRect(const Rect.fromLTWH(14, 14, 3, 3), fill);
         canvas.drawRect(const Rect.fromLTWH(18, 14, 3, 3), fill);
@@ -413,7 +473,13 @@ class _RuoIconPainter extends CustomPainter {
         canvas.drawLine(const Offset(12, 12), const Offset(12, 7.5), p);
         canvas.drawLine(const Offset(12, 12), const Offset(15.5, 12), p);
       case RuoIcon.inventory:
-        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(4, 3, 16, 18), const Radius.circular(2)), p);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(4, 3, 16, 18),
+            const Radius.circular(2),
+          ),
+          p,
+        );
         canvas.drawLine(const Offset(8, 8), const Offset(16, 8), p);
         canvas.drawLine(const Offset(8, 12), const Offset(16, 12), p);
         canvas.drawLine(const Offset(8, 16), const Offset(13, 16), p);
@@ -427,7 +493,13 @@ class _RuoIconPainter extends CustomPainter {
           p,
         );
       case RuoIcon.camera:
-        canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(3, 7, 18, 13), const Radius.circular(2.5)), p);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(3, 7, 18, 13),
+            const Radius.circular(2.5),
+          ),
+          p,
+        );
         canvas.drawPath(
           Path()
             ..moveTo(8, 7)
@@ -453,10 +525,10 @@ class RuoLogoMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: size,
-        height: size,
-        child: const CustomPaint(painter: _RuoLogoPainter()),
-      );
+    width: size,
+    height: size,
+    child: const CustomPaint(painter: _RuoLogoPainter()),
+  );
 }
 
 class _RuoLogoPainter extends CustomPainter {
@@ -516,7 +588,10 @@ class _RuoLogoPainter extends CustomPainter {
       )
       ..lineTo(23, 18.5)
       ..close();
-    canvas.drawPath(arch, Paint()..color = Colors.white.withValues(alpha: 0.96));
+    canvas.drawPath(
+      arch,
+      Paint()..color = Colors.white.withValues(alpha: 0.96),
+    );
 
     // 3. Cantilever diagonal strut in golden amber
     final strut = Path()
