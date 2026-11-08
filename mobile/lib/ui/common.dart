@@ -12,16 +12,16 @@ List<Json> asList(dynamic input) =>
 
 String value(dynamic input, {String fallback = '—'}) =>
     input == null || input.toString().trim().isEmpty
-        ? fallback
-        : input.toString();
+    ? fallback
+    : input.toString();
 
 String money(dynamic input) {
   final number = input is num ? input : num.tryParse('$input');
   if (number == null) return '—';
   final formatted = number.round().toString().replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-        (m) => '${m[1]}.',
-      );
+    RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+    (m) => '${m[1]}.',
+  );
   return '$formatted ₫';
 }
 
@@ -48,12 +48,12 @@ String formatVnDateTime(dynamic raw, {String fallback = 'Chưa xác định'}) {
 }
 
 String roleLabel(dynamic role) => switch ('$role') {
-      'admin' => 'Quản trị viên',
-      'facility_manager' => 'Quản lý CSVC',
-      'technician' => 'Kỹ thuật viên',
-      'lecturer' => 'Giảng viên',
-      _ => value(role, fallback: 'Thành viên'),
-    };
+  'admin' => 'Quản trị viên',
+  'facility_manager' => 'Quản lý CSVC',
+  'technician' => 'Kỹ thuật viên',
+  'lecturer' => 'Giảng viên',
+  _ => value(role, fallback: 'Thành viên'),
+};
 
 String statusLabel(String status) =>
     const {
@@ -84,6 +84,7 @@ String statusLabel(String status) =>
       'awaiting_approval': 'Chờ CSVC duyệt',
       'pending': 'Đang chờ',
       'approved': 'Đã duyệt',
+      'completing': 'Đang hoàn tất · có thể thử lại',
       'rejected': 'Từ chối',
       'cancelled': 'Đã hủy',
       'unrepairable': 'Không thể sửa',
@@ -111,7 +112,10 @@ class StatusBadge extends StatelessWidget {
           Container(
             width: 6.5,
             height: 6.5,
-            decoration: BoxDecoration(color: tone.solid, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: tone.solid,
+              shape: BoxShape.circle,
+            ),
           ),
           const SizedBox(width: 6),
           Text(
@@ -183,27 +187,23 @@ class SectionTitle extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.4,
-                      ),
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.4,
+                  ),
                 ),
                 if (subtitle != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       subtitle!,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                   ),
               ],
             ),
           ),
-          if (trailing != null) ...[
-            const SizedBox(width: 8),
-            trailing!,
-          ],
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
         ],
       ),
     );
@@ -280,9 +280,9 @@ class DataCard extends StatelessWidget {
                     child: Text(
                       title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.2,
-                          ),
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
                     ),
                   ),
                   if (trailing != null) ...[
@@ -338,31 +338,32 @@ class _AsyncPanelState extends State<AsyncPanel> {
 
   @override
   Widget build(BuildContext context) => FutureBuilder<Json>(
-        future: future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Padding(
-              padding: EdgeInsets.all(32),
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2.6)),
-            );
-          }
-          if (snapshot.hasError) {
-            return Column(
-              children: [
-                EmptyNotice(
-                  snapshot.error.toString(),
-                  icon: RuoIcon.alert,
-                ),
-                const SizedBox(height: 6),
-                OutlinedButton.icon(
-                  onPressed: () => setState(() => future = widget.load()),
-                  icon: const RuoVectorIcon(RuoIcon.refresh, size: 16),
-                  label: const Text('Thử lại'),
-                ),
-              ],
-            );
-          }
-          return widget.builder(snapshot.data!);
-        },
-      );
+    future: future,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Padding(
+          padding: EdgeInsets.all(32),
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2.6)),
+        );
+      }
+      if (snapshot.hasError) {
+        return Column(
+          children: [
+            EmptyNotice(snapshot.error.toString(), icon: RuoIcon.alert),
+            const SizedBox(height: 6),
+            OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  future = widget.load();
+                });
+              },
+              icon: const RuoVectorIcon(RuoIcon.refresh, size: 16),
+              label: const Text('Thử lại'),
+            ),
+          ],
+        );
+      }
+      return widget.builder(snapshot.data!);
+    },
+  );
 }

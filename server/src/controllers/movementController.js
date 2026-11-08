@@ -1,4 +1,4 @@
-import { runTransaction, workflowError } from '../services/transaction.js';
+import { workflowError } from '../services/transaction.js';
 import mongoose from 'mongoose';
 import { EquipmentMovement } from '../models/EquipmentMovement.js';
 import { Equipment } from '../models/Equipment.js';
@@ -137,7 +137,7 @@ export const createMovementOrder = async (req, res) => {
 
     const activeMovement = await EquipmentMovement.findOne({
       equipment_id: equipment._id,
-      status: { $in: [MOVEMENT_STATUSES.AWAITING_APPROVAL, MOVEMENT_STATUSES.APPROVED, MOVEMENT_STATUSES.PENDING] }
+      status: { $in: [MOVEMENT_STATUSES.AWAITING_APPROVAL, MOVEMENT_STATUSES.APPROVED, MOVEMENT_STATUSES.PENDING, MOVEMENT_STATUSES.COMPLETING] }
     });
     if (activeMovement) {
       return res.status(409).json({ success: false, message: 'Thiết bị đã có phiếu điều chuyển đang xử lý.' });
@@ -323,58 +323,115 @@ export const confirmMovement = async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ success: false, message: 'ID phiếu điều chuyển không đúng định dạng.' });
     }
-    const movement = await runTransaction(async (session) => {
-      const movement = await EquipmentMovement.findById(req.params.id, null, { session });
-      if (!movement) {
-        throw workflowError(404, 'Không tìm thấy lệnh điều chuyển.');
-      }
+    const movement = await EquipmentMovement.findById(req.params.id);
+    if (!movement) {
+      throw workflowError(404, 'Không tìm thấy lệnh điều chuyển.');
+    }
 
+    const resuming = movement.status === MOVEMENT_STATUSES.COMPLETING;
+    if (!resuming) {
       assertTransition('TRANSFER', movement.status, MOVEMENT_STATUSES.COMPLETED, req.user.role);
-      if (movement.assigned_to && movement.assigned_to.toString() !== req.user._id.toString()) {
-        throw workflowError(403, 'Phiếu này được giao cho Kỹ thuật viên khác.');
+    }
+    if (movement.assigned_to && movement.assigned_to.toString() !== req.user._id.toString()) {
+      throw workflowError(403, 'Phiếu này được giao cho Kỹ thuật viên khác.');
+    }
+
+    const equipment = await Equipment.findById(movement.equipment_id);
+    if (!equipment) {
+      throw workflowError(404, 'Thiết bị không còn tồn tại.');
+    }
+
+    const blockedStatuses = [
+      EQUIPMENT_STATUSES.DISPOSED,
+      EQUIPMENT_STATUSES.LOST,
+      EQUIPMENT_STATUSES.PENDING_DISPOSAL
+    ];
+    const isAtSource = String(equipment.room_id || '') === String(movement.from_room_id || '');
+    const targetRoomId = movement.type === MOVEMENT_TYPES.REPAIR_OUT ? null : movement.to_room_id;
+    const isAtDestination = String(equipment.room_id || '') === String(targetRoomId || '');
+
+    if (!resuming && blockedStatuses.includes(equipment.status)) {
+      throw workflowError(409, 'Thiết bị đã thanh lý, thất lạc hoặc đang chờ thanh lý; không thể hoàn tất điều chuyển.');
+    }
+    if (!isAtSource && !(resuming && isAtDestination)) {
+      throw workflowError(409, 'Vị trí thiết bị đã thay đổi; cần lập lại phiếu điều chuyển.');
+    }
+
+    if (isAtSource && movement.type !== MOVEMENT_TYPES.REPAIR_OUT) {
+      const destination = await Room.findById(movement.to_room_id);
+      if (!destination || destination.status === ROOM_STATUSES.INACTIVE) {
+        throw workflowError(409, 'Phòng đích không tồn tại hoặc đã ngừng sử dụng. Vui lòng chọn phòng khác.');
       }
-      const equipment = await Equipment.findById(movement.equipment_id, null, { session });
-      if (!equipment) {
-        throw workflowError(404, 'Thiết bị không còn tồn tại.');
+    }
+
+    const previousStatus = movement.status;
+    if (!resuming) {
+      // This persisted phase makes completion recoverable if the server stops between the two document writes.
+      const claimed = await EquipmentMovement.updateOne(
+        { _id: movement._id, status: previousStatus },
+        {
+          $set: {
+            status: MOVEMENT_STATUSES.COMPLETING,
+            performed_by: req.user._id,
+            completion_notes: String(req.body?.notes || '').trim().slice(0, 500)
+          }
+        }
+      );
+      if (claimed.matchedCount === 0) {
+        throw workflowError(409, 'Phiếu điều chuyển đang được xử lý hoặc đã được cập nhật. Vui lòng tải lại.');
+      }
+    }
+
+    if (!isAtDestination) {
+      const equipmentUpdate = { room_id: targetRoomId };
+      if ([MOVEMENT_TYPES.REPLACEMENT, MOVEMENT_TYPES.TRANSFER, MOVEMENT_TYPES.REPAIR_RETURN].includes(movement.type)) {
+        equipmentUpdate.status = EQUIPMENT_STATUSES.IN_USE;
+      } else if (movement.type === MOVEMENT_TYPES.TO_STOCK) {
+        equipmentUpdate.status = EQUIPMENT_STATUSES.IN_STOCK;
       }
 
-      if ([EQUIPMENT_STATUSES.DISPOSED, EQUIPMENT_STATUSES.LOST, EQUIPMENT_STATUSES.PENDING_DISPOSAL].includes(equipment.status)) {
-        throw workflowError(409, 'Thiết bị đã thanh lý, thất lạc hoặc đang chờ thanh lý; không thể hoàn tất điều chuyển.');
-      }
-      if (String(equipment.room_id || '') !== String(movement.from_room_id || '')) {
-        throw workflowError(409, 'Vị trí thiết bị đã thay đổi; cần lập lại phiếu điều chuyển.');
-      }
-
-      // Recheck at execution time: the room may have closed since the order was approved.
-      if (movement.type !== MOVEMENT_TYPES.REPAIR_OUT) {
-        const destination = await Room.findById(movement.to_room_id, null, { session });
-        if (!destination || destination.status === ROOM_STATUSES.INACTIVE) {
-          throw workflowError(409, 'Phòng đích không tồn tại hoặc đã ngừng sử dụng. Vui lòng chọn phòng khác.');
+      const moved = await Equipment.updateOne(
+        {
+          _id: equipment._id,
+          room_id: movement.from_room_id,
+          status: { $nin: blockedStatuses }
+        },
+        { $set: equipmentUpdate }
+      );
+      if (moved.matchedCount === 0) {
+        const latestEquipment = await Equipment.findById(equipment._id);
+        const alreadyMoved = resuming &&
+          String(latestEquipment?.room_id || '') === String(targetRoomId || '');
+        if (!alreadyMoved) {
+          if (!resuming) {
+            await EquipmentMovement.updateOne(
+              { _id: movement._id, status: MOVEMENT_STATUSES.COMPLETING },
+              { $set: { status: previousStatus } }
+            );
+          }
+          throw workflowError(409, 'Không thể cập nhật vị trí thiết bị; hãy tải lại và thử lại.');
         }
       }
+    }
 
-      movement.performed_by = req.user._id;
-      movement.status = MOVEMENT_STATUSES.COMPLETED;
-      movement.completed_at = new Date();
-      movement.completion_notes = String(req.body?.notes || '').trim().slice(0, 500);
-      await movement.save({ session });
-
-      // Physically update equipment location
-      equipment.room_id = movement.to_room_id;
-      if (movement.type === MOVEMENT_TYPES.REPLACEMENT || movement.type === MOVEMENT_TYPES.TRANSFER || movement.type === MOVEMENT_TYPES.REPAIR_RETURN) {
-        equipment.status = EQUIPMENT_STATUSES.IN_USE;
-      } else if (movement.type === MOVEMENT_TYPES.TO_STOCK) {
-        equipment.status = EQUIPMENT_STATUSES.IN_STOCK;
-      } else if (movement.type === MOVEMENT_TYPES.REPAIR_OUT) {
-        equipment.room_id = null; // external
+    const completion = {
+      status: MOVEMENT_STATUSES.COMPLETED,
+      performed_by: req.user._id,
+      completed_at: new Date(),
+      completion_notes: String(req.body?.notes || movement.completion_notes || '').trim().slice(0, 500)
+    };
+    const finalized = await EquipmentMovement.updateOne(
+      { _id: movement._id, status: MOVEMENT_STATUSES.COMPLETING },
+      { $set: completion }
+    );
+    if (finalized.matchedCount === 0) {
+      const latestMovement = await EquipmentMovement.findById(movement._id);
+      if (latestMovement?.status !== MOVEMENT_STATUSES.COMPLETED) {
+        throw workflowError(503, 'Vị trí thiết bị đã được cập nhật; vui lòng xác nhận lại để hoàn tất phiếu.');
       }
-      await equipment.save({ session });
+    }
 
-      return movement;
-    });
-
-    // The transaction session has ended; population must use a fresh read.
-    movement.$session?.(null);
+    Object.assign(movement, completion);
     await movement.populate([
       { path: 'equipment_id', select: 'code name brand model status' },
       { path: 'from_room_id', select: 'code name building floor' },

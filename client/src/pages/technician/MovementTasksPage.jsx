@@ -159,13 +159,13 @@ export const MovementTasksPage = ({ preselectedEquipment = null, preselectedRoom
   const filtered = movements.filter(m => {
     if (statusFilter === 'ALL') return true;
     if (statusFilter === 'AWAITING') return m.status === 'awaiting_approval';
-    if (statusFilter === 'APPROVED') return m.status === 'approved' || m.status === 'pending';
+    if (statusFilter === 'APPROVED') return ['approved', 'pending', 'completing'].includes(m.status);
     if (statusFilter === 'COMPLETED') return m.status === 'completed';
     return true;
   });
 
   const awaitingCount = movements.filter(m => m.status === 'awaiting_approval').length;
-  const pendingCount = movements.filter(m => m.status === 'approved' || m.status === 'pending').length;
+  const pendingCount = movements.filter(m => ['approved', 'pending', 'completing'].includes(m.status)).length;
   const completedCount = movements.filter(m => m.status === 'completed').length;
 
   return (
@@ -286,12 +286,13 @@ export const MovementTasksPage = ({ preselectedEquipment = null, preselectedRoom
                 const eq = m.equipment_id || {};
                 const fromRoom = formatRoomDisplay(m.from_room_id);
                 const toRoom = formatRoomDisplay(m.to_room_id);
-                const canComplete = m.status === 'approved' || m.status === 'pending';
+                const canComplete = ['approved', 'pending', 'completing'].includes(m.status);
                 const isAssignedElsewhere = m.assigned_to?._id && m.assigned_to._id !== currentUser?._id;
                 const statusLabels = {
                   awaiting_approval: 'Chờ Quản lý duyệt',
                   approved: 'Đã duyệt - cần thực hiện',
                   pending: 'Chờ thực hiện (phiếu cũ)',
+                  completing: 'Đang hoàn tất - có thể thử lại',
                   rejected: 'Đã từ chối',
                   completed: 'Đã hoàn tất',
                   cancelled: 'Đã hủy'

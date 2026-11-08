@@ -24,7 +24,7 @@ const attachPendingMovements = async (equipments = []) => {
   const pendingMoves = eqIds.length
     ? await EquipmentMovement.find({
         equipment_id: { $in: eqIds },
-        status: { $in: [MOVEMENT_STATUSES.PENDING, MOVEMENT_STATUSES.AWAITING_APPROVAL, MOVEMENT_STATUSES.APPROVED] }
+        status: { $in: [MOVEMENT_STATUSES.PENDING, MOVEMENT_STATUSES.AWAITING_APPROVAL, MOVEMENT_STATUSES.APPROVED, MOVEMENT_STATUSES.COMPLETING] }
       }).populate('to_room_id', 'code name')
     : [];
   const pendingByEqId = new Map(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/api.dart';
+import 'features/operations.dart';
 import 'features/field_equipment.dart';
 import 'features/field_inventory.dart';
 import 'features/field_notifications.dart';
@@ -555,6 +556,9 @@ class _WorkspaceState extends State<Workspace> {
         ],
         ('Hồ sơ', RuoIcon.user, ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme)),
       ],
+      if (['admin', 'facility_manager', 'technician']
+          .contains(widget.api.user?['role']))
+        ('Nghiệp vụ', RuoIcon.transfer, OperationsPage(api: widget.api)),
     ];
     final safeTab = _tab.clamp(0, tabs.length - 1);
 
