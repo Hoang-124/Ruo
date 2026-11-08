@@ -192,6 +192,59 @@ describe('Ruo Cortex Local AI — Trained NLP, Physics Guardrails & Historical L
     assert.match(deskCopilot.diagnosis.suggested_log_action, /Xử lý kỹ thuật & thay thế vật tư/);
   });
 
+  test('repair copilot prevents false-positive battery/electrical parts on CO2 fire extinguishers and unrelated category parts', async () => {
+    const catalogSpareParts = [
+      { _id: 'sp-lamp', code: 'PART-LAMP', name: 'Bóng đèn cao áp máy chiếu Panasonic / Sony / Epson (UHM 230W)', stock: 12, unit: 'Bóng', price: 1500000 },
+      { _id: 'sp-filt', code: 'PART-FILT', name: 'Tấm lưới lọc bụi tĩnh điện cho máy chiếu & dàn lạnh điều hòa', stock: 30, unit: 'Tấm', price: 120000 },
+      { _id: 'sp-hdmi', code: 'PART-HDMI', name: 'Cáp tín hiệu HDMI 2.0 chống nhiễu bọc lưới dài 15m (4K@60Hz)', stock: 15, unit: 'Sợi', price: 350000 },
+      { _id: 'sp-rmt', code: 'PART-RMT', name: 'Điều khiển từ xa (Remote) đa năng cho Máy chiếu & Điều hòa', stock: 18, unit: 'Cái', price: 150000 },
+      { _id: 'sp-batt12', code: 'PART-BATT12', name: 'Bình ắc quy khô 12V-7.5Ah / 12V-9Ah (cho đèn sự cố, loa kéo)', stock: 8, unit: 'Bình', price: 380000 }
+    ];
+
+    const co2Copilot = await buildRepairCopilot({
+      repair: {
+        ticket_code: 'REP-CO2-01',
+        damage_level: 'minor',
+        incident_description: 'không có khí khi bóp công tắc',
+        room_id: { code: 'A1-202', name: 'Phòng học 202' },
+        equipment_id: {
+          _id: 'eq-co2-503',
+          code: 'EQ-503-EXTCO2-01',
+          name: 'Bình chữa cháy khí CO2 5kg (MT5)',
+          price: 650000,
+          category_id: { _id: 'cat-fire', code: 'CAT-FIRE', name: 'Phòng cháy chữa cháy' }
+        }
+      },
+      spareParts: catalogSpareParts
+    });
+
+    assert.equal(co2Copilot.diagnosis.is_electrical, false);
+    assert.equal(co2Copilot.diagnosis.playbook_id, 'FIRE_EXTINGUISHER_PRESSURE_LOW');
+    assert.equal(co2Copilot.recommended_parts.some((p) => p.code === 'PART-BATT12'), false);
+    assert.equal(co2Copilot.recommended_parts.length, 0);
+
+    const hdmiCopilot = await buildRepairCopilot({
+      repair: {
+        ticket_code: 'REP-HDMI-01',
+        damage_level: 'minor',
+        incident_description: 'Cắm cáp HDMI từ laptop vào máy chiếu báo No Signal chập chờn',
+        room_id: { code: 'A1-101', name: 'Phòng học 101' },
+        equipment_id: {
+          _id: 'eq-prj-101',
+          code: 'EQ-101-PRJSTD-01',
+          name: 'Máy chiếu siêu gần giảng đường (Panasonic PT-TW370)',
+          price: 18500000,
+          category_id: { _id: 'cat-display', code: 'CAT-DISPLAY', name: 'Thiết bị trình chiếu' }
+        }
+      },
+      spareParts: catalogSpareParts
+    });
+
+    assert.equal(hdmiCopilot.diagnosis.playbook_id, 'DISPLAY_HDMI_NO_SIGNAL');
+    assert.equal(hdmiCopilot.recommended_parts.some((p) => p.code === 'PART-HDMI'), true);
+    assert.equal(hdmiCopilot.recommended_parts.some((p) => p.code === 'PART-LAMP'), false);
+  });
+
   test('RUO_AI_LOCAL_ONLY=true guarantees zero external network calls even if GEMINI_API_KEY is configured', async (t) => {
     const prevKey = process.env.GEMINI_API_KEY;
     const prevLocalOnly = process.env.RUO_AI_LOCAL_ONLY;

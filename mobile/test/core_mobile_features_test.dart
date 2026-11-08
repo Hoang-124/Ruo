@@ -473,4 +473,91 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'TechnicianTasksPage parses real MongoDB repair payload and sends valid outcome on resolve',
+    (tester) async {
+      String? acceptedPath;
+      String? resolvedPath;
+      Json? resolvedPayload;
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.method == 'GET' && request.url.path == '/api/repairs') {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'repairs': [
+                  {
+                    '_id': 'mongo-rep-1',
+                    'ticket_code': 'REP-REAL-101',
+                    'incident_description': 'Bình chữa cháy CO2 không có khí khi bóp cò',
+                    'equipment_id': {
+                      '_id': 'eq-co2-1',
+                      'code': 'EQ-503-EXTCO2-01',
+                      'name': 'Bình chữa cháy khí CO2 5kg (MT5)',
+                    },
+                    'room_id': {'_id': 'room-202', 'code': 'A1-202'},
+                    'damage_level': 'minor',
+                    'status': 'assigned',
+                    'deadline': '2026-11-16T08:00:00.000Z',
+                    'deadline_status': 'on_track',
+                  },
+                ],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'PUT' &&
+              request.url.path == '/api/repairs/mongo-rep-1/accept') {
+            acceptedPath = request.url.path;
+            return http.Response(
+              '{"success":true}',
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'PUT' &&
+              request.url.path == '/api/repairs/mongo-rep-1/resolve') {
+            resolvedPath = request.url.path;
+            resolvedPayload = jsonDecode(request.body) as Json;
+            return http.Response(
+              '{"success":true}',
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(body: TechnicianTasksPage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Bình chữa cháy CO2 không có khí khi bóp cò'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Phòng A1-202 · Mã TB: EQ-503-EXTCO2-01 · Phiếu [REP-REAL-101]'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Tiếp nhận'));
+      await tester.pumpAndSettle();
+      expect(acceptedPath, '/api/repairs/mongo-rep-1/accept');
+
+      await tester.tap(find.text('Hoàn tất'));
+      await tester.pumpAndSettle();
+      expect(resolvedPath, '/api/repairs/mongo-rep-1/resolve');
+      expect(resolvedPayload?['outcome'], 'repaired');
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

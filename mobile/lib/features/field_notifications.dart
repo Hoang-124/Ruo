@@ -27,7 +27,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
     try {
       try {
         final res = await widget.api.get('/notifications');
-        final list = asList(res['data']?['notifications'] ?? res['data']);
+        final list = asList(
+          res['notifications'] ??
+              res['data']?['notifications'] ??
+              res['data'],
+        );
         if (list.isNotEmpty) {
           _notifications = list;
         } else {
@@ -78,7 +82,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
     ];
   }
 
-  void _markAllRead() {
+  Future<void> _markAllRead() async {
+    try {
+      await widget.api.send('PUT', '/notifications/read-all', {});
+    } catch (_) {}
+    if (!mounted) return;
     setState(() {
       for (final n in _notifications) {
         n['is_read'] = true;
@@ -97,7 +105,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final unreadCount = _notifications.where((n) => n['is_read'] != true).length;
 
     final filtered = _notifications.where((n) {
-      if (_filterTab == 1) return n['type'] == 'sla_breach';
+      if (_filterTab == 1) {
+        return n['type'] == 'sla_breach' || n['type'] == 'deadline_overdue';
+      }
       if (_filterTab == 2) return n['is_read'] != true;
       return true;
     }).toList();
@@ -160,7 +170,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   Widget _notifCard(BuildContext context, Json n) {
     final scheme = Theme.of(context).colorScheme;
-    final isSla = n['type'] == 'sla_breach';
+    final isSla = n['type'] == 'sla_breach' || n['type'] == 'deadline_overdue';
     final isRead = n['is_read'] == true;
 
     final iconColor = isSla

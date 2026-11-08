@@ -44,11 +44,28 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
     setState(() => _busy = true);
     try {
       try {
-        final res = await widget.api.get('/equipment', {
-          'room_code': _selectedRoom,
-          'limit': '50',
-        });
-        final list = asList(res['data']?['equipments'] ?? res['data']);
+        List<Json> list = [];
+        try {
+          final roomRes = await widget.api.get('/facilities/rooms/$_selectedRoom');
+          list = asList(
+            roomRes['equipments'] ??
+                roomRes['data']?['equipments'] ??
+                roomRes['data'],
+          );
+        } catch (_) {}
+
+        if (list.isEmpty) {
+          final res = await widget.api.get('/equipment', {
+            'room_code': _selectedRoom,
+            'limit': '50',
+          });
+          list = asList(
+            res['equipments'] ??
+                res['data']?['equipments'] ??
+                res['data'],
+          );
+        }
+
         if (list.isNotEmpty) {
           _items = list;
         } else {

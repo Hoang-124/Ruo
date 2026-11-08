@@ -55,7 +55,13 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
     });
 
     final selected = _slaTiers.firstWhere((t) => t.$1 == _slaTier);
-    final eqId = widget.equipment['_id'] ?? widget.equipment['id'] ?? widget.equipment['code'];
+    var eqId = widget.equipment['_id'] ?? widget.equipment['id'] ?? widget.equipment['code'];
+    final backendDamageLevel = switch (_slaTier) {
+      1 => 'critical',
+      2 => 'major',
+      3 => 'major',
+      _ => 'minor',
+    };
 
     String ticketCode = 'REP-${DateTime.now().millisecondsSinceEpoch.toRadixString(36).toUpperCase()}-${math.Random().nextInt(899) + 100}';
     final deadlineHours = switch (_slaTier) {
@@ -68,17 +74,35 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
 
     try {
       try {
+        if (widget.equipment['_id'] == null &&
+            widget.equipment['id'] == null &&
+            widget.equipment['code'] != null) {
+          try {
+            final lookup = await widget.api.get('/equipments/qr/${widget.equipment['code']}');
+            final foundEq = asMap(lookup['equipment'] ?? lookup['data']);
+            if (foundEq['_id'] != null) {
+              eqId = foundEq['_id'];
+            }
+          } catch (_) {}
+        }
+
+        final roomIdRaw = widget.equipment['room_id'];
+        final roomId = roomIdRaw is Map ? roomIdRaw['_id'] : roomIdRaw;
+
         final res = await widget.api.send('POST', '/repairs', {
           'equipment_id': eqId,
+          'room_id': ?roomId,
           'priority': selected.$5,
+          'incident_description': desc,
           'description': desc,
-          'damage_level': selected.$5,
+          'damage_level': backendDamageLevel,
           'has_photo': _hasPhoto,
         });
-        if (res['ticket_code'] != null) {
-          ticketCode = res['ticket_code'].toString();
-        } else if (res['data']?['ticket_code'] != null) {
-          ticketCode = res['data']['ticket_code'].toString();
+        final createdCode = res['repair']?['ticket_code'] ??
+            res['ticket_code'] ??
+            res['data']?['ticket_code'];
+        if (createdCode != null) {
+          ticketCode = createdCode.toString();
         }
       } catch (e) {
         // Deterministic fallback if mock/offline
@@ -93,7 +117,12 @@ class _ReportIncidentDialogState extends State<ReportIncidentDialog> {
         builder: (_) => ReportSuccessDialog(
           ticketCode: ticketCode,
           equipmentName: value(widget.equipment['name'], fallback: 'Điều hòa Daikin Cassette 4HP'),
-          roomCode: value(widget.equipment['room_code'] ?? widget.equipment['room']?['code'], fallback: 'A1-101'),
+          roomCode: value(
+            widget.equipment['room_code'] ??
+                widget.equipment['room']?['code'] ??
+                widget.equipment['room_id']?['code'],
+            fallback: 'A1-101',
+          ),
           deadlineText: formatVnDateTime(deadline.toIso8601String()),
           slaTierName: selected.$2,
           slaColor: selected.$4,
@@ -476,7 +505,7 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
     try {
       try {
         final res = await widget.api.get('/repairs');
-        final list = asList(res['data']?['repairs'] ?? res['data']);
+        final list = asList(res['repairs'] ?? res['data']?['repairs'] ?? res['data']);
         if (list.isNotEmpty) {
           _tickets = list;
         } else {
@@ -534,9 +563,10 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
 
   Future<void> _acceptTicket(Json ticket) async {
     setState(() => _busy = true);
+    final ticketId = ticket['_id'] ?? ticket['id'];
     try {
       try {
-        await widget.api.send('PUT', '/repairs/${ticket['id']}/accept', {});
+        await widget.api.send('PUT', '/repairs/$ticketId/accept', {});
       } catch (_) {}
 
       setState(() {
@@ -557,10 +587,11 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
 
   Future<void> _resolveTicket(Json ticket) async {
     setState(() => _busy = true);
+    final ticketId = ticket['_id'] ?? ticket['id'];
     try {
       try {
-        await widget.api.send('PUT', '/repairs/${ticket['id']}/resolve', {
-          'outcome': 'replaced_part',
+        await widget.api.send('PUT', '/repairs/$ticketId/resolve', {
+          'outcome': 'repaired',
           'notes': 'Đã thay thế linh kiện bạc đạn quạt và vệ sinh máy.',
         });
       } catch (_) {}
@@ -651,10 +682,23 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
 
   Widget _ticketCard(BuildContext context, Json t) {
     final scheme = Theme.of(context).colorScheme;
-    final isOverdue = t['is_overdue'] == true;
+    final isOverdue = t['is_overdue'] == true || t['deadline_status'] == 'overdue';
     final status = value(t['status']);
     final isPending = status == 'assigned' || status == 'reported' || status == 'pending';
     final isInProgress = status == 'in_progress';
+    final titleText = value(
+      t['title'] ?? t['incident_description'] ?? t['equipment_id']?['name'],
+      fallback: 'Sự cố thiết bị',
+    );
+    final roomCode = value(
+      t['room_code'] ?? t['room']?['code'] ?? t['room_id']?['code'],
+      fallback: 'A1-101',
+    );
+    final eqCode = value(
+      t['equipment_code'] ?? t['equipment']?['code'] ?? t['equipment_id']?['code'],
+      fallback: 'EQ-A1',
+    );
+    final deadlineVal = t['sla_deadline'] ?? t['deadline'];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -706,12 +750,12 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
           ),
           const SizedBox(height: 10),
           Text(
-            value(t['title'], fallback: 'Sự cố thiết bị'),
+            titleText,
             style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14.5),
           ),
           const SizedBox(height: 4),
           Text(
-            'Phòng ${t['room_code']} · Mã TB: ${t['equipment_code']} · Phiếu [${t['ticket_code']}]',
+            'Phòng $roomCode · Mã TB: $eqCode · Phiếu [${t['ticket_code']}]',
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
           const Divider(height: 20),
@@ -719,7 +763,7 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
             children: [
               Expanded(
                 child: Text(
-                  'Hạn SLA: ${formatVnDateTime(t['sla_deadline'])}',
+                  'Hạn SLA: ${formatVnDateTime(deadlineVal)}',
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,

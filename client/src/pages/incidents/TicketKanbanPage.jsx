@@ -120,7 +120,12 @@ export const TicketKanbanPage = () => {
       ]);
 
       if (repRes && repRes.success) {
-        setRepairs(repRes.repairs || []);
+        const list = repRes.repairs || [];
+        setRepairs(list);
+        setSelectedTicket((prev) => {
+          if (!prev) return null;
+          return list.find((item) => item._id === prev._id) || prev;
+        });
       }
       if (techRes && techRes.success) {
         setTechnicians(techRes.users || []);
@@ -641,8 +646,16 @@ export const TicketKanbanPage = () => {
                       )}
                       {Array.isArray(cp.recommended_parts) && cp.recommended_parts.length > 0 && (
                         <div>
-                          <strong style={{ color: 'var(--ink-pure)' }}>Linh kiện kho gợi ý:</strong>{' '}
-                          {cp.recommended_parts.map((p) => `${p.name} (Tồn: ${p.stock} ${p.unit})`).join(' • ')}
+                          <strong style={{ color: 'var(--ink-pure)' }}>Linh kiện vật tư gợi ý (Kho Linh Kiện):</strong>{' '}
+                          {cp.recommended_parts.map((p) => `[${p.code}] ${p.name} (Tồn: ${p.stock} ${p.unit})`).join(' • ')}
+                        </div>
+                      )}
+                      {cp.dispatch_recommendation?.recommended_replacement && (
+                        <div>
+                          <strong style={{ color: 'var(--ink-pure)' }}>Thiết bị dự phòng thay thế (Kho KHO-01):</strong>{' '}
+                          <span style={{ color: 'var(--laser-cyan)', fontWeight: 700 }}>
+                            {cp.dispatch_recommendation.recommended_replacement.code} — {cp.dispatch_recommendation.recommended_replacement.name}
+                          </span>
                         </div>
                       )}
                     </div>

@@ -433,7 +433,7 @@ export async function buildRepairCopilot({
     let score = 0;
 
     // Guard against suggesting electronic/electrical parts for passive non-electrical furniture/items
-    if (!entityInfo.effectiveIsElectrical && /bóng đèn|lamp|hdmi|patch|rj45|chấn lưu|led|aptomat|mcb|rcbo|mực|toner|lõi lọc/iu.test(partText)) {
+    if (!entityInfo.effectiveIsElectrical && /bóng đèn|lamp|hdmi|patch|rj45|chấn lưu|led|aptomat|mcb|rcbo|mực|toner|lõi lọc|ắc quy|pin|điều khiển|remote/iu.test(partText)) {
       score -= 80;
     }
 
@@ -444,9 +444,12 @@ export async function buildRepairCopilot({
     for (const kw of allowedPartKeywords) {
       const kwAsc = stripDiacritics(kw);
       if (partText.includes(kw) || partAscii.includes(kwAsc)) {
-        score += 28;
         if (normDesc.includes(kw) || asciiDesc.includes(kwAsc)) {
-          score += 24;
+          score += 36;
+        } else if (playbookPartCodes.size === 0) {
+          score += 22;
+        } else {
+          score += 8;
         }
       }
     }
@@ -459,7 +462,7 @@ export async function buildRepairCopilot({
 
     const eqWords = normalizeVietnameseText(equipment?.name || '')
       .split(/\s+/)
-      .filter((w) => w.length >= 4 && !['thiết', 'phòng', 'giảng', 'đường', 'sinh', 'viên'].includes(w));
+      .filter((w) => w.length >= 4 && !['thiết', 'phòng', 'giảng', 'đường', 'sinh', 'viên', 'bình', 'máy', 'cụm', 'thống', 'điện', 'tường', 'trần'].includes(w));
     for (const w of eqWords) {
       if (partText.includes(w)) score += 12;
     }

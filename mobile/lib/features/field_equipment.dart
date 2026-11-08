@@ -121,21 +121,48 @@ class _QrScannerPageState extends State<QrScannerPage>
     try {
       Json? found;
       try {
-        final res = await widget.api.get('/equipment/code/$clean');
-        if (res['success'] == true && res['data'] != null) {
-          found = asMap(res['data']);
+        final res = await widget.api.get('/equipments/qr/$clean');
+        final raw = res['equipment'] ?? res['data'];
+        if (raw is Map && raw.isNotEmpty) {
+          found = asMap(raw);
         }
-      } catch (_) {
+      } catch (_) {}
+
+      if (found == null) {
+        try {
+          final res = await widget.api.get('/equipment/code/$clean');
+          if (res['success'] == true && res['data'] != null) {
+            found = asMap(res['data']);
+          }
+        } catch (_) {}
+      }
+
+      if (found == null) {
         try {
           final searchRes = await widget.api.get(
-            '/equipment',
+            '/equipments',
             {'search': clean, 'limit': '1'},
           );
-          final list = asList(searchRes['data']?['equipments'] ?? searchRes['data']);
+          final list = asList(
+            searchRes['equipments'] ??
+                searchRes['data']?['equipments'] ??
+                searchRes['data'],
+          );
           if (list.isNotEmpty) {
             found = list.first;
           }
-        } catch (_) {}
+        } catch (_) {
+          try {
+            final searchRes = await widget.api.get(
+              '/equipment',
+              {'search': clean, 'limit': '1'},
+            );
+            final list = asList(searchRes['data']?['equipments'] ?? searchRes['data']);
+            if (list.isNotEmpty) {
+              found = list.first;
+            }
+          } catch (_) {}
+        }
       }
 
       if (!mounted) return;
@@ -675,8 +702,20 @@ class EquipmentDetailSheet extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final name = value(equipment['name'], fallback: 'Thiết bị trường học');
     final code = value(equipment['code'], fallback: 'EQ-UNKNOWN');
-    final room = value(equipment['room_code'] ?? equipment['room']?['code'], fallback: 'A1-101');
-    final category = value(equipment['category'] ?? equipment['category_name'], fallback: 'Cơ sở vật chất');
+    final room = value(
+      equipment['room_code'] ??
+          equipment['room']?['code'] ??
+          equipment['room_id']?['code'],
+      fallback: 'A1-101',
+    );
+    final category = value(
+      equipment['category'] is Map
+          ? equipment['category']['name']
+          : (equipment['category'] ??
+              equipment['category_name'] ??
+              equipment['category_id']?['name']),
+      fallback: 'Cơ sở vật chất',
+    );
     final serial = value(equipment['serial_number'] ?? equipment['serial'], fallback: 'DK-2024-9981-CS');
     final status = value(equipment['status'], fallback: 'in_use');
     final warranty = formatVnDate(equipment['warranty_expiry'] ?? equipment['warranty_end']);

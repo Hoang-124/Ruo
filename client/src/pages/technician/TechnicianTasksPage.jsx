@@ -144,7 +144,13 @@ export const TechnicianTasksPage = () => {
         userIdentityId && userIdentityId !== 'guest' ? { assigned_to: userIdentityId } : {}
       );
       if (res && res.success) {
-        setTasks((res.repairs || []).filter((r) => isSameUser(r.assigned_to, userIdentity)));
+        const nextTasks = (res.repairs || []).filter((r) => isSameUser(r.assigned_to, userIdentity));
+        setTasks(nextTasks);
+        setSelectedTask((prev) => {
+          if (!prev?._id) return prev;
+          const updated = nextTasks.find((r) => String(r._id) === String(prev._id));
+          return updated ? { ...prev, ...updated, logs: updated.logs || prev.logs } : prev;
+        });
       }
     } catch (err) {
       showError('Lỗi khi tải danh sách nhiệm vụ: ' + err.message);
@@ -606,7 +612,7 @@ export const TechnicianTasksPage = () => {
                       )}
                       {Array.isArray(cp.recommended_parts) && cp.recommended_parts.length > 0 && (
                         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', padding: '8px 10px' }}>
-                          <div style={{ fontWeight: 800, color: 'var(--ink-pure)', marginBottom: '4px' }}>Vật tư thay thế cần mang theo (Kho KHO-01):</div>
+                          <div style={{ fontWeight: 800, color: 'var(--ink-pure)', marginBottom: '4px' }}>Linh kiện vật tư gợi ý mang theo (Kho Linh Kiện):</div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                             {cp.recommended_parts.map((p) => (
                               <span
