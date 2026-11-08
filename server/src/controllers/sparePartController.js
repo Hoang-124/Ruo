@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import { SparePart } from '../models/SparePart.js';
 import { PartsRequest } from '../models/PartsRequest.js';
+// Registers the Supplier model used by populate('supplier_id') regardless of import order.
+import '../models/Supplier.js';
 import { Repair } from '../models/Repair.js';
 import { Notification } from '../models/Notification.js';
 import { User } from '../models/User.js';
@@ -12,6 +14,42 @@ import {
   USER_ROLES, 
   PARTS_REQUEST_STATUSES 
 } from '../config/constants.js';
+import { buildSparePartForecasts, FORECAST_DEFAULTS } from '../services/sparePartForecast.js';
+
+// @desc    Demand forecast & reorder advice for every spare part (advisory only)
+// @route   GET /api/spare-parts/forecast?history_days=180
+export const getSparePartForecast = async (req, res) => {
+  try {
+    const rawDays = req.query?.history_days;
+    const historyDays = rawDays === undefined || rawDays === '' ? FORECAST_DEFAULTS.historyDays : Number(rawDays);
+    if (!Number.isInteger(historyDays) || historyDays < 30 || historyDays > 730) {
+      return res.status(400).json({ success: false, message: 'Khoảng lịch sử dự báo phải là số nguyên từ 30 đến 730 ngày.' });
+    }
+    const now = new Date();
+    const since = new Date(now.getTime() - historyDays * 86_400_000);
+    const [parts, approvedRequests, pendingRequests] = await Promise.all([
+      SparePart.find().populate('supplier_id', 'code name').lean(),
+      PartsRequest.find({ status: PARTS_REQUEST_STATUSES.APPROVED, approved_at: { $gte: since } }).select('items approved_at').lean(),
+      PartsRequest.find({ status: PARTS_REQUEST_STATUSES.PENDING }).select('items').lean()
+    ]);
+    const { forecasts, summary } = buildSparePartForecasts({ parts, approvedRequests, pendingRequests, now, historyDays });
+    return res.json({
+      success: true,
+      generated_at: now.toISOString(),
+      parameters: {
+        history_days: historyDays,
+        default_lead_time_days: FORECAST_DEFAULTS.leadTimeDays,
+        review_days: FORECAST_DEFAULTS.reviewDays,
+        service_level: '95%',
+        method: 'Croston-SBA'
+      },
+      summary,
+      forecasts
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 // @desc    Get all spare parts (View spare parts stock)
 // @route   GET /api/spare-parts

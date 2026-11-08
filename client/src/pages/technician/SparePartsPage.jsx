@@ -3,6 +3,7 @@ import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { sparePartApi, repairApi } from '../../lib/api';
+import { SparePartForecastPanel } from '../../components/spare-parts/SparePartForecastPanel';
 
 export const SparePartsPage = () => {
   const { toast } = useToast();
@@ -23,7 +24,7 @@ export const SparePartsPage = () => {
   const [parts, setParts] = useState([]);
   const [requests, setRequests] = useState([]);
   const [activeRepairs, setActiveRepairs] = useState([]);
-  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'requests'
+  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'requests' | 'forecast'
 
   // Modals & Forms
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -338,7 +339,34 @@ export const SparePartsPage = () => {
         >
           Lịch Sử Yêu Cầu Cấp Phát ({requests.length})
         </button>
+
+        {canManageParts && (
+          <button
+            onClick={() => setActiveTab('forecast')}
+            style={{
+              padding: '10px 18px',
+              fontSize: '13px',
+              fontWeight: activeTab === 'forecast' ? 700 : 500,
+              color: activeTab === 'forecast' ? 'var(--laser-cyan)' : 'var(--ink-muted)',
+              borderBottom: activeTab === 'forecast' ? '2px solid var(--laser-cyan)' : '2px solid transparent',
+              background: 'none',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Icons.TrendingUp size={14} />
+            Dự Báo Nhu Cầu & Đặt Hàng
+          </button>
+        )}
       </div>
+
+      {/* Tab: Demand forecast (Facility Manager / Admin) */}
+      {activeTab === 'forecast' && canManageParts && <SparePartForecastPanel onApplied={fetchData} />}
 
       {/* Tab: Inventory List */}
       {activeTab === 'inventory' && (

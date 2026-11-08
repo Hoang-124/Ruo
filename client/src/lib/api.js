@@ -283,6 +283,7 @@ export const repairApi = {
 
 export const sparePartApi = {
   list: (params) => api.get('/spare-parts', params),
+  forecast: (params) => api.get('/spare-parts/forecast', params),
   getRequests: (params) => api.get('/parts-requests', params),
   create: (data) => api.post('/spare-parts', data),
   update: (id, data) => api.put(`/spare-parts/${id}`, data),

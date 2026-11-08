@@ -5,6 +5,7 @@ import partsRequestRoutes from '../src/routes/partsRequestRoutes.js';
 import { DEFAULT_CANONICAL_ROLES } from '../src/controllers/roleController.js';
 
 const cases = [
+  [sparePartRoutes, '/forecast', 'get', 'spare_part:update'],
   [sparePartRoutes, '/', 'post', 'spare_part:update'],
   [sparePartRoutes, '/:id', 'put', 'spare_part:update'],
   [sparePartRoutes, '/:id', 'delete', 'spare_part:update'],

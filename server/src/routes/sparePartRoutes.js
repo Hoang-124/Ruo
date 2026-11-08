@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getSpareParts,
+  getSparePartForecast,
   createSparePart,
   updateSparePart,
   deleteSparePart,
@@ -17,6 +18,9 @@ const router = express.Router();
 
 // View spare parts stock (Technician, Facility Manager, Admin)
 router.get('/', protect, getSpareParts);
+
+// Demand forecast & reorder advice (Facility Manager, Admin) — must precede /:id
+router.get('/forecast', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('spare_part:update', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), getSparePartForecast);
 
 // Create new spare part (Facility Manager, Admin) (UC-5.12)
 router.post('/', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requirePermission('spare_part:update', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), createSparePart);
