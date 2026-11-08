@@ -118,7 +118,8 @@ export async function callGeminiJson(systemInstruction, userPayload) {
   }
 
   const model = (process.env.GEMINI_MODEL || '').trim() || DEFAULT_GEMINI_MODEL;
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey.trim())}`;
+  // Send the key as a header so it never lands in proxy/access logs via the URL.
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
@@ -127,7 +128,7 @@ export async function callGeminiJson(systemInstruction, userPayload) {
   try {
     const response = await globalThis.fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey.trim() },
       signal: controller.signal,
       body: JSON.stringify({
         systemInstruction: {

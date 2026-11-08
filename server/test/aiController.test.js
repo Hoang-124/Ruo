@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import mongoose from 'mongoose';
 import { triageIncidentReport, getRepairAiCopilot, analyzeInventoryDiscrepancies, analyzeAuditAnomalies } from '../src/controllers/aiController.js';
 import { Equipment, Room, Repair, InventorySession, InventoryLog, AuditLog } from '../src/models/index.js';
 
@@ -70,6 +71,26 @@ test('triage query failures do not become a successful no-duplicate result', asy
   await triageIncidentReport({ body: { equipment_id: ids.equipment, incident_description: 'Lỗi thiết bị' } }, res);
   assert.equal(res.statusCode, 500);
   assert.equal(res.body.success, false);
+});
+
+test('triage ignores client-supplied room equipment when the live database is connected', async (t) => {
+  Object.defineProperty(mongoose.connection, 'readyState', { configurable: true, get: () => 1 });
+  t.after(() => { delete mongoose.connection.readyState; });
+  const projector = { _id: ids.equipment, room_id: ids.room, code: 'EQ-101-PRJ-01', name: 'Máy chiếu Epson', category_id: { code: 'CAT-DISPLAY' } };
+  const realDesk = { _id: '507f1f77bcf86cd799439021', code: 'EQ-101-DESKSTU-01', name: 'Bàn sinh viên', category_id: { code: 'CAT-FURN' } };
+  t.mock.method(Equipment, 'findById', () => query(projector));
+  t.mock.method(Room, 'findById', () => query({ _id: ids.room, code: 'A1-101' }));
+  t.mock.method(Repair, 'find', () => query([]));
+  const roomFilters = [];
+  t.mock.method(Equipment, 'find', (filter) => { roomFilters.push(filter); return query([projector, realDesk]); });
+  const forged = { _id: '507f1f77bcf86cd799439099', code: 'EQ-999-DESK-FAKE', name: 'Bàn giả mạo phòng khác', category_id: { code: 'CAT-FURN' } };
+
+  const res = response();
+  await triageIncidentReport({ body: { equipment_id: ids.equipment, room_id: ids.room, incident_description: 'cái bàn bị gãy chân', room_equipments: [forged] } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(String(roomFilters[0]?.room_id), ids.room);
+  assert.equal(res.body.triage.equipment_mismatch.suggested_equipment.code, 'EQ-101-DESKSTU-01');
 });
 
 test('inventory room scope with deleted rooms never expands to whole building', async (t) => {

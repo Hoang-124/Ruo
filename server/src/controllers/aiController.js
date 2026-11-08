@@ -91,9 +91,18 @@ export const triageIncidentReport = async (req, res) => {
     ]);
     const openRepairs = [...new Map([...exactRepairs, ...roomRepairs].map((repair) => [String(repair._id), repair])).values()].slice(0, 10);
 
-    // Sanitize room_equipments passed from client or load from live MongoDB when connected
+    // The live database is the source of truth for a room's equipment; a client-supplied list
+    // is only an offline fallback, otherwise a forged list could steer the mismatch suggestion.
     let roomEquipments = [];
-    if (Array.isArray(room_equipments) && room_equipments.length > 0) {
+    if (room && mongoose.connection?.readyState === 1) {
+      roomEquipments = await Equipment.find({
+        room_id: room._id,
+        status: { $nin: [EQUIPMENT_STATUSES.DISPOSED, EQUIPMENT_STATUSES.LOST] }
+      })
+        .select('code name brand model category_id status')
+        .populate('category_id', 'code name')
+        .limit(100);
+    } else if (Array.isArray(room_equipments) && room_equipments.length > 0) {
       roomEquipments = room_equipments
         .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
         .slice(0, 100)
@@ -110,14 +119,6 @@ export const triageIncidentReport = async (req, res) => {
               }
             : null
         }));
-    } else if (room && mongoose.connection?.readyState === 1) {
-      roomEquipments = await Equipment.find({
-        room_id: room._id,
-        status: { $nin: [EQUIPMENT_STATUSES.DISPOSED, EQUIPMENT_STATUSES.LOST] }
-      })
-        .select('code name brand model category_id status')
-        .populate('category_id', 'code name')
-        .limit(100);
     }
 
     const normalizedImages = Array.isArray(incident_images)
@@ -197,7 +198,7 @@ export const getRepairAiCopilot = async (req, res) => {
         ? Repair.find({ equipment_id: eqId, _id: { $ne: repair._id } }).sort({ created_at: -1 }).limit(10)
         : Promise.resolve([]),
       RepairLog.find({ repair_id: repair._id }).sort({ created_at: -1 }).limit(20),
-      SparePart.find().limit(100),
+      SparePart.find().select('code name stock min_stock price unit').limit(500),
       categoryId
         ? Equipment.find({ status: EQUIPMENT_STATUSES.IN_STOCK, category_id: categoryId, _id: { $ne: eqId } }).limit(50)
         : Promise.resolve([]),

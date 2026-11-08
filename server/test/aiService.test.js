@@ -34,6 +34,18 @@ test('Gemini rejects arrays and falls back on HTTP, network and malformed JSON e
   }
 });
 
+test('Gemini API key travels in a header, never in the request URL', async () => {
+  process.env.GEMINI_API_KEY = 'secret-key-123';
+  let captured;
+  globalThis.fetch = async (url, init) => {
+    captured = { url: String(url), headers: init.headers };
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '{"ok":true}' }] } }] }) };
+  };
+  assert.deepEqual(await callGeminiJson('test', {}), { ok: true });
+  assert.doesNotMatch(captured.url, /secret-key-123|[?&]key=/);
+  assert.equal(captured.headers['x-goog-api-key'], 'secret-key-123');
+});
+
 test('triage keeps critical safety guidance and reasoning when Gemini attempts a downgrade', async () => {
   mockGemini({ suggested_damage_level: 'minor', reasoning: 'Sự cố nhẹ không đáng lo.', quick_checks: ['Bật lại thiết bị để thử.'] });
   const result = await buildIncidentTriage({ description: 'Máy chiếu bốc khói và chập điện' });

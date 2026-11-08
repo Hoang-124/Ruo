@@ -253,7 +253,7 @@ export const detectMentionedEquipmentAndMismatch = ({
 }) => {
   const norm = normalizeVietnameseText(description);
   const ascii = stripDiacritics(norm);
-  const hasNonFireChayHomograph = /\b(chạy|chảy)\b/iu.test(norm);
+  const hasNonFireChayHomograph = /(?<![\p{L}\p{N}_])(chạy|chảy)(?![\p{L}\p{N}_])/iu.test(norm);
   const selectedCategory = inferCategoryFromEquipment(selectedEquipment);
 
   // Score explicit category mentions in the description
@@ -395,6 +395,12 @@ export const detectMentionedEquipmentAndMismatch = ({
 // ============================================================================
 // PHYSICS-AWARE CRITICAL HAZARD DETECTOR
 // ============================================================================
+// Subject-first collapse ("trần thạch cao phòng học bị sập"): a load-bearing/overhead
+// element followed within four words by a collapse verb. ASCII form requires "bi sap"
+// or "sup" because bare "sap" is also "sắp" (about to).
+const STRUCTURE_COLLAPSE_PATTERN = /(?<![\p{L}\p{N}_])(trần|tường|mái|vách|quạt\s+trần|đèn\s+trần)(?:\s+[\p{L}\p{N}_]+){0,4}?\s+(?:bị\s+)?(sập|sụp|đổ\s+sập|rơi\s+xuống|bung\s+rơi)(?![\p{L}\p{N}_])/u;
+const STRUCTURE_COLLAPSE_ASCII_PATTERN = /(?<![a-z0-9_])(tran|tuong|mai|vach)(?:\s+[a-z0-9_]+){0,4}?\s+(bi\s+sap|sup|do\s+sap|roi\s+xuong)(?![a-z0-9_])/;
+
 export const detectCriticalSafetyHazard = ({
   rawDescription = '',
   effectiveCategory = 'CAT-POWER',
@@ -406,7 +412,7 @@ export const detectCriticalSafetyHazard = ({
   // Strip accented non-fire homographs ("chạy" = run, "chảy" = drip, "khỏi" = avoid, "nỗ lực" = effort)
   // BEFORE computing ASCII hazard text so mixed-diacritic inputs like "cai ban bi chay" still work!
   const safeAsciiSource = text
-    .replace(/\b(chạy|chảy|khỏi|nỗ)\b/giu, ' ')
+    .replace(/(?<![\p{L}\p{N}_])(chạy|chảy|khỏi|nỗ)(?![\p{L}\p{N}_])/giu, ' ')
     .replace(/\b(quat|may|van)\s+chay\b/giu, ' ')
     .replace(/\bchay\s+(nuoc|muc|cham|tot|em)\b/giu, ' ');
   const ascii = stripDiacritics(safeAsciiSource);
@@ -424,7 +430,7 @@ export const detectCriticalSafetyHazard = ({
   // 1. Electric Shock / Leakage
   const shockHit = matchAny(
     ['giật điện', 'bị giật', 'tê giật', 'rò điện', 'nhiễm điện'],
-    ['giat dien', 'te giat', 'ro dien', 'nhiem dien']
+    ['giat dien', 'bi giat', 'te giat', 'ro dien', 'nhiem dien']
   );
   if (shockHit) {
     return { protocol: SAFETY_PROTOCOLS.ELECTRICAL_SHOCK_LEAKAGE, trigger: shockHit };
@@ -466,9 +472,9 @@ export const detectCriticalSafetyHazard = ({
 
   // 6. Structural Collapse / Falling Ceiling Object / Broken Glass
   const structHit = matchAny(
-    ['vỡ kính', 'rơi trần', 'sập trần', 'sắp rơi', 'treo lơ lửng', 'sập kệ', 'đổ giá sách', 'nghiêng giá sách', 'nghiêng kệ'],
-    ['vo kinh', 'roi tran', 'sap tran', 'sap roi', 'treo lo lung', 'sap ke', 'do gia sach']
-  );
+    ['vỡ kính', 'kính vỡ', 'kính bị vỡ', 'mảnh kính', 'rơi trần', 'sập trần', 'sắp rơi', 'treo lơ lửng', 'sập kệ', 'đổ giá sách', 'nghiêng giá sách', 'nghiêng kệ', 'sắp đổ'],
+    ['vo kinh', 'kinh vo', 'kinh bi vo', 'manh kinh', 'roi tran', 'sap tran', 'sap roi', 'treo lo lung', 'sap ke', 'do gia sach', 'sap do']
+  ) || STRUCTURE_COLLAPSE_PATTERN.exec(text)?.[0] || STRUCTURE_COLLAPSE_ASCII_PATTERN.exec(ascii)?.[0];
   if (structHit) {
     return { protocol: SAFETY_PROTOCOLS.STRUCTURAL_COLLAPSE_SHATTER, trigger: structHit };
   }
@@ -476,7 +482,7 @@ export const detectCriticalSafetyHazard = ({
   // 7. Fire / Smoke / Burning Smell / Arcing / Explosion
   const fireHit = matchAny(
     ['bốc khói', 'khói', 'mùi khét', 'khét', 'chập điện', 'chập cháy', 'bốc cháy', 'bén lửa', 'bắt lửa', 'tia lửa', 'lửa', 'cháy', 'phát nổ', 'cháy nổ', 'nổ'],
-    ['boc khoi', 'mui khet', 'chap dien', 'chap chay', 'boc chay', 'ben lua', 'bat lua', 'tia lua', 'bi chay', 'dang chay', 'chay ban', 'chay ghe', 'chay rem', 'chay tu', 'chay ke', 'chay phong', 'phat no', 'chay no']
+    ['boc khoi', 'mui khet', 'chap dien', 'chap chay', 'boc chay', 'ben lua', 'bat lua', 'tia lua', 'toe lua', 'bi chay', 'dang chay', 'chay ban', 'chay ghe', 'chay rem', 'chay tu', 'chay ke', 'chay phong', 'phat no', 'chay no']
   );
   if (fireHit) {
     const isElectricalFire = effectiveIsElectrical || hasExplicitElectricalContext || /chập điện|tia lửa điện|mùi khét nhựa|chap dien/.test(`${text} ${ascii}`);
@@ -486,10 +492,10 @@ export const detectCriticalSafetyHazard = ({
     };
   }
 
-  // 8. Room-wide Paralysis / General Safety Hazard
+  // 8. Room-wide Paralysis / Personal Injury / General Safety Hazard
   const generalDangerHit = matchAny(
-    ['mất an toàn', 'nguy hiểm', 'tê liệt toàn phòng', 'mất điện toàn phòng'],
-    ['mat an toan', 'nguy hiem', 'te liet toan phong', 'mat dien toan phong']
+    ['mất an toàn', 'nguy hiểm', 'tê liệt toàn phòng', 'mất điện toàn phòng', 'bị thương', 'chảy máu', 'thương tích'],
+    ['mat an toan', 'nguy hiem', 'te liet toan phong', 'mat dien toan phong', 'bi thuong', 'chay mau', 'thuong tich']
   );
   if (generalDangerHit) {
     const proto = effectiveIsElectrical
