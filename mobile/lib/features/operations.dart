@@ -4,12 +4,14 @@ import '../core/api.dart';
 import '../ui/common.dart';
 import 'operations_catalog.dart';
 import 'operations_disposals.dart';
+import 'operations_extra.dart';
 import 'operations_inventory.dart';
 import 'operations_maintenance.dart';
 import 'operations_transfers.dart';
 
 export 'operations_catalog.dart';
 export 'operations_disposals.dart';
+export 'operations_extra.dart';
 export 'operations_inventory.dart';
 export 'operations_maintenance.dart';
 export 'operations_transfers.dart';
@@ -30,12 +32,19 @@ class _OperationsPageState extends State<OperationsPage> {
   List<(String, String)> get _sections {
     final sections = <(String, String)>[];
     if (_role == 'admin') sections.add(('catalog', 'Danh mục'));
-    if (_role != 'lecturer') sections.add(('transfers', 'Điều chuyển'));
+    if (_role != 'lecturer') {
+      sections.add(('equipments', 'Kho thiết bị'));
+      sections.add(('spare_parts', 'Kho linh kiện'));
+      sections.add(('transfers', 'Điều chuyển'));
+    }
     if (_role == 'technician' || _role == 'facility_manager') {
       sections.add(('maintenance', 'Bảo dưỡng'));
     }
     if (_role != 'lecturer') sections.add(('disposals', 'Thanh lý'));
     sections.add(('inventory', 'Kiểm kê & QR'));
+    if (_role == 'admin' || _role == 'facility_manager') {
+      sections.add(('governance', 'Kiểm toán & RBAC'));
+    }
     return sections;
   }
 
@@ -73,9 +82,12 @@ class _OperationsPageState extends State<OperationsPage> {
         Expanded(
           child: switch (_section) {
             'catalog' => CatalogPage(api: widget.api),
+            'equipments' => EquipmentsDirectoryPage(api: widget.api),
+            'spare_parts' => SparePartsMobilePage(api: widget.api),
             'transfers' => TransfersPage(api: widget.api),
             'maintenance' => MaintenancePage(api: widget.api),
             'disposals' => DisposalsPage(api: widget.api),
+            'governance' => AdminGovernanceMobilePage(api: widget.api),
             _ => InventoryPage(api: widget.api),
           },
         ),

@@ -10,9 +10,7 @@ import 'package:ruo_mobile/features/field_inventory.dart';
 import 'package:ruo_mobile/features/field_notifications.dart';
 import 'package:ruo_mobile/features/field_profile.dart';
 import 'package:ruo_mobile/features/field_repairs.dart';
-import 'package:ruo_mobile/features/operations_disposals.dart';
-import 'package:ruo_mobile/features/operations_maintenance.dart';
-import 'package:ruo_mobile/features/operations_transfers.dart';
+import 'package:ruo_mobile/features/operations.dart';
 import 'package:ruo_mobile/ui/common.dart';
 import 'package:ruo_mobile/ui/tokens.dart';
 
@@ -557,6 +555,275 @@ void main() {
       await tester.pumpAndSettle();
       expect(resolvedPath, '/api/repairs/mongo-rep-1/resolve');
       expect(resolvedPayload?['outcome'], 'repaired');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'AI #1A Incident Triage in ReportIncidentDialog analyzes symptoms and applies SLA recommendation',
+    (tester) async {
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/ai/incident-triage')) {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'triage': {
+                  'damage_level': 'critical',
+                  'suggested_sla_tier': 1,
+                  'fault_label': 'Chập cháy nguồn điện máy chiếu (Nguy hiểm)',
+                  'safety_warning': 'Ngắt aptomat nhánh ngay lập tức!',
+                  'standardized_description':
+                      '[AI Chuẩn Hóa] Máy chiếu bốc khói khét lẹt',
+                },
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(
+            body: ReportIncidentDialog(
+              api: api,
+              equipment: const {
+                'code': 'EQ-101-PRJ-01',
+                'name': 'Máy chiếu Sony Laser',
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(const Key('btn_ai_incident_triage')));
+      await tester.tap(find.byKey(const Key('btn_ai_incident_triage')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Chập cháy nguồn điện máy chiếu (Nguy hiểm)'),
+        findsOneWidget,
+      );
+      expect(find.text('Ngắt aptomat nhánh ngay lập tức!'), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(const Key('btn_apply_ai_triage')));
+      await tester.tap(find.byKey(const Key('btn_apply_ai_triage')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('[AI Chuẩn Hóa] Máy chiếu bốc khói khét lẹt'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'AI #1B Copilot Sheet in TechnicianTasksPage displays diagnosis and allows Manager assignment',
+    (tester) async {
+      Json? assignedBody;
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.method == 'GET' && request.url.path == '/api/repairs') {
+            return http.Response(
+              jsonEncode({
+                'repairs': [
+                  {
+                    '_id': 'rep-202',
+                    'ticket_code': 'REP-AI-202',
+                    'incident_description': 'Bình chữa cháy CO2 tụt áp',
+                    'status': 'reported',
+                    'room_id': {'code': 'A1-202'},
+                    'equipment_id': {
+                      'code': 'EQ-503-EXTCO2-01',
+                      'name': 'Bình chữa cháy khí CO2 5kg',
+                    },
+                  },
+                ],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.url.path.endsWith('/ai-copilot')) {
+            return http.Response(
+              jsonEncode({
+                'copilot': {
+                  'diagnosis': {
+                    'fault_label': 'Bình chữa cháy CO2 tụt áp vạch đỏ',
+                    'root_cause': 'Rò rỉ khí đẩy qua gioăng van.',
+                    'troubleshooting_steps': ['1. Kiểm tra đồng hồ áp kế.'],
+                  },
+                  'recommended_technicians': [
+                    {
+                      '_id': 'KT001',
+                      'full_name': 'KTV Trần Minh Tuấn (KT001)',
+                      'match_score': 95,
+                    },
+                  ],
+                  'recommended_parts': [],
+                  'recommended_replacements': [],
+                },
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'PUT' &&
+              request.url.path.endsWith('/repairs/rep-202/assign')) {
+            assignedBody = jsonDecode(request.body) as Json;
+            return http.Response(
+              jsonEncode({'success': true}),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      api.user = {'role': 'facility_manager'};
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(body: TechnicianTasksPage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('btn_copilot_REP-AI-202')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bình chữa cháy CO2 tụt áp vạch đỏ'), findsOneWidget);
+      await tester.ensureVisible(
+        find.byKey(const Key('btn_assign_technician_submit')),
+      );
+      await tester.tap(find.byKey(const Key('btn_assign_technician_submit')));
+      await tester.pumpAndSettle();
+
+      expect(assignedBody?['assigned_to'], 'KT001');
+      expect(
+        find.textContaining('KTV phụ trách: KTV Trần Minh Tuấn (KT001)'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'OperationsPage exposes Equipments, SpareParts, Inventory AI #4A, and Governance AI #4B for admin',
+    (tester) async {
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/inventory/sessions')) {
+            return http.Response(
+              jsonEncode({
+                'sessions': [
+                  {
+                    '_id': 'sess-1',
+                    'name': 'Kiểm kê HK1',
+                    'status': 'in_progress',
+                  },
+                ],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.url.path.endsWith('/inventory/sessions/sess-1')) {
+            return http.Response(
+              jsonEncode({
+                'data': {
+                  'scope_ids': [],
+                  'logs': [],
+                  'progress': {
+                    'completion_percent': 85,
+                    'scanned_count': 17,
+                    'unscanned_count': 3,
+                  },
+                },
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.url.path.endsWith('/ai-analysis')) {
+            return http.Response(
+              jsonEncode({
+                'analysis': {
+                  'risk_level': 'MEDIUM',
+                  'reconciliation_rate_percent': 85,
+                  'missing_value_exposure_vnd': 12500000,
+                  'executive_summary':
+                      'Phát hiện 1 thiết bị sai vị trí phòng học cần điều chuyển.',
+                },
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      api.user = {'role': 'admin'};
+      addTearDown(api.dispose);
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(body: OperationsPage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to Kho thiết bị
+      await tester.tap(find.text('Kho thiết bị'));
+      await tester.pumpAndSettle();
+      expect(find.text('Kho Thiết Bị & Tài Sản'), findsOneWidget);
+
+      // Switch to Kho linh kiện
+      await tester.tap(find.text('Kho linh kiện'));
+      await tester.pumpAndSettle();
+      expect(find.text('Kho Linh Kiện & Vật Tư'), findsOneWidget);
+
+      // Scroll chips and switch to Kiểm kê & QR -> test AI #4A
+      await tester.ensureVisible(find.text('Kiểm kê & QR'));
+      await tester.tap(find.text('Kiểm kê & QR'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_inventory_ai_analysis')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Phát hiện 1 thiết bị sai vị trí phòng học cần điều chuyển.'),
+        findsOneWidget,
+      );
+
+      // Switch to Kiểm toán & RBAC -> test SHA-256 & AI #4B
+      await tester.ensureVisible(find.text('Kiểm toán & RBAC'));
+      await tester.tap(find.text('Kiểm toán & RBAC'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Kiểm Toán Bảo Mật & Quản Trị RBAC'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('btn_verify_sha256_chain')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Chuỗi băm bất biến SHA-256'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('btn_audit_ai_anomalies')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Điểm an ninh đạt 96/100'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
