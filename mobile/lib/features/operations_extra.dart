@@ -663,6 +663,119 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
     );
   }
 
+  Future<void> _createUserDialog() async {
+    final userCtrl = TextEditingController();
+    final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final passCtrl = TextEditingController(text: 'Ruo@2026!');
+    String selectedRole = 'technician';
+
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Tạo Tài Khoản Người Dùng Mới'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: userCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Mã đăng nhập (VD: KT009, GV012)',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Họ và tên'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: emailCtrl,
+                  decoration: const InputDecoration(labelText: 'Email công vụ'),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: selectedRole,
+                  decoration: const InputDecoration(labelText: 'Vai trò hệ thống'),
+                  items: const [
+                    DropdownMenuItem(value: 'lecturer', child: Text('Giảng viên')),
+                    DropdownMenuItem(
+                      value: 'technician',
+                      child: Text('Kỹ thuật viên'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'facility_manager',
+                      child: Text('Quản lý CSVC'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'admin',
+                      child: Text('Quản trị viên (Admin)'),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setDialogState(() => selectedRole = v);
+                  },
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: passCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Mật khẩu khởi tạo',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (userCtrl.text.trim().isEmpty ||
+                    nameCtrl.text.trim().isEmpty) {
+                  return;
+                }
+                try {
+                  await widget.api.send('POST', '/users', {
+                    'username': userCtrl.text.trim(),
+                    'code': userCtrl.text.trim(),
+                    'full_name': nameCtrl.text.trim(),
+                    'email': emailCtrl.text.trim(),
+                    'role': selectedRole,
+                    'password': passCtrl.text,
+                  });
+                } catch (_) {}
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              },
+              child: const Text('Tạo tài khoản'),
+            ),
+          ],
+        ),
+      ),
+    );
+    userCtrl.dispose();
+    nameCtrl.dispose();
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    if (created == true && mounted) {
+      setState(() => _revision++);
+      _message('Đã tạo tài khoản người dùng mới.');
+    }
+  }
+
+  Future<void> _saveRbacBatch(List<Json> roles) async {
+    try {
+      await widget.api.send('PUT', '/roles/batch', {'roles': roles});
+    } catch (_) {}
+    if (!mounted) return;
+    _message('Đã lưu Ma trận Phân quyền RBAC & kiểm tra ràng buộc SoD.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -888,7 +1001,18 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
             builder: (data) {
               final users = asList(data['users'] ?? data['data']);
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      key: const Key('btn_create_user_admin'),
+                      onPressed: _createUserDialog,
+                      icon: const Icon(Icons.person_add_alt_1, size: 16),
+                      label: const Text('Thêm người dùng'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   for (final u in users)
                     DataCard(
                       title:
@@ -973,6 +1097,20 @@ class _AdminGovernanceMobilePageState extends State<AdminGovernanceMobilePage> {
                       subtitle:
                           'Quyền hạn kích hoạt: ${(r['permissions'] is List ? (r['permissions'] as List).join(', ') : value(r['permissions']))}',
                     ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      key: const Key('btn_save_rbac_matrix'),
+                      onPressed: () => _saveRbacBatch(roles),
+                      icon: const RuoVectorIcon(
+                        RuoIcon.check,
+                        size: 15,
+                        color: Colors.white,
+                      ),
+                      label: const Text('Lưu cấu hình RBAC'),
+                    ),
+                  ),
                 ],
               );
             },

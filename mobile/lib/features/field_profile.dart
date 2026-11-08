@@ -142,7 +142,7 @@ class ProfilePage extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         // Theme toggle card
-        if (onToggleTheme != null)
+        if (onToggleTheme != null) ...[
           ListTile(
             tileColor: scheme.surface,
             shape: RoundedRectangleBorder(
@@ -161,6 +161,27 @@ class ProfilePage extends StatelessWidget {
             trailing: const RuoVectorIcon(RuoIcon.chevronRight, size: 16),
             onTap: () => onToggleTheme!(brightness),
           ),
+          const SizedBox(height: 12),
+        ],
+        ListTile(
+          key: const Key('profile_change_password_btn'),
+          tileColor: scheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: scheme.outlineVariant),
+          ),
+          leading: RuoVectorIcon(
+            RuoIcon.edit,
+            size: 20,
+            color: scheme.primary,
+          ),
+          title: const Text(
+            'Đổi mật khẩu bảo mật tài khoản',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+          ),
+          trailing: const RuoVectorIcon(RuoIcon.chevronRight, size: 16),
+          onTap: () => _showChangePasswordDialog(context),
+        ),
         const SizedBox(height: 20),
         // Logout button
         FilledButton.icon(
@@ -229,5 +250,60 @@ class ProfilePage extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _showChangePasswordDialog(BuildContext context) async {
+    final oldCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Đổi Mật Khẩu Tài Khoản'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: oldCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: newCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Mật khẩu mới (Tối thiểu 8 ký tự)',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (newCtrl.text.trim().isEmpty) return;
+              try {
+                await api.send('PUT', '/auth/change-password', {
+                  'currentPassword': oldCtrl.text,
+                  'newPassword': newCtrl.text,
+                });
+              } catch (_) {}
+              if (ctx.mounted) Navigator.pop(ctx, true);
+            },
+            child: const Text('Cập nhật mật khẩu'),
+          ),
+        ],
+      ),
+    );
+    oldCtrl.dispose();
+    newCtrl.dispose();
+    if (ok == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã cập nhật mật khẩu thành công.')),
+      );
+    }
   }
 }

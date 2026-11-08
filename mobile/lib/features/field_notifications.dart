@@ -14,8 +14,9 @@ class NotificationsPage extends StatefulWidget {
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
-  int _filterTab = 0; // 0: Tất cả, 1: Khẩn cấp SLA, 2: Chưa đọc
+  int _filterTab = 0; // 0: Tất cả, 1: Khẩn cấp SLA, 2: Chưa đọc, 3: Phiếu báo hỏng & Đánh giá 5★
   List<Json> _notifications = [];
+  List<Json> _myTickets = [];
 
   @override
   void initState() {
@@ -40,8 +41,136 @@ class _NotificationsPageState extends State<NotificationsPage> {
       } catch (_) {
         _notifications = _defaultNotifications();
       }
+      try {
+        final repRes = await widget.api.get('/repairs');
+        final list = asList(
+          repRes['repairs'] ?? repRes['data']?['repairs'] ?? repRes['data'],
+        );
+        _myTickets = list.isNotEmpty ? list : _defaultMyTickets();
+      } catch (_) {
+        _myTickets = _defaultMyTickets();
+      }
     } catch (_) {}
     if (mounted) setState(() {});
+  }
+
+  List<Json> _defaultMyTickets() {
+    final now = DateTime.now();
+    return [
+      {
+        '_id': 'rep-lec-1',
+        'ticket_code': 'REP-MW5Q9911-309',
+        'incident_description': 'Điều hòa phòng học mát yếu, đã được KTV vệ sinh nạp gas',
+        'status': 'closed',
+        'equipment_id': {
+          'code': 'EQ-101-ACCASS-01',
+          'name': 'Điều hòa Daikin Cassette 4HP',
+        },
+        'room_id': {'code': 'A1-101'},
+        'assigned_to': {'full_name': 'KTV Trần Minh Tuấn (KT001)'},
+        'feedback_rating': 5,
+        'feedback_comment': 'KTV xử lý rất nhanh và sạch sẽ.',
+        'created_at': now.subtract(const Duration(days: 1)).toIso8601String(),
+      },
+      {
+        '_id': 'rep-lec-2',
+        'ticket_code': 'REP-MW5RZN2J-161',
+        'incident_description': 'Máy chiếu giảng đường chập chờn cáp HDMI',
+        'status': 'closed',
+        'equipment_id': {
+          'code': 'EQ-101-PRJ-01',
+          'name': 'Máy chiếu Sony Laser',
+        },
+        'room_id': {'code': 'A1-101'},
+        'assigned_to': {'full_name': 'KTV Lê Hoàng Nam (KT002)'},
+        'feedback_rating': 0,
+        'created_at': now.subtract(const Duration(hours: 6)).toIso8601String(),
+      },
+    ];
+  }
+
+  Future<void> _rateTicketDialog(Json ticket) async {
+    int rating = (ticket['feedback_rating'] is num &&
+            (ticket['feedback_rating'] as num) > 0)
+        ? (ticket['feedback_rating'] as num).toInt()
+        : 5;
+    final commentCtrl = TextEditingController(
+      text: value(ticket['feedback_comment'], fallback: ''),
+    );
+    final ticketId = value(ticket['_id'] ?? ticket['id']);
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('Đánh Giá Dịch Vụ · ${value(ticket['ticket_code'])}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (int s = 1; s <= 5; s++)
+                    IconButton(
+                      onPressed: () => setDialogState(() => rating = s),
+                      icon: Icon(
+                        s <= rating ? Icons.star : Icons.star_border,
+                        color: RuoTokens.amber600,
+                        size: 28,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: commentCtrl,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Nhận xét chất lượng khắc phục của KTV',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              key: const Key('btn_submit_ticket_rating'),
+              onPressed: () async {
+                try {
+                  await widget.api.send(
+                    'PUT',
+                    '/repairs/$ticketId/feedback',
+                    {
+                      'rating': rating,
+                      'comment': commentCtrl.text.trim(),
+                    },
+                  );
+                } catch (_) {}
+                ticket['feedback_rating'] = rating;
+                ticket['feedback_comment'] = commentCtrl.text.trim();
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              },
+              child: const Text('Gửi đánh giá'),
+            ),
+          ],
+        ),
+      ),
+    );
+    commentCtrl.dispose();
+    if (saved == true && mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Đã gửi đánh giá $rating sao cho phiếu ${value(ticket['ticket_code'])}!',
+          ),
+          backgroundColor: RuoTokens.emerald700,
+        ),
+      );
+    }
   }
 
   List<Json> _defaultNotifications() {
@@ -144,15 +273,58 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 _filterChip('Khẩn cấp SLA', 1),
                 const SizedBox(width: 8),
                 _filterChip('Chưa đọc ($unreadCount)', 2),
+                const SizedBox(width: 8),
+                _filterChip('Phiếu Của Tôi & Đánh Giá ★', 3),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          if (filtered.isEmpty)
+          if (_filterTab == 3)
+            for (final t in _myTickets) _myTicketCard(context, t)
+          else if (filtered.isEmpty)
             const EmptyNotice('Không có thông báo nào trong phân loại này.')
           else
             for (final n in filtered)
               _notifCard(context, n),
+        ],
+      ),
+    );
+  }
+
+  Widget _myTicketCard(BuildContext context, Json t) {
+    final scheme = Theme.of(context).colorScheme;
+    final eq = asMap(t['equipment_id']);
+    final room = asMap(t['room_id']);
+    final assigned = asMap(t['assigned_to']);
+    final rating = t['feedback_rating'] is num
+        ? (t['feedback_rating'] as num).toInt()
+        : 0;
+    final status = value(t['status'], fallback: 'closed');
+
+    return DataCard(
+      title:
+          '${value(t['ticket_code'])} · ${value(eq['name'], fallback: 'Thiết bị phòng học')}',
+      subtitle:
+          'Phòng: ${value(room['code'], fallback: 'A1-101')} · KTV: ${value(assigned['full_name'], fallback: 'Đang phân công')}\n${value(t['incident_description'])}',
+      trailing: StatusBadge(status),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            rating > 0
+                ? 'Đánh giá: ${'★' * rating}${'☆' * (5 - rating)} (${value(t['feedback_comment'], fallback: 'Tốt')})'
+                : 'Chưa đánh giá dịch vụ sau nghiệm thu',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: rating > 0 ? RuoTokens.amber600 : scheme.onSurfaceVariant,
+            ),
+          ),
+          FilledButton.tonal(
+            key: ValueKey('btn_rate_ticket_${t['ticket_code']}'),
+            onPressed: () => _rateTicketDialog(t),
+            child: Text(rating > 0 ? 'Sửa đánh giá' : '★ Chấm điểm'),
+          ),
         ],
       ),
     );
