@@ -271,27 +271,38 @@ export const approvePartsRequest = async (req, res) => {
       assertTransition('PARTS_REQUEST', request.status, PARTS_REQUEST_STATUSES.APPROVED, req.user.role);
       const items = normalizePartsRequestItems(request.items);
       const warnings = [];
-      for (const item of items) {
-        const part = await SparePart.findOneAndUpdate(
-          { _id: item.part_id, stock: { $gte: item.qty } },
-          { $inc: { stock: -item.qty } },
+      const deductedItems = [];
+      try {
+        for (const item of items) {
+          const part = await SparePart.findOneAndUpdate(
+            { _id: item.part_id, stock: { $gte: item.qty } },
+            { $inc: { stock: -item.qty } },
+            { session, new: true, runValidators: true }
+          );
+          if (!part) {
+            throw Object.assign(new Error('Linh kiện không tồn tại hoặc tồn kho không đủ để cấp phát.'), { statusCode: 409 });
+          }
+          deductedItems.push({ part_id: item.part_id, qty: item.qty });
+          item.unit_price = part.price;
+          if (part.stock <= part.min_stock) {
+            warnings.push('Linh kiện ' + part.name + ' (' + part.code + ') còn ' + part.stock + ' cái, dưới mức tối thiểu (' + part.min_stock + ').');
+          }
+        }
+        const approved = await PartsRequest.findOneAndUpdate(
+          { _id: request._id, status: PARTS_REQUEST_STATUSES.PENDING },
+          { $set: { items, status: PARTS_REQUEST_STATUSES.APPROVED, approved_by: req.user._id, approved_at: new Date() } },
           { session, new: true, runValidators: true }
         );
-        if (!part) {
-          throw Object.assign(new Error('Linh kiện không tồn tại hoặc tồn kho không đủ để cấp phát.'), { statusCode: 409 });
+        if (!approved) throw Object.assign(new Error('Yêu cầu đã được xử lý; vui lòng tải lại.'), { statusCode: 409 });
+        return { partsRequest: approved, warnings };
+      } catch (innerError) {
+        if (!session && deductedItems.length > 0) {
+          for (const d of deductedItems) {
+            await SparePart.findOneAndUpdate({ _id: d.part_id }, { $inc: { stock: d.qty } });
+          }
         }
-        item.unit_price = part.price;
-        if (part.stock <= part.min_stock) {
-          warnings.push('Linh kiện ' + part.name + ' (' + part.code + ') còn ' + part.stock + ' cái, dưới mức tối thiểu (' + part.min_stock + ').');
-        }
+        throw innerError;
       }
-      const approved = await PartsRequest.findOneAndUpdate(
-        { _id: request._id, status: PARTS_REQUEST_STATUSES.PENDING },
-        { $set: { items, status: PARTS_REQUEST_STATUSES.APPROVED, approved_by: req.user._id, approved_at: new Date() } },
-        { session, new: true, runValidators: true }
-      );
-      if (!approved) throw Object.assign(new Error('Yêu cầu đã được xử lý; vui lòng tải lại.'), { statusCode: 409 });
-      return { partsRequest: approved, warnings };
     });
 
     await AuditLog.logAction({

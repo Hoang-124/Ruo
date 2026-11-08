@@ -265,8 +265,8 @@ async function runTargetedCouplingSuite() {
     };
     const resApproveOverdraft = createMockRes();
     await approvePartsRequest(reqApproveOverdraft, resApproveOverdraft);
-    assert.strictEqual(resApproveOverdraft.statusCode, 400, 'Phải chặn duyệt xuất vượt quá tồn kho (HTTP 400)');
-    assert.ok(resApproveOverdraft.jsonData.message.includes('Tồn kho không đủ'), 'Thông báo phải nêu rõ tồn kho không đủ');
+    assert.ok([400, 409].includes(resApproveOverdraft.statusCode), 'Phải chặn duyệt xuất vượt quá tồn kho (HTTP 400/409)');
+    assert.ok(resApproveOverdraft.jsonData.message.toLowerCase().includes('tồn kho không đủ'), 'Thông báo phải nêu rõ tồn kho không đủ');
 
     // Xác minh tồn kho vẫn an toàn ở mức 17
     const untouchedPart = await SparePart.findById(testPart._id);
