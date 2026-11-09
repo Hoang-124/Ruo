@@ -13,6 +13,7 @@ import authRoutes from './routes/authRoutes.js';
 import facilityRoutes from './routes/facilityRoutes.js';
 import maintenanceRoutes from './routes/maintenanceRoutes.js';
 import equipmentRoutes from './routes/equipmentRoutes.js';
+import warrantyClaimRoutes from './routes/warrantyClaimRoutes.js';
 import repairRoutes from './routes/repairRoutes.js';
 import movementRoutes from './routes/movementRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
@@ -73,6 +74,7 @@ app.use('/api/facilities', facilityRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/equipments', equipmentRoutes);
 app.use('/api/equipment', equipmentRoutes);
+app.use('/api/warranty-claims', warrantyClaimRoutes);
 app.use('/api/repairs', repairRoutes);
 app.use('/api/movements', movementRoutes);
 app.use('/api/transfers', movementRoutes); // Backward compatibility
