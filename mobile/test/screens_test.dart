@@ -58,7 +58,19 @@ void main() {
       await tester.pumpAndSettle();
       expect(api.signedIn, true);
       expect(find.byType(CadPage), findsOneWidget);
+      expect(find.byType(FloorPlanCanvas), findsOneWidget);
       expect(find.text('P101'), findsOneWidget);
+      expect(find.byKey(const Key('cad_view_mode_toggle')), findsOneWidget);
+
+      // Verify toggling between CAD Blueprint mode and Room Pod list mode
+      await tester.tap(find.text('Danh sách phòng'));
+      await tester.pumpAndSettle();
+      expect(find.byType(FloorPlanCanvas), findsNothing);
+      expect(find.text('P101'), findsOneWidget);
+
+      await tester.tap(find.text('Sơ đồ 2D CAD'));
+      await tester.pumpAndSettle();
+      expect(find.byType(FloorPlanCanvas), findsOneWidget);
       expect(find.byKey(const Key('login_submit')), findsNothing);
       expect(tester.takeException(), isNull);
     },
@@ -86,16 +98,11 @@ void main() {
         await api.login('x', 'y');
         await tester.pumpWidget(RuoApp(api: api));
         await tester.pumpAndSettle();
-        final expectedDestinations = switch (role) {
-          'admin' || 'facility_manager' => 7,
-          'technician' => 6,
-          'lecturer' => 5,
-          _ => 5,
-        };
         expect(
           find.byType(NavigationDestination),
-          findsNWidgets(expectedDestinations),
+          findsNWidgets(4),
         );
+        expect(find.byKey(const Key('workspace_drawer_button')), findsOneWidget);
         await tester.tap(
           find.widgetWithText(NavigationDestination, 'Phòng học'),
         );

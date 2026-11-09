@@ -5,6 +5,7 @@ import '../ui/common.dart';
 import '../ui/tokens.dart';
 import '../ui/vectors.dart';
 import 'cad_blueprint.dart';
+export 'cad_blueprint.dart' show FloorPlanCanvas;
 import 'field_inventory.dart';
 import 'field_repairs.dart';
 
@@ -291,15 +292,23 @@ class _Filter extends StatelessWidget {
   );
 }
 
+enum CadViewMode { blueprint, pods }
+
 class CadPage extends StatefulWidget {
-  const CadPage({super.key, required this.api});
+  const CadPage({
+    super.key,
+    required this.api,
+    this.initialMode = CadViewMode.blueprint,
+  });
   final RuoApi api;
+  final CadViewMode initialMode;
   @override
   State<CadPage> createState() => _CadPageState();
 }
 
 class _CadPageState extends State<CadPage> {
   int _floor = 1, _revision = 0;
+  late CadViewMode _viewMode = widget.initialMode;
 
   Future<void> _preview(Json room) async {
     final equipments = asList(room['equipments']);
@@ -461,6 +470,27 @@ class _CadPageState extends State<CadPage> {
               ),
           ],
         ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<CadViewMode>(
+            key: const Key('cad_view_mode_toggle'),
+            segments: const [
+              ButtonSegment<CadViewMode>(
+                value: CadViewMode.blueprint,
+                label: Text('Sơ đồ 2D CAD'),
+                icon: RuoVectorIcon(RuoIcon.blueprint, size: 16),
+              ),
+              ButtonSegment<CadViewMode>(
+                value: CadViewMode.pods,
+                label: Text('Danh sách phòng'),
+                icon: RuoVectorIcon(RuoIcon.door, size: 16),
+              ),
+            ],
+            selected: {_viewMode},
+            onSelectionChanged: (s) => setState(() => _viewMode = s.first),
+          ),
+        ),
         const SizedBox(height: 14),
         AsyncPanel(
           key: ValueKey('cad/$_floor/$_revision'),
@@ -487,9 +517,9 @@ class _CadPageState extends State<CadPage> {
                         : const Color(0xFFFFF7ED),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: dark
-                          ? RuoTokens.brand400.withValues(alpha: 0.45)
-                          : RuoTokens.brand300,
+                        color: dark
+                            ? RuoTokens.brand400.withValues(alpha: 0.45)
+                            : RuoTokens.brand300,
                       width: 1.4,
                     ),
                   ),
@@ -561,71 +591,171 @@ class _CadPageState extends State<CadPage> {
                   const EmptyNotice(
                     'Chưa có phòng được khai báo trên tầng này.',
                   ),
-                if (rooms.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: dark
-                          ? RuoTokens.darkSurface
-                          : RuoTokens.lightSurface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: scheme.outlineVariant),
+                if (rooms.isNotEmpty) ...[
+                  if (_viewMode == CadViewMode.blueprint) ...[
+                    FloorPlanCanvas(
+                      floor: _floor,
+                      rooms: rooms,
+                      onSelectRoom: _preview,
                     ),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Text(
-                            'DANH SÁCH PHÒNG TẦNG $_floor · CHẠM ĐỂ XEM THIẾT BỊ & THAO TÁC',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.6,
-                              color: scheme.onSurfaceVariant,
-                            ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: dark
+                            ? RuoTokens.darkSurface
+                            : RuoTokens.lightSurface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: scheme.outlineVariant),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const RuoVectorIcon(
+                                RuoIcon.door,
+                                size: 15,
+                                color: RuoTokens.brand500,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'PHÒNG THUỘC TẦNG $_floor · CHẠM ĐỂ XEM THIẾT BỊ',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        for (
-                          var row = 0;
-                          row < (rooms.length / 2).ceil();
-                          row++
-                        )
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final r in rooms)
+                                ActionChip(
+                                  key: ValueKey(
+                                    'room_chip_${value(r['code'])}',
+                                  ),
+                                  avatar: RuoVectorIcon(
+                                    RuoIcon.door,
+                                    size: 14,
+                                    color: value(
+                                              r['effectiveStatus'],
+                                              fallback: value(r['status']),
+                                            ) ==
+                                            'available'
+                                        ? RuoTokens.emerald600
+                                        : value(
+                                                  r['effectiveStatus'],
+                                                  fallback: value(r['status']),
+                                                ) ==
+                                                'maintenance'
+                                            ? RuoTokens.amber600
+                                            : RuoTokens.slate500,
+                                  ),
+                                  label: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        value(r['code']),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      if (value(r['name']).isNotEmpty) ...[
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '· ${value(r['name'])}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 11.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  onPressed: () => _preview(r),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: dark
+                            ? RuoTokens.darkSurface
+                            : RuoTokens.lightSurface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: scheme.outlineVariant),
+                      ),
+                      child: Column(
+                        children: [
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: _RoomPod(
-                                    room: rooms[row * 2],
-                                    onTap: () => _preview(rooms[row * 2]),
-                                  ),
-                                ),
-                                Container(
-                                  width: 14,
-                                  height: 142,
-                                  alignment: Alignment.center,
-                                  child: Container(
-                                    width: 1.5,
-                                    height: 112,
-                                    color: scheme.outlineVariant,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: row * 2 + 1 < rooms.length
-                                      ? _RoomPod(
-                                          room: rooms[row * 2 + 1],
-                                          onTap: () =>
-                                              _preview(rooms[row * 2 + 1]),
-                                        )
-                                      : const SizedBox.shrink(),
-                                ),
-                              ],
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              'DANH SÁCH PHÒNG TẦNG $_floor · CHẠM ĐỂ XEM THIẾT BỊ & THAO TÁC',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.6,
+                                color: scheme.onSurfaceVariant,
+                              ),
                             ),
                           ),
-                      ],
+                          for (
+                            var row = 0;
+                            row < (rooms.length / 2).ceil();
+                            row++
+                          )
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: _RoomPod(
+                                      room: rooms[row * 2],
+                                      onTap: () => _preview(rooms[row * 2]),
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 14,
+                                    height: 142,
+                                    alignment: Alignment.center,
+                                    child: Container(
+                                      width: 1.5,
+                                      height: 112,
+                                      color: scheme.outlineVariant,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: row * 2 + 1 < rooms.length
+                                        ? _RoomPod(
+                                            room: rooms[row * 2 + 1],
+                                            onTap: () =>
+                                                _preview(rooms[row * 2 + 1]),
+                                          )
+                                        : const SizedBox.shrink(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
+                ],
                 const SizedBox(height: 12),
                 const Wrap(
                   spacing: 8,

@@ -37,6 +37,7 @@ enum RuoIcon {
   inventory,
   user,
   camera,
+  menu,
 }
 
 class RuoVectorIcon extends StatelessWidget {
@@ -509,6 +510,10 @@ class _RuoIconPainter extends CustomPainter {
           p,
         );
         canvas.drawCircle(const Offset(12, 13.5), 3.5, p);
+      case RuoIcon.menu:
+        canvas.drawLine(const Offset(4, 6), const Offset(20, 6), p);
+        canvas.drawLine(const Offset(4, 12), const Offset(20, 12), p);
+        canvas.drawLine(const Offset(4, 18), const Offset(20, 18), p);
     }
     canvas.restore();
   }

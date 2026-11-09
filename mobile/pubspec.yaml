@@ -1,7 +1,7 @@
 name: ruo_mobile
 description: Ruo Android - phong hoc, CAD va bao cao cua Tung.
 publish_to: none
-version: 1.0.0+1
+version: 1.0.3+3002
 environment:
   sdk: '>=3.13.0 <4.0.0'
 dependencies:

@@ -172,22 +172,38 @@ class _QrScannerPageState extends State<QrScannerPage>
       if (found != null) {
         await _showEquipmentDetail(found);
       } else {
-        // Deterministic fallback mock for test fixture demonstration
-        final demoItem = <String, dynamic>{
-          'code': clean,
-          'name': clean.contains('PRJ')
-              ? 'Máy chiếu Sony Laser 5000 Lumens'
-              : clean.contains('CAM')
-              ? 'Camera PTZ Tracking Tự Động'
-              : 'Điều hòa Daikin Inverter Cassette 4HP',
-          'category': 'Thiết bị điện tử',
-          'room_code': 'A1-101',
-          'serial_number': 'SN-$clean-VN',
-          'status': 'in_use',
-          'warranty_expiry': '2027-12-31T00:00:00.000Z',
-          'purchase_date': '2024-01-15T00:00:00.000Z',
-        };
-        await _showEquipmentDetail(demoItem);
+        if (mounted) {
+          setState(() {
+            _error = 'Không tìm thấy thiết bị hoặc phòng có mã: $clean';
+          });
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                backgroundColor: RuoTokens.rose600,
+                duration: const Duration(seconds: 4),
+                content: Row(
+                  children: [
+                    const RuoVectorIcon(
+                      RuoIcon.alert,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Không tìm thấy thiết bị hoặc phòng có mã: $clean',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+        }
       }
     } catch (e) {
       if (mounted) setState(() => _error = 'Lỗi tra cứu: $e');

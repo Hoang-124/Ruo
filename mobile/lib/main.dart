@@ -30,7 +30,8 @@ Future<void> main() async {
       : (configured.isNotEmpty
             ? configured
             : 'http://$_defaultLocalHost:5000/api');
-  final api = RuoApi(baseUrl: initialUrl);
+  final api = RuoApi(baseUrl: initialUrl, preferences: preferences);
+  api.tryRestoreSession();
   runApp(RuoApp(api: api, preferences: preferences));
 }
 
@@ -493,15 +494,6 @@ class _LoginPageState extends State<LoginPage> {
                         _busy ? 'Đang đăng nhập…' : 'ĐĂNG NHẬP VÀO HỆ THỐNG',
                       ),
                     ),
-                    const SizedBox(height: 22),
-                    Text(
-                      'Ruo Mobile · Học phần PRM\nPhạm vi thực hiện: Tùng (Cơ sở vật chất, CAD 2D & Báo cáo)',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -526,6 +518,72 @@ class _WorkspaceState extends State<Workspace> {
   int _tab = 0;
   bool _loggingOut = false;
 
+  void _navigateToTab(int index) {
+    setState(() => _tab = index);
+  }
+
+  void _pushPage(String title, Widget page) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(title)),
+          body: page,
+        ),
+      ),
+    );
+  }
+
+  Widget _drawerSectionHeader(BuildContext context, String title) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.0,
+          color: scheme.primary,
+        ),
+      ),
+    );
+  }
+
+  Widget _drawerItem(
+    BuildContext context, {
+    required RuoIcon icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Color? titleColor,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: RuoVectorIcon(
+        icon,
+        size: 20,
+        color: titleColor ?? scheme.onSurfaceVariant,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w700,
+          color: titleColor ?? scheme.onSurface,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 11,
+          color: scheme.onSurfaceVariant,
+        ),
+      ),
+      onTap: onTap,
+      dense: true,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
@@ -536,12 +594,12 @@ class _WorkspaceState extends State<Workspace> {
     final isLecturer = role == 'lecturer';
     final isTechnician = role == 'technician';
 
+    // Ergonomic 4 Bottom Tabs per role (Material Design 3 standard)
     final tabs = <(String, RuoIcon, Widget)>[
       if (isTechnician) ...[
         ('SLA Sửa Chữa', RuoIcon.wrench, TechnicianTasksPage(api: widget.api)),
         ('Tầng & Phòng', RuoIcon.blueprint, CadPage(api: widget.api)),
         ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
-        ('Kiểm Kê', RuoIcon.inventory, ClassroomAuditPage(api: widget.api)),
         (
           'Hồ sơ',
           RuoIcon.user,
@@ -551,7 +609,6 @@ class _WorkspaceState extends State<Workspace> {
         ('Tầng & Phòng', RuoIcon.blueprint, CadPage(api: widget.api)),
         ('Quét QR', RuoIcon.qrCode, QrScannerPage(api: widget.api)),
         ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
-        ('Thông báo', RuoIcon.bell, NotificationsPage(api: widget.api)),
         (
           'Hồ sơ',
           RuoIcon.user,
@@ -560,29 +617,292 @@ class _WorkspaceState extends State<Workspace> {
       ] else ...[
         ('Tầng & Phòng', RuoIcon.blueprint, CadPage(api: widget.api)),
         ('Phòng học', RuoIcon.door, RoomsPage(api: widget.api)),
-        ('SLA Sửa Chữa', RuoIcon.wrench, TechnicianTasksPage(api: widget.api)),
-        ('Kiểm Kê', RuoIcon.inventory, ClassroomAuditPage(api: widget.api)),
-        if (widget.api.canReport) ...[
-          ('Báo cáo', RuoIcon.chart, ReportsPage(api: widget.api)),
-        ],
+        ('Báo cáo', RuoIcon.chart, ReportsPage(api: widget.api)),
         (
           'Hồ sơ',
           RuoIcon.user,
           ProfilePage(api: widget.api, onToggleTheme: widget.onToggleTheme),
         ),
       ],
-      if ([
-        'admin',
-        'facility_manager',
-        'technician',
-      ].contains(widget.api.user?['role']))
-        ('Nghiệp vụ', RuoIcon.transfer, OperationsPage(api: widget.api)),
     ];
     final safeTab = _tab.clamp(0, tabs.length - 1);
 
     return Scaffold(
+      drawer: Drawer(
+        child: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                decoration: BoxDecoration(
+                  color: dark ? RuoTokens.darkSurface : RuoTokens.lightSurface,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: scheme.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const RuoLogoMark(size: 38),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'RUO CAMPUS',
+                              style: TextStyle(
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 2.0,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            Text(
+                              'QUẢN LÝ CƠ SỞ VẬT CHẤT',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.8,
+                                color: scheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.api.user?['full_name']?.toString() ??
+                          'Cán bộ trường',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: scheme.primary.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            roleLabel(widget.api.user?['role']),
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: scheme.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            widget.api.user?['department']?.toString() ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              _drawerSectionHeader(context, 'ĐIỀU HÀNH & HIỆN TRƯỜNG'),
+              _drawerItem(
+                context,
+                icon: RuoIcon.blueprint,
+                title: 'Mặt bằng CAD 5 tầng',
+                subtitle: 'Sơ đồ tòa nhà A1, giếng trời & phòng',
+                onTap: () {
+                  Navigator.pop(context);
+                  final idx =
+                      tabs.indexWhere((t) => t.$2 == RuoIcon.blueprint);
+                  if (idx >= 0) _navigateToTab(idx);
+                },
+              ),
+              _drawerItem(
+                context,
+                icon: RuoIcon.door,
+                title: 'Danh mục phòng học',
+                subtitle: '91 phòng, sức chứa & loại phòng',
+                onTap: () {
+                  Navigator.pop(context);
+                  final idx = tabs.indexWhere((t) => t.$2 == RuoIcon.door);
+                  if (idx >= 0) _navigateToTab(idx);
+                },
+              ),
+              _drawerItem(
+                context,
+                icon: RuoIcon.qrCode,
+                title: 'Trạm quét mã QR',
+                subtitle: 'Quét camera & tra cứu thiết bị',
+                onTap: () {
+                  Navigator.pop(context);
+                  final idx = tabs.indexWhere((t) => t.$2 == RuoIcon.qrCode);
+                  if (idx >= 0) {
+                    _navigateToTab(idx);
+                  } else {
+                    _pushPage(
+                      'Quét QR Định Danh Thiết Bị',
+                      QrScannerPage(api: widget.api),
+                    );
+                  }
+                },
+              ),
+              _drawerItem(
+                context,
+                icon: RuoIcon.wrench,
+                title: 'SLA Tiếp nhận & Sửa chữa',
+                subtitle: 'Nhiệm vụ bảo trì hiện trường',
+                onTap: () {
+                  Navigator.pop(context);
+                  final idx = tabs.indexWhere((t) => t.$2 == RuoIcon.wrench);
+                  if (idx >= 0) {
+                    _navigateToTab(idx);
+                  } else {
+                    _pushPage(
+                      'Nhiệm Vụ Kỹ Thuật Viên',
+                      TechnicianTasksPage(api: widget.api),
+                    );
+                  }
+                },
+              ),
+              _drawerItem(
+                context,
+                icon: RuoIcon.inventory,
+                title: 'Kiểm kê phòng học',
+                subtitle: 'Đối soát thiết bị tại chỗ',
+                onTap: () {
+                  Navigator.pop(context);
+                  _pushPage(
+                    'Kiểm Kê Phòng Học',
+                    ClassroomAuditPage(api: widget.api),
+                  );
+                },
+              ),
+              _drawerItem(
+                context,
+                icon: RuoIcon.chart,
+                title: 'Báo cáo sự cố toàn trường',
+                subtitle: 'Thống kê phiếu & thời hạn xử lý',
+                onTap: () {
+                  Navigator.pop(context);
+                  final idx = tabs.indexWhere((t) => t.$2 == RuoIcon.chart);
+                  if (idx >= 0) {
+                    _navigateToTab(idx);
+                  } else {
+                    _pushPage('Báo Cáo Sự Cố', ReportsPage(api: widget.api));
+                  }
+                },
+              ),
+              if (['admin', 'facility_manager', 'technician']
+                  .contains(widget.api.user?['role'])) ...[
+                _drawerSectionHeader(context, 'NGHIỆP VỤ QUẢN TRỊ CSVC'),
+                _drawerItem(
+                  context,
+                  icon: RuoIcon.transfer,
+                  title: 'Nghiệp vụ CSVC tổng hợp',
+                  subtitle: 'Điều chuyển, kiểm kê, thanh lý & danh mục',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pushPage(
+                      'Nghiệp Vụ Cơ Sở Vật Chất',
+                      OperationsPage(api: widget.api),
+                    );
+                  },
+                ),
+              ],
+              _drawerSectionHeader(context, 'HỆ THỐNG & CÁ NHÂN'),
+              _drawerItem(
+                context,
+                icon: RuoIcon.bell,
+                title: 'Trung tâm thông báo',
+                subtitle: 'Cảnh báo sự cố & điều chuyển',
+                onTap: () {
+                  Navigator.pop(context);
+                  _pushPage(
+                    'Trung tâm thông báo',
+                    NotificationsPage(api: widget.api),
+                  );
+                },
+              ),
+              _drawerItem(
+                context,
+                icon: dark ? RuoIcon.sun : RuoIcon.moon,
+                title: dark ? 'Chế độ Sáng' : 'Chế độ Tối',
+                subtitle: dark ? 'Đổi sang nền sáng' : 'Đổi sang nền tối obsidian',
+                onTap: () {
+                  if (widget.onToggleTheme != null) {
+                    widget.onToggleTheme!(brightness);
+                  }
+                },
+              ),
+              _drawerItem(
+                context,
+                icon: RuoIcon.logout,
+                title: 'Đăng xuất an toàn',
+                subtitle: 'Xóa phiên đăng nhập trên thiết bị',
+                titleColor: RuoTokens.rose600,
+                onTap: () async {
+                  Navigator.pop(context);
+                  final agreed = await showDialog<bool>(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: const Text('Đăng xuất?'),
+                      content: const Text(
+                        'Phiên đăng nhập trên thiết bị này sẽ được đóng lại.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(c, false),
+                          child: const Text('Ở lại'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(c, true),
+                          child: const Text('Đăng xuất'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (agreed == true && mounted) {
+                    await widget.api.logout();
+                  }
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
       appBar: AppBar(
-        titleSpacing: 16,
+        titleSpacing: 0,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            key: const Key('workspace_drawer_button'),
+            tooltip: 'Menu hệ thống',
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+            icon: RuoVectorIcon(
+              RuoIcon.menu,
+              size: 22,
+              color: scheme.onSurface,
+            ),
+          ),
+        ),
         title: Row(
           children: [
             const RuoLogoMark(size: 34),

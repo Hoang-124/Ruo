@@ -134,18 +134,6 @@ class ProfilePage extends StatelessWidget {
                 _infoRow(context, 'Máy chủ API', api.baseUrl),
                 const Divider(height: 18),
                 _infoRow(context, 'Phiên bản ứng dụng', 'v4.2.0-core-suite'),
-                const Divider(height: 18),
-                _infoRow(
-                  context,
-                  'Bảo mật phiên',
-                  'Single-Flight Token Rotation',
-                ),
-                const Divider(height: 18),
-                _infoRow(
-                  context,
-                  'Đồ họa',
-                  'Native CustomPainter (Zero Font Icons)',
-                ),
               ],
             ),
           ),

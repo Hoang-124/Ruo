@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 typedef Json = Map<String, dynamic>;
 
@@ -16,10 +17,14 @@ class ApiException implements Exception {
 }
 
 class RuoApi extends ChangeNotifier {
-  RuoApi({http.Client? client, String baseUrl = 'http://10.0.2.2:5000/api'})
-    : _client = client ?? http.Client(),
-      _baseUrl = normalizeUrl(baseUrl);
+  RuoApi({
+    http.Client? client,
+    String baseUrl = 'http://10.0.2.2:5000/api',
+    this.preferences,
+  })  : _client = client ?? http.Client(),
+        _baseUrl = normalizeUrl(baseUrl);
   final http.Client _client;
+  final SharedPreferences? preferences;
   String _baseUrl;
   String? _token;
   String? _refreshToken;
@@ -62,7 +67,35 @@ class RuoApi extends ChangeNotifier {
     _token = null;
     _refreshToken = null;
     user = null;
+    preferences?.remove('auth_token');
+    preferences?.remove('refresh_token');
+    preferences?.remove('auth_user');
     notifyListeners();
+  }
+
+  bool tryRestoreSession() {
+    if (preferences == null) return false;
+    final token = preferences!.getString('auth_token');
+    final refreshToken = preferences!.getString('refresh_token');
+    final userRaw = preferences!.getString('auth_user');
+    if (token != null &&
+        token.isNotEmpty &&
+        refreshToken != null &&
+        refreshToken.isNotEmpty &&
+        userRaw != null &&
+        userRaw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(userRaw);
+        if (decoded is Json) {
+          _token = token;
+          _refreshToken = refreshToken;
+          user = decoded;
+          notifyListeners();
+          return true;
+        }
+      } catch (_) {}
+    }
+    return false;
   }
 
   Future<http.Response> _http(
@@ -150,6 +183,11 @@ class RuoApi extends ChangeNotifier {
     _token = result['token'];
     _refreshToken = result['refreshToken'];
     user = result['user'];
+    if (preferences != null) {
+      await preferences!.setString('auth_token', _token!);
+      await preferences!.setString('refresh_token', _refreshToken!);
+      await preferences!.setString('auth_user', jsonEncode(user!));
+    }
     notifyListeners();
   }
 

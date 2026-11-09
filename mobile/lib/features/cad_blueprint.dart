@@ -483,7 +483,7 @@ class _FloorPlanCanvasState extends State<FloorPlanCanvas> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final maxW = constraints.maxWidth;
-                final h = math.min(maxW * 530 / 932, 220.0);
+                final h = math.min(maxW * 530 / 932, 280.0);
                 final w = h * 932 / 530;
                 final size = Size(w, h);
                 return Center(
