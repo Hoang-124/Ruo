@@ -4,7 +4,8 @@ import {
   triageIncidentReport,
   getRepairAiCopilot,
   analyzeInventoryDiscrepancies,
-  analyzeAuditAnomalies
+  analyzeAuditAnomalies,
+  analyzeEquipmentHealthAndWarehouseSchedule
 } from '../src/controllers/aiController.js';
 import { Repair } from '../src/models/Repair.js';
 import { RepairLog } from '../src/models/RepairLog.js';
@@ -433,5 +434,151 @@ describe('AI Copilot Suite — Feature #1 (Incident & Repair) and Feature #4 (In
     assert.equal(res.body.triage.engine, 'gemini');
     assert.equal(res.body.triage.suggested_damage_level, 'major');
     assert.match(res.body.triage.refined_description, /P105/);
+  });
+
+  test('Feature #5: analyzeEquipmentHealthAndWarehouseSchedule classifies Green/Yellow/Red failure frequency and builds KHO-01 criticality schedule', async (t) => {
+    const origEqFind = Equipment.find;
+    const origRepairFind = Repair.find;
+    const origRoomFind = Room.find;
+
+    t.after(() => {
+      Equipment.find = origEqFind;
+      Repair.find = origRepairFind;
+      Room.find = origRoomFind;
+    });
+
+    const nowIso = new Date().toISOString();
+    Equipment.find = () =>
+      chainable([
+        {
+          _id: 'eq-tv-101',
+          code: 'EQ-101-TV-01',
+          name: 'Smart Tivi 75 inch Samsung Giảng đường',
+          status: 'broken',
+          repair_count: 3,
+          price: 25_000_000,
+          estimated_repair_cost: 14_000_000,
+          category_id: { _id: 'cat-tv', code: 'TV', name: 'Tivi / Màn hình tương tác' },
+          room_id: { _id: 'rm-101', code: 'A1-101', name: 'Giảng đường A1-101', floor: 1, room_type: 'classroom' }
+        },
+        {
+          _id: 'eq-tv-102',
+          code: 'EQ-102-TV-01',
+          name: 'Smart Tivi 75 inch Samsung Phòng 102',
+          status: 'in_use',
+          repair_count: 3,
+          price: 25_000_000,
+          estimated_repair_cost: 13_000_000,
+          category_id: { _id: 'cat-tv', code: 'TV', name: 'Tivi / Màn hình tương tác' },
+          room_id: { _id: 'rm-102', code: 'A1-102', name: 'Phòng học A1-102', floor: 1, room_type: 'classroom' }
+        },
+        {
+          _id: 'eq-ac-201',
+          code: 'EQ-201-AC-01',
+          name: 'Điều hòa âm trần Daikin 4HP',
+          status: 'in_use',
+          repair_count: 1,
+          price: 36_000_000,
+          estimated_repair_cost: 9_500_000,
+          category_id: { _id: 'cat-ac', code: 'AC', name: 'Điều hòa không khí' },
+          room_id: { _id: 'rm-201', code: 'A1-201', name: 'Phòng Lab A1-201', floor: 2, room_type: 'lab' }
+        },
+        {
+          _id: 'eq-kho-tv-01',
+          code: 'EQ-KHO-01-TV-01',
+          name: 'Smart Tivi 75 inch Samsung Dự phòng #1',
+          status: 'in_stock',
+          repair_count: 0,
+          price: 25_000_000,
+          estimated_repair_cost: 0,
+          category_id: { _id: 'cat-tv', code: 'TV', name: 'Tivi / Màn hình tương tác' },
+          room_id: { _id: 'rm-kho', code: 'KHO-01', name: 'Kho Vật Tư Dự Phòng', floor: 1, room_type: 'warehouse' }
+        }
+      ]);
+
+    Repair.find = () =>
+      chainable([
+        {
+          _id: 'rep-tv-1',
+          ticket_code: 'REP-TV-101',
+          equipment_id: 'eq-tv-101',
+          room_id: 'rm-101',
+          status: 'in_progress',
+          damage_level: 'major',
+          created_at: nowIso
+        },
+        {
+          _id: 'rep-tv-2',
+          ticket_code: 'REP-TV-102',
+          equipment_id: 'eq-tv-102',
+          room_id: 'rm-102',
+          status: 'reported',
+          damage_level: 'major',
+          created_at: nowIso
+        }
+      ]);
+
+    Room.find = (filter = {}) => {
+      if (filter.room_type === 'warehouse') {
+        return chainable([{ _id: 'rm-kho', code: 'KHO-01', name: 'Kho Vật Tư Dự Phòng', room_type: 'warehouse' }]);
+      }
+      return chainable([
+        {
+          _id: 'rm-101',
+          code: 'A1-101',
+          name: 'Giảng đường A1-101',
+          building: 'A1',
+          floor: 1,
+          room_type: 'classroom',
+          required_equipment: [
+            { category_id: { _id: 'cat-tv', code: 'TV', name: 'Tivi / Màn hình tương tác' }, quantity: 1 }
+          ]
+        }
+      ]);
+    };
+
+    const res = makeRes();
+    await analyzeEquipmentHealthAndWarehouseSchedule(
+      {
+        body: {},
+        query: {},
+        user: { _id: 'fm-1', role: 'facility_manager' }
+      },
+      res
+    );
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.success, true);
+    const opt = res.body.optimization;
+
+    // 1. Canonical 3-color alert matrix verification
+    assert.equal(opt.alert_matrix_reference.length, 3);
+    assert.deepEqual(
+      opt.alert_matrix_reference.map((r) => ({
+        badge: r.color_badge,
+        status: r.status_label,
+        action: r.recommended_action
+      })),
+      [
+        { badge: '● Xanh', status: 'Ổn định', action: 'Duy trì bảo trì định kỳ' },
+        { badge: '● Vàng', status: 'Trung bình', action: 'Kiểm tra tần suất sử dụng' },
+        { badge: '● Đỏ', status: 'Cảnh báo cao', action: 'Thay thế/Dự phòng khẩn cấp' }
+      ]
+    );
+
+    // 2. Summary counts & concurrent failure cluster detection (multiple TVs failing at once)
+    assert.equal(opt.summary_counts.red_count, 2);
+    assert.equal(opt.summary_counts.yellow_count, 1);
+    assert.equal(opt.summary_counts.green_count, 1);
+    const tvCluster = opt.concurrent_failure_alerts.find((c) => c.category_code === 'TV');
+    assert.ok(tvCluster);
+    assert.equal(tvCluster.level, 'red');
+    assert.equal(tvCluster.recommended_action, 'Thay thế/Dự phòng khẩn cấp');
+
+    // 3. Warehouse schedule prioritizes P1 Red targets and matches KHO-01 standby equipment
+    assert.ok(opt.warehouse_schedule.length >= 2);
+    assert.equal(opt.warehouse_schedule[0].priority_level, 'red');
+    assert.equal(opt.warehouse_schedule[0].recommended_action, 'Thay thế/Dự phòng khẩn cấp');
+    assert.equal(opt.warehouse_schedule[0].warehouse_equipment.code, 'EQ-KHO-01-TV-01');
   });
 });

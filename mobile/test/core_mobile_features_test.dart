@@ -15,6 +15,155 @@ import 'package:ruo_mobile/ui/common.dart';
 import 'package:ruo_mobile/ui/tokens.dart';
 
 void main() {
+  testWidgets(
+    'Equipment import sends a category and only confirms API success',
+    (tester) async {
+      Json? submittedPayload;
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/equipments/categories')) {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'categories': [
+                  {'_id': 'category-1', 'name': 'Máy chiếu'},
+                ],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.url.path.endsWith('/equipments') &&
+              request.method == 'POST') {
+            submittedPayload = jsonDecode(request.body) as Json;
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'equipment': {'code': submittedPayload!['code']},
+              }),
+              201,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.url.path.endsWith('/equipments')) {
+            return http.Response(
+              jsonEncode({'success': true, 'equipments': []}),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      api.user = {'role': 'admin'};
+      addTearDown(api.dispose);
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(body: EquipmentsDirectoryPage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_add_equipment')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('equipment_import_code')),
+        'MM-PY05',
+      );
+      await tester.enterText(
+        find.byKey(const Key('equipment_import_name')),
+        'Máy chiếu PO 05',
+      );
+      await tester.tap(find.text('Lưu nhập kho'));
+      await tester.pumpAndSettle();
+
+      expect(submittedPayload?['category_id'], 'category-1');
+      expect(submittedPayload?['status'], 'in_stock');
+      expect(
+        find.text('Đã lưu thiết bị mới vào Kho dự phòng KHO-01.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('Equipment import displays API errors instead of false success', (
+    tester,
+  ) async {
+    final api = RuoApi(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/equipments/categories')) {
+          return http.Response(
+            jsonEncode({
+              'success': true,
+              'categories': [
+                {'_id': 'category-1', 'name': 'Máy chiếu'},
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (request.url.path.endsWith('/equipments') &&
+            request.method == 'POST') {
+          return http.Response(
+            jsonEncode({'success': false, 'message': 'Lỗi lưu thiết bị.'}),
+            400,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (request.url.path.endsWith('/equipments')) {
+          return http.Response(
+            jsonEncode({'success': true, 'equipments': []}),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        return http.Response('{}', 404);
+      }),
+    );
+    api.user = {'role': 'admin'};
+    addTearDown(api.dispose);
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RuoTokens.theme(Brightness.dark),
+        home: Scaffold(body: EquipmentsDirectoryPage(api: api)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('btn_add_equipment')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('equipment_import_code')),
+      'MM-PY05',
+    );
+    await tester.enterText(
+      find.byKey(const Key('equipment_import_name')),
+      'Máy chiếu PO 05',
+    );
+    await tester.tap(find.text('Lưu nhập kho'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Không thể nhập kho:'), findsOneWidget);
+    expect(
+      find.text('Đã lưu thiết bị mới vào Kho dự phòng KHO-01.'),
+      findsNothing,
+    );
+  });
+
   testWidgets('QrScannerPage renders scanner viewfinder and test asset chips', (
     tester,
   ) async {
@@ -245,6 +394,179 @@ void main() {
   });
 
   testWidgets(
+    'manager can schedule maintenance for selected rooms, categories and date',
+    (tester) async {
+      Json? submittedPlan;
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.method == 'POST' &&
+              request.url.path.endsWith('/maintenance/plans')) {
+            submittedPlan = jsonDecode(request.body) as Json;
+            return http.Response(
+              jsonEncode({'success': true, 'message': 'Đã tạo kế hoạch.'}),
+              201,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.url.path.endsWith('/facilities/rooms')) {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'rooms': [
+                  {
+                    '_id': 'room-1',
+                    'code': 'P101',
+                    'name': 'Phòng 101',
+                    'building': 'A1',
+                    'floor': 1,
+                    'status': 'available',
+                    'room_type': 'lecture',
+                  },
+                  {
+                    '_id': 'room-2',
+                    'code': 'P102',
+                    'name': 'Phòng 102',
+                    'building': 'A1',
+                    'floor': 1,
+                    'status': 'available',
+                    'room_type': 'lecture',
+                  },
+                  {
+                    '_id': 'room-3',
+                    'code': 'P201',
+                    'name': 'Phòng 201',
+                    'building': 'A1',
+                    'floor': 2,
+                    'status': 'available',
+                    'room_type': 'lecture',
+                  },
+                ],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.url.path.endsWith('/equipments/categories')) {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'categories': [
+                  {'_id': 'category-1', 'name': 'Máy chiếu'},
+                ],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.url.path.endsWith('/maintenance/plans')) {
+            return http.Response(
+              jsonEncode({'success': true, 'plans': [], 'equipment': []}),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      api.user = {'role': 'facility_manager'};
+      addTearDown(api.dispose);
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.light),
+          home: Scaffold(body: MaintenancePage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tạo kế hoạch'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('maintenance-room-room-1')), findsOneWidget);
+      expect(find.byKey(const Key('maintenance-room-room-2')), findsOneWidget);
+      expect(
+        find.byKey(const Key('maintenance-category-category-1')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('maintenance_plan_date')), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('maintenance_plan_title')),
+        'Bảo dưỡng máy chiếu phòng học',
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('maintenance-room-room-1')),
+      );
+      await tester.tap(find.byKey(const Key('maintenance-room-room-1')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const Key('maintenance-room-room-2')),
+      );
+      await tester.tap(find.byKey(const Key('maintenance-room-room-2')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const Key('maintenance-category-category-1')),
+      );
+      await tester.tap(
+        find.byKey(const Key('maintenance-category-category-1')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('maintenance_plan_date')));
+      await tester.pumpAndSettle();
+      expect(find.byType(DatePickerDialog), findsOneWidget);
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<CheckboxListTile>(
+              find.byKey(const Key('maintenance-room-room-1')),
+            )
+            .value,
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<CheckboxListTile>(
+              find.byKey(const Key('maintenance-room-room-2')),
+            )
+            .value,
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<CheckboxListTile>(
+              find.byKey(const Key('maintenance-category-category-1')),
+            )
+            .value,
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.byKey(const Key('maintenance_plan_submit')),
+            )
+            .onPressed,
+        isNotNull,
+      );
+      await tester.tap(find.byKey(const Key('maintenance_plan_submit')));
+      await tester.pumpAndSettle();
+
+      expect(submittedPlan?['room_ids'], ['room-1', 'room-2']);
+      expect(submittedPlan?['category_ids'], ['category-1']);
+      final startDate = DateTime.tryParse(
+        submittedPlan?['start_date'] as String,
+      );
+      expect(startDate, isNotNull);
+      expect(startDate!.hour, 0);
+      expect(startDate.minute, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'technician always sees disposal proposal action and its reason',
     (tester) async {
       Json? submitted;
@@ -307,6 +629,8 @@ void main() {
       await tester.tap(find.byKey(const Key('create_disposal_proposal')));
       await tester.pumpAndSettle();
       expect(find.text('Đề xuất thanh lý EQ-101'), findsOneWidget);
+      expect(find.byKey(const Key('disposal_r_ratio')), findsOneWidget);
+      expect(find.text('Chỉ số R'), findsOneWidget);
 
       await tester.enterText(
         find.byType(TextField).first,
@@ -555,11 +879,256 @@ void main() {
       await tester.tap(find.text('Tiếp nhận'));
       await tester.pumpAndSettle();
       expect(acceptedPath, '/api/repairs/mongo-rep-1/accept');
+      expect(
+        find.byKey(const Key('btn_repair_complete_REP-REAL-101')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('btn_repair_unrepairable_REP-REAL-101')),
+        findsOneWidget,
+      );
 
-      await tester.tap(find.text('Hoàn tất'));
+      await tester.tap(
+        find.byKey(const Key('btn_repair_complete_REP-REAL-101')),
+      );
       await tester.pumpAndSettle();
       expect(resolvedPath, '/api/repairs/mongo-rep-1/resolve');
       expect(resolvedPayload?['outcome'], 'repaired');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'reported repair waits for manager assignment and does not offer technician accept',
+    (tester) async {
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.method == 'GET' && request.url.path == '/api/repairs') {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'repairs': [
+                  {
+                    '_id': 'reported-repair',
+                    'ticket_code': 'REP-REPORTED-101',
+                    'incident_description': 'Đèn nhấp nháy',
+                    'equipment_id': {
+                      '_id': 'reported-equipment',
+                      'code': 'EQ-101-LIGHT-01',
+                      'name': 'Đèn phòng 101',
+                    },
+                    'room_id': {'_id': 'room-101', 'code': 'A1-101'},
+                    'status': 'reported',
+                    'deadline': '2026-11-16T08:00:00.000Z',
+                  },
+                ],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      api.user = {'role': 'technician'};
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.light),
+          home: Scaffold(body: TechnicianTasksPage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Đã báo hỏng'), findsOneWidget);
+      expect(
+        find.text('Phiếu đang chờ quản lý phân công kỹ thuật viên.'),
+        findsOneWidget,
+      );
+      expect(find.text('Tiếp nhận'), findsNothing);
+      expect(
+        find.byKey(const Key('btn_copilot_REP-REPORTED-101')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('manager assigns a reported repair to an active technician', (
+    tester,
+  ) async {
+    Json? assignmentPayload;
+    var assignedSuccessfully = false;
+    var repairListRequests = 0;
+    final api = RuoApi(
+      client: MockClient((request) async {
+        if (request.method == 'GET' && request.url.path == '/api/repairs') {
+          repairListRequests++;
+          return http.Response(
+            jsonEncode({
+              'success': true,
+              'repairs': [
+                {
+                  '_id': 'reported-repair',
+                  'ticket_code': 'REP-ASSIGN-101',
+                  'incident_description': 'Đèn nhấp nháy',
+                  'equipment_code': 'EQ-101-LIGHT-01',
+                  'equipment_id': 'reported-equipment',
+                  'room_code': 'A1-101',
+                  'room_id': 'room-101',
+                  'damage_level': 'major',
+                  'status': assignedSuccessfully ? 'assigned' : 'reported',
+                  'deadline': '2026-11-10T08:00:00.000Z',
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (request.method == 'GET' && request.url.path == '/api/auth/users') {
+          expect(request.url.queryParameters['role'], 'technician');
+          expect(request.url.queryParameters['status'], 'active');
+          return http.Response(
+            jsonEncode({
+              'success': true,
+              'users': [
+                {
+                  '_id': 'tech-1',
+                  'full_name': 'Kỹ thuật viên Một',
+                  'code': 'KT001',
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (request.method == 'PUT' &&
+            request.url.path == '/api/repairs/reported-repair/assign') {
+          assignmentPayload = jsonDecode(request.body) as Json;
+          assignedSuccessfully = true;
+          return http.Response(
+            jsonEncode({
+              'success': true,
+              'data': {'_id': 'reported-repair', 'status': 'assigned'},
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        return http.Response('{}', 404);
+      }),
+    );
+    api.user = {'role': 'facility_manager'};
+    addTearDown(api.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: RuoTokens.theme(Brightness.light),
+        home: Scaffold(body: TechnicianTasksPage(api: api)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('btn_assign_repair_REP-ASSIGN-101')));
+    await tester.pumpAndSettle();
+    expect(find.text('Kỹ thuật viên Một (KT001)'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('confirm_repair_assignment')));
+    await tester.pumpAndSettle();
+
+    expect(assignmentPayload?['assigned_to'], 'tech-1');
+    expect(assignmentPayload?['damage_level'], 'major');
+    expect(assignmentPayload?['deadline'], '2026-11-10T08:00:00.000Z');
+    expect(repairListRequests, 2);
+    expect(find.text('Đã giao KTV'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'Technician can mark an accepted repair as unrepairable for disposal testing',
+    (tester) async {
+      Json? resolvedPayload;
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.method == 'GET' && request.url.path == '/api/repairs') {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'repairs': [
+                  {
+                    '_id': 'mongo-rep-2',
+                    'ticket_code': 'REP-UNREPAIRABLE-102',
+                    'incident_description': 'Máy chiếu hỏng nguồn',
+                    'equipment_id': {
+                      '_id': 'eq-projector-2',
+                      'code': 'EQ-102-PRJ-02',
+                      'name': 'Máy chiếu phòng 102',
+                    },
+                    'room_id': {'_id': 'room-102', 'code': 'A1-102'},
+                    'damage_level': 'major',
+                    'status': 'assigned',
+                    'deadline': '2026-11-16T08:00:00.000Z',
+                    'deadline_status': 'on_track',
+                  },
+                ],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'PUT' &&
+              request.url.path == '/api/repairs/mongo-rep-2/accept') {
+            return http.Response(
+              '{"success":true}',
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'PUT' &&
+              request.url.path == '/api/repairs/mongo-rep-2/resolve') {
+            resolvedPayload = jsonDecode(request.body) as Json;
+            return http.Response(
+              '{"success":true}',
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      api.user = {'role': 'technician'};
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(body: TechnicianTasksPage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tiếp nhận'));
+      await tester.pumpAndSettle();
+      tester
+          .state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger))
+          .hideCurrentSnackBar();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const Key('btn_repair_unrepairable_REP-UNREPAIRABLE-102')),
+      );
+      await tester.tap(
+        find.byKey(const Key('btn_repair_unrepairable_REP-UNREPAIRABLE-102')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Xác nhận thiết bị không thể sửa?'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('confirm_unrepairable_outcome')));
+      await tester.pumpAndSettle();
+
+      expect(resolvedPayload?['outcome'], 'unrepairable');
+      expect(resolvedPayload?['notes'], contains('không thể sửa'));
+      expect(find.text('Không thể sửa'), findsWidgets);
       expect(tester.takeException(), isNull);
     },
   );
@@ -798,6 +1367,15 @@ void main() {
       await tester.tap(find.text('Kho thiết bị'));
       await tester.pumpAndSettle();
       expect(find.text('Kho Thiết Bị & Tài Sản'), findsOneWidget);
+      expect(
+        find.text(
+          'Hệ thống Cảnh báo Tình trạng Thiết bị (AI) & Lịch Kho KHO-01',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Duy trì bảo trì định kỳ'), findsOneWidget);
+      expect(find.text('Kiểm tra tần suất sử dụng'), findsOneWidget);
+      expect(find.text('Thay thế/Dự phòng khẩn cấp'), findsOneWidget);
 
       // Switch to Kho linh kiện
       await tester.tap(find.text('Kho linh kiện'));

@@ -210,6 +210,7 @@ export const equipmentApi = {
   updateWarranty: (id, data) => api.put(`/equipments/${id}/warranty`, data),
   getExpiringWarranties: (days = 30, includeExpired = false) => api.get('/equipments/warranty-expiring', { days, include_expired: includeExpired }),
   checkWarrantyExpirations: (days = 30) => api.post('/equipments/warranty/check-expirations', { days }),
+  aiHealthSchedule: (params = {}) => api.post('/equipments/ai-health-schedule', params),
   delete: (id) => api.delete(`/equipments/${id}`)
 };
 
@@ -224,7 +225,8 @@ export const facilityApi = {
   deactivateRoom: (id, data = {}) => api.put(`/facilities/rooms/${id}/deactivate`, data),
   updateRoomStatus: (id, data) => api.put(`/facilities/rooms/${id}/status`, data),
   getRoomShortage: (id) => api.get(`/facilities/rooms/${id}/shortage`),
-  getWarehouseStock: () => api.get('/facilities/warehouse/stock')
+  getWarehouseStock: () => api.get('/facilities/warehouse/stock'),
+  getWarehouseAiSchedule: (params = {}) => api.post('/facilities/warehouse/ai-schedule', params)
 };
 
 export const maintenanceApi = {

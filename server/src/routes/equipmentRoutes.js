@@ -15,6 +15,7 @@ import {
   updateWarrantyInfo,
   deleteEquipment
 } from '../controllers/equipmentController.js';
+import { analyzeEquipmentHealthAndWarehouseSchedule } from '../controllers/aiController.js';
 import { protect, optionalProtect, requireRole, requirePermission } from '../middlewares/authMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
@@ -22,6 +23,8 @@ const router = express.Router();
 
 // Directory, QR lookup & Lifecycle (UC-3.2, UC-3.3, UC-3.5, UC-6.2, QR Lookup)
 router.get('/', optionalProtect, getEquipments);
+router.get('/ai-health-schedule', protect, analyzeEquipmentHealthAndWarehouseSchedule);
+router.post('/ai-health-schedule', protect, analyzeEquipmentHealthAndWarehouseSchedule);
 router.get('/categories', getEquipmentCategories);
 router.get('/warranty-expiring', getWarrantyExpiringEquipments);
 router.post('/warranty/check-expirations', protect, requireRole(USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), checkAndNotifyExpiringWarranties);

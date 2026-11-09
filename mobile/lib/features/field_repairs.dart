@@ -1821,13 +1821,20 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
   }
 
   Future<void> _acceptTicket(Json ticket) async {
+    if (value(ticket['status']) != 'assigned') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Phiếu cần được quản lý phân công trước khi kỹ thuật viên tiếp nhận.',
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => _busy = true);
     final ticketId = ticket['_id'] ?? ticket['id'];
     try {
-      try {
-        await widget.api.send('PUT', '/repairs/$ticketId/accept', {});
-      } catch (_) {}
-
+      await widget.api.send('PUT', '/repairs/$ticketId/accept', {});
       setState(() {
         ticket['status'] = 'in_progress';
       });
@@ -1839,33 +1846,194 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
           backgroundColor: RuoTokens.emerald700,
         ),
       );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể tiếp nhận phiếu: $error')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _resolveTicket(Json ticket) async {
+  Future<void> _confirmUnrepairable(Json ticket) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Xác nhận thiết bị không thể sửa?'),
+        content: const Text(
+          'Thiết bị sẽ được chuyển sang trạng thái chờ thanh lý và đủ điều kiện để tạo đề xuất thanh lý.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Quay lại'),
+          ),
+          FilledButton(
+            key: const Key('confirm_unrepairable_outcome'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Xác nhận không thể sửa'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _reportTicketOutcome(ticket, 'unrepairable');
+    }
+  }
+
+  Future<void> _assignTicket(Json ticket) async {
+    if (!_isManagerOrAdmin) return;
+
+    setState(() => _busy = true);
+    try {
+      final response = await widget.api.get('/auth/users', {
+        'role': 'technician',
+        'status': 'active',
+      });
+      final technicians = asList(response['users'])
+          .where((user) => value(user['_id'], fallback: '').isNotEmpty)
+          .toList();
+      if (!mounted) return;
+      if (technicians.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Chưa có kỹ thuật viên đang hoạt động để giao phiếu.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      var selectedTechnicianId = value(technicians.first['_id'], fallback: '');
+      final technicianId = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text('Giao phiếu [${value(ticket['ticket_code'])}]'),
+            content: DropdownButtonFormField<String>(
+              initialValue: selectedTechnicianId,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Kỹ thuật viên phụ trách',
+              ),
+              items: [
+                for (final technician in technicians)
+                  DropdownMenuItem(
+                    value: value(technician['_id']),
+                    child: Text(
+                      '${value(technician['full_name'])} (${value(technician['code'])})',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: (id) {
+                if (id != null) {
+                  setDialogState(() => selectedTechnicianId = id);
+                }
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Hủy'),
+              ),
+              FilledButton(
+                key: const Key('confirm_repair_assignment'),
+                onPressed: selectedTechnicianId.isEmpty
+                    ? null
+                    : () => Navigator.pop(dialogContext, selectedTechnicianId),
+                child: const Text('Giao KTV'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (technicianId == null || !mounted) return;
+
+      final selectedTechnician = technicians.firstWhere(
+        (technician) => value(technician['_id']) == technicianId,
+      );
+      final result = await widget.api.send(
+        'PUT',
+        '/repairs/${ticket['_id'] ?? ticket['id']}/assign',
+        {
+          'assigned_to': technicianId,
+          'damage_level': value(ticket['damage_level'], fallback: 'minor'),
+          if (ticket['deadline'] != null) 'deadline': ticket['deadline'],
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _filterTab = 0;
+        ticket['status'] = 'assigned';
+        ticket['assigned_to'] = {
+          '_id': technicianId,
+          'full_name': value(selectedTechnician['full_name']),
+        };
+        final updated = asMap(result['data'] ?? result['repair']);
+        if (updated.isNotEmpty) ticket.addAll(updated);
+      });
+      await _loadTickets();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Đã giao phiếu cho ${value(selectedTechnician['full_name'])}.',
+          ),
+          backgroundColor: RuoTokens.emerald700,
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể giao phiếu sửa chữa: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _reportTicketOutcome(Json ticket, String outcome) async {
     setState(() => _busy = true);
     final ticketId = ticket['_id'] ?? ticket['id'];
     try {
-      try {
-        await widget.api.send('PUT', '/repairs/$ticketId/resolve', {
-          'outcome': 'repaired',
-          'notes': 'Đã thay thế linh kiện bạc đạn quạt và vệ sinh máy.',
-        });
-      } catch (_) {}
-
+      final note = outcome == 'unrepairable'
+          ? 'Kỹ thuật viên kết luận thiết bị không thể sửa chữa.'
+          : 'Đã sửa chữa và kiểm tra thiết bị hoạt động bình thường.';
+      await widget.api.send('PUT', '/repairs/$ticketId/resolve', {
+        'outcome': outcome,
+        'notes': note,
+      });
       setState(() {
-        ticket['status'] = 'resolved';
+        ticket['status'] = outcome == 'unrepairable'
+            ? 'unrepairable'
+            : 'resolved';
+        ticket['outcome'] = outcome;
       });
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Đã hoàn tất nghiệm thu ca [${ticket['ticket_code']}]'),
-          backgroundColor: RuoTokens.emerald700,
+          content: Text(
+            outcome == 'unrepairable'
+                ? 'Đã ghi nhận không thể sửa. Thiết bị đủ điều kiện đề xuất thanh lý.'
+                : 'Đã hoàn tất nghiệm thu ca [${ticket['ticket_code']}]',
+          ),
+          backgroundColor: outcome == 'unrepairable'
+              ? RuoTokens.rose600
+              : RuoTokens.emerald700,
         ),
       );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể lưu kết luận sửa chữa: $error')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -2028,21 +2196,18 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
         t['is_overdue'] == true || t['deadline_status'] == 'overdue';
     final status = value(t['status']);
     final dmg = value(t['damage_level'] ?? t['priority'], fallback: 'minor');
-    final isPending =
-        status == 'assigned' || status == 'reported' || status == 'pending';
+    final isAssigned = status == 'assigned';
+    final isAwaitingAssignment = status == 'reported' || status == 'pending';
     final isInProgress = status == 'in_progress';
+    final equipment = asMap(t['equipment'] ?? t['equipment_id']);
+    final room = asMap(t['room'] ?? t['room_id']);
     final titleText = value(
-      t['title'] ?? t['incident_description'] ?? t['equipment_id']?['name'],
+      t['title'] ?? t['incident_description'] ?? equipment['name'],
       fallback: 'Sự cố thiết bị',
     );
-    final roomCode = value(
-      t['room_code'] ?? t['room']?['code'] ?? t['room_id']?['code'],
-      fallback: 'A1-101',
-    );
+    final roomCode = value(t['room_code'] ?? room['code'], fallback: 'A1-101');
     final eqCode = value(
-      t['equipment_code'] ??
-          t['equipment']?['code'] ??
-          t['equipment_id']?['code'],
+      t['equipment_code'] ?? equipment['code'],
       fallback: 'EQ-A1',
     );
     final deadlineVal = t['sla_deadline'] ?? t['deadline'];
@@ -2119,57 +2284,101 @@ class _TechnicianTasksPageState extends State<TechnicianTasksPage> {
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
           const Divider(height: 20),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Text(
+                'Hạn SLA: ${formatVnDateTime(deadlineVal)}',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: isOverdue
+                      ? RuoTokens.rose600
+                      : scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'KTV: ${_assignedTechnicianName(t)}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              if (isAwaitingAssignment) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Phiếu đang chờ quản lý phân công kỹ thuật viên.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: scheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 6,
+                  runSpacing: 6,
                   children: [
-                    Text(
-                      'Hạn SLA: ${formatVnDateTime(deadlineVal)}',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: isOverdue
-                            ? RuoTokens.rose600
-                            : scheme.onSurfaceVariant,
-                      ),
+                    OutlinedButton.icon(
+                      key: ValueKey('btn_copilot_${t['ticket_code']}'),
+                      onPressed: () => _openTicketCopilotSheet(t),
+                      icon: const RuoVectorIcon(RuoIcon.wrench, size: 13),
+                      label: const Text('✨ AI Copilot'),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'KTV: ${_assignedTechnicianName(t)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurfaceVariant,
+                    if (isAssigned)
+                      FilledButton.tonalIcon(
+                        onPressed: _busy ? null : () => _acceptTicket(t),
+                        icon: const RuoVectorIcon(RuoIcon.check, size: 14),
+                        label: const Text('Tiếp nhận'),
+                      )
+                    else if (isAwaitingAssignment && _isManagerOrAdmin)
+                      FilledButton.icon(
+                        key: ValueKey('btn_assign_repair_${t['ticket_code']}'),
+                        onPressed: _busy ? null : () => _assignTicket(t),
+                        icon: const RuoVectorIcon(
+                          RuoIcon.check,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                        label: const Text('Giao KTV'),
+                      )
+                    else if (isInProgress) ...[
+                      FilledButton.icon(
+                        key: ValueKey(
+                          'btn_repair_complete_${t['ticket_code']}',
+                        ),
+                        onPressed: _busy
+                            ? null
+                            : () => _reportTicketOutcome(t, 'repaired'),
+                        icon: const RuoVectorIcon(
+                          RuoIcon.check,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                        label: const Text('Hoàn tất'),
                       ),
-                    ),
+                      OutlinedButton.icon(
+                        key: ValueKey(
+                          'btn_repair_unrepairable_${t['ticket_code']}',
+                        ),
+                        onPressed: _busy ? null : () => _confirmUnrepairable(t),
+                        icon: const RuoVectorIcon(
+                          RuoIcon.alert,
+                          size: 14,
+                          color: RuoTokens.rose600,
+                        ),
+                        label: const Text('Không thể sửa'),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              OutlinedButton.icon(
-                key: ValueKey('btn_copilot_${t['ticket_code']}'),
-                onPressed: () => _openTicketCopilotSheet(t),
-                icon: const RuoVectorIcon(RuoIcon.wrench, size: 13),
-                label: const Text('✨ AI Copilot'),
-              ),
-              const SizedBox(width: 6),
-              if (isPending)
-                FilledButton.tonalIcon(
-                  onPressed: _busy ? null : () => _acceptTicket(t),
-                  icon: const RuoVectorIcon(RuoIcon.check, size: 14),
-                  label: const Text('Tiếp nhận'),
-                )
-              else if (isInProgress)
-                FilledButton.icon(
-                  onPressed: _busy ? null : () => _resolveTicket(t),
-                  icon: const RuoVectorIcon(
-                    RuoIcon.check,
-                    size: 14,
-                    color: Colors.white,
-                  ),
-                  label: const Text('Hoàn tất'),
-                ),
             ],
           ),
         ],

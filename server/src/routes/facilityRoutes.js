@@ -15,6 +15,7 @@ import {
   getRoomShortage,
   getWarehouseStock
 } from '../controllers/facilityController.js';
+import { analyzeEquipmentHealthAndWarehouseSchedule } from '../controllers/aiController.js';
 import { protect, requireRole } from '../middlewares/authMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
@@ -27,6 +28,8 @@ router.put('/buildings/:id', protect, requireRole(USER_ROLES.ADMIN), updateBuild
 router.delete('/buildings/:id', protect, requireRole(USER_ROLES.ADMIN), deleteBuilding);
 router.get('/cad-canvas', protect, getCadCanvasRooms);
 router.get('/warehouse/stock', protect, getWarehouseStock);
+router.get('/warehouse/ai-schedule', protect, analyzeEquipmentHealthAndWarehouseSchedule);
+router.post('/warehouse/ai-schedule', protect, analyzeEquipmentHealthAndWarehouseSchedule);
 
 router.get('/rooms', protect, getAllRooms);
 router.get('/rooms/:code/maint-history', protect, getRoomMaintenanceHistory);

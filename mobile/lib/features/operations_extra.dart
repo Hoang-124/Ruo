@@ -5,6 +5,156 @@ import '../ui/common.dart';
 import '../ui/tokens.dart';
 import '../ui/vectors.dart';
 
+class _EquipmentImportDialog extends StatefulWidget {
+  const _EquipmentImportDialog({required this.api, required this.categories});
+
+  final RuoApi api;
+  final List<Json> categories;
+
+  @override
+  State<_EquipmentImportDialog> createState() => _EquipmentImportDialogState();
+}
+
+class _EquipmentImportDialogState extends State<_EquipmentImportDialog> {
+  final _codeCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _serialCtrl = TextEditingController();
+  final _brandCtrl = TextEditingController();
+  final _priceCtrl = TextEditingController(text: '15000000');
+  late String? _selectedCategoryId = widget.categories.first['_id']?.toString();
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    _nameCtrl.dispose();
+    _serialCtrl.dispose();
+    _brandCtrl.dispose();
+    _priceCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final price = num.tryParse(_priceCtrl.text.trim());
+    if (_codeCtrl.text.trim().isEmpty ||
+        _nameCtrl.text.trim().isEmpty ||
+        _selectedCategoryId == null ||
+        _selectedCategoryId!.isEmpty ||
+        price == null ||
+        price < 0) {
+      setState(
+        () =>
+            _error = 'Vui lòng nhập mã, tên, chủng loại và nguyên giá hợp lệ.',
+      );
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await widget.api.send('POST', '/equipments', {
+        'code': _codeCtrl.text.trim(),
+        'name': _nameCtrl.text.trim(),
+        'category_id': _selectedCategoryId,
+        'serial_number': _serialCtrl.text.trim(),
+        'brand': _brandCtrl.text.trim(),
+        'price': price,
+        'status': 'in_stock',
+      });
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = 'Không thể nhập kho: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Nhập Mới Thiết Bị Vào Kho KHO-01'),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            key: const Key('equipment_import_code'),
+            controller: _codeCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Mã tài sản (VD: EQ-KHO-01-PRJ-09)',
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('equipment_import_name'),
+            controller: _nameCtrl,
+            decoration: const InputDecoration(labelText: 'Tên thiết bị'),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            initialValue: _selectedCategoryId,
+            decoration: const InputDecoration(labelText: 'Chủng loại thiết bị'),
+            items: [
+              for (final category in widget.categories)
+                DropdownMenuItem(
+                  value: category['_id']?.toString(),
+                  child: Text(value(category['name'])),
+                ),
+            ],
+            onChanged: _saving
+                ? null
+                : (id) => setState(() => _selectedCategoryId = id),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _serialCtrl,
+            decoration: const InputDecoration(labelText: 'Số Serial'),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _brandCtrl,
+            decoration: const InputDecoration(labelText: 'Hãng sản xuất'),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _priceCtrl,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Nguyên giá (VNĐ)'),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: _saving ? null : () => Navigator.pop(context, false),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(
+        onPressed: _saving ? null : _save,
+        child: _saving
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Lưu nhập kho'),
+      ),
+    ],
+  );
+}
+
 /// 1. Kho Thiết Bị & Danh Mục Tài Sản (EquipmentsDirectoryPage & WarehouseStockPage)
 class EquipmentsDirectoryPage extends StatefulWidget {
   const EquipmentsDirectoryPage({super.key, required this.api});
@@ -18,6 +168,7 @@ class EquipmentsDirectoryPage extends StatefulWidget {
 class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
   int _revision = 0;
   String _statusFilter = 'all';
+  bool _showAiHealthSchedule = true;
   final _searchController = TextEditingController();
 
   String get _role => value(widget.api.user?['role'], fallback: '');
@@ -29,96 +180,43 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
     super.dispose();
   }
 
-  void _message(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-
   Future<void> _createEquipmentDialog() async {
-    final codeCtrl = TextEditingController();
-    final nameCtrl = TextEditingController();
-    final serialCtrl = TextEditingController();
-    final brandCtrl = TextEditingController();
-    final priceCtrl = TextEditingController(text: '15000000');
+    final messenger = ScaffoldMessenger.of(context);
+    late final List<Json> categories;
+    try {
+      final response = await widget.api.get('/equipments/categories');
+      categories = asList(response['categories'] ?? response['data']);
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Không thể tải chủng loại thiết bị: $e')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    if (categories.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Chưa có chủng loại thiết bị để nhập kho.'),
+        ),
+      );
+      return;
+    }
 
     final created = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Nhập Mới Thiết Bị Vào Kho KHO-01'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: codeCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Mã tài sản (VD: EQ-KHO-01-PRJ-09)',
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Tên thiết bị'),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: serialCtrl,
-                decoration: const InputDecoration(labelText: 'Số Serial'),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: brandCtrl,
-                decoration: const InputDecoration(labelText: 'Hãng sản xuất'),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: priceCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Nguyên giá (VNĐ)',
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (codeCtrl.text.trim().isEmpty ||
-                  nameCtrl.text.trim().isEmpty) {
-                return;
-              }
-              try {
-                await widget.api.send('POST', '/equipments', {
-                  'code': codeCtrl.text.trim(),
-                  'name': nameCtrl.text.trim(),
-                  'serial_number': serialCtrl.text.trim(),
-                  'brand': brandCtrl.text.trim(),
-                  'price': int.tryParse(priceCtrl.text.trim()) ?? 0,
-                  'status': 'in_stock',
-                });
-                if (ctx.mounted) Navigator.pop(ctx, true);
-              } catch (e) {
-                if (ctx.mounted) Navigator.pop(ctx, true);
-              }
-            },
-            child: const Text('Lưu nhập kho'),
-          ),
-        ],
-      ),
+      builder: (_) =>
+          _EquipmentImportDialog(api: widget.api, categories: categories),
     );
-
-    codeCtrl.dispose();
-    nameCtrl.dispose();
-    serialCtrl.dispose();
-    brandCtrl.dispose();
-    priceCtrl.dispose();
 
     if (created == true && mounted) {
       setState(() => _revision++);
-      _message('Đã lưu thiết bị mới vào Kho dự phòng KHO-01.');
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Đã lưu thiết bị mới vào Kho dự phòng KHO-01.'),
+        ),
+      );
     }
   }
 
@@ -194,37 +292,11 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
           ),
         ),
         const SizedBox(height: 12),
+        _buildAiEquipmentHealthAndWarehousePanel(),
+        const SizedBox(height: 12),
         AsyncPanel(
           key: ValueKey('equipments-$_statusFilter-$_revision'),
-          load: () async {
-            try {
-              return await widget.api.get('/equipments', queryParams);
-            } catch (_) {
-              return {
-                'equipments': [
-                  {
-                    '_id': 'eq-kho-1',
-                    'code': 'EQ-KHO-01-PRJSTD-02',
-                    'name': 'Máy chiếu siêu gần giảng đường #2 (Panasonic PT-TW370)',
-                    'status': 'in_stock',
-                    'room_id': {
-                      'code': 'KHO-01',
-                      'name': 'Kho Vật Tư Dự Phòng',
-                    },
-                    'price': 18500000,
-                  },
-                  {
-                    '_id': 'eq-101-ac',
-                    'code': 'EQ-101-ACCASS-01',
-                    'name': 'Điều hòa âm trần Cassette 4HP Daikin',
-                    'status': 'in_use',
-                    'room_id': {'code': 'A1-101', 'name': 'Giảng đường A1-101'},
-                    'price': 36000000,
-                  },
-                ],
-              };
-            }
-          },
+          load: () => widget.api.get('/equipments', queryParams),
           builder: (data) {
             final list = asList(data['equipments'] ?? data['data']);
             if (list.isEmpty) {
@@ -236,7 +308,7 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
                   DataCard(
                     title: '${value(eq['code'])} · ${value(eq['name'])}',
                     subtitle:
-                        'Vị trí: ${_roomDisplay(eq['room_id'])} · Nguyên giá: ${money(eq['price'])}',
+                        'Vị trí: ${_roomDisplay(eq['room_id'])} · Nguyên giá: ${money(eq['price'])}\n${_aiAlertSummaryText(eq)}',
                     trailing: StatusBadge(
                       value(eq['status'], fallback: 'in_use'),
                     ),
@@ -246,6 +318,150 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
           },
         ),
       ],
+    );
+  }
+
+  String _aiAlertSummaryText(Json eq) {
+    final repCount = (eq['repair_count'] is num)
+        ? (eq['repair_count'] as num).toInt()
+        : 0;
+    final st = value(eq['status'], fallback: 'in_use');
+    if (repCount >= 3 || st == 'pending_disposal') {
+      return 'AI Cảnh báo: ● Đỏ (Cảnh báo cao · $repCount lần hỏng) → Thay thế/Dự phòng khẩn cấp';
+    }
+    if (repCount >= 1 || st == 'broken' || st == 'repairing') {
+      return 'AI Cảnh báo: ● Vàng (Trung bình · $repCount lần hỏng) → Kiểm tra tần suất sử dụng';
+    }
+    return 'AI Cảnh báo: ● Xanh (Ổn định · 0 lần hỏng) → Duy trì bảo trì định kỳ';
+  }
+
+  Widget _buildAiEquipmentHealthAndWarehousePanel() {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: RuoTokens.brand500.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.auto_awesome,
+                size: 18,
+                color: RuoTokens.brand600,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Hệ thống Cảnh báo Tình trạng Thiết bị (AI) & Lịch Kho KHO-01',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => setState(
+                  () => _showAiHealthSchedule = !_showAiHealthSchedule,
+                ),
+                child: Text(_showAiHealthSchedule ? 'Thu gọn' : 'Mở rộng'),
+              ),
+            ],
+          ),
+          if (_showAiHealthSchedule) ...[
+            const SizedBox(height: 6),
+            Text(
+              '1. Tối ưu hóa lịch trình sử dụng thiết bị trong kho KHO-01 dựa trên mức độ quan trọng.\n2. Theo dõi tần suất hư hỏng thiết bị theo 3 mức màu để chủ động dự phòng, tránh gián đoạn dạy & học khi nhiều thiết bị (như Tivi, Máy chiếu) cùng hỏng một lúc.',
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: scheme.outlineVariant),
+              ),
+              child: Column(
+                children: [
+                  _buildMatrixRow(
+                    badge: '● Xanh',
+                    status: 'Ổn định',
+                    action: 'Duy trì bảo trì định kỳ',
+                    color: RuoTokens.emerald600,
+                  ),
+                  const Divider(height: 1),
+                  _buildMatrixRow(
+                    badge: '● Vàng',
+                    status: 'Trung bình',
+                    action: 'Kiểm tra tần suất sử dụng',
+                    color: RuoTokens.amber600,
+                  ),
+                  const Divider(height: 1),
+                  _buildMatrixRow(
+                    badge: '● Đỏ',
+                    status: 'Cảnh báo cao',
+                    action: 'Thay thế/Dự phòng khẩn cấp',
+                    color: RuoTokens.rose600,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMatrixRow({
+    required String badge,
+    required String status,
+    required String action,
+    required Color color,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 68,
+            child: Text(
+              badge,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+                color: color,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 88,
+            child: Text(
+              status,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              action,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

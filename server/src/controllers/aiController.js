@@ -14,13 +14,15 @@ import {
   USER_ROLES,
   USER_STATUSES,
   EQUIPMENT_STATUSES,
-  REPAIR_STATUSES
+  REPAIR_STATUSES,
+  ROOM_TYPES
 } from '../config/constants.js';
 import {
   buildIncidentTriage,
   buildRepairCopilot,
   buildInventoryDiscrepancyAnalysis,
-  buildAuditAnomalyAnalysis
+  buildAuditAnomalyAnalysis,
+  buildEquipmentHealthAndWarehouseOptimization
 } from '../services/aiService.js';
 
 const isDocumentId = (value) => typeof value === 'string' && mongoose.isObjectIdOrHexString(value);
@@ -352,9 +354,107 @@ export const analyzeAuditAnomalies = async (req, res) => {
   }
 };
 
+// @desc    AI Equipment Failure Frequency Alert (Green/Yellow/Red) & Warehouse Schedule Optimizer (Feature #5)
+// @route   POST /api/equipments/ai-health-schedule & GET /api/equipments/ai-health-schedule & POST /api/facilities/warehouse/ai-schedule
+export const analyzeEquipmentHealthAndWarehouseSchedule = async (req, res) => {
+  try {
+    const [equipments, repairs, warehouses, quotaRooms] = await Promise.all([
+      Equipment.find({ status: { $ne: EQUIPMENT_STATUSES.DISPOSED } })
+        .populate('category_id', 'code name')
+        .populate('room_id', 'code name building floor room_type')
+        .sort({ repair_count: -1, code: 1 })
+        .lean(),
+      Repair.find()
+        .select('ticket_code equipment_id room_id status damage_level created_at updatedAt')
+        .sort({ created_at: -1 })
+        .limit(500)
+        .lean(),
+      Room.find({
+        room_type: ROOM_TYPES.WAREHOUSE,
+        code: { $not: /WC|NVS/i }
+      }).lean(),
+      Room.find({
+        room_type: { $ne: ROOM_TYPES.WAREHOUSE },
+        'required_equipment.0': { $exists: true }
+      })
+        .populate('required_equipment.category_id', 'code name')
+        .sort({ code: 1 })
+        .lean()
+    ]);
+
+    const warehouseIds = new Set(warehouses.map((w) => String(w._id)));
+    const warehouseStock = equipments.filter(
+      (eq) =>
+        eq.status === EQUIPMENT_STATUSES.IN_STOCK &&
+        (warehouseIds.size === 0 || !eq.room_id || warehouseIds.has(String(eq.room_id._id || eq.room_id)))
+    );
+
+    // Compute room shortages for quota rooms
+    const roomCatCounts = new Map();
+    for (const eq of equipments) {
+      if (eq.status !== EQUIPMENT_STATUSES.IN_USE || !eq.room_id || !eq.category_id) continue;
+      const rId = String(eq.room_id._id || eq.room_id);
+      const cId = String(eq.category_id._id || eq.category_id);
+      if (!roomCatCounts.has(rId)) roomCatCounts.set(rId, {});
+      const bucket = roomCatCounts.get(rId);
+      bucket[cId] = (bucket[cId] || 0) + 1;
+    }
+
+    const roomShortages = [];
+    for (const rm of quotaRooms) {
+      const counts = roomCatCounts.get(String(rm._id)) || {};
+      const missingShortages = [];
+      for (const reqItem of rm.required_equipment || []) {
+        const catObj = reqItem.category_id || {};
+        const catId = String(catObj._id || reqItem.category_id || '');
+        const reqQty = Number(reqItem.quantity || 0);
+        const curQty = Number(counts[catId] || 0);
+        if (reqQty > curQty) {
+          missingShortages.push({
+            category_id: catId,
+            category_code: catObj.code || '',
+            category_name: catObj.name || 'Thiết bị',
+            required_quantity: reqQty,
+            current_quantity: curQty,
+            missing_quantity: reqQty - curQty
+          });
+        }
+      }
+      if (missingShortages.length > 0) {
+        roomShortages.push({
+          room: {
+            _id: rm._id,
+            code: rm.code,
+            name: rm.name,
+            building: rm.building,
+            floor: rm.floor,
+            room_type: rm.room_type
+          },
+          shortages: missingShortages
+        });
+      }
+    }
+
+    const optimization = await buildEquipmentHealthAndWarehouseOptimization({
+      equipments,
+      repairs,
+      warehouseStock,
+      roomShortages
+    });
+
+    return res.json({
+      success: true,
+      optimization
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export default {
   triageIncidentReport,
   getRepairAiCopilot,
   analyzeInventoryDiscrepancies,
-  analyzeAuditAnomalies
+  analyzeAuditAnomalies,
+  analyzeEquipmentHealthAndWarehouseSchedule
 };
