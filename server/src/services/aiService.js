@@ -1126,11 +1126,532 @@ export async function buildAuditAnomalyAnalysis({ verification, logs = [] }) {
   };
 }
 
+export async function buildEquipmentHealthAndWarehouseOptimization({
+  equipments = [],
+  repairs = [],
+  warehouseStock = [],
+  roomShortages = []
+}) {
+  const safeEquipments = Array.isArray(equipments) ? equipments : [];
+  const safeRepairs = Array.isArray(repairs) ? repairs : [];
+  const safeStock = Array.isArray(warehouseStock)
+    ? warehouseStock
+    : safeEquipments.filter((eq) => eq.status === 'in_stock' || eq.room_id?.code === 'KHO-01' || !eq.room_id);
+  const safeShortages = Array.isArray(roomShortages) ? roomShortages : [];
+
+  const nowMs = Date.now();
+  const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+  // Map repairs by equipment_id
+  const repairsByEq = new Map();
+  for (const r of safeRepairs) {
+    const eqId = toIdStr(r.equipment_id);
+    if (!eqId) continue;
+    if (!repairsByEq.has(eqId)) repairsByEq.set(eqId, []);
+    repairsByEq.get(eqId).push(r);
+  }
+
+  // Group stock by category code/name for warehouse scheduling
+  const stockByCategory = new Map();
+  const allStockPool = [];
+  for (const st of safeStock) {
+    if (st.status && st.status !== 'in_stock') continue;
+    const catCode = String(st.category_id?.code || inferCategoryCode(st.name || '') || 'GENERAL').toUpperCase();
+    const catName = st.category_id?.name || CATEGORY_LABELS[catCode] || 'Thiết bị chung';
+    const item = {
+      _id: toIdStr(st._id),
+      code: st.code || 'EQ-KHO-01',
+      name: st.name || 'Thiết bị dự phòng',
+      brand: st.brand || '',
+      model: st.model || '',
+      category_code: catCode,
+      category_name: catName,
+      warehouse_code: st.room_id?.code || 'KHO-01',
+      warehouse_name: st.room_id?.name || 'Kho Vật Tư Dự Phòng',
+      price: Number(st.price || 0),
+      repair_count: Number(st.repair_count || 0),
+      warranty_active: st.warranty_expiry ? new Date(st.warranty_expiry).getTime() > nowMs : false,
+      assigned: false
+    };
+    allStockPool.push(item);
+    if (!stockByCategory.has(catCode)) stockByCategory.set(catCode, []);
+    stockByCategory.get(catCode).push(item);
+  }
+
+  // Track category-level failure statistics to detect simultaneous/cluster failures (e.g. multiple TVs/Projectors failing at once)
+  const categoryStatsMap = new Map();
+  const touchCategory = (catCode, catName) => {
+    if (!categoryStatsMap.has(catCode)) {
+      categoryStatsMap.set(catCode, {
+        category_code: catCode,
+        category_name: catName || CATEGORY_LABELS[catCode] || catCode,
+        total_equipments: 0,
+        active_broken_or_repairing: 0,
+        high_frequency_count: 0,
+        recent_90d_failures: 0,
+        available_in_warehouse: (stockByCategory.get(catCode) || []).length,
+        affected_rooms: new Set(),
+        sample_devices: []
+      });
+    }
+    return categoryStatsMap.get(catCode);
+  };
+
+  // Canonical 3-Level AI Alert Matrix requested by User:
+  // ● Xanh | Ổn định | Duy trì bảo trì định kỳ
+  // ● Vàng | Trung bình | Kiểm tra tần suất sử dụng
+  // ● Đỏ   | Cảnh báo cao | Thay thế/Dự phòng khẩn cấp
+  const alertMatrixReference = [
+    {
+      level: 'green',
+      color_badge: '● Xanh',
+      color_hex: '#10B981',
+      status_label: 'Ổn định',
+      recommended_action: 'Duy trì bảo trì định kỳ',
+      criteria: 'Tần suất hỏng 0 lần (90 ngày), tỷ lệ hao mòn sửa chữa R < 25%, thiết bị vận hành bình thường'
+    },
+    {
+      level: 'yellow',
+      color_badge: '● Vàng',
+      color_hex: '#F59E0B',
+      status_label: 'Trung bình',
+      recommended_action: 'Kiểm tra tần suất sử dụng',
+      criteria: 'Hư hỏng 1–2 lần trong chu kỳ hoặc tỷ lệ chi phí sửa chữa 25% ≤ R < 50%'
+    },
+    {
+      level: 'red',
+      color_badge: '● Đỏ',
+      color_hex: '#EF4444',
+      status_label: 'Cảnh báo cao',
+      recommended_action: 'Thay thế/Dự phòng khẩn cấp',
+      criteria: 'Tần suất hư hỏng cao (≥ 3 lần hoặc ≥ 2 lần trong 90 ngày), R ≥ 50%, hoặc nguy cơ hỏng đồng loạt gây gián đoạn dạy & học'
+    }
+  ];
+
+  const classifiedEquipments = [];
+  let greenCount = 0;
+  let yellowCount = 0;
+  let redCount = 0;
+
+  for (const eq of safeEquipments) {
+    if (eq.status === 'disposed') continue;
+    const eqId = toIdStr(eq._id);
+    const eqRepairs = repairsByEq.get(eqId) || [];
+    const recent90d = eqRepairs.filter((r) => {
+      const t = new Date(r.created_at || r.updatedAt || 0).getTime();
+      return t > 0 && nowMs - t <= ninetyDaysMs;
+    });
+    const recent30d = eqRepairs.filter((r) => {
+      const t = new Date(r.created_at || r.updatedAt || 0).getTime();
+      return t > 0 && nowMs - t <= thirtyDaysMs;
+    });
+    const openTickets = eqRepairs.filter((r) =>
+      ['reported', 'pending', 'assigned', 'accepted', 'in_progress', 'waiting_parts', 'waiting_Approval'].includes(r.status)
+    );
+
+    const totalRepairCount = Math.max(Number(eq.repair_count || 0), eqRepairs.length);
+    const price = Math.max(1, Number(eq.price || 15_000_000));
+    const estRepairCost = Number(eq.estimated_repair_cost || 0);
+    const rRatio = Math.min(100, Math.round((estRepairCost / price) * 100));
+
+    const catCode = String(eq.category_id?.code || inferCategoryCode(eq.name || '') || 'GENERAL').toUpperCase();
+    const catName = eq.category_id?.name || CATEGORY_LABELS[catCode] || 'Thiết bị giảng đường';
+    const roomCode = eq.room_id?.code || 'KHO-01';
+    const roomName = eq.room_id?.name || 'Kho Vật Tư Dự Phòng';
+    const roomType = eq.room_id?.room_type || (roomCode === 'KHO-01' ? 'warehouse' : 'classroom');
+
+    // Determine AI Color Level (green | yellow | red)
+    let colorLevel = 'green';
+    let failureReason = 'Hoạt động ổn định, không phát sinh sự cố lặp lại.';
+
+    const isBrokenNow = ['broken', 'repairing', 'pending_disposal'].includes(eq.status) || openTickets.length > 0;
+
+    if (
+      totalRepairCount >= 3 ||
+      recent90d.length >= 2 ||
+      rRatio >= 50 ||
+      eq.status === 'pending_disposal' ||
+      (isBrokenNow && totalRepairCount >= 2)
+    ) {
+      colorLevel = 'red';
+      const reasons = [];
+      if (totalRepairCount >= 3) reasons.push(`Hỏng lặp lại ${totalRepairCount} lần`);
+      else if (recent90d.length >= 2) reasons.push(`${recent90d.length} sự cố trong 90 ngày qua`);
+      if (rRatio >= 50) reasons.push(`Tỷ lệ chi phí sửa R = ${rRatio}% (≥ 50%)`);
+      if (isBrokenNow) reasons.push(`Đang dừng hoạt động (${eq.status})`);
+      failureReason = reasons.join(' · ') || 'Tần suất hư hỏng vượt ngưỡng an toàn';
+      redCount += 1;
+    } else if (
+      totalRepairCount >= 1 ||
+      recent90d.length === 1 ||
+      rRatio >= 25 ||
+      isBrokenNow
+    ) {
+      colorLevel = 'yellow';
+      const reasons = [];
+      if (totalRepairCount >= 1) reasons.push(`Đã ghi nhận ${totalRepairCount} lần sửa chữa`);
+      if (rRatio >= 25) reasons.push(`Tỷ lệ hao mòn R = ${rRatio}%`);
+      if (isBrokenNow) reasons.push(`Đang chờ xử lý kỹ thuật`);
+      failureReason = reasons.join(' · ') || 'Cần kiểm tra tần suất khai thác tại phòng';
+      yellowCount += 1;
+    } else {
+      colorLevel = 'green';
+      greenCount += 1;
+    }
+
+    const tierMeta = alertMatrixReference.find((m) => m.level === colorLevel) || alertMatrixReference[0];
+
+    // Room & Teaching Criticality Score (0 - 100)
+    const isTeachingCoreAsset = /TIVI|TV|PROJECTOR|PRJ|MÁY CHIẾU|MÀN HÌNH|AC|ĐIỀU HÒA|AUDIO|LOA|MIC|PC|NETWORK/iu.test(
+      `${catCode} ${catName} ${eq.name || ''}`
+    );
+    const roomWeight =
+      roomType === 'lab' || /LAB|THỰC HÀNH|SERVER/iu.test(roomName)
+        ? 35
+        : roomType === 'classroom' || /GIẢNG ĐƯỜNG|PHÒNG HỌC|HỘI TRƯỜNG/iu.test(roomName)
+          ? 30
+          : roomCode === 'KHO-01'
+            ? 10
+            : 20;
+
+    const criticalityScore = Math.min(
+      100,
+      Math.round(
+        roomWeight +
+          (isTeachingCoreAsset ? 22 : 10) +
+          Math.min(28, totalRepairCount * 8 + recent30d.length * 6) +
+          (colorLevel === 'red' ? 18 : colorLevel === 'yellow' ? 8 : 0)
+      )
+    );
+
+    const catBucket = touchCategory(catCode, catName);
+    catBucket.total_equipments += 1;
+    if (isBrokenNow) catBucket.active_broken_or_repairing += 1;
+    if (colorLevel === 'red') catBucket.high_frequency_count += 1;
+    catBucket.recent_90d_failures += recent90d.length;
+    if ((colorLevel === 'red' || isBrokenNow) && roomCode !== 'KHO-01') {
+      catBucket.affected_rooms.add(roomCode);
+      if (catBucket.sample_devices.length < 4) {
+        catBucket.sample_devices.push(`${eq.code} (${roomCode})`);
+      }
+    }
+
+    classifiedEquipments.push({
+      _id: eqId,
+      code: eq.code || 'N/A',
+      name: eq.name || 'Thiết bị',
+      brand: eq.brand || '',
+      model: eq.model || '',
+      category_code: catCode,
+      category_name: catName,
+      room_code: roomCode,
+      room_name: roomName,
+      floor: eq.room_id?.floor || null,
+      status: eq.status || 'in_use',
+      repair_count: totalRepairCount,
+      recent_90d_repairs: recent90d.length,
+      recent_30d_repairs: recent30d.length,
+      r_ratio: rRatio,
+      criticality_score: criticalityScore,
+      ai_alert: {
+        level: colorLevel,
+        color_badge: tierMeta.color_badge,
+        color_hex: tierMeta.color_hex,
+        status_label: tierMeta.status_label,
+        recommended_action: tierMeta.recommended_action,
+        reason: failureReason
+      }
+    });
+  }
+
+  // Sort classified equipments: Red first, then Yellow, then Green, by criticality_score & repair_count desc
+  const levelRank = { red: 3, yellow: 2, green: 1 };
+  classifiedEquipments.sort(
+    (a, b) =>
+      (levelRank[b.ai_alert.level] || 0) - (levelRank[a.ai_alert.level] || 0) ||
+      b.criticality_score - a.criticality_score ||
+      b.repair_count - a.repair_count
+  );
+
+  // Build Simultaneous / Cluster Failure Alerts (e.g., multiple TVs / Projectors / ACs failing at the same time)
+  const concurrentFailureAlerts = Array.from(categoryStatsMap.values())
+    .map((c) => {
+      const affectedRoomsList = Array.from(c.affected_rooms);
+      const riskRatio = c.total_equipments > 0
+        ? Math.round(((c.high_frequency_count + c.active_broken_or_repairing) / c.total_equipments) * 100)
+        : 0;
+      const isClusterRisk =
+        c.high_frequency_count >= 2 ||
+        c.active_broken_or_repairing >= 2 ||
+        c.recent_90d_failures >= 3 ||
+        (c.high_frequency_count >= 1 && c.available_in_warehouse === 0);
+
+      const level =
+        c.high_frequency_count >= 2 || c.active_broken_or_repairing >= 2
+          ? 'red'
+          : isClusterRisk || c.high_frequency_count === 1 || c.active_broken_or_repairing === 1
+            ? 'yellow'
+            : 'green';
+      const tierMeta = alertMatrixReference.find((m) => m.level === level) || alertMatrixReference[0];
+
+      return {
+        category_code: c.category_code,
+        category_name: c.category_name,
+        total_equipments: c.total_equipments,
+        high_frequency_count: c.high_frequency_count,
+        active_broken_or_repairing: c.active_broken_or_repairing,
+        recent_90d_failures: c.recent_90d_failures,
+        available_in_warehouse: c.available_in_warehouse,
+        affected_rooms: affectedRoomsList,
+        sample_devices: c.sample_devices,
+        risk_ratio: riskRatio,
+        level,
+        color_badge: tierMeta.color_badge,
+        status_label: tierMeta.status_label,
+        recommended_action: tierMeta.recommended_action,
+        advisory:
+          level === 'red'
+            ? `Cảnh báo hỏng đồng loạt nhóm "${c.category_name}": ${c.high_frequency_count} thiết bị mức Đỏ, ${c.active_broken_or_repairing} đang hỏng tại [${affectedRoomsList.join(', ') || 'Tòa A1'}]. Kho KHO-01 hiện có ${c.available_in_warehouse} máy dự phòng — cần khóa lịch dự phòng khẩn cấp để không gián đoạn giảng dạy.`
+            : level === 'yellow'
+              ? `Nhóm "${c.category_name}" có ${c.recent_90d_failures} lượt sự cố gần đây. Kiểm tra tần suất sử dụng và duy trì tối thiểu 1–2 thiết bị dự phòng tại KHO-01.`
+              : `Nhóm "${c.category_name}" vận hành ổn định (${c.available_in_warehouse} thiết bị sẵn sàng tại KHO-01).`
+      };
+    })
+    .sort((a, b) => (levelRank[b.level] || 0) - (levelRank[a.level] || 0) || b.high_frequency_count - a.high_frequency_count);
+
+  // Build Criticality-Based Warehouse Usage & Dispatch Schedule (Tối ưu hóa lịch trình sử dụng thiết bị trong kho KHO-01)
+  const warehouseSchedule = [];
+
+  // 1. Priority P1: Match Red-Alert classroom equipments & active failures with KHO-01 standby units
+  const redClassroomTargets = classifiedEquipments.filter(
+    (eq) => eq.ai_alert.level === 'red' && eq.room_code !== 'KHO-01'
+  );
+
+  for (const target of redClassroomTargets) {
+    const candidates = (stockByCategory.get(target.category_code) || []).filter((s) => !s.assigned);
+    const chosenStock = candidates[0] || allStockPool.find((s) => !s.assigned) || null;
+    if (chosenStock) chosenStock.assigned = true;
+
+    warehouseSchedule.push({
+      schedule_id: `SCHED-RED-${target.code}`,
+      priority_tier: 'P1 - Khẩn cấp (Mức Đỏ)',
+      priority_level: 'red',
+      color_badge: '● Đỏ',
+      criticality_score: target.criticality_score,
+      time_slot: 'Ca 1 (06:45 – 07:15) · Trước giờ vào tiết giảng đường',
+      warehouse_equipment: chosenStock
+        ? {
+            _id: chosenStock._id,
+            code: chosenStock.code,
+            name: chosenStock.name,
+            warehouse_code: chosenStock.warehouse_code
+          }
+        : {
+            _id: null,
+            code: 'CẦN BỔ SUNG KHO-01',
+            name: `Dự trù mua sắm / điều phối ${target.category_name}`,
+            warehouse_code: 'KHO-01'
+          },
+      target_room_code: target.room_code,
+      target_room_name: target.room_name,
+      target_equipment_code: target.code,
+      target_equipment_name: target.name,
+      category_name: target.category_name,
+      failure_frequency_summary: `Hỏng ${target.repair_count} lần (${target.recent_90d_repairs} lần/90 ngày) · R=${target.r_ratio}%`,
+      recommended_action: 'Thay thế/Dự phòng khẩn cấp',
+      schedule_directive: chosenStock
+        ? `Xuất kho dự phòng [${chosenStock.code}] từ ${chosenStock.warehouse_code} thay thế nóng cho [${target.code}] tại ${target.room_code} để không gián đoạn tiết học.`
+        : `Kho KHO-01 đã hết dự phòng nhóm ${target.category_name}; ưu tiên luân chuyển tạm thời từ phòng trống hoặc trình mua sắm khẩn cấp cho ${target.room_code}.`
+    });
+  }
+
+  // 2. Priority P2: Match Room Quota Shortages (Phòng thiếu định mức chuẩn giảng dạy)
+  for (const roomEntry of safeShortages) {
+    const rm = roomEntry.room || {};
+    const shortages = Array.isArray(roomEntry.shortages) ? roomEntry.shortages : [];
+    for (const sh of shortages) {
+      const catCode = String(sh.category_code || inferCategoryCode(sh.category_name || '') || 'GENERAL').toUpperCase();
+      const candidates = (stockByCategory.get(catCode) || []).filter((s) => !s.assigned);
+      const chosenStock = candidates[0] || null;
+      if (chosenStock) chosenStock.assigned = true;
+
+      const isCoreRoom = rm.room_type === 'lab' || /101|102|201|LAB/iu.test(rm.code || '');
+      const critScore = isCoreRoom ? 82 : 70;
+
+      warehouseSchedule.push({
+        schedule_id: `SCHED-QUOTA-${rm.code}-${catCode}`,
+        priority_tier: isCoreRoom ? 'P1 - Ưu tiên cao (Thiếu định mức)' : 'P2 - Quan trọng (Bù định mức)',
+        priority_level: isCoreRoom ? 'red' : 'yellow',
+        color_badge: isCoreRoom ? '● Đỏ' : '● Vàng',
+        criticality_score: critScore,
+        time_slot: 'Ca 2 (11:45 – 12:30) · Giờ nghỉ trưa giữa 2 ca học',
+        warehouse_equipment: chosenStock
+          ? {
+              _id: chosenStock._id,
+              code: chosenStock.code,
+              name: chosenStock.name,
+              warehouse_code: chosenStock.warehouse_code
+            }
+          : {
+              _id: null,
+              code: 'CHỜ NHẬP KHO-01',
+              name: `${sh.category_name} (Thiếu ${sh.missing_quantity} ĐV)`,
+              warehouse_code: 'KHO-01'
+            },
+        target_room_code: rm.code || 'A1',
+        target_room_name: rm.name || 'Phòng học',
+        target_equipment_code: `THIẾU-${sh.missing_quantity}-ĐV`,
+        target_equipment_name: `Định mức ${sh.category_name} (${sh.current_quantity}/${sh.required_quantity})`,
+        category_name: sh.category_name || catCode,
+        failure_frequency_summary: `Thiếu hụt ${sh.missing_quantity}/${sh.required_quantity} thiết bị bắt buộc`,
+        recommended_action: isCoreRoom ? 'Thay thế/Dự phòng khẩn cấp' : 'Kiểm tra tần suất sử dụng',
+        schedule_directive: chosenStock
+          ? `Điều động [${chosenStock.code}] từ KHO-01 lắp đặt bổ sung vào phòng ${rm.code} (bù đủ định mức ${sh.required_quantity} thiết bị).`
+          : `Lập phiếu đề xuất bổ sung ${sh.missing_quantity} ${sh.category_name} cho phòng ${rm.code}.`
+      });
+    }
+  }
+
+  // 3. Priority P2/P3: Yellow-Alert Equipment Rotation & Remaining Standby Stock Maintenance Schedule
+  const yellowClassroomTargets = classifiedEquipments
+    .filter((eq) => eq.ai_alert.level === 'yellow' && eq.room_code !== 'KHO-01')
+    .slice(0, 5);
+
+  for (const target of yellowClassroomTargets) {
+    const candidates = (stockByCategory.get(target.category_code) || []).filter((s) => !s.assigned);
+    const chosenStock = candidates[0] || null;
+    if (chosenStock) chosenStock.assigned = true;
+
+    warehouseSchedule.push({
+      schedule_id: `SCHED-YLW-${target.code}`,
+      priority_tier: 'P2 - Trung bình (Luân chuyển / Kiểm tra)',
+      priority_level: 'yellow',
+      color_badge: '● Vàng',
+      criticality_score: target.criticality_score,
+      time_slot: 'Ca 3 (17:00 – 17:45) · Sau giờ tan giảng đường',
+      warehouse_equipment: chosenStock
+        ? {
+            _id: chosenStock._id,
+            code: chosenStock.code,
+            name: chosenStock.name,
+            warehouse_code: chosenStock.warehouse_code
+          }
+        : {
+            _id: null,
+            code: 'DỰ PHÒNG XOAY VÒNG',
+            name: `Theo dõi ${target.category_name} tại KHO-01`,
+            warehouse_code: 'KHO-01'
+          },
+      target_room_code: target.room_code,
+      target_room_name: target.room_name,
+      target_equipment_code: target.code,
+      target_equipment_name: target.name,
+      category_name: target.category_name,
+      failure_frequency_summary: `Đã sửa ${target.repair_count} lần · R=${target.r_ratio}%`,
+      recommended_action: 'Kiểm tra tần suất sử dụng',
+      schedule_directive: chosenStock
+        ? `Chuẩn bị sẵn [${chosenStock.code}] tại KHO-01 ở trạng thái chờ (Warm Standby) để luân chuyển giảm tải cho [${target.code}] tại ${target.room_code}.`
+        : `Kiểm tra tần suất sử dụng và vệ sinh bảo dưỡng [${target.code}] tại ${target.room_code} nhằm ngăn chuyển sang mức Đỏ.`
+    });
+  }
+
+  // Remaining unassigned stock in KHO-01 -> P3 Periodic Warm-up & Readiness Schedule
+  for (const st of allStockPool.filter((s) => !s.assigned).slice(0, 6)) {
+    warehouseSchedule.push({
+      schedule_id: `SCHED-GRN-${st.code}`,
+      priority_tier: 'P3 - Định kỳ (Duy trì sẵn sàng tại Kho)',
+      priority_level: 'green',
+      color_badge: '● Xanh',
+      criticality_score: 45,
+      time_slot: 'Thứ Bảy hàng tuần (08:00 – 10:00) · Kiểm tra định kỳ KHO-01',
+      warehouse_equipment: {
+        _id: st._id,
+        code: st.code,
+        name: st.name,
+        warehouse_code: st.warehouse_code
+      },
+      target_room_code: 'KHO-01',
+      target_room_name: 'Kho Vật Tư Dự Phòng (Sẵn sàng điều động)',
+      target_equipment_code: st.code,
+      target_equipment_name: st.name,
+      category_name: st.category_name,
+      failure_frequency_summary: `Tồn kho ổn định (${st.repair_count} lần sửa)`,
+      recommended_action: 'Duy trì bảo trì định kỳ',
+      schedule_directive: `Chạy thử tải định kỳ 15 phút (Warm-up Test) cho [${st.code}] tại ${st.warehouse_code}, đảm bảo 100% sẵn sàng xuất kho khi có sự cố đồng loạt.`
+    });
+  }
+
+  warehouseSchedule.sort((a, b) => b.criticality_score - a.criticality_score);
+
+  let executiveSummary =
+    redCount > 0
+      ? `Hệ thống AI ghi nhận ${redCount} thiết bị ở MỨC ĐỎ (Cảnh báo cao - cần thay thế/dự phòng khẩn cấp), ${yellowCount} thiết bị MỨC VÀNG (Trung bình - cần kiểm tra tần suất sử dụng) và ${greenCount} thiết bị MỨC XANH (Ổn định). Đã tự động lập lịch điều phối ${allStockPool.length} thiết bị trong Kho KHO-01 ưu tiên theo mức độ quan trọng của phòng học để ngăn chặn gián đoạn dạy và học khi nhiều thiết bị (như Tivi, Máy chiếu, Điều hòa) hỏng cùng lúc.`
+      : `Toàn bộ ${classifiedEquipments.length} thiết bị đang nằm trong ngưỡng kiểm soát (${greenCount} Xanh ổn định, ${yellowCount} Vàng trung bình, 0 Đỏ). Kho dự phòng KHO-01 hiện có ${allStockPool.length} thiết bị sẵn sàng theo lịch bảo trì định kỳ.`;
+
+  let recommendations = [
+    redCount > 0
+      ? `Ưu tiên xuất kho KHO-01 thực hiện "Thay thế/Dự phòng khẩn cấp" trước 07:15 sáng cho ${redCount} thiết bị mức Đỏ để không làm gián đoạn tiết học.`
+      : 'Duy trì lịch chạy thử tải (Warm-up) hàng tuần cho các thiết bị dự phòng trong kho KHO-01.',
+    yellowCount > 0
+      ? `Thực hiện "Kiểm tra tần suất sử dụng" và luân chuyển giảm tải ngoài giờ hành chính đối với ${yellowCount} thiết bị mức Vàng.`
+      : 'Tiếp tục theo dõi tần suất hư hỏng 90 ngày qua sổ cái bảo trì.',
+    'Dự trữ tối thiểu 02 thiết bị dự phòng tại KHO-01 cho các nhóm có nguy cơ hỏng đồng loạt cao (Tivi / Màn hình tương tác, Máy chiếu, Điều hòa âm trần).'
+  ];
+
+  let engine = 'domain_heuristic';
+  const llm = await callGeminiJson(
+    'Bạn là Chuyên gia AI Tối ưu Vận hành & Dự báo Hư hỏng Thiết bị Đại học (Ruo UEMS). Trả về JSON gồm: executive_summary (2 câu nhận định tiếng Việt), recommendations (mảng 3 khuyến nghị tiếng Việt). Giữ nguyên hệ thống phân loại 3 màu: Xanh (Ổn định - Duy trì bảo trì định kỳ), Vàng (Trung bình - Kiểm tra tần suất sử dụng), Đỏ (Cảnh báo cao - Thay thế/Dự phòng khẩn cấp).',
+    {
+      counts: { green: greenCount, yellow: yellowCount, red: redCount, warehouse_stock: allStockPool.length },
+      top_red_devices: classifiedEquipments.filter((e) => e.ai_alert.level === 'red').slice(0, 4).map((e) => ({
+        code: e.code,
+        name: e.name,
+        room: e.room_code,
+        repair_count: e.repair_count
+      })),
+      concurrent_clusters: concurrentFailureAlerts.filter((c) => c.level !== 'green').slice(0, 3)
+    }
+  );
+
+  if (llm) {
+    if (aiText(llm.executive_summary, 16)) {
+      executiveSummary = aiText(llm.executive_summary, 16);
+      engine = 'gemini';
+    }
+    if (aiList(llm.recommendations, 2)) {
+      recommendations = [...new Set([...recommendations, ...aiList(llm.recommendations, 2)])].slice(0, 5);
+      engine = 'gemini';
+    }
+  }
+
+  return {
+    engine,
+    engine_label: engine === 'gemini' ? 'Gemini Hybrid + Ruo Predictive AI' : 'Ruo Cortex Local AI v2.5',
+    generated_at: new Date().toISOString(),
+    executive_summary: executiveSummary,
+    alert_matrix_reference: alertMatrixReference,
+    summary_counts: {
+      total_evaluated: classifiedEquipments.length,
+      green_count: greenCount,
+      yellow_count: yellowCount,
+      red_count: redCount,
+      warehouse_ready_count: allStockPool.length,
+      scheduled_actions_count: warehouseSchedule.length
+    },
+    concurrent_failure_alerts: concurrentFailureAlerts,
+    warehouse_schedule: warehouseSchedule,
+    equipment_health_list: classifiedEquipments,
+    recommendations
+  };
+}
+
 export default {
   callGeminiJson,
   getLocalAiTrainingStats,
   buildIncidentTriage,
   buildRepairCopilot,
   buildInventoryDiscrepancyAnalysis,
-  buildAuditAnomalyAnalysis
+  buildAuditAnomalyAnalysis,
+  buildEquipmentHealthAndWarehouseOptimization
 };

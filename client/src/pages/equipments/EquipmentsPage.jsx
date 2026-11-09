@@ -1916,6 +1916,7 @@ export const EquipmentsPage = () => {
                   <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Vị Trí (Tòa A1)</th>
                   <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Nguyên Giá</th>
                   <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Trạng Thái</th>
+                  <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Cảnh Báo AI (Tần Suất Hỏng)</th>
                   <th style={{ padding: '14px 16px', color: 'var(--ink-pure)', fontWeight: 800 }}>Bảo Hành</th>
                   <th style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--ink-pure)', fontWeight: 800 }}>Thao Tác</th>
                 </tr>
@@ -1933,6 +1934,15 @@ export const EquipmentsPage = () => {
                     String(proposal.equipment_id?._id || proposal.equipment_id) === String(eq._id) &&
                     proposal.status === 'procurement_planned'
                   );
+                  const repCount = Number(eq.repair_count || 0);
+                  const eqPrice = Math.max(1, Number(eq.price || 15000000));
+                  const eqR = Math.min(100, Math.round((Number(eq.estimated_repair_cost || 0) / eqPrice) * 100));
+                  const isRedAi = repCount >= 3 || eqR >= 50 || eq.status === 'pending_disposal' || (['broken', 'repairing'].includes(eq.status) && repCount >= 2);
+                  const isYellowAi = !isRedAi && (repCount >= 1 || eqR >= 25 || ['broken', 'repairing'].includes(eq.status));
+                  const aiColorBadge = isRedAi ? '● Đỏ' : isYellowAi ? '● Vàng' : '● Xanh';
+                  const aiStatusLabel = isRedAi ? 'Cảnh báo cao' : isYellowAi ? 'Trung bình' : 'Ổn định';
+                  const aiActionLabel = isRedAi ? 'Thay thế/Dự phòng khẩn cấp' : isYellowAi ? 'Kiểm tra tần suất sử dụng' : 'Duy trì bảo trì định kỳ';
+                  const aiHex = isRedAi ? '#EF4444' : isYellowAi ? '#F59E0B' : '#10B981';
 
                   return (
                     <tr
@@ -1963,6 +1973,16 @@ export const EquipmentsPage = () => {
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         {getStatusBadge(eq.status)}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 9px', borderRadius: '999px', fontSize: '11.5px', fontWeight: 800, color: aiHex, background: isRedAi ? 'rgba(239,68,68,0.14)' : isYellowAi ? 'rgba(245,158,11,0.14)' : 'rgba(16,185,129,0.14)', border: `1px solid ${aiHex}` }}>
+                          <span>{aiColorBadge}</span>
+                          <span>·</span>
+                          <span>{aiStatusLabel}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '3px' }}>
+                          {repCount} lần hỏng · {aiActionLabel}
+                        </div>
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         {getWarrantyBadge(eq)}

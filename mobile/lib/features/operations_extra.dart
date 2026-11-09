@@ -18,6 +18,7 @@ class EquipmentsDirectoryPage extends StatefulWidget {
 class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
   int _revision = 0;
   String _statusFilter = 'all';
+  bool _showAiHealthSchedule = true;
   final _searchController = TextEditingController();
 
   String get _role => value(widget.api.user?['role'], fallback: '');
@@ -194,6 +195,8 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
           ),
         ),
         const SizedBox(height: 12),
+        _buildAiEquipmentHealthAndWarehousePanel(),
+        const SizedBox(height: 12),
         AsyncPanel(
           key: ValueKey('equipments-$_statusFilter-$_revision'),
           load: () async {
@@ -207,6 +210,7 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
                     'code': 'EQ-KHO-01-PRJSTD-02',
                     'name': 'Máy chiếu siêu gần giảng đường #2 (Panasonic PT-TW370)',
                     'status': 'in_stock',
+                    'repair_count': 0,
                     'room_id': {
                       'code': 'KHO-01',
                       'name': 'Kho Vật Tư Dự Phòng',
@@ -218,6 +222,7 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
                     'code': 'EQ-101-ACCASS-01',
                     'name': 'Điều hòa âm trần Cassette 4HP Daikin',
                     'status': 'in_use',
+                    'repair_count': 3,
                     'room_id': {'code': 'A1-101', 'name': 'Giảng đường A1-101'},
                     'price': 36000000,
                   },
@@ -236,7 +241,7 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
                   DataCard(
                     title: '${value(eq['code'])} · ${value(eq['name'])}',
                     subtitle:
-                        'Vị trí: ${_roomDisplay(eq['room_id'])} · Nguyên giá: ${money(eq['price'])}',
+                        'Vị trí: ${_roomDisplay(eq['room_id'])} · Nguyên giá: ${money(eq['price'])}\n${_aiAlertSummaryText(eq)}',
                     trailing: StatusBadge(
                       value(eq['status'], fallback: 'in_use'),
                     ),
@@ -246,6 +251,150 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
           },
         ),
       ],
+    );
+  }
+
+  String _aiAlertSummaryText(Json eq) {
+    final repCount = (eq['repair_count'] is num)
+        ? (eq['repair_count'] as num).toInt()
+        : 0;
+    final st = value(eq['status'], fallback: 'in_use');
+    if (repCount >= 3 || st == 'pending_disposal') {
+      return 'AI Cảnh báo: ● Đỏ (Cảnh báo cao · $repCount lần hỏng) → Thay thế/Dự phòng khẩn cấp';
+    }
+    if (repCount >= 1 || st == 'broken' || st == 'repairing') {
+      return 'AI Cảnh báo: ● Vàng (Trung bình · $repCount lần hỏng) → Kiểm tra tần suất sử dụng';
+    }
+    return 'AI Cảnh báo: ● Xanh (Ổn định · 0 lần hỏng) → Duy trì bảo trì định kỳ';
+  }
+
+  Widget _buildAiEquipmentHealthAndWarehousePanel() {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: RuoTokens.brand500.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.auto_awesome,
+                size: 18,
+                color: RuoTokens.brand600,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Hệ thống Cảnh báo Tình trạng Thiết bị (AI) & Lịch Kho KHO-01',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => setState(
+                  () => _showAiHealthSchedule = !_showAiHealthSchedule,
+                ),
+                child: Text(_showAiHealthSchedule ? 'Thu gọn' : 'Mở rộng'),
+              ),
+            ],
+          ),
+          if (_showAiHealthSchedule) ...[
+            const SizedBox(height: 6),
+            Text(
+              '1. Tối ưu hóa lịch trình sử dụng thiết bị trong kho KHO-01 dựa trên mức độ quan trọng.\n2. Theo dõi tần suất hư hỏng thiết bị theo 3 mức màu để chủ động dự phòng, tránh gián đoạn dạy & học khi nhiều thiết bị (như Tivi, Máy chiếu) cùng hỏng một lúc.',
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: scheme.outlineVariant),
+              ),
+              child: Column(
+                children: [
+                  _buildMatrixRow(
+                    badge: '● Xanh',
+                    status: 'Ổn định',
+                    action: 'Duy trì bảo trì định kỳ',
+                    color: RuoTokens.emerald600,
+                  ),
+                  const Divider(height: 1),
+                  _buildMatrixRow(
+                    badge: '● Vàng',
+                    status: 'Trung bình',
+                    action: 'Kiểm tra tần suất sử dụng',
+                    color: RuoTokens.amber600,
+                  ),
+                  const Divider(height: 1),
+                  _buildMatrixRow(
+                    badge: '● Đỏ',
+                    status: 'Cảnh báo cao',
+                    action: 'Thay thế/Dự phòng khẩn cấp',
+                    color: RuoTokens.rose600,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMatrixRow({
+    required String badge,
+    required String status,
+    required String action,
+    required Color color,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 68,
+            child: Text(
+              badge,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+                color: color,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 88,
+            child: Text(
+              status,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              action,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

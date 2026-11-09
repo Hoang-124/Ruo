@@ -798,6 +798,15 @@ void main() {
       await tester.tap(find.text('Kho thiết bị'));
       await tester.pumpAndSettle();
       expect(find.text('Kho Thiết Bị & Tài Sản'), findsOneWidget);
+      expect(
+        find.text(
+          'Hệ thống Cảnh báo Tình trạng Thiết bị (AI) & Lịch Kho KHO-01',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Duy trì bảo trì định kỳ'), findsOneWidget);
+      expect(find.text('Kiểm tra tần suất sử dụng'), findsOneWidget);
+      expect(find.text('Thay thế/Dự phòng khẩn cấp'), findsOneWidget);
 
       // Switch to Kho linh kiện
       await tester.tap(find.text('Kho linh kiện'));
