@@ -4,6 +4,183 @@ import '../core/api.dart';
 import '../ui/common.dart';
 import '../ui/vectors.dart';
 
+class _MaintenancePlanDialog extends StatefulWidget {
+  const _MaintenancePlanDialog({required this.rooms, required this.categories});
+
+  final List<Json> rooms;
+  final List<Json> categories;
+
+  @override
+  State<_MaintenancePlanDialog> createState() => _MaintenancePlanDialogState();
+}
+
+class _MaintenancePlanDialogState extends State<_MaintenancePlanDialog> {
+  final _titleController = TextEditingController();
+  late final List<int> _floors =
+      widget.rooms
+          .map((room) => int.tryParse('${room['floor']}'))
+          .whereType<int>()
+          .toSet()
+          .toList()
+        ..sort();
+  late int _floor = _floors.first;
+  String _frequency = 'monthly';
+  DateTime _scheduledDate = DateTime.now();
+  final Set<String> _selectedRooms = {};
+  final Set<String> _selectedCategories = {};
+
+  List<Json> get _roomsOnFloor => widget.rooms
+      .where((room) => int.tryParse('${room['floor']}') == _floor)
+      .toList();
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectDate() async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _scheduledDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (selected != null && mounted) {
+      setState(() => _scheduledDate = selected);
+    }
+  }
+
+  void _submit() {
+    if (_titleController.text.trim().length < 3) return;
+    if (_selectedRooms.isEmpty) return;
+    Navigator.pop(context, {
+      'title': _titleController.text.trim(),
+      'building': 'A1',
+      'floor': _floor,
+      'room_ids': _selectedRooms.toList(),
+      'category_ids': _selectedCategories.toList(),
+      'frequency': _frequency,
+      'start_date': DateTime.utc(
+        _scheduledDate.year,
+        _scheduledDate.month,
+        _scheduledDate.day,
+      ).toIso8601String(),
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Lập kế hoạch bảo dưỡng'),
+    content: SizedBox(
+      width: 480,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              key: const Key('maintenance_plan_title'),
+              controller: _titleController,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Tên kế hoạch'),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              initialValue: _floor,
+              decoration: const InputDecoration(labelText: 'Tầng tòa A1'),
+              items: [
+                for (final floor in _floors)
+                  DropdownMenuItem(value: floor, child: Text('Tầng $floor')),
+              ],
+              onChanged: (value) => setState(() {
+                _floor = value!;
+                _selectedRooms.clear();
+              }),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Chọn một hoặc nhiều phòng',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            for (final room in _roomsOnFloor)
+              CheckboxListTile(
+                key: Key('maintenance-room-${room['_id']}'),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: Text('${value(room['code'])} · ${value(room['name'])}'),
+                value: _selectedRooms.contains(value(room['_id'])),
+                onChanged: (checked) => setState(() {
+                  final id = value(room['_id']);
+                  if (checked == true) {
+                    _selectedRooms.add(id);
+                  } else {
+                    _selectedRooms.remove(id);
+                  }
+                }),
+              ),
+            const SizedBox(height: 8),
+            Text(
+              'Loại thiết bị (để trống = tất cả)',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            for (final category in widget.categories)
+              CheckboxListTile(
+                key: Key('maintenance-category-${category['_id']}'),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: Text(value(category['name'])),
+                value: _selectedCategories.contains(value(category['_id'])),
+                onChanged: (checked) => setState(() {
+                  final id = value(category['_id']);
+                  if (checked == true) {
+                    _selectedCategories.add(id);
+                  } else {
+                    _selectedCategories.remove(id);
+                  }
+                }),
+              ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: _frequency,
+              decoration: const InputDecoration(labelText: 'Chu kỳ'),
+              items: const [
+                DropdownMenuItem(value: 'monthly', child: Text('Hàng tháng')),
+                DropdownMenuItem(value: 'quarterly', child: Text('Hàng quý')),
+              ],
+              onChanged: (value) => setState(() => _frequency = value!),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              key: const Key('maintenance_plan_date'),
+              onPressed: _selectDate,
+              icon: const Icon(Icons.calendar_today),
+              label: Text(
+                'Ngày bắt đầu: ${formatVnDate(DateTime.utc(_scheduledDate.year, _scheduledDate.month, _scheduledDate.day).toIso8601String())}',
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(
+        key: const Key('maintenance_plan_submit'),
+        onPressed:
+            _titleController.text.trim().length >= 3 &&
+                _selectedRooms.isNotEmpty
+            ? _submit
+            : null,
+        child: const Text('Tạo kế hoạch'),
+      ),
+    ],
+  );
+}
+
 class MaintenancePage extends StatefulWidget {
   const MaintenancePage({super.key, required this.api});
   final RuoApi api;
@@ -17,66 +194,36 @@ class _MaintenancePageState extends State<MaintenancePage> {
   String get _role => value(widget.api.user?['role'], fallback: '');
 
   Future<void> _createPlan() async {
-    final title = TextEditingController();
-    var floor = 1;
-    var frequency = 'monthly';
+    late final List<Json> rooms;
+    late final List<Json> categories;
+    try {
+      final responses = await Future.wait([
+        widget.api.get('/facilities/rooms', {'limit': '100'}),
+        widget.api.get('/equipments/categories'),
+      ]);
+      rooms = asList(responses[0]['rooms'])
+          .where(
+            (room) =>
+                room['building'] == 'A1' &&
+                room['status'] != 'inactive' &&
+                room['room_type'] != 'warehouse',
+          )
+          .toList();
+      categories = asList(responses[1]['categories']);
+    } catch (error) {
+      if (mounted) _message('Không thể tải phòng và loại thiết bị: $error');
+      return;
+    }
+    if (!mounted) return;
+    if (rooms.isEmpty) {
+      _message('Chưa có phòng hoạt động trong tòa A1 để lập kế hoạch.');
+      return;
+    }
     final body = await showDialog<Json>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Lập kế hoạch bảo dưỡng'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: title,
-                decoration: const InputDecoration(labelText: 'Tên kế hoạch'),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                initialValue: floor,
-                decoration: const InputDecoration(labelText: 'Tầng tòa A1'),
-                items: [
-                  for (var i = 1; i <= 5; i++)
-                    DropdownMenuItem(value: i, child: Text('Tầng $i')),
-                ],
-                onChanged: (value) => setDialogState(() => floor = value!),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: frequency,
-                decoration: const InputDecoration(labelText: 'Chu kỳ'),
-                items: const [
-                  DropdownMenuItem(value: 'monthly', child: Text('Hàng tháng')),
-                  DropdownMenuItem(value: 'quarterly', child: Text('Hàng quý')),
-                ],
-                onChanged: (value) => setDialogState(() => frequency = value!),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Hủy'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (title.text.trim().length < 3) return;
-                Navigator.pop(dialogContext, {
-                  'title': title.text.trim(),
-                  'building': 'A1',
-                  'floor': floor,
-                  'frequency': frequency,
-                  'start_date': DateTime.now().toIso8601String(),
-                });
-              },
-              child: const Text('Tạo kế hoạch'),
-            ),
-          ],
-        ),
-      ),
+      builder: (_) =>
+          _MaintenancePlanDialog(rooms: rooms, categories: categories),
     );
-    title.dispose();
     if (body == null) return;
     await _run(() => widget.api.send('POST', '/maintenance/plans', body));
   }
@@ -351,10 +498,19 @@ class _MaintenancePageState extends State<MaintenancePage> {
     final roomIds = (rawRoomIds is List ? rawRoomIds : const [])
         .map((item) => item is Map ? value(item['_id']) : value(item))
         .toSet();
+    final rawCategoryIds = plan['category_ids'];
+    final categoryIds = (rawCategoryIds is List ? rawCategoryIds : const [])
+        .map((item) => item is Map ? value(item['_id']) : value(item))
+        .toSet();
     return all.where((item) {
       final room = item['room_id'];
       final roomId = room is Map ? value(room['_id']) : value(room);
-      return roomIds.contains(roomId);
+      final category = item['category_id'];
+      final categoryId = category is Map
+          ? value(category['_id'])
+          : value(category);
+      return roomIds.contains(roomId) &&
+          (categoryIds.isEmpty || categoryIds.contains(categoryId));
     }).toList();
   }
 }

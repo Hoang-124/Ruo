@@ -55,18 +55,57 @@ class _DisposalProposalDialogState extends State<_DisposalProposalDialog> {
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Chỉ số R: ${value(widget.equipment['r_ratio'])}%'),
+            Container(
+              key: const Key('disposal_r_ratio'),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Chỉ số R',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '${value(widget.equipment['r_ratio'])}%',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             TextField(
               controller: _reason,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Lý do đề xuất'),
+              decoration: const InputDecoration(
+                labelText: 'Lý do đề xuất',
+                alignLabelWithHint: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 16,
+                ),
+              ),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _recovery,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Giá trị thu hồi'),
+              decoration: const InputDecoration(
+                labelText: 'Giá trị thu hồi',
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 16,
+                ),
+              ),
             ),
           ],
         ),

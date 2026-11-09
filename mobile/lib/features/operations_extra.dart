@@ -5,6 +5,156 @@ import '../ui/common.dart';
 import '../ui/tokens.dart';
 import '../ui/vectors.dart';
 
+class _EquipmentImportDialog extends StatefulWidget {
+  const _EquipmentImportDialog({required this.api, required this.categories});
+
+  final RuoApi api;
+  final List<Json> categories;
+
+  @override
+  State<_EquipmentImportDialog> createState() => _EquipmentImportDialogState();
+}
+
+class _EquipmentImportDialogState extends State<_EquipmentImportDialog> {
+  final _codeCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _serialCtrl = TextEditingController();
+  final _brandCtrl = TextEditingController();
+  final _priceCtrl = TextEditingController(text: '15000000');
+  late String? _selectedCategoryId = widget.categories.first['_id']?.toString();
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    _nameCtrl.dispose();
+    _serialCtrl.dispose();
+    _brandCtrl.dispose();
+    _priceCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final price = num.tryParse(_priceCtrl.text.trim());
+    if (_codeCtrl.text.trim().isEmpty ||
+        _nameCtrl.text.trim().isEmpty ||
+        _selectedCategoryId == null ||
+        _selectedCategoryId!.isEmpty ||
+        price == null ||
+        price < 0) {
+      setState(
+        () =>
+            _error = 'Vui lòng nhập mã, tên, chủng loại và nguyên giá hợp lệ.',
+      );
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await widget.api.send('POST', '/equipments', {
+        'code': _codeCtrl.text.trim(),
+        'name': _nameCtrl.text.trim(),
+        'category_id': _selectedCategoryId,
+        'serial_number': _serialCtrl.text.trim(),
+        'brand': _brandCtrl.text.trim(),
+        'price': price,
+        'status': 'in_stock',
+      });
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = 'Không thể nhập kho: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Nhập Mới Thiết Bị Vào Kho KHO-01'),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            key: const Key('equipment_import_code'),
+            controller: _codeCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Mã tài sản (VD: EQ-KHO-01-PRJ-09)',
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('equipment_import_name'),
+            controller: _nameCtrl,
+            decoration: const InputDecoration(labelText: 'Tên thiết bị'),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            initialValue: _selectedCategoryId,
+            decoration: const InputDecoration(labelText: 'Chủng loại thiết bị'),
+            items: [
+              for (final category in widget.categories)
+                DropdownMenuItem(
+                  value: category['_id']?.toString(),
+                  child: Text(value(category['name'])),
+                ),
+            ],
+            onChanged: _saving
+                ? null
+                : (id) => setState(() => _selectedCategoryId = id),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _serialCtrl,
+            decoration: const InputDecoration(labelText: 'Số Serial'),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _brandCtrl,
+            decoration: const InputDecoration(labelText: 'Hãng sản xuất'),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _priceCtrl,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Nguyên giá (VNĐ)'),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: _saving ? null : () => Navigator.pop(context, false),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(
+        onPressed: _saving ? null : _save,
+        child: _saving
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Lưu nhập kho'),
+      ),
+    ],
+  );
+}
+
 /// 1. Kho Thiết Bị & Danh Mục Tài Sản (EquipmentsDirectoryPage & WarehouseStockPage)
 class EquipmentsDirectoryPage extends StatefulWidget {
   const EquipmentsDirectoryPage({super.key, required this.api});
@@ -30,96 +180,43 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
     super.dispose();
   }
 
-  void _message(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-
   Future<void> _createEquipmentDialog() async {
-    final codeCtrl = TextEditingController();
-    final nameCtrl = TextEditingController();
-    final serialCtrl = TextEditingController();
-    final brandCtrl = TextEditingController();
-    final priceCtrl = TextEditingController(text: '15000000');
+    final messenger = ScaffoldMessenger.of(context);
+    late final List<Json> categories;
+    try {
+      final response = await widget.api.get('/equipments/categories');
+      categories = asList(response['categories'] ?? response['data']);
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Không thể tải chủng loại thiết bị: $e')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    if (categories.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Chưa có chủng loại thiết bị để nhập kho.'),
+        ),
+      );
+      return;
+    }
 
     final created = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Nhập Mới Thiết Bị Vào Kho KHO-01'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: codeCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Mã tài sản (VD: EQ-KHO-01-PRJ-09)',
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Tên thiết bị'),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: serialCtrl,
-                decoration: const InputDecoration(labelText: 'Số Serial'),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: brandCtrl,
-                decoration: const InputDecoration(labelText: 'Hãng sản xuất'),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: priceCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Nguyên giá (VNĐ)',
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (codeCtrl.text.trim().isEmpty ||
-                  nameCtrl.text.trim().isEmpty) {
-                return;
-              }
-              try {
-                await widget.api.send('POST', '/equipments', {
-                  'code': codeCtrl.text.trim(),
-                  'name': nameCtrl.text.trim(),
-                  'serial_number': serialCtrl.text.trim(),
-                  'brand': brandCtrl.text.trim(),
-                  'price': int.tryParse(priceCtrl.text.trim()) ?? 0,
-                  'status': 'in_stock',
-                });
-                if (ctx.mounted) Navigator.pop(ctx, true);
-              } catch (e) {
-                if (ctx.mounted) Navigator.pop(ctx, true);
-              }
-            },
-            child: const Text('Lưu nhập kho'),
-          ),
-        ],
-      ),
+      builder: (_) =>
+          _EquipmentImportDialog(api: widget.api, categories: categories),
     );
-
-    codeCtrl.dispose();
-    nameCtrl.dispose();
-    serialCtrl.dispose();
-    brandCtrl.dispose();
-    priceCtrl.dispose();
 
     if (created == true && mounted) {
       setState(() => _revision++);
-      _message('Đã lưu thiết bị mới vào Kho dự phòng KHO-01.');
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Đã lưu thiết bị mới vào Kho dự phòng KHO-01.'),
+        ),
+      );
     }
   }
 
@@ -199,37 +296,7 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
         const SizedBox(height: 12),
         AsyncPanel(
           key: ValueKey('equipments-$_statusFilter-$_revision'),
-          load: () async {
-            try {
-              return await widget.api.get('/equipments', queryParams);
-            } catch (_) {
-              return {
-                'equipments': [
-                  {
-                    '_id': 'eq-kho-1',
-                    'code': 'EQ-KHO-01-PRJSTD-02',
-                    'name': 'Máy chiếu siêu gần giảng đường #2 (Panasonic PT-TW370)',
-                    'status': 'in_stock',
-                    'repair_count': 0,
-                    'room_id': {
-                      'code': 'KHO-01',
-                      'name': 'Kho Vật Tư Dự Phòng',
-                    },
-                    'price': 18500000,
-                  },
-                  {
-                    '_id': 'eq-101-ac',
-                    'code': 'EQ-101-ACCASS-01',
-                    'name': 'Điều hòa âm trần Cassette 4HP Daikin',
-                    'status': 'in_use',
-                    'repair_count': 3,
-                    'room_id': {'code': 'A1-101', 'name': 'Giảng đường A1-101'},
-                    'price': 36000000,
-                  },
-                ],
-              };
-            }
-          },
+          load: () => widget.api.get('/equipments', queryParams),
           builder: (data) {
             final list = asList(data['equipments'] ?? data['data']);
             if (list.isEmpty) {
