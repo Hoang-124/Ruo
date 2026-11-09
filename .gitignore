@@ -48,7 +48,12 @@ CHANGELOG.md
 server/data/
 screenshots/
 apk_dist/
+tools/
+scripts/
 *.apk
 phone_live_screen.png
 phone_ui.xml
-
+docs/
+*.cjs
+*.ps1
+*.conf
