@@ -16,6 +16,348 @@ import 'package:ruo_mobile/ui/tokens.dart';
 
 void main() {
   testWidgets(
+    'warranty radar creates supplier claim and tracks status changes',
+    (tester) async {
+      String? claimStatus;
+      Json? statusPayload;
+      var claimCreated = false;
+      final equipment = {
+        '_id': 'equipment-1',
+        'code': 'EQ-WAR-01',
+        'name': 'Máy chiếu phòng 101',
+        'warranty_expiry': '2026-12-01T00:00:00.000Z',
+        'days_remaining': 22,
+        'supplier_id': {
+          '_id': 'supplier-1',
+          'name': 'Nhà cung cấp Ruo',
+          'email': 'support@supplier.test',
+          'phone': '0900000000',
+        },
+      };
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.method == 'GET' &&
+              request.url.path == '/api/equipments/warranty-expiring') {
+            expect(request.url.queryParameters['days'], '30');
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'equipments': [equipment],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'GET' &&
+              request.url.path == '/api/equipments') {
+            expect(request.url.queryParameters['warranty_status'], 'active');
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'equipments': [equipment],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'POST' &&
+              request.url.path == '/api/warranty-claims') {
+            claimCreated = true;
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'message':
+                    'Đã tạo hồ sơ; email nhà cung cấp được xếp hàng gửi.',
+              }),
+              201,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'GET' &&
+              request.url.path == '/api/warranty-claims') {
+            final claims = !claimCreated
+                ? <Json>[]
+                : [
+                    {
+                      '_id': 'claim-1',
+                      'equipment_id': equipment,
+                      'supplier_id': equipment['supplier_id'],
+                      'issue_description': 'Không lên nguồn',
+                      'supplier_email_status': 'queued',
+                      'status': claimStatus ?? 'OPEN',
+                      'status_history': [
+                        {
+                          'status': 'OPEN',
+                          'note': 'Đã gửi yêu cầu',
+                          'updated_by': {'full_name': 'Kỹ thuật viên'},
+                        },
+                      ],
+                    },
+                  ];
+            return http.Response(
+              jsonEncode({'success': true, 'claims': claims}),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'PATCH' &&
+              request.url.path == '/api/warranty-claims/claim-1/status') {
+            statusPayload = jsonDecode(request.body) as Json;
+            claimStatus = statusPayload!['status'];
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'message': 'Đã cập nhật trạng thái hồ sơ bảo hành.',
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      api.user = {'role': 'technician'};
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(body: WarrantyMobilePage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Còn 22 ngày'), findsOneWidget);
+
+      await tester.tap(find.text('Thiết bị còn hạn'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('create_warranty_claim_equipment-1')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('warranty_claim_issue')),
+        'Không lên nguồn',
+      );
+      await tester.tap(find.byKey(const Key('submit_warranty_claim')));
+      await tester.pumpAndSettle();
+      expect(claimCreated, isTrue);
+      expect(find.textContaining('xếp hàng gửi'), findsOneWidget);
+
+      await tester.tap(find.text('Hồ sơ yêu cầu hãng'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Không lên nguồn'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const Key('warranty_status_claim-1_IN_PROGRESS')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('warranty_claim_status_note')),
+        'Nhà cung cấp đang kiểm tra',
+      );
+      await tester.tap(find.byKey(const Key('confirm_warranty_claim_status')));
+      await tester.pumpAndSettle();
+
+      expect(statusPayload?['status'], 'IN_PROGRESS');
+      expect(statusPayload?['note'], 'Nhà cung cấp đang kiểm tra');
+      expect(find.text('Đang xử lý'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'spare-part request can be sent without a repair and appears in manager list',
+    (tester) async {
+      Json? submittedRequest;
+      final part = {
+        '_id': 'part-1',
+        'code': 'PRT-HDMI-2M',
+        'name': 'Cáp HDMI 2 mét',
+        'stock': 8,
+        'unit': 'Sợi',
+      };
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.method == 'GET' &&
+              request.url.path == '/api/spare-parts') {
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'parts': [part],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'POST' &&
+              request.url.path == '/api/spare-parts/requests') {
+            submittedRequest = jsonDecode(request.body) as Json;
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'message': 'Gửi yêu cầu linh kiện thành công.',
+              }),
+              201,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'GET' &&
+              request.url.path == '/api/spare-parts/requests') {
+            final requests = submittedRequest == null
+                ? <Json>[]
+                : [
+                    {
+                      '_id': 'request-1',
+                      'requested_by': {'full_name': 'Quản lý CSVC'},
+                      'items': [
+                        {
+                          'part_id': part,
+                          'qty': submittedRequest!['items'][0]['qty'],
+                        },
+                      ],
+                      'reason': submittedRequest!['reason'],
+                      'status': 'pending',
+                    },
+                  ];
+            return http.Response(
+              jsonEncode({'success': true, 'requests': requests}),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      api.user = {'role': 'facility_manager'};
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(body: SparePartsMobilePage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_request_spare_part')));
+      await tester.pumpAndSettle();
+      expect(find.text('Phiếu sửa chữa'), findsNothing);
+      await tester.enterText(
+        find.byKey(const Key('spare_request_quantity')),
+        '2',
+      );
+      await tester.tap(find.byKey(const Key('submit_spare_part_request')));
+      await tester.pumpAndSettle();
+
+      expect(submittedRequest?.containsKey('repair_id'), isFalse);
+      expect(submittedRequest?['items'], [
+        {'part_id': 'part-1', 'qty': 2},
+      ]);
+      expect(submittedRequest?['reason'], isNotEmpty);
+      expect(
+        find.textContaining('Yêu cầu vật tư · PRT-HDMI-2M · SL: 2 Sợi'),
+        findsOneWidget,
+      );
+      expect(find.text('Phê duyệt xuất kho'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'facility manager can create a spare part from an empty mobile inventory',
+    (tester) async {
+      Json? submittedPart;
+      var inventoryRequests = 0;
+      final api = RuoApi(
+        client: MockClient((request) async {
+          if (request.method == 'GET' &&
+              request.url.path == '/api/spare-parts') {
+            inventoryRequests++;
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'parts': submittedPart == null ? [] : [submittedPart],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          if (request.method == 'POST' &&
+              request.url.path == '/api/spare-parts') {
+            submittedPart = jsonDecode(request.body) as Json;
+            submittedPart!['_id'] = 'part-new';
+            return http.Response(
+              jsonEncode({
+                'success': true,
+                'message': 'Đã thêm linh kiện.',
+                'part': submittedPart,
+              }),
+              201,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      );
+      api.user = {'role': 'facility_manager'};
+      addTearDown(api.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RuoTokens.theme(Brightness.dark),
+          home: Scaffold(body: SparePartsMobilePage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Chưa có linh kiện trong kho.'), findsOneWidget);
+      final emptyNoticeRect = tester.getRect(
+        find
+            .ancestor(
+              of: find.text('Chưa có linh kiện trong kho.'),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      final screenWidth =
+          tester.view.physicalSize.width / tester.view.devicePixelRatio;
+      expect(emptyNoticeRect.width, greaterThan(screenWidth * 0.8));
+      expect(find.byKey(const Key('btn_create_spare_part')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('btn_create_spare_part')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('spare_part_code')),
+        'prt-hdmi-2m',
+      );
+      await tester.enterText(
+        find.byKey(const Key('spare_part_name')),
+        'Cáp HDMI 2 mét',
+      );
+      final unitField = tester.widget<TextFormField>(
+        find.byKey(const Key('spare_part_unit')),
+      );
+      expect(unitField.controller?.text, isEmpty);
+      await tester.enterText(find.byKey(const Key('spare_part_unit')), 'Sợi');
+      await tester.enterText(
+        find.byKey(const Key('spare_part_price')),
+        '85000',
+      );
+      await tester.enterText(find.byKey(const Key('spare_part_stock')), '8');
+      await tester.tap(find.byKey(const Key('submit_create_spare_part')));
+      await tester.pumpAndSettle();
+
+      expect(submittedPart?['code'], 'PRT-HDMI-2M');
+      expect(submittedPart?['name'], 'Cáp HDMI 2 mét');
+      expect(submittedPart?['unit'], 'Sợi');
+      expect(submittedPart?['price'], 85000);
+      expect(submittedPart?['stock'], 8);
+      expect(submittedPart?['min_stock'], 5);
+      expect(inventoryRequests, 2);
+      expect(find.textContaining('PRT-HDMI-2M'), findsOneWidget);
+      expect(find.textContaining('Tồn kho: 8 Sợi'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'Equipment import sends a category and only confirms API success',
     (tester) async {
       Json? submittedPayload;

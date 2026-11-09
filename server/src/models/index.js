@@ -17,6 +17,7 @@ export { SparePart } from './SparePart.js';
 
 // Module 3: Equipment, Movement & Disposal
 export { Equipment } from './Equipment.js';
+export { WarrantyClaim } from './WarrantyClaim.js';
 export { EquipmentMovement, Transfer } from './EquipmentMovement.js';
 export { Disposal } from './Disposal.js';
 export { ImportSession } from './ImportSession.js';

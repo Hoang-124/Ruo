@@ -620,6 +620,26 @@ async function runWorkstream3Tests() {
   assert.strictEqual(json11.partsRequest.status, PARTS_REQUEST_STATUSES.PENDING, 'Trạng thái ban đầu là pending');
   console.log(`✓ PASS: KTV gửi yêu cầu cấp 3 linh kiện thành công, trạng thái: ${json11.partsRequest.status}`);
 
+  const repairLinkedPartsRequest = createdPartsRequest;
+  const req11Immediate = {
+    user: { _id: techId, full_name: 'KTV Trực', role: USER_ROLES.TECHNICIAN },
+    body: {
+      items: [{ part_id: partId, qty: 1 }],
+      reason: 'Xin vật tư dùng ngay'
+    }
+  };
+  let json11Immediate = null;
+  const res11Immediate = {
+    status: (code) => { res11Immediate.statusCode = code; return res11Immediate; },
+    json: (data) => { json11Immediate = data; }
+  };
+  await requestSpareParts(req11Immediate, res11Immediate);
+  assert.strictEqual(res11Immediate.statusCode, 201, 'Yêu cầu không gắn phiếu sửa chữa phải được tạo');
+  assert.ok(json11Immediate.success, 'Yêu cầu vật tư dùng ngay phải thành công');
+  assert.strictEqual(json11Immediate.partsRequest.repair_id, null, 'Yêu cầu dùng ngay không cần phiếu sửa chữa');
+  console.log('✓ PASS: KTV gửi yêu cầu vật tư dùng ngay không cần gắn phiếu sửa chữa');
+  createdPartsRequest = repairLinkedPartsRequest;
+
   // ----------------------------------------------------
   // TEST 12: UC-5.11 - Approve Parts Request & Deduct Stock Atomically
   // ----------------------------------------------------
@@ -928,4 +948,3 @@ main().catch((err) => {
   console.error('XẢY RA LỖI TRONG QUÁ TRÌNH KIỂM THỬ:', err);
   process.exit(1);
 });
-

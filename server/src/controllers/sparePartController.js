@@ -221,21 +221,22 @@ export const getPartsRequests = async (req, res) => {
 // @route   POST /api/spare-parts/requests
 export const requestSpareParts = async (req, res) => {
   try {
-    const { repair_id, items } = req.body;
-    if (!repair_id || !items || !items.length) {
-      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã phiếu sửa chữa và danh sách linh kiện.' });
+    const { repair_id, items, reason } = req.body;
+    if (!items || !items.length) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn ít nhất một linh kiện.' });
     }
 
     const normalizedItems = normalizePartsRequestItems(items);
-    const repair = await Repair.findById(repair_id);
-    if (!repair) {
+    const repair = repair_id ? await Repair.findById(repair_id) : null;
+    if (repair_id && !repair) {
       return res.status(404).json({ success: false, message: 'Phiếu sửa chữa không tồn tại.' });
     }
 
     const partsRequest = await PartsRequest.create({
-      repair_id: repair._id,
+      repair_id: repair?._id || null,
       requested_by: req.user._id,
       items: normalizedItems,
+      reason: String(reason || '').trim(),
       status: PARTS_REQUEST_STATUSES.PENDING
     });
 
@@ -245,8 +246,10 @@ export const requestSpareParts = async (req, res) => {
       await Notification.create({
         user_id: mgr._id,
         type: 'parts_request',
-        title: 'Yêu cầu cấp linh kiện sửa chữa mới',
-        message: `Kỹ thuật viên ${req.user.full_name} yêu cầu cấp linh kiện cho phiếu ${repair.ticket_code}.`,
+        title: 'Yêu cầu cấp linh kiện mới',
+        message: repair
+          ? `Kỹ thuật viên ${req.user.full_name} yêu cầu cấp linh kiện cho phiếu ${repair.ticket_code}.`
+          : `Kỹ thuật viên ${req.user.full_name} gửi yêu cầu cấp linh kiện vật tư.`,
         reference_type: 'parts_request',
         reference_id: partsRequest._id
       });
