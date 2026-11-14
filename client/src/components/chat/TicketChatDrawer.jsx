@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { chatApi } from '../../lib/api';
+import { chatApi, repairApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../common/SvgIcons';
 
 export const TicketChatDrawer = ({ isOpen, onClose, ticket, onTicketUpdated }) => {
-  const { currentUser } = useAuth();
+  let currentUser = null;
+  try {
+    const auth = useAuth();
+    currentUser = auth?.currentUser || null;
+  } catch {
+    currentUser = null;
+  }
   const [messages, setMessages] = useState([]);
   const [ticketMeta, setTicketMeta] = useState(ticket || null);
   const [inputValue, setInputValue] = useState('');
@@ -91,13 +97,39 @@ export const TicketChatDrawer = ({ isOpen, onClose, ticket, onTicketUpdated }) =
 
   const isClosed = ticketMeta?.is_closed || ['resolved', 'closed', 'repaired'].includes(ticketMeta?.status);
   const isTechnician = currentUser?.role === 'technician';
+  const isManager = ['facility_manager', 'admin'].includes(currentUser?.role);
+
+  const handleQuickReassignToAi = async () => {
+    const recId = ticketMeta?.ai_recommended_to?._id || ticketMeta?.ai_recommended_to;
+    if (!repairId || !recId || sending) return;
+    setSending(true);
+    setErrorMsg('');
+    try {
+      await repairApi.assign(repairId, {
+        assigned_to: recId
+      });
+      await fetchMessages(false);
+      if (onTicketUpdated) onTicketUpdated();
+    } catch (err) {
+      setErrorMsg('Không thể điều phối lại: ' + (err.message || 'Lỗi phân quyền'));
+    } finally {
+      setSending(false);
+    }
+  };
 
   // Quick reply options depending on user role
   const quickReplies = isTechnician
     ? [
+        'Em đã kiểm tra thực tế, ca này cần KTV chuyên môn sâu hơn nên nhờ Quản lý đổi KTV giúp ạ.',
         'KTV đã tiếp nhận và đang trên đường tới phòng.',
         'Đã kiểm tra, thiết bị hỏng linh kiện và KTV đã xin xuất kho.',
-        'Đã khắc phục xong, kính mời Thầy/Cô kiểm tra lại.'
+        'Đã khắc phục xong, kính mời Thầy/Cô và Quản lý kiểm tra lại.'
+      ]
+    : isManager
+    ? [
+        'Quản lý CSVC đã nhận phản hồi, đang điều phối KTV đúng chuyên môn sang hỗ trợ.',
+        'Nhờ KTV kiểm tra sơ bộ nguồn/aptomat tại phòng trước khi bàn giao ca.',
+        'Đã duyệt điều chuyển sang KTV chuyên trách theo đề xuất của AI.'
       ]
     : [
         'Thiết bị đột ngột mất nguồn khi đang giảng dạy.',
@@ -208,6 +240,11 @@ export const TicketChatDrawer = ({ isOpen, onClose, ticket, onTicketUpdated }) =
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                 <Icons.Wrench size={12} color="#ea580c" />
                 KTV: <strong>{ticketMeta?.assigned_to?.full_name || currentUser?.name || 'Kỹ thuật viên'}</strong>
+                {(ticketMeta?.assigned_to?.specialty_label || ticketMeta?.assigned_to?.department) && (
+                  <span style={{ color: 'var(--blueprint-500)', fontWeight: 600 }}>
+                    ({ticketMeta.assigned_to.specialty_label || ticketMeta.assigned_to.department})
+                  </span>
+                )}
               </span>
             </div>
           </div>
@@ -221,6 +258,48 @@ export const TicketChatDrawer = ({ isOpen, onClose, ticket, onTicketUpdated }) =
             <Icons.X size={18} />
           </button>
         </div>
+
+        {/* Reassign Request Banner inside Chat Drawer */}
+        {ticketMeta?.reassign_requested && !isClosed && (
+          <div
+            style={{
+              padding: '10px 16px',
+              background: 'rgba(234,88,12,0.1)',
+              borderBottom: '1px solid rgba(234,88,12,0.3)',
+              color: '#ea580c',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+              flexWrap: 'wrap'
+            }}
+          >
+            <div style={{ flex: 1, minWidth: '220px' }}>
+              <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Icons.AlertTriangle size={14} color="#ea580c" />
+                <span>KTV báo công việc chưa phù hợp chuyên môn:</span>
+              </div>
+              <div style={{ color: 'var(--ink-pure)', marginTop: '2px' }}>"{ticketMeta.reassign_reason}"</div>
+              {ticketMeta.ai_recommended_to?.full_name && (
+                <div style={{ color: 'var(--blueprint-500)', fontWeight: 700, marginTop: '2px' }}>
+                  AI đề xuất chuyển giao: {ticketMeta.ai_recommended_to.full_name} ({ticketMeta.ai_recommended_to.specialty_label || ticketMeta.ai_recommended_to.department || ticketMeta.ai_recommended_to.code})
+                </div>
+              )}
+            </div>
+            {isManager && ticketMeta.ai_recommended_to?._id && (
+              <button
+                type="button"
+                onClick={handleQuickReassignToAi}
+                disabled={sending}
+                className="laser-btn laser-btn-primary"
+                style={{ padding: '6px 12px', fontSize: '11.5px', fontWeight: 700, whiteSpace: 'nowrap' }}
+              >
+                Duyệt Đổi Sang {ticketMeta.ai_recommended_to.code || 'KTV AI'}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Closed Banner Notification */}
         {isClosed && (
