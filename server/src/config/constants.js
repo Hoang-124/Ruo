@@ -199,3 +199,88 @@ export const BUSINESS_HOURS = {
   END_MINUTE: 0,
   WORKING_DAYS: [1, 2, 3, 4, 5] // Monday to Friday
 };
+
+export const TECHNICIAN_SPECIALTIES = {
+  GUARD_OPS: 'GUARD_OPS',
+  TECH_HVAC_POWER: 'TECH_HVAC_POWER',
+  TECH_IT_AV: 'TECH_IT_AV',
+  TECH_FURN_MECH: 'TECH_FURN_MECH',
+  TECH_GENERAL: 'TECH_GENERAL'
+};
+
+export const TECHNICIAN_SPECIALTY_PROFILES = {
+  GUARD_OPS: {
+    code: 'GUARD_OPS',
+    label: 'Tổ Bảo Vệ / Trực Ban Vận Hành',
+    shortLabel: 'Bảo vệ / Trực ban (Đèn & Điều hòa)',
+    department: 'Tổ Bảo Vệ & Trực Ban Tòa Nhà',
+    allowed_categories: ['CAT-HVAC', 'CAT-POWER', 'CAT-FIRE', 'CAT-FURN'],
+    allowed_damage_levels: ['minor'],
+    is_operational_only: true,
+    specialized_tasks: [
+      'Bật / tắt điều hòa, chỉnh nhiệt độ phòng học theo ca',
+      'Phụ trách bật / tắt đèn chiếu sáng hành lang & phòng học',
+      'Đóng / mở cầu dao, aptomat nhánh khi nhảy CB nhẹ',
+      'Mở khóa cửa phòng học, kéo rèm, kiểm tra chốt bình PCCC'
+    ]
+  },
+  TECH_HVAC_POWER: {
+    code: 'TECH_HVAC_POWER',
+    label: 'KTV Điện Lạnh & Hệ Thống Cơ Điện',
+    shortLabel: 'Chuyên gia Điện lạnh & Điện nguồn',
+    department: 'Tổ Kỹ Thuật Điện - Điện Lạnh',
+    allowed_categories: ['CAT-HVAC', 'CAT-POWER', 'CAT-FIRE'],
+    allowed_damage_levels: ['minor', 'major', 'critical'],
+    is_operational_only: false,
+    specialized_tasks: [
+      'Sửa điều hòa mất lạnh, chảy nước dàn lạnh, nạp gas, thay tụ/lốc',
+      'Sửa tủ điện phân phối, thay bóng đèn LED trần, chấn lưu, ổ cắm',
+      'Khắc phục chập điện, quá tải CB và bảo trì hệ thống báo cháy PCCC'
+    ]
+  },
+  TECH_IT_AV: {
+    code: 'TECH_IT_AV',
+    label: 'KTV CNTT, Hạ Tầng Mạng & Nghe Nhìn',
+    shortLabel: 'Chuyên gia Máy chiếu, Âm thanh & CNTT',
+    department: 'Tổ Kỹ Thuật CNTT & Nghe Nhìn',
+    allowed_categories: ['CAT-DISPLAY', 'CAT-AUDIO', 'CAT-IT', 'CAT-NET', 'CAT-SEC', 'CAT-OFFICE'],
+    allowed_damage_levels: ['minor', 'major', 'critical'],
+    is_operational_only: false,
+    specialized_tasks: [
+      'Sửa máy chiếu mờ/hỏng bóng lamp, lỗi cổng HDMI, màn chiếu điện',
+      'Sửa loa hội trường, amply, micro không dây trợ giảng',
+      'Sửa máy tính PC phòng Lab, Server, Wifi/Switch, Camera CCTV, máy in'
+    ]
+  },
+  TECH_FURN_MECH: {
+    code: 'TECH_FURN_MECH',
+    label: 'KTV Mộc, Cơ Khí & Nội Thất Phòng Học',
+    shortLabel: 'Chuyên gia Nội thất, Bàn ghế & Cơ khí',
+    department: 'Tổ Kỹ Thuật Cơ Khí & Nội Thất',
+    allowed_categories: ['CAT-FURN', 'CAT-SPEC'],
+    allowed_damage_levels: ['minor', 'major', 'critical'],
+    is_operational_only: false,
+    specialized_tasks: [
+      'Sửa chữa bàn ghế sinh viên, ghế xoay giảng viên, bục giảng gỗ',
+      'Thay ổ khóa cơ, bản lề cửa, dây kéo rèm cuốn chống nắng',
+      'Bảo trì tủ sắt locker, kệ hồ sơ và giường/thiết bị y tế học đường'
+    ]
+  },
+  TECH_GENERAL: {
+    code: 'TECH_GENERAL',
+    label: 'Kỹ Thuật Viên Đa Năng (Tổ Trưởng Kỹ Thuật)',
+    shortLabel: 'Tổ trưởng Kỹ thuật Đa năng',
+    department: 'Tổ Kỹ Thuật Bảo Trì',
+    allowed_categories: [
+      'CAT-DISPLAY', 'CAT-HVAC', 'CAT-AUDIO', 'CAT-IT', 'CAT-NET',
+      'CAT-SEC', 'CAT-OFFICE', 'CAT-POWER', 'CAT-FIRE', 'CAT-FURN', 'CAT-SPEC'
+    ],
+    allowed_damage_levels: ['minor', 'major', 'critical'],
+    is_operational_only: false,
+    specialized_tasks: [
+      'Điều phối kỹ thuật hiện trường & hỗ trợ đa chuyên môn',
+      'Xử lý sự cố phức tạp liên ngành và nghiệm thu kỹ thuật'
+    ]
+  }
+};
+
