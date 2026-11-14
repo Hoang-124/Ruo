@@ -250,7 +250,7 @@ export const InventoryPage = () => {
     }
   };
 
-  const handleDownloadCsvReport = () => {
+  const handleDownloadCsvReport = async () => {
     if (!reportData) return;
     const allItems = [
       ...(reportData.categories?.matched_items || []),

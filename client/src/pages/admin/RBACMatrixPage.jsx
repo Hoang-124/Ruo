@@ -400,7 +400,7 @@ export const RBACMatrixPage = () => {
     }
   };
 
-  const handleExport = (format = 'json') => {
+  const handleExport = async (format = 'json') => {
     const exportData = {
       system: 'Ruo University Equipment Management System (UEMS)',
       useCase: 'Dynamic RBAC Matrix Configuration',
