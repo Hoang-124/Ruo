@@ -8,6 +8,10 @@ import {
   getEquipmentRepairHistory,
   createRepairReport,
   assignRepairTask,
+  requestRepairReassign,
+  autoDispatchPendingRepairs,
+  getAiDispatchMode,
+  updateAiDispatchMode,
   acceptRepairTask,
   addRepairLog,
   reportRepairOutcome,
@@ -35,6 +39,28 @@ router.post(
   triageIncidentReport
 );
 
+// AI Specialty Dispatch Mode configuration (Strictly Facility Manager only)
+router.get(
+  '/dispatch-mode',
+  protect,
+  requireRole(USER_ROLES.FACILITY_MANAGER),
+  getAiDispatchMode
+);
+router.put(
+  '/dispatch-mode',
+  protect,
+  requireRole(USER_ROLES.FACILITY_MANAGER),
+  updateAiDispatchMode
+);
+
+// AI Auto-Dispatch pending/reassign-requested tickets (Strictly Facility Manager only)
+router.post(
+  '/ai-auto-dispatch',
+  protect,
+  requireRole(USER_ROLES.FACILITY_MANAGER),
+  autoDispatchPendingRepairs
+);
+
 // Read repairs & SLA metrics (UC-5.2, UC-5.8, UC-5.9, UC-7.2)
 router.get('/', protect, getRepairs);
 router.get('/overdue', protect, getOverdueRepairs);
@@ -57,7 +83,10 @@ router.get('/:id', protect, getRepairById);
 router.post('/', protect, requirePermission('incident:create', USER_ROLES.LECTURER, USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), createRepairReport);
 
 // Assign repair task & replacement equipment (Facility Manager only) (UC-5.3)
-router.put('/:id/assign', protect, requirePermission('repair:assign', USER_ROLES.FACILITY_MANAGER), assignRepairTask);
+router.put('/:id/assign', protect, requirePermission('repair:assign', USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), assignRepairTask);
+
+// Request reassignment when task does not match technician specialty (Technician / FM / Admin)
+router.post('/:id/request-reassign', protect, requireRole(USER_ROLES.TECHNICIAN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.ADMIN), requestRepairReassign);
 
 // Accept repair task (Technician only) (UC-5.4)
 router.put('/:id/accept', protect, requirePermission('repair:accept', USER_ROLES.TECHNICIAN), acceptRepairTask);
