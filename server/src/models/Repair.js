@@ -62,6 +62,40 @@ const repairSchema = new mongoose.Schema({
     default: null, 
     index: true 
   },
+  ai_recommended_to: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  ai_auto_assigned: {
+    type: Boolean,
+    default: false
+  },
+  ai_dispatch_score: {
+    type: Number,
+    default: null
+  },
+  ai_dispatch_reason: {
+    type: String,
+    default: ''
+  },
+  reassign_requested: {
+    type: Boolean,
+    default: false
+  },
+  reassign_reason: {
+    type: String,
+    default: ''
+  },
+  reassign_requested_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  reassign_requested_at: {
+    type: Date,
+    default: null
+  },
   replacement_equipment_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Equipment',

@@ -45,6 +45,30 @@ const userSchema = new mongoose.Schema({
     type: String, 
     default: 'Khoa Công Nghệ Thông Tin' 
   },
+  // Technician Specialty & Task Scope RBAC
+  specialty_code: {
+    type: String,
+    default: 'TECH_GENERAL',
+    trim: true,
+    index: true
+  },
+  specialty_label: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  allowed_categories: {
+    type: [String],
+    default: []
+  },
+  allowed_damage_levels: {
+    type: [String],
+    default: ['minor', 'major', 'critical']
+  },
+  specialized_tasks: {
+    type: [String],
+    default: []
+  },
   repute_score: {
     type: Number,
     default: 100,
