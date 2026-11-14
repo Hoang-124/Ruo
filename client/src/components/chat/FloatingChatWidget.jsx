@@ -510,7 +510,7 @@ export const FloatingChatWidget = () => {
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          zIndex: 10050,
+          zIndex: isOpen ? 1250 : 950,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-end',
