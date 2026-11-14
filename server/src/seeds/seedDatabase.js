@@ -27,7 +27,8 @@ import {
   ROOM_TYPES,
   ROOM_STATUSES,
   REPAIR_STATUSES,
-  REPAIR_SOURCES
+  REPAIR_SOURCES,
+  TECHNICIAN_SPECIALTY_PROFILES
 } from '../config/constants.js';
 
 dotenv.config();
@@ -121,7 +122,12 @@ const seed = async () => {
         password_hash: commonPassword,
         full_name: 'Kỹ Thuật Viên Trần Minh Tuấn',
         role: USER_ROLES.TECHNICIAN,
-        department: 'Tổ Kỹ Thuật Bảo Trì',
+        department: TECHNICIAN_SPECIALTY_PROFILES.TECH_GENERAL.department,
+        specialty_code: 'TECH_GENERAL',
+        specialty_label: TECHNICIAN_SPECIALTY_PROFILES.TECH_GENERAL.label,
+        allowed_categories: TECHNICIAN_SPECIALTY_PROFILES.TECH_GENERAL.allowed_categories,
+        allowed_damage_levels: TECHNICIAN_SPECIALTY_PROFILES.TECH_GENERAL.allowed_damage_levels,
+        specialized_tasks: TECHNICIAN_SPECIALTY_PROFILES.TECH_GENERAL.specialized_tasks,
         phone: '0987654321',
         avatar: 'TT'
       },
@@ -146,6 +152,72 @@ const seed = async () => {
         avatar: 'HT'
       }
     ]);
+  }
+
+  // Ensure all specialized Technician profiles exist (even when --preserve-auth is used)
+  const commonPassword = 'Ruo@2026';
+  const specializedTechSeeds = [
+    {
+      code: 'KT002',
+      email: 'guard@ruo.edu.vn',
+      full_name: 'Trực Ban Bảo Vệ Nguyễn Văn Bình',
+      profile: TECHNICIAN_SPECIALTY_PROFILES.GUARD_OPS,
+      phone: '0981112233',
+      avatar: 'NB'
+    },
+    {
+      code: 'KT003',
+      email: 'hvac.tech@ruo.edu.vn',
+      full_name: 'KTV Điện Lạnh Phạm Quang Huy',
+      profile: TECHNICIAN_SPECIALTY_PROFILES.TECH_HVAC_POWER,
+      phone: '0982223344',
+      avatar: 'QH'
+    },
+    {
+      code: 'KT004',
+      email: 'it.tech@ruo.edu.vn',
+      full_name: 'KTV CNTT & Nghe Nhìn Vũ Hoàng Nam',
+      profile: TECHNICIAN_SPECIALTY_PROFILES.TECH_IT_AV,
+      phone: '0983334455',
+      avatar: 'HN'
+    },
+    {
+      code: 'KT005',
+      email: 'furn.tech@ruo.edu.vn',
+      full_name: 'KTV Mộc & Cơ Khí Đỗ Văn Sơn',
+      profile: TECHNICIAN_SPECIALTY_PROFILES.TECH_FURN_MECH,
+      phone: '0984445566',
+      avatar: 'VS'
+    }
+  ];
+
+  for (const st of specializedTechSeeds) {
+    const existingTech = await User.findOne({ code: st.code });
+    if (!existingTech) {
+      await User.create({
+        code: st.code,
+        email: st.email,
+        password_hash: commonPassword,
+        full_name: st.full_name,
+        role: USER_ROLES.TECHNICIAN,
+        department: st.profile.department,
+        specialty_code: st.profile.code,
+        specialty_label: st.profile.label,
+        allowed_categories: st.profile.allowed_categories,
+        allowed_damage_levels: st.profile.allowed_damage_levels,
+        specialized_tasks: st.profile.specialized_tasks,
+        phone: st.phone,
+        avatar: st.avatar
+      });
+    } else if (!existingTech.specialty_code || existingTech.specialty_code === 'TECH_GENERAL') {
+      existingTech.specialty_code = st.profile.code;
+      existingTech.specialty_label = st.profile.label;
+      existingTech.department = st.profile.department;
+      existingTech.allowed_categories = st.profile.allowed_categories;
+      existingTech.allowed_damage_levels = st.profile.allowed_damage_levels;
+      existingTech.specialized_tasks = st.profile.specialized_tasks;
+      await existingTech.save();
+    }
   }
 
   console.log('[Ruo Seeder] 3. Seeding Building A1, 11 Canonical Categories & 5 Suppliers...');
