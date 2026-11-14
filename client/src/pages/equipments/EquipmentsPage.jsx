@@ -3,6 +3,7 @@ import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { disposalApi, equipmentApi, masterDataApi } from '../../lib/api';
+import { triggerCsvDownload } from '../../lib/csvExport';
 
 import { EquipmentQr } from '../../components/common/EquipmentQr';
 
@@ -270,7 +271,7 @@ export const EquipmentsPage = () => {
   };
 
   // Export filtered directory to CSV with Vietnamese UTF-8 BOM (UC-3.2)
-  const handleExportCsv = () => {
+  const handleExportCsv = async () => {
     if (!equipments || equipments.length === 0) {
       showError('Không có dữ liệu thiết bị phù hợp để xuất file!');
       return;
@@ -291,14 +292,7 @@ export const EquipmentsPage = () => {
     ]);
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `danh_muc_thiet_bi_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    await triggerCsvDownload(csvContent, `danh_muc_thiet_bi_${new Date().toISOString().split('T')[0]}.csv`);
     toast.success(`Đã xuất báo cáo CSV thành công (${equipments.length} bản ghi)!`);
   };
 
@@ -967,7 +961,7 @@ export const EquipmentsPage = () => {
     );
   };
 
-  const handleDownloadSampleCsv = () => {
+  const handleDownloadSampleCsv = async () => {
     const defaultCat = categories[0]?.code || categories[0]?.name || 'TB-TRINH-CHIEU';
     const defaultRoom = rooms[0]?.code || 'A1-101';
     const csvContent = [
@@ -976,13 +970,7 @@ export const EquipmentsPage = () => {
       `EQ-2026-8002,Màn Hình Tương Tác Thông Minh 75 inch,${defaultCat},KHO,42000000,Maxhub,V6-75,SN-8002`
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'mau_nhap_thiet_bi_A1.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    await triggerCsvDownload(csvContent, 'mau_nhap_thiet_bi_A1.csv');
   };
 
   // UC-3.7: Validate Batch on Backend

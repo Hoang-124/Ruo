@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { auditApi } from '../../lib/api';
+import { triggerCsvDownload } from '../../lib/csvExport';
 import { Button, Card, DataTable } from '../../components/ui/Primitives';
 import { useToast } from '../../context/ToastContext';
 
@@ -97,14 +98,7 @@ export const AuditLogPage = () => {
     setExporting(true);
     try {
       const blob = await auditApi.downloadCsv();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ruo_audit_log_${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      await triggerCsvDownload(blob, `ruo_audit_log_${new Date().toISOString().slice(0, 10)}.csv`);
       toast.success('Đã xuất tệp CSV sổ cái kiểm toán SHA-256 thành công.');
     } catch (err) {
       showError('Không thể xuất CSV kiểm toán: ' + err.message);

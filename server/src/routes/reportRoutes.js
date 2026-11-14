@@ -4,13 +4,19 @@ import {
   getRepairFrequency,
   getWarrantyExpiring,
   getOverdueRepairs,
-  exportStatisticalReport
+  exportStatisticalReport,
+  saveCsvExport,
+  openCsvExport
 } from '../controllers/reportController.js';
 import { getKpi, getHealthScore, getRepairCost, getEquipmentByRoom, getEquipmentByStatus } from '../controllers/dashboardController.js';
 import { protect, requireRole } from '../middlewares/authMiddleware.js';
 import { USER_ROLES } from '../config/constants.js';
 
 const router = express.Router();
+
+// Direct CSV/Excel save & open in Downloads folder (Admin, Facility Manager, Technician)
+router.post('/save-csv', protect, requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN), saveCsvExport);
+router.post('/open-csv', protect, requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER, USER_ROLES.TECHNICIAN), openCsvExport);
 
 router.use(protect, requireRole(USER_ROLES.ADMIN, USER_ROLES.FACILITY_MANAGER));
 

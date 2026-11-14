@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { inventoryApi, reportApi } from '../../lib/api';
+import { triggerCsvDownload } from '../../lib/csvExport';
 import { Button, Card } from '../../components/ui/Primitives';
 import { Icons } from '../../components/common/SvgIcons';
 import { ReportState } from './reportShared';
@@ -36,14 +37,7 @@ export function ExportReport({ refreshKey }) {
         setPreview(await reportApi.getPrintReport(params));
       } else {
         const blob = await reportApi.exportFile(params);
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = `ruo_${type}_${new Date().toISOString().slice(0, 10)}.csv`;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        await triggerCsvDownload(blob, `ruo_${type}_${new Date().toISOString().slice(0, 10)}.csv`);
       }
     } catch (failure) { setError(failure.message || 'Không xuất được báo cáo.'); }
     finally { setPending(''); }
