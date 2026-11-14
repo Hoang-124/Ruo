@@ -1,4 +1,9 @@
-import { BUSINESS_HOURS, DAMAGE_LEVELS } from '../config/constants.js';
+import {
+  BUSINESS_HOURS,
+  DAMAGE_LEVELS,
+  TECHNICIAN_SPECIALTIES,
+  TECHNICIAN_SPECIALTY_PROFILES
+} from '../config/constants.js';
 import { computeDeadline } from './slaReactor.js';
 import {
   stripRefinedPrefix,
@@ -166,6 +171,265 @@ export async function callGeminiJson(systemInstruction, userPayload) {
 
 export { getLocalAiTrainingStats };
 
+/**
+ * Resolves a technician's canonical specialty profile and RBAC task permissions.
+ * Distinguishes Guard/Operations staff (who only switch AC/lights/breakers on/off)
+ * from specialized hardware repair technicians (HVAC/Power, IT/AV/Network, Furniture/Mechanical).
+ */
+export function resolveTechnicianSpecialtyProfile(tech = {}) {
+  const explicitCode = String(tech.specialty_code || '').trim().toUpperCase();
+  const deptNorm = normalizeVietnameseText(`${tech.department || ''} ${tech.specialty_label || ''} ${tech.full_name || ''}`);
+
+  let resolvedCode = TECHNICIAN_SPECIALTIES.TECH_GENERAL;
+  if (explicitCode && TECHNICIAN_SPECIALTY_PROFILES[explicitCode] && explicitCode !== TECHNICIAN_SPECIALTIES.TECH_GENERAL) {
+    resolvedCode = explicitCode;
+  } else if (/bao ve|truc ban|gac cong|van hanh phong/i.test(stripDiacritics(deptNorm))) {
+    resolvedCode = TECHNICIAN_SPECIALTIES.GUARD_OPS;
+  } else if (/dien lanh|nhiet lanh|co dien|dieu hoa|pccc/i.test(stripDiacritics(deptNorm))) {
+    resolvedCode = TECHNICIAN_SPECIALTIES.TECH_HVAC_POWER;
+  } else if (/nghe nhin|cntt|cong nghe thong tin|mang|may tinh|am thanh|may chieu|dien nhe|van phong/i.test(stripDiacritics(deptNorm))) {
+    resolvedCode = TECHNICIAN_SPECIALTIES.TECH_IT_AV;
+  } else if (/moc|co khi|noi thuat|noi that|ban ghe|y te/i.test(stripDiacritics(deptNorm))) {
+    resolvedCode = TECHNICIAN_SPECIALTIES.TECH_FURN_MECH;
+  } else if (explicitCode && TECHNICIAN_SPECIALTY_PROFILES[explicitCode]) {
+    resolvedCode = explicitCode;
+  }
+
+  const baseProfile = TECHNICIAN_SPECIALTY_PROFILES[resolvedCode] || TECHNICIAN_SPECIALTY_PROFILES.TECH_GENERAL;
+  const customCategories = Array.isArray(tech.allowed_categories) && tech.allowed_categories.length > 0
+    ? tech.allowed_categories
+    : baseProfile.allowed_categories;
+  const customDamageLevels = Array.isArray(tech.allowed_damage_levels) && tech.allowed_damage_levels.length > 0
+    ? tech.allowed_damage_levels
+    : baseProfile.allowed_damage_levels;
+  const customTasks = Array.isArray(tech.specialized_tasks) && tech.specialized_tasks.length > 0
+    ? tech.specialized_tasks
+    : baseProfile.specialized_tasks;
+
+  return {
+    specialty_code: resolvedCode,
+    specialty_label: tech.specialty_label || baseProfile.label,
+    short_label: baseProfile.shortLabel,
+    is_operational_only: Boolean(baseProfile.is_operational_only || resolvedCode === TECHNICIAN_SPECIALTIES.GUARD_OPS),
+    allowed_categories: customCategories,
+    allowed_damage_levels: customDamageLevels,
+    specialized_tasks: customTasks
+  };
+}
+
+/**
+ * Detects whether an incident description is a basic operational task handled by Campus Security/Guard
+ * (e.g., turning AC on/off, switching classroom/corridor lights on/off, flipping room breaker on for class, unlocking door)
+ * versus a technical hardware malfunction requiring a specialized Technician.
+ */
+export function detectOperationalGuardTask({
+  description = '',
+  effectiveCategory = 'CAT-POWER',
+  damageLevel = DAMAGE_LEVELS.MINOR,
+  hazard = null
+}) {
+  if (hazard || damageLevel === DAMAGE_LEVELS.CRITICAL || damageLevel === DAMAGE_LEVELS.MAJOR) {
+    return { is_operational_task: false, operational_reason: null };
+  }
+
+  const norm = normalizeVietnameseText(description);
+  const ascii = stripDiacritics(norm);
+
+  // If severe hardware damage keywords appear, it is NOT a simple guard task
+  const hasHardwareFailureKeyword = /chay|no|boc khoi|khet|ro dien|chay nuoc|ro nuoc|gay|vo|dut|hong bong|nhay do|mat lanh|het gas|keu to|liet|khong nhan|hu bo mach|sap nguon|mat mang|hu hong nang/i.test(ascii);
+  if (hasHardwareFailureKeyword) {
+    return { is_operational_task: false, operational_reason: null };
+  }
+
+  const isGuardSwitchTask =
+    /bat dieu hoa|tat dieu hoa|mo dieu hoa|mo may lanh|tat may lanh|bat may lanh|quen tat dieu hoa|quen tat may lanh|chinh nhiet do|can remote dieu hoa|bat den|tat den|quen tat den|quen tat dien|mo den|bat dien|mo dien phong|dong cau dao|bat cau dao|bat aptomat|mo cua phong|mo khoa phong|keo rem/i.test(ascii);
+
+  if (isGuardSwitchTask && ['CAT-HVAC', 'CAT-POWER', 'CAT-FURN', 'CAT-FIRE'].includes(effectiveCategory)) {
+    return {
+      is_operational_task: true,
+      operational_reason: 'Tác vụ vận hành cơ bản tại phòng học (bật/tắt điều hòa, đèn chiếu sáng, cầu dao hoặc mở cửa phòng) thuộc thẩm quyền Tổ Bảo Vệ / Trực Ban'
+    };
+  }
+
+  return { is_operational_task: false, operational_reason: null };
+}
+
+/**
+ * Specialty-First AI Technician Ranking Engine.
+ * Prioritizes exact specialty authorization & domain mastery over raw idle availability,
+ * enforcing university role boundaries (e.g. Guard only handles basic AC/light operations,
+ * while HVAC, IT/AV, and Furniture/Mechanical technicians handle their respective domains).
+ */
+export function rankTechniciansBySpecialty({
+  technicians = [],
+  openRepairs = [],
+  resolvedRepairs = [],
+  equipment = null,
+  effectiveCategory = 'CAT-POWER',
+  damageLevel = DAMAGE_LEVELS.MINOR,
+  description = '',
+  hazard = null,
+  excludeTechnicianId = null
+}) {
+  const now = Date.now();
+  const targetCatId = toIdStr(equipment?.category_id);
+  const catMeta = CATEGORY_ONTOLOGY[effectiveCategory] || CATEGORY_ONTOLOGY['CAT-POWER'];
+  const isCriticalTicket = damageLevel === DAMAGE_LEVELS.CRITICAL;
+  const excludeIdStr = toIdStr(excludeTechnicianId);
+
+  const opCheck = detectOperationalGuardTask({
+    description,
+    effectiveCategory,
+    damageLevel,
+    hazard
+  });
+
+  // Check if there is at least one true domain specialist (non-generalist) for this category in the roster
+  const hasDedicatedSpecialistInRoster = (Array.isArray(technicians) ? technicians : []).some((tech) => {
+    if (excludeIdStr && toIdStr(tech._id) === excludeIdStr) return false;
+    const prof = resolveTechnicianSpecialtyProfile(tech);
+    if (opCheck.is_operational_task) {
+      return prof.specialty_code === TECHNICIAN_SPECIALTIES.GUARD_OPS;
+    }
+    return !prof.is_operational_only
+      && prof.specialty_code !== TECHNICIAN_SPECIALTIES.TECH_GENERAL
+      && prof.allowed_categories.includes(effectiveCategory);
+  });
+
+  return (Array.isArray(technicians) ? technicians : []).map((tech) => {
+    const techId = toIdStr(tech._id);
+    const isExcluded = Boolean(excludeIdStr && techId === excludeIdStr);
+    const profile = resolveTechnicianSpecialtyProfile(tech);
+
+    const activeForTech = (Array.isArray(openRepairs) ? openRepairs : []).filter(
+      (r) => toIdStr(r.assigned_to) === techId
+    );
+    const overdueForTech = activeForTech.filter(
+      (r) => r.deadline && new Date(r.deadline).getTime() < now
+    );
+    const similarResolvedList = (Array.isArray(resolvedRepairs) ? resolvedRepairs : []).filter((r) => {
+      if (toIdStr(r.assigned_to) !== techId) return false;
+      const rCat = toIdStr(r.equipment_id?.category_id);
+      const rCatCode = r.equipment_id?.category_id?.code;
+      return (targetCatId && rCat && targetCatId === rCat) || (rCatCode && rCatCode === effectiveCategory);
+    });
+    const similarResolved = similarResolvedList.length;
+
+    const deptLower = normalizeVietnameseText(tech.department || '');
+    const deptMatch = catMeta.deptKeywords.some((kw) => deptLower.includes(kw));
+
+    const categoryAllowed = profile.allowed_categories.includes(effectiveCategory) || deptMatch;
+    const levelAllowed = profile.allowed_damage_levels.includes(damageLevel);
+
+    let isQualified = true;
+    let specialtyMatchType = 'specialist_match';
+    let disqualifiedReason = null;
+    let specialtyScore = 0;
+
+    if (opCheck.is_operational_task) {
+      // Case 1: Basic AC/light switch task -> Campus Security / Guard is #1
+      if (profile.is_operational_only || profile.specialty_code === TECHNICIAN_SPECIALTIES.GUARD_OPS) {
+        isQualified = true;
+        specialtyMatchType = 'exact_operational_guard';
+        specialtyScore = 44;
+      } else if (categoryAllowed) {
+        isQualified = true;
+        specialtyMatchType = 'overqualified_specialist';
+        specialtyScore = 16;
+      } else {
+        isQualified = false;
+        specialtyMatchType = 'mismatch';
+        disqualifiedReason = `Trái chuyên môn (${profile.short_label})`;
+        specialtyScore = -40;
+      }
+    } else {
+      // Case 2: Technical hardware repair -> Disqualify Guard/Operations & mismatched trades!
+      if (profile.is_operational_only || profile.specialty_code === TECHNICIAN_SPECIALTIES.GUARD_OPS) {
+        isQualified = false;
+        specialtyMatchType = 'guard_restricted';
+        disqualifiedReason = 'Bảo vệ/Trực ban chỉ phụ trách bật/tắt điều hòa, đèn & vận hành cơ bản; không có quyền sửa chữa kỹ thuật';
+        specialtyScore = -60;
+      } else if (!categoryAllowed || !levelAllowed) {
+        isQualified = false;
+        specialtyMatchType = 'mismatch';
+        disqualifiedReason = `Trái phân quyền chuyên môn (Chuyên trách: ${profile.short_label}, không phụ trách ${catMeta.label})`;
+        specialtyScore = -55;
+      } else if (profile.specialty_code !== TECHNICIAN_SPECIALTIES.TECH_GENERAL || deptMatch) {
+        // Dedicated domain specialist (e.g., HVAC, IT/AV, Furniture)
+        isQualified = true;
+        specialtyMatchType = 'specialist_match';
+        specialtyScore = 42;
+      } else {
+        // Generalist backup technician
+        isQualified = true;
+        specialtyMatchType = 'general_backup';
+        specialtyScore = hasDedicatedSpecialistInRoster ? 18 : 34;
+      }
+    }
+
+    // Workload is secondary to Specialty Mastery so an idle Guard or wrong-trade Tech never beats the true Specialist
+    const activePenalty = isCriticalTicket ? activeForTech.length * 10 : activeForTech.length * 7;
+    const overduePenalty = overdueForTech.length * 16;
+    const masteryBonus = Math.min(18, similarResolved * 6);
+
+    let rawScore = 55 + specialtyScore + masteryBonus - activePenalty - overduePenalty;
+    if (!isQualified) {
+      rawScore = Math.min(22, Math.max(8, rawScore));
+    }
+    if (isExcluded) {
+      rawScore = Math.min(5, rawScore - 80);
+    }
+
+    const score = Math.max(5, Math.min(99, Math.round(rawScore)));
+
+    const reasons = [];
+    if (!isQualified && disqualifiedReason) {
+      reasons.push(`⛔ ${disqualifiedReason}`);
+    } else if (specialtyMatchType === 'exact_operational_guard') {
+      reasons.push(`✅ Đúng phân quyền Bảo vệ/Trực ban (${profile.short_label})`);
+    } else if (specialtyMatchType === 'specialist_match') {
+      reasons.push(`✅ Đúng chuyên môn sâu (${profile.short_label})`);
+    } else if (specialtyMatchType === 'general_backup') {
+      reasons.push(`KTV Đa năng hỗ trợ (${profile.short_label})`);
+    }
+
+    if (similarResolved > 0) {
+      reasons.push(`đã sửa thành công ${similarResolved} ca cùng nhóm ${catMeta.label}`);
+    }
+    reasons.push(`đang xử lý ${activeForTech.length} phiếu`);
+    if (overdueForTech.length > 0) {
+      reasons.push(`${overdueForTech.length} phiếu quá hạn SLA`);
+    } else {
+      reasons.push('0 quá hạn SLA');
+    }
+
+    return {
+      _id: techId,
+      full_name: tech.full_name,
+      code: tech.code,
+      department: tech.department || profile.specialty_label || 'Tổ Kỹ Thuật CSVC',
+      specialty_code: profile.specialty_code,
+      specialty_label: profile.specialty_label,
+      short_specialty: profile.short_label,
+      allowed_categories: profile.allowed_categories,
+      allowed_damage_levels: profile.allowed_damage_levels,
+      specialized_tasks: profile.specialized_tasks,
+      is_operational_only: profile.is_operational_only,
+      is_qualified: isQualified && !isExcluded,
+      specialty_match_type: specialtyMatchType,
+      disqualified_reason: disqualifiedReason,
+      active_tasks: activeForTech.length,
+      overdue_tasks: overdueForTech.length,
+      past_similar_repairs: similarResolved,
+      score,
+      reason: reasons.join(' • ')
+    };
+  }).sort((a, b) => {
+    if (a.is_qualified !== b.is_qualified) return a.is_qualified ? -1 : 1;
+    return b.score - a.score;
+  });
+}
+
 // ============================================================================
 // FEATURE #1A: AI INCIDENT TRIAGE (LECTURER REPORT ISSUE COPILOT)
 // ============================================================================
@@ -175,7 +439,9 @@ export async function buildIncidentTriage({
   equipment = null,
   room = null,
   openRepairs = [],
-  roomEquipments = []
+  roomEquipments = [],
+  technicians = [],
+  resolvedRepairs = []
 }) {
   const unprefixedRaw = stripRefinedPrefix(description);
   const cleanDesc = sanitizePromptText(unprefixedRaw || description, 1000);
@@ -334,6 +600,26 @@ export async function buildIncidentTriage({
 
   const finalDeadline = computeDeadline(suggestedLevel, new Date());
 
+  const opTaskInfo = detectOperationalGuardTask({
+    description: unprefixedRaw || description,
+    effectiveCategory: entityInfo.effectiveCategory,
+    damageLevel: suggestedLevel,
+    hazard
+  });
+
+  const rankedTechs = Array.isArray(technicians) && technicians.length > 0
+    ? rankTechniciansBySpecialty({
+        technicians,
+        openRepairs,
+        resolvedRepairs,
+        equipment: effectiveEquipment,
+        effectiveCategory: entityInfo.effectiveCategory,
+        damageLevel: suggestedLevel,
+        description: unprefixedRaw || description,
+        hazard
+      })
+    : [];
+
   return {
     engine,
     engine_label: engine === 'gemini' ? 'Gemini Hybrid + Ruo Physics Guard' : 'Ruo Cortex Local AI v2.5',
@@ -353,8 +639,12 @@ export async function buildIncidentTriage({
       playbook_id: playbook.id,
       playbook_title: playbook.title,
       is_electrical: entityInfo.effectiveIsElectrical,
+      is_operational_task: opTaskInfo.is_operational_task,
+      operational_reason: opTaskInfo.operational_reason,
       hazard_protocol: hazard?.protocol?.id || null
-    }
+    },
+    recommended_technician: rankedTechs[0] || null,
+    ranked_technicians: rankedTechs
   };
 }
 
@@ -493,51 +783,21 @@ export async function buildRepairCopilot({
     .sort((a, b) => b.relevance_score - a.relevance_score)
     .slice(0, 4);
 
-  // 3. Rank Technicians for Dispatch (Workload + SLA Breaches + Category Mastery + Specialty)
-  const now = Date.now();
+  // 3. Rank Technicians for Dispatch (Specialty RBAC + Category Mastery + SLA + Workload)
   const targetCatId = toIdStr(equipment?.category_id);
-  const isCriticalTicket = (repair?.damage_level || localAnalysis.severity) === DAMAGE_LEVELS.CRITICAL;
+  const excludeTechId = repair?.reassign_requested ? toIdStr(repair?.assigned_to) : null;
 
-  const rankedTechnicians = (Array.isArray(technicians) ? technicians : []).map((tech) => {
-    const techId = toIdStr(tech._id);
-    const activeForTech = (Array.isArray(openRepairs) ? openRepairs : []).filter(
-      (r) => toIdStr(r.assigned_to) === techId
-    );
-    const overdueForTech = activeForTech.filter(
-      (r) => r.deadline && new Date(r.deadline).getTime() < now
-    );
-    const similarResolved = (Array.isArray(resolvedRepairs) ? resolvedRepairs : []).filter((r) => {
-      if (toIdStr(r.assigned_to) !== techId) return false;
-      const rCat = toIdStr(r.equipment_id?.category_id);
-      return targetCatId && rCat && targetCatId === rCat;
-    }).length;
-
-    const deptLower = normalizeVietnameseText(tech.department || '');
-    const deptMatch = catMeta.deptKeywords.some((kw) => deptLower.includes(kw));
-
-    const activePenalty = isCriticalTicket ? activeForTech.length * 18 : activeForTech.length * 14;
-    const rawScore = 85 - activePenalty - overdueForTech.length * 22 + Math.min(16, similarResolved * 5) + (deptMatch ? 9 : 0);
-    const score = Math.max(10, Math.min(99, rawScore));
-
-    const reasons = [];
-    reasons.push(`Đang xử lý ${activeForTech.length} phiếu`);
-    if (overdueForTech.length > 0) reasons.push(`${overdueForTech.length} phiếu quá hạn SLA`);
-    else reasons.push('0 quá hạn SLA');
-    if (similarResolved > 0) reasons.push(`đã xử lý ${similarResolved} ca cùng nhóm thiết bị`);
-    else if (deptMatch) reasons.push(`đúng chuyên môn (${tech.department})`);
-
-    return {
-      _id: techId,
-      full_name: tech.full_name,
-      code: tech.code,
-      department: tech.department || 'Tổ Kỹ Thuật CSVC',
-      active_tasks: activeForTech.length,
-      overdue_tasks: overdueForTech.length,
-      past_similar_repairs: similarResolved,
-      score,
-      reason: reasons.join(' • ')
-    };
-  }).sort((a, b) => b.score - a.score);
+  const rankedTechnicians = rankTechniciansBySpecialty({
+    technicians,
+    openRepairs,
+    resolvedRepairs,
+    equipment,
+    effectiveCategory,
+    damageLevel: repair?.damage_level || localAnalysis.severity || DAMAGE_LEVELS.MINOR,
+    description: desc,
+    hazard: localAnalysis.hazard,
+    excludeTechnicianId: excludeTechId
+  });
 
   // 4. Match Replacement Spare Equipment in Warehouse (KHO-01)
   const eqNameWords = normalizeVietnameseText(equipment?.name || '').split(/\s+/).filter((w) => w.length >= 3);

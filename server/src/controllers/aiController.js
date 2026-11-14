@@ -129,13 +129,21 @@ export const triageIncidentReport = async (req, res) => {
           .map((s) => s.trim())
           .filter(Boolean);
 
+    let technicians = [];
+    if (mongoose.connection?.readyState === 1) {
+      technicians = await User.find({ role: USER_ROLES.TECHNICIAN, status: USER_STATUSES.ACTIVE })
+        .select('full_name code email department role status specialty_code specialty_label allowed_categories allowed_damage_levels specialized_tasks')
+        .catch(() => []);
+    }
+
     const triage = await buildIncidentTriage({
       description: cleanDesc,
       images: normalizedImages,
       equipment,
       room,
       openRepairs,
-      roomEquipments
+      roomEquipments,
+      technicians
     });
 
     return res.json({
@@ -203,7 +211,8 @@ export const getRepairAiCopilot = async (req, res) => {
       categoryId
         ? Equipment.find({ status: EQUIPMENT_STATUSES.IN_STOCK, category_id: categoryId, _id: { $ne: eqId } }).limit(50)
         : Promise.resolve([]),
-      User.find({ role: USER_ROLES.TECHNICIAN, status: USER_STATUSES.ACTIVE }).select('full_name code email department role status'),
+      User.find({ role: USER_ROLES.TECHNICIAN, status: USER_STATUSES.ACTIVE })
+        .select('full_name code email department role status specialty_code specialty_label allowed_categories allowed_damage_levels specialized_tasks'),
       Repair.find({
         status: { $in: [REPAIR_STATUSES.REPORTED, REPAIR_STATUSES.ASSIGNED, REPAIR_STATUSES.IN_PROGRESS] }
       }).select('assigned_to status deadline'),
