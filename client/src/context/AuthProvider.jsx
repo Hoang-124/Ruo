@@ -160,7 +160,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, [isLoggedIn]);
 
-  // Periodic notification polling (every 25s for real-time badge)
+  // Periodic notification polling (every 25s for real-time badge) + immediate event listener
   useEffect(() => {
     if (!isLoggedIn) return;
     let active = true;
@@ -169,7 +169,12 @@ export const AuthProvider = ({ children }) => {
     }).catch(() => { /* Keep the last successful result during network failures. */ });
     poll();
     const interval = setInterval(poll, 25000);
-    return () => { active = false; clearInterval(interval); };
+    window.addEventListener('ruo-notifications-refresh', poll);
+    return () => {
+      active = false;
+      clearInterval(interval);
+      window.removeEventListener('ruo-notifications-refresh', poll);
+    };
   }, [isLoggedIn]);
 
   // UC-1.1: Login

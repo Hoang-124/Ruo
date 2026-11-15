@@ -233,7 +233,10 @@ export const facilityApi = {
 export const maintenanceApi = {
   listPlans: () => api.get('/maintenance/plans'),
   createPlan: (data) => api.post('/maintenance/plans', data),
-  logResult: (id, data) => api.put(`/maintenance/plans/${id}/log`, data)
+  updatePlan: (id, data) => api.put(`/maintenance/plans/${id}`, data),
+  deletePlan: (id) => api.delete(`/maintenance/plans/${id}`),
+  logResult: (id, data) => api.put(`/maintenance/plans/${id}/log`, data),
+  deleteRecord: (recordId) => api.delete(`/maintenance/records/${recordId}`)
 };
 
 export const movementApi = {

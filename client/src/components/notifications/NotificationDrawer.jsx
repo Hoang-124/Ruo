@@ -204,6 +204,17 @@ export const NotificationDrawer = ({
   const getCategoryMeta = (item) => {
     const type = String(item.type || '').toLowerCase();
     const cat = String(item.category || '').toLowerCase();
+    const refType = String(item.reference_type || item.relatedEntityType || '').toLowerCase();
+    const titleStr = String(item.title || '').toLowerCase();
+
+    if (refType === 'maintenance' || type === 'maintenance' || titleStr.includes('bảo dưỡng')) {
+      return {
+        key: 'maintenance',
+        label: 'Bảo Dưỡng Định Kỳ',
+        tagClass: 'approvals',
+        icon: <DrawerSvg.ClipboardCheck size={16} />
+      };
+    }
 
     if (cat === 'deadlines' || type.includes('deadline') || type.includes('warranty')) {
       return {
@@ -249,7 +260,9 @@ export const NotificationDrawer = ({
     if (!onNavigate) return;
     const typeStr = String(item?.type || item?.reference_type || '').toLowerCase();
 
-    if (meta.key === 'repairs' || meta.key === 'deadlines') {
+    if (meta.key === 'maintenance' || typeStr.includes('maintenance')) {
+      onNavigate('maintenance', item);
+    } else if (meta.key === 'repairs' || meta.key === 'deadlines') {
       onNavigate(resolveRepairTab(), item);
     } else if (meta.key === 'approvals') {
       if (typeStr.includes('disposal')) {
