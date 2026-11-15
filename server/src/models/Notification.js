@@ -14,7 +14,7 @@ const notificationSchema = new mongoose.Schema({
     type: String, 
     enum: [
       ...Object.values(NOTIFICATION_TYPES),
-      'info', 'warning', 'success', 'error'
+      'info', 'warning', 'success', 'error', 'system', 'maintenance'
     ], 
     default: 'info',
     index: true 
@@ -31,7 +31,7 @@ const notificationSchema = new mongoose.Schema({
     type: String, 
     enum: [
       ...Object.values(NOTIFICATION_REFERENCE_TYPES),
-      'transfer', 'room', null
+      'transfer', 'room', 'maintenance', null
     ], 
     default: null 
   },
