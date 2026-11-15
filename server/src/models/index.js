@@ -35,3 +35,4 @@ export { InventoryLog } from './InventoryLog.js';
 // Module 6: Notification & Audit
 export { Notification } from './Notification.js';
 export { AuditLog } from './AuditLog.js';
+export { ChatMessage } from './ChatMessage.js';

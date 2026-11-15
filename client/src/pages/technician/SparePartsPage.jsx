@@ -19,6 +19,7 @@ export const SparePartsPage = () => {
     currentUser?.role === 'facility_manager' ||
     currentUser?.role === 'admin'
   );
+  const isTechnician = currentUser?.role === 'technician' && !['facility_manager', 'admin'].includes(currentUser?.role);
   const [loading, setLoading] = useState(true);
   const [parts, setParts] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -90,6 +91,11 @@ export const SparePartsPage = () => {
     // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
     // eslint-disable-next-line react/set-state-in-effect
     fetchData();
+    const handlePartsRefresh = () => {
+      fetchData();
+    };
+    window.addEventListener('ruo-parts-refresh', handlePartsRefresh);
+    return () => window.removeEventListener('ruo-parts-refresh', handlePartsRefresh);
   }, [fetchData]);
 
   const openRequest = (part = null) => {
@@ -130,6 +136,7 @@ export const SparePartsPage = () => {
         setShowRequestModal(false);
         setActiveTab('requests');
         await fetchData();
+        window.dispatchEvent(new CustomEvent('ruo-chat-refresh'));
       }
     } catch (err) {
       showError('Lỗi khi gửi yêu cầu: ' + err.message);
@@ -256,7 +263,9 @@ export const SparePartsPage = () => {
             Kho Linh Kiện Dự Phòng & Yêu Cầu Cấp Phát
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
-            Tra cứu tồn kho linh kiện thay thế tại chỗ, lập phiếu yêu cầu cấp phát gửi Cán bộ Quản lý CSVC phê duyệt.
+            {canManageParts
+              ? 'Quản lý danh mục linh kiện kho KHO-01, cập nhật định mức tồn kho an toàn và phê duyệt cấp phát vật tư cho Kỹ thuật viên.'
+              : 'Tra cứu tồn kho linh kiện thay thế tại chỗ, gửi phiếu yêu cầu cấp phát vật tư cho Quản lý CSVC phê duyệt.'}
           </p>
         </div>
 
@@ -272,14 +281,16 @@ export const SparePartsPage = () => {
             </button>
           )}
 
-          <button
-            onClick={() => openRequest()}
-            className={canManageParts ? "laser-btn laser-btn-secondary" : "laser-btn laser-btn-primary"}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
-          >
-            <Icons.Plus size={16} />
-            <span>Yêu Cầu Cấp Cho Ca Sửa</span>
-          </button>
+          {isTechnician && (
+            <button
+              onClick={() => openRequest()}
+              className="laser-btn laser-btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
+            >
+              <Icons.Plus size={16} />
+              <span>Yêu Cầu Cấp Cho Ca Sửa</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -403,15 +414,17 @@ export const SparePartsPage = () => {
                       </td>
                       <td style={{ padding: '12px 18px', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
-                          <button
-                            onClick={() => openRequest(p)}
-                            className="laser-btn laser-btn-secondary"
-                            style={{ padding: '5px 10px', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                            title="Lập phiếu xin cấp linh kiện cho ca sửa"
-                          >
-                            <Icons.Plus size={13} />
-                            <span>Xin Cấp</span>
-                          </button>
+                          {isTechnician && (
+                            <button
+                              onClick={() => openRequest(p)}
+                              className="laser-btn laser-btn-secondary"
+                              style={{ padding: '5px 10px', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              title="Lập phiếu xin cấp linh kiện cho ca sửa"
+                            >
+                              <Icons.Plus size={13} />
+                              <span>Xin Cấp</span>
+                            </button>
+                          )}
                           {canManageParts && (
                             <>
                               <button
@@ -516,6 +529,7 @@ export const SparePartsPage = () => {
                                     await sparePartApi.approveRequest(r._id);
                                     toast.success('Đã phê duyệt xuất kho linh kiện!');
                                     fetchData();
+                                    window.dispatchEvent(new CustomEvent('ruo-chat-refresh'));
                                   } catch (err) {
                                     showError('Lỗi duyệt linh kiện: ' + err.message);
                                   }
@@ -532,6 +546,7 @@ export const SparePartsPage = () => {
                                     await sparePartApi.rejectRequest(r._id, 'Không đủ điều kiện cấp phát');
                                     toast.info('Đã từ chối yêu cầu cấp linh kiện.');
                                     fetchData();
+                                    window.dispatchEvent(new CustomEvent('ruo-chat-refresh'));
                                   } catch (err) {
                                     showError('Lỗi từ chối: ' + err.message);
                                   }

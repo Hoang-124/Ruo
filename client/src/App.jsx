@@ -44,6 +44,7 @@ const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage').then(m => (
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const UserProfileModal = lazy(() => import('./components/ui/UserProfileModal').then(m => ({ default: m.UserProfileModal })));
 const MandatoryPasswordChangeModal = lazy(() => import('./components/auth/MandatoryPasswordChangeModal').then(m => ({ default: m.MandatoryPasswordChangeModal })));
+const FloatingChatWidget = lazy(() => import('./components/chat/FloatingChatWidget').then(m => ({ default: m.FloatingChatWidget })));
 
 // Sleek native SVG loading spinner
 const LazyFallback = () => (
@@ -343,6 +344,11 @@ const MainAppContent = () => {
         {currentUser?.force_change_pw && (
           <MandatoryPasswordChangeModal />
         )}
+      </Suspense>
+
+      {/* Global AI Copilot & Operations Floating Chat Widget */}
+      <Suspense fallback={null}>
+        <FloatingChatWidget />
       </Suspense>
     </div>
   );

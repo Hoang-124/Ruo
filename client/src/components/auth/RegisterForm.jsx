@@ -485,9 +485,17 @@ export const RegisterForm = ({
                     : 'var(--status-repairing-color)'
               }}
             >
-              {regRole === 'lecturer'
-                ? '✓ Kích hoạt tự động'
-                : '⏳ Cần BGH (Admin) duyệt bổ nhiệm'}
+              {regRole === 'lecturer' ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Icons.Check size={11} color="currentColor" />
+                  <span>Kích hoạt tự động</span>
+                </span>
+              ) : (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Icons.Clock size={11} color="currentColor" />
+                  <span>Cần BGH (Admin) duyệt bổ nhiệm</span>
+                </span>
+              )}
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
@@ -661,7 +669,7 @@ export const RegisterForm = ({
                 gap: '3px'
               }}
             >
-              <span>{item.ok ? '✓' : '•'}</span>
+              {item.ok ? <Icons.Check size={10} color="var(--status-success-color)" /> : <span>•</span>}
               <span>{item.label}</span>
             </span>
           ))}

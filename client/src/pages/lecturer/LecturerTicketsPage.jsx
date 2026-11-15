@@ -4,6 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { isSameUser } from '../../config/navigation';
 import { repairApi } from '../../lib/api';
+import { TicketChatDrawer } from '../../components/chat/TicketChatDrawer';
 
 export const LecturerTicketsPage = ({ onNavigateTab }) => {
   const { toast } = useToast();
@@ -15,6 +16,7 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [chatTicket, setChatTicket] = useState(null);
 
   // Rating Modal / State
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -228,7 +230,16 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
                   {hasRating && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px', fontSize: '12.5px', color: '#F59E0B' }}>
                       <span>Đánh giá chất lượng:</span>
-                      <strong>{'★'.repeat(t.feedback_rating)}{'☆'.repeat(5 - t.feedback_rating)}</strong>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                        {Array.from({ length: 5 }).map((_, sIdx) => (
+                          <Icons.Star
+                            key={sIdx}
+                            size={14}
+                            fill={sIdx < t.feedback_rating ? '#F59E0B' : 'none'}
+                            color="#F59E0B"
+                          />
+                        ))}
+                      </span>
                       <span style={{ color: 'var(--ink-muted)' }}>({t.feedback_comment || 'Không có bình luận'})</span>
                     </div>
                   )}
@@ -243,13 +254,24 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
                     Xem Chi Tiết
                   </button>
 
+                  <button
+                    onClick={() => setChatTicket(t)}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '8px 14px', fontSize: '12.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    title="Nhắn tin trực tiếp với Kỹ thuật viên xử lý"
+                  >
+                    <Icons.MessageSquare size={14} />
+                    <span>Trao Đổi KTV</span>
+                  </button>
+
                   {isClosed && (
                     <button
                       onClick={() => openRating(t)}
                       className="laser-btn"
-                      style={{ padding: '8px 14px', fontSize: '12.5px', background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 'var(--radius-md)', fontWeight: 700 }}
+                      style={{ padding: '8px 14px', fontSize: '12.5px', background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 'var(--radius-md)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
-                      {hasRating ? 'Sửa Đánh Giá' : '★ Chấm Điểm Sao'}
+                      <Icons.Star size={13} fill="#F59E0B" color="#F59E0B" />
+                      <span>{hasRating ? 'Sửa Đánh Giá' : 'Chấm Điểm Sao'}</span>
                     </button>
                   )}
                 </div>
@@ -314,9 +336,10 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
                 <button
                   onClick={() => openRating(selectedTicket)}
                   className="laser-btn laser-btn-primary"
-                  style={{ width: '100%', padding: '10px', fontWeight: 700 }}
+                  style={{ width: '100%', padding: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                  ★ Đánh Giá Chất Lượng Sửa Chữa (1-5 Sao)
+                  <Icons.Star size={15} fill="#fff" color="#fff" />
+                  <span>Đánh Giá Chất Lượng Sửa Chữa (1-5 Sao)</span>
                 </button>
               )}
             </div>
@@ -343,16 +366,21 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
                 </div>
 
                 {/* 5-star interactive picker */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', fontSize: '36px', cursor: 'pointer', userSelect: 'none' }}>
-                  {[1, 2, 3, 4, 5].map(star => (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none' }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
                     <span
                       key={star}
                       onClick={() => setRatingVal(star)}
-                      style={{ color: star <= ratingVal ? '#F59E0B' : 'var(--hairline-medium)', transition: 'transform 0.1s' }}
-                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
-                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                      style={{ transition: 'transform 0.15s ease', display: 'inline-flex', padding: '4px' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.25)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                      title={`${star} sao`}
                     >
-                      ★
+                      <Icons.Star
+                        size={32}
+                        fill={star <= ratingVal ? '#F59E0B' : 'none'}
+                        color={star <= ratingVal ? '#F59E0B' : 'var(--hairline-medium)'}
+                      />
                     </span>
                   ))}
                 </div>
@@ -385,6 +413,13 @@ export const LecturerTicketsPage = ({ onNavigateTab }) => {
           </div>
         </div>
       )}
+      {/* Ticket Chat Drawer (Giảng viên ↔ Kỹ thuật viên) */}
+      <TicketChatDrawer
+        isOpen={Boolean(chatTicket)}
+        onClose={() => setChatTicket(null)}
+        ticket={chatTicket}
+        onTicketUpdated={fetchTickets}
+      />
     </div>
   );
 };

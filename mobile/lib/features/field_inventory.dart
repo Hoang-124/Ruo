@@ -25,19 +25,94 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
   List<Json> _items = [];
   final Set<String> _verifiedCodes = {};
 
-  final _roomsList = const [
+  static const _fallbackRooms = <(String, String)>[
     ('A1-101', 'Phòng học lý thuyết Tầng 1 (50 chỗ)'),
     ('A1-102', 'Phòng thực hành máy tính Tầng 1 (40 chỗ)'),
     ('A1-201', 'Giảng đường đa năng Tầng 2 (120 chỗ)'),
+    ('A1-202', 'Phòng học lý thuyết Tầng 2 (60 chỗ)'),
     ('A1-301', 'Phòng thí nghiệm IoT Tầng 3 (35 chỗ)'),
     ('A1-501', 'Phòng Hội thảo Quốc tế Tầng 5 (80 chỗ)'),
   ];
 
+  List<(String, String)> _roomsList = List<(String, String)>.of(_fallbackRooms);
+
+  List<(String, String)> _effectiveRoomsList() {
+    final map = <String, String>{};
+    for (final r in _roomsList) {
+      if (r.$1.trim().isNotEmpty) {
+        map[r.$1.trim()] = r.$2;
+      }
+    }
+    final sel = _selectedRoom.trim();
+    if (sel.isNotEmpty && !map.containsKey(sel)) {
+      map[sel] = 'Phòng học & Thực hành ($sel)';
+    }
+    return [for (final e in map.entries) (e.key, e.value)];
+  }
+
   @override
   void initState() {
     super.initState();
-    _selectedRoom = widget.initialRoomCode ?? 'A1-101';
+    _selectedRoom = (widget.initialRoomCode?.trim().isNotEmpty == true)
+        ? widget.initialRoomCode!.trim()
+        : 'A1-101';
+    _ensureSelectedRoomInList(_selectedRoom);
+    _loadRoomsDirectory();
     _loadRoomEquipment();
+  }
+
+  @override
+  void didUpdateWidget(covariant ClassroomAuditPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextCode = widget.initialRoomCode?.trim();
+    if (nextCode != null &&
+        nextCode.isNotEmpty &&
+        nextCode != _selectedRoom) {
+      _selectedRoom = nextCode;
+      _ensureSelectedRoomInList(_selectedRoom);
+      _loadRoomEquipment();
+    }
+  }
+
+  void _ensureSelectedRoomInList(String roomCode) {
+    final code = roomCode.trim();
+    if (code.isEmpty) return;
+    if (!_roomsList.any((r) => r.$1 == code)) {
+      _roomsList = [..._roomsList, (code, 'Phòng học & Thực hành ($code)')];
+    }
+  }
+
+  Future<void> _loadRoomsDirectory() async {
+    try {
+      final res = await widget.api.get('/facilities/rooms', {'limit': '200'});
+      final rawRooms = asList(
+        res['rooms'] ?? res['data']?['rooms'] ?? res['data'],
+      );
+      if (rawRooms.isEmpty) return;
+
+      final byCode = <String, String>{};
+      for (final room in rawRooms) {
+        final code = value(room['code'], fallback: '').trim();
+        if (code.isEmpty) continue;
+        final name = value(room['name'], fallback: 'Phòng $code').trim();
+        final cap = int.tryParse(value(room['capacity'], fallback: '0')) ?? 0;
+        final label = cap > 0 ? '$name ($cap chỗ)' : name;
+        byCode[code] = label;
+      }
+
+      if (byCode.isEmpty) return;
+      if (_selectedRoom.isNotEmpty && !byCode.containsKey(_selectedRoom)) {
+        byCode[_selectedRoom] = 'Phòng học & Thực hành ($_selectedRoom)';
+      }
+
+      final sortedCodes = byCode.keys.toList()..sort();
+      if (!mounted) return;
+      setState(() {
+        _roomsList = [for (final c in sortedCodes) (c, byCode[c]!)];
+      });
+    } catch (_) {
+      // Giữ danh sách phòng dự phòng nếu không tải được API.
+    }
   }
 
   Future<void> _loadRoomEquipment() async {
@@ -198,6 +273,7 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
     final scheme = Theme.of(context).colorScheme;
     final total = _items.length;
     final matched = _verifiedCodes.length;
+    final effectiveRooms = _effectiveRoomsList();
 
     return RefreshIndicator(
       onRefresh: _loadRoomEquipment,
@@ -224,7 +300,7 @@ class _ClassroomAuditPageState extends State<ClassroomAuditPage> {
                 isExpanded: true,
                 icon: const RuoVectorIcon(RuoIcon.chevronDown, size: 16),
                 items: [
-                  for (final r in _roomsList)
+                  for (final r in effectiveRooms)
                     DropdownMenuItem(
                       value: r.$1,
                       child: Text(

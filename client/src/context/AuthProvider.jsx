@@ -45,13 +45,35 @@ const freezeTransitionsTemporarily = () => {
   };
 };
 
+// Helper to persist user profile in localStorage for instant role hydration across F5 & tabs
+const getStoredUser = () => {
+  try {
+    const raw = localStorage.getItem('ruo_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const setStoredUser = (user) => {
+  if (!user) {
+    localStorage.removeItem('ruo_user');
+  } else {
+    try {
+      localStorage.setItem('ruo_user', JSON.stringify(user));
+    } catch {
+      // Ignore storage quota
+    }
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   // Authentication Token State
   const [token, setToken] = useState(() => getStoredToken());
   const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getStoredToken()));
 
-  // Live profile details from Backend
-  const [apiUser, setApiUser] = useState(null);
+  // Live profile details from Backend with instant fallback from localStorage to prevent role flicker
+  const [apiUser, setApiUser] = useState(() => getStoredUser());
 
   // Dark/Light Theme (Default: High-Contrast Academic Daylight 'light')
   const [theme, setTheme] = useState(() => {
@@ -70,13 +92,28 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const handleExpired = () => {
       setToken(null);
-
+      setStoredUser(null);
       setApiUser(null);
       setIsLoggedIn(false);
       setNotifications([]);
     };
     window.addEventListener('ruo:session-expired', handleExpired);
     return () => window.removeEventListener('ruo:session-expired', handleExpired);
+  }, []);
+
+  // Multi-tab storage sync: keeps token & role instantly aligned across all open tabs
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'ruo_token' || e.key === 'ruo_user') {
+        const storedToken = getStoredToken();
+        const storedUser = getStoredUser();
+        setToken(storedToken);
+        setIsLoggedIn(Boolean(storedToken));
+        setApiUser(storedUser);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Fetch real profile from backend when token exists
@@ -86,6 +123,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const data = await authApi.profile();
       if (data.success && data.user) {
+        setStoredUser(data.user);
         setApiUser(data.user);
         setIsLoggedIn(true);
         return data.user;
@@ -101,6 +139,7 @@ export const AuthProvider = ({ children }) => {
     let active = true;
     authApi.profile().then((data) => {
       if (active && getStoredToken() === token && data.success && data.user) {
+        setStoredUser(data.user);
         setApiUser(data.user);
         setIsLoggedIn(true);
       }
@@ -139,7 +178,7 @@ export const AuthProvider = ({ children }) => {
       const data = await authApi.login(identifier, password);
       if (data.success && data.token) {
         setToken(data.token);
-
+        setStoredUser(data.user);
         setApiUser(data.user);
         setIsLoggedIn(true);
         setStoredTokens(data.token, data.refreshToken);
@@ -173,7 +212,7 @@ export const AuthProvider = ({ children }) => {
       const data = await authApi.register(userData);
       if (data?.success && data?.token && data?.user?.status === 'active') {
         setToken(data.token);
-
+        setStoredUser(data.user);
         setApiUser(data.user);
         setIsLoggedIn(true);
         setStoredTokens(data.token, data.refreshToken);
@@ -194,7 +233,7 @@ export const AuthProvider = ({ children }) => {
       const data = await authApi.verifyRegisterOtp(email, otp);
       if (data.success && data.token) {
         setToken(data.token);
-
+        setStoredUser(data.user);
         setApiUser(data.user);
         setIsLoggedIn(true);
         setStoredTokens(data.token, data.refreshToken);
@@ -227,8 +266,8 @@ export const AuthProvider = ({ children }) => {
       console.warn('[AuthContext] Remote logout error:', err.message);
     } finally {
       clearStoredTokens();
+      setStoredUser(null);
       setToken(null);
-
       setApiUser(null);
       setIsLoggedIn(false);
       setNotifications([]);
@@ -243,7 +282,11 @@ export const AuthProvider = ({ children }) => {
         : { phone: dataOrPhone, avatar: maybeAvatar };
       const res = await authApi.updateProfile(payload);
       if (res.success && res.user) {
-        setApiUser(prev => ({ ...prev, ...res.user }));
+        setApiUser(prev => {
+          const updated = { ...prev, ...res.user };
+          setStoredUser(updated);
+          return updated;
+        });
       }
       return res;
     } catch (err) {

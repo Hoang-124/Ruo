@@ -261,7 +261,7 @@ export const LoginForm = ({
                       boxShadow: '0 2px 4px rgba(0,0,0,0.25)'
                     }}
                   >
-                    ✓
+                    <Icons.Check size={10} color="#ffffff" />
                   </span>
                 )}
                 <div

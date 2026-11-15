@@ -793,10 +793,14 @@ export const UserManagementPage = () => {
                         borderRadius: 'var(--radius-sm)',
                         fontSize: '11px',
                         fontWeight: 700,
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
                       }}
                     >
-                      ⚡ Tự Động Tạo Mật Khẩu
+                      <Icons.Zap size={12} color="currentColor" />
+                      <span>Tự Động Tạo Mật Khẩu</span>
                     </button>
                   </div>
                   <div style={{ position: 'relative' }}>

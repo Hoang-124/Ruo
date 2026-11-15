@@ -3,9 +3,10 @@ import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { isSameUser } from '../../config/navigation';
-import { repairApi } from '../../lib/api';
+import { repairApi, sparePartApi, chatApi } from '../../lib/api';
 import { RepairStepper } from '../../components/repairs/RepairStepper';
 import { DeadlineCountdown } from '../../components/repairs/DeadlineCountdown';
+import { TicketChatDrawer } from '../../components/chat/TicketChatDrawer';
 
 export const TechnicianTasksPage = () => {
   const { currentUser } = useAuth();
@@ -24,6 +25,16 @@ export const TechnicianTasksPage = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedTask, setSelectedTask] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [chatTicket, setChatTicket] = useState(null);
+
+  // States xin linh kiện trực tiếp cho Ticket
+  const [partModalTicket, setPartModalTicket] = useState(null);
+  const [availableParts, setAvailableParts] = useState([]);
+  const [loadingParts, setLoadingParts] = useState(false);
+  const [selectedPartId, setSelectedPartId] = useState('');
+  const [requestQty, setRequestQty] = useState(1);
+  const [requestReason, setRequestReason] = useState('');
+  const [submittingPartRequest, setSubmittingPartRequest] = useState(false);
 
   const openTaskHistory = async (task) => {
     setSelectedTask(task);
@@ -37,6 +48,69 @@ export const TechnicianTasksPage = () => {
       // Keep summary fallback if detail fetch fails
     } finally {
       setLoadingDetail(false);
+    }
+  };
+
+  const openSparePartModal = async (task) => {
+    setPartModalTicket(task);
+    setRequestQty(1);
+    setRequestReason(`Thay linh kiện hỏng cho ${task.equipment_id?.name || 'thiết bị'} tại ${task.room_id?.code || 'phòng học'}`);
+    setLoadingParts(true);
+    try {
+      const res = await sparePartApi.list();
+      const list = res?.parts || res?.data || [];
+      setAvailableParts(list);
+      if (list.length > 0) {
+        setSelectedPartId(list[0]._id);
+      }
+    } catch (err) {
+      toast.error('Lỗi nạp danh mục linh kiện kho: ' + err.message);
+    } finally {
+      setLoadingParts(false);
+    }
+  };
+
+  const handleSubmitPartRequest = async (e) => {
+    e.preventDefault();
+    if (!partModalTicket || !selectedPartId) return;
+
+    const chosenPart = availableParts.find((p) => p._id === selectedPartId);
+    setSubmittingPartRequest(true);
+    try {
+      // 1. Tạo bản ghi PartsRequest gắn với mã phiếu
+      await sparePartApi.createRequest({
+        repair_id: partModalTicket._id,
+        items: [{
+          part_id: selectedPartId,
+          qty: Number(requestQty) || 1
+        }]
+      });
+
+      // 2. Phát sinh Action Card trên Kênh Tác Nghiệp Kỹ Thuật & Kho KHO-01
+      await chatApi.sendOperationsMessage({
+        message_type: 'action_card',
+        content: `Yêu cầu xuất linh kiện cho phiếu ${partModalTicket.ticket_code} (${partModalTicket.equipment_id?.name || 'TB'})`,
+        action_data: {
+          part_id: selectedPartId,
+          quantity: Number(requestQty) || 1,
+          repair_id: partModalTicket._id,
+          reason: requestReason || `Thay thế linh kiện cho ${partModalTicket.equipment_id?.name || 'thiết bị'}`
+        }
+      }).catch(() => null);
+
+      // 3. Gửi thông báo hệ thống vào Khung Chat của phiếu
+      await chatApi.sendTicketMessage(partModalTicket._id, {
+        content: `Kỹ thuật viên ${currentUser?.name || 'KTV'} đã gửi yêu cầu xuất kho linh kiện [${chosenPart?.name || 'Linh kiện'}] (${requestQty} Cái). Đang chờ Quản lý CSVC duyệt xuất kho.`,
+        message_type: 'system_event'
+      }).catch(() => null);
+
+      toast.success(`Đã gửi yêu cầu cấp linh kiện [${chosenPart?.name || ''}] cho phiếu ${partModalTicket.ticket_code}!`);
+      setPartModalTicket(null);
+      await fetchTasks();
+    } catch (err) {
+      toast.error('Lỗi khi gửi yêu cầu linh kiện: ' + err.message);
+    } finally {
+      setSubmittingPartRequest(false);
     }
   };
 
@@ -163,6 +237,11 @@ export const TechnicianTasksPage = () => {
     // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
     // eslint-disable-next-line react/set-state-in-effect
     fetchTasks();
+    const handlePartsRefresh = () => {
+      fetchTasks();
+    };
+    window.addEventListener('ruo-parts-refresh', handlePartsRefresh);
+    return () => window.removeEventListener('ruo-parts-refresh', handlePartsRefresh);
   }, [fetchTasks]);
 
   const handleAcceptTask = async (task) => {
@@ -321,14 +400,41 @@ export const TechnicianTasksPage = () => {
           </p>
         </div>
 
-        <button
-          onClick={fetchTasks}
-          className="laser-btn laser-btn-secondary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
-        >
-          <Icons.RefreshCw size={16} />
-          <span>Làm Mới</span>
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('open-ruo-chat', { detail: { tab: 'operations' } }));
+            }}
+            className="laser-btn"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 16px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '13px',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #f97316, #c2410c)',
+              color: '#ffffff',
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(234,88,12,0.25)',
+              cursor: 'pointer'
+            }}
+            title="Mở Kênh 2: Chat Tác Nghiệp Kỹ Thuật Viên & Quản Lý Kho"
+          >
+            <Icons.Package size={16} />
+            <span>Chat Tác Nghiệp & Kho (Kênh 2)</span>
+          </button>
+
+          <button
+            onClick={fetchTasks}
+            className="laser-btn laser-btn-secondary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
+          >
+            <Icons.RefreshCw size={16} />
+            <span>Làm Mới</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Stats */}
@@ -355,7 +461,10 @@ export const TechnicianTasksPage = () => {
             cursor: 'pointer'
           }}
         >
-          <div style={{ fontSize: '12px', color: '#EF4444', fontWeight: 700 }}>🚨 Quá hạn SLA (Khẩn)</div>
+          <div style={{ fontSize: '12px', color: '#EF4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <Icons.AlertCircle size={14} color="#EF4444" />
+            <span>Quá hạn SLA (Khẩn)</span>
+          </div>
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#EF4444', marginTop: '4px' }}>{countOverdue}</div>
         </div>
         <div style={{ background: 'var(--surface-card)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
@@ -370,7 +479,7 @@ export const TechnicianTasksPage = () => {
           { key: 'ALL', label: `Tất Cả (${tasks.length})` },
           { key: 'TODO', label: `Cần Tiếp Nhận (${countTodo})` },
           { key: 'DOING', label: `Đang Làm (${countDoing})` },
-          { key: 'OVERDUE', label: `🚨 Quá Hạn SLA (${countOverdue})` },
+          { key: 'OVERDUE', label: `Quá Hạn SLA (${countOverdue})` },
           { key: 'DONE', label: `Đã Xong (${countDone})` }
         ].map(tab => (
           <button
@@ -465,6 +574,47 @@ export const TechnicianTasksPage = () => {
                     <div style={{ color: 'var(--ink-pure)' }}>{t.incident_description}</div>
                   </div>
 
+                  {/* Dải trạng thái yêu cầu linh kiện gắn chặt với Ticket này */}
+                  {t.parts_requests && t.parts_requests.length > 0 && (
+                    <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {t.parts_requests.map((pr, idx) => {
+                        const isPending = pr.status === 'pending';
+                        const isApproved = pr.status === 'approved';
+                        const itemsText = pr.items?.map((i) => `${i.qty}x ${i.part_id?.name || i.part_name || 'Linh kiện'}`).join(', ');
+
+                        return (
+                          <div
+                            key={pr._id || idx}
+                            style={{
+                              padding: '8px 12px',
+                              borderRadius: 'var(--radius-md)',
+                              fontSize: '12px',
+                              background: isApproved ? 'rgba(22,163,74,0.08)' : isPending ? 'rgba(234,88,12,0.08)' : 'rgba(239,68,68,0.08)',
+                              border: isApproved ? '1px solid rgba(22,163,74,0.3)' : isPending ? '1px solid rgba(234,88,12,0.3)' : '1px solid rgba(239,68,68,0.3)',
+                              color: isApproved ? '#15803d' : isPending ? '#ea580c' : '#dc2626',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '8px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Icons.Package size={14} color="currentColor" />
+                              <span>
+                                <strong>Linh kiện: {itemsText}</strong> — {isApproved ? `Đã Duyệt Xuất Kho (${pr.approved_by?.full_name || 'Quản lý'})` : isPending ? 'Đang chờ Quản lý duyệt xuất kho' : 'Bị từ chối xuất kho'}
+                              </span>
+                            </div>
+                            {isApproved && (
+                              <span style={{ fontSize: '11px', fontWeight: 700, background: '#16a34a', color: '#fff', padding: '2px 7px', borderRadius: '4px' }}>
+                                Nhận đồ tại KHO-01
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {t.replacement_equipment_id && (
                     <div style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', padding: '8px 12px', borderRadius: 'var(--radius-md)', fontSize: '12px', color: 'var(--laser-cyan)' }}>
                       Được cấp thiết bị thay thế từ kho: <strong>{t.replacement_equipment_id?.code} ({t.replacement_equipment_id?.name})</strong>
@@ -487,6 +637,29 @@ export const TechnicianTasksPage = () => {
                   {isInProgress && (
                     <>
                       <button
+                        onClick={() => openSparePartModal(t)}
+                        className="laser-btn"
+                        style={{
+                          padding: '8px 14px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          background: 'linear-gradient(135deg, #f97316, #c2410c)',
+                          color: '#ffffff',
+                          border: 'none',
+                          boxShadow: '0 2px 6px rgba(234,88,12,0.25)',
+                          cursor: 'pointer'
+                        }}
+                        title="Gửi yêu cầu xuất kho linh kiện thay thế cho phiếu này"
+                      >
+                        <Icons.Package size={15} />
+                        <span>Xin Linh Kiện Kho</span>
+                      </button>
+
+                      <button
                         onClick={() => openLogModal(t)}
                         className="laser-btn laser-btn-secondary"
                         style={{ padding: '8px 14px', fontSize: '12.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
@@ -505,6 +678,16 @@ export const TechnicianTasksPage = () => {
                       </button>
                     </>
                   )}
+
+                  <button
+                    onClick={() => setChatTicket(t)}
+                    className="laser-btn laser-btn-secondary"
+                    style={{ padding: '7px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                    title="Mở kênh trao đổi trực tiếp của phiếu này (Giảng viên, KTV & Quản lý)"
+                  >
+                    <Icons.MessageSquare size={14} />
+                    <span>Trao Đổi Phiếu</span>
+                  </button>
 
                   <button
                     onClick={() => openTaskHistory(t)}
@@ -575,8 +758,9 @@ export const TechnicianTasksPage = () => {
                         )}
                       </div>
                       {cp.disposal_advisory?.should_consider_disposal && (
-                        <div style={{ background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger-border)', color: 'var(--status-danger-color)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700 }}>
-                          ⚠ {cp.disposal_advisory.recommendation}
+                        <div style={{ background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger-border)', color: 'var(--status-danger-color)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Icons.AlertTriangle size={14} color="currentColor" />
+                          <span>{cp.disposal_advisory.recommendation}</span>
                         </div>
                       )}
                       {hist?.chronic_pattern?.advisory && (
@@ -856,6 +1040,123 @@ export const TechnicianTasksPage = () => {
           </div>
         </div>
       )}
+      {/* Modal Yêu Cầu Linh Kiện Kho Gắn Liền Với Ticket */}
+      {partModalTicket && (
+        <div className="ruo-drawer-backdrop" onClick={() => setPartModalTicket(null)} style={{ zIndex: 1250 }}>
+          <div
+            className="ruo-drawer-panel"
+            style={{ width: '480px', maxWidth: '95vw', padding: '24px', borderRadius: '16px', background: 'var(--surface-primary)', boxShadow: '0 16px 40px rgba(0,0,0,0.25)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: 'rgba(234,88,12,0.1)', color: '#ea580c' }}>
+                    YÊU CẦU XUẤT KHO VẬT TƯ
+                  </span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '12.5px', color: 'var(--blueprint-500)' }}>
+                    {partModalTicket.ticket_code}
+                  </span>
+                </div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--ink-pure)' }}>
+                  Xin Linh Kiện Sửa Thiết Bị
+                </h3>
+              </div>
+              <button onClick={() => setPartModalTicket(null)} className="ruo-btn ruo-btn-ghost ruo-btn-sm" style={{ padding: '4px' }}>
+                <Icons.X size={16} />
+              </button>
+            </div>
+
+            {/* Thông tin ngữ cảnh phiếu */}
+            <div style={{ background: 'var(--bg-app)', padding: '12px 14px', borderRadius: '8px', fontSize: '12.5px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '4px', border: '1px solid var(--border-subtle)' }}>
+              <div><strong>Thiết bị:</strong> {partModalTicket.equipment_id?.name} ({partModalTicket.equipment_id?.code})</div>
+              <div><strong>Vị trí:</strong> {partModalTicket.room_id?.code || 'Phòng học'} • <strong>Người báo:</strong> {partModalTicket.reported_by?.full_name}</div>
+              <div style={{ color: 'var(--ink-muted)' }}><strong>Hiện tượng:</strong> {partModalTicket.incident_description}</div>
+            </div>
+
+            <form onSubmit={handleSubmitPartRequest} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px', color: 'var(--ink-secondary)' }}>
+                  Chọn Linh Kiện Cần Xuất Từ Kho KHO-01: *
+                </label>
+                {loadingParts ? (
+                  <div style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--ink-muted)', background: 'var(--bg-app)', borderRadius: '6px' }}>
+                    ⏳ Đang nạp danh mục linh kiện kho...
+                  </div>
+                ) : (
+                  <select
+                    value={selectedPartId}
+                    onChange={(e) => setSelectedPartId(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border-default)', background: 'var(--surface-primary)', color: 'var(--ink-pure)', fontSize: '13px' }}
+                  >
+                    {availableParts.length === 0 ? (
+                      <option value="">-- Không có linh kiện nào trong kho --</option>
+                    ) : (
+                      availableParts.map((p) => (
+                        <option key={p._id} value={p._id}>
+                          [{p.code}] {p.name} (Tồn kho: {p.stock} {p.unit || 'Cái'})
+                        </option>
+                      ))
+                    )}
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px', color: 'var(--ink-secondary)' }}>
+                  Số Lượng Cần Xuất: *
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={requestQty}
+                  onChange={(e) => setRequestQty(Math.max(1, parseInt(e.target.value) || 1))}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border-default)', background: 'var(--surface-primary)', color: 'var(--ink-pure)', fontSize: '13px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px', color: 'var(--ink-secondary)' }}>
+                  Lý Do Cần Thay Thế / Ghi Chú Kỹ Thuật:
+                </label>
+                <input
+                  type="text"
+                  placeholder="VD: Cháy tụ motor / hỏng remote cần thay thế"
+                  value={requestReason}
+                  onChange={(e) => setRequestReason(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border-default)', background: 'var(--surface-primary)', color: 'var(--ink-pure)', fontSize: '13px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setPartModalTicket(null)}
+                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border-default)', background: 'transparent', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingPartRequest || loadingParts || !selectedPartId}
+                  className="laser-btn laser-btn-primary"
+                  style={{ flex: 1.5, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  {submittingPartRequest ? 'Đang Gửi...' : 'Gửi Tới Quản Lý CSVC'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Chat Drawer (Giảng viên ↔ Kỹ thuật viên) */}
+      <TicketChatDrawer
+        isOpen={Boolean(chatTicket)}
+        onClose={() => setChatTicket(null)}
+        ticket={chatTicket}
+        onTicketUpdated={fetchTasks}
+      />
     </div>
   );
 };

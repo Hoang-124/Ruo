@@ -47,6 +47,22 @@ export const getRepairs = async (req, res) => {
       .populate('destination_room_id', 'code name building floor')
       .sort({ created_at: -1 });
 
+    const repairIds = repairs.map(r => r._id);
+    const partsRequests = await PartsRequest.find({ repair_id: { $in: repairIds } })
+      .populate('items.part_id', 'code name unit price stock')
+      .populate('approved_by', 'full_name code')
+      .populate('requested_by', 'full_name code')
+      .sort({ created_at: -1 });
+
+    const partsMap = {};
+    for (const pr of partsRequests) {
+      const rid = pr.repair_id ? pr.repair_id.toString() : '';
+      if (rid) {
+        if (!partsMap[rid]) partsMap[rid] = [];
+        partsMap[rid].push(pr);
+      }
+    }
+
     const enriched = repairs.map(rep => {
       const repObj = rep.toObject();
       if (rep.deadline && rep.status !== REPAIR_STATUSES.CLOSED && rep.status !== REPAIR_STATUSES.RESOLVED) {
@@ -54,6 +70,7 @@ export const getRepairs = async (req, res) => {
         repObj.deadline_status = sla.state;
         repObj.remaining_minutes = sla.remainingMinutes;
       }
+      repObj.parts_requests = partsMap[rep._id.toString()] || [];
       return repObj;
     });
 

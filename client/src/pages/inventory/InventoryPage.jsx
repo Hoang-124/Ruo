@@ -928,8 +928,9 @@ export const InventoryPage = () => {
                   </table>
                 )
               ) : unscannedEquipments.length === 0 ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--status-success-color)', fontSize: '13.5px', fontWeight: 800 }}>
-                  ✔ Toàn bộ thiết bị trên sổ sách trong phạm vi kiểm kê đã được quét đối soát đầy đủ!
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--status-success-color)', fontSize: '13.5px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Icons.CheckCircle size={18} color="var(--status-success-color)" />
+                  <span>Toàn bộ thiết bị trên sổ sách trong phạm vi kiểm kê đã được quét đối soát đầy đủ!</span>
                 </div>
               ) : (
                 <table className="ruo-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
@@ -961,25 +962,28 @@ export const InventoryPage = () => {
                                 type="button"
                                 disabled={scanning}
                                 onClick={() => handleQuickScanFromChecklist(eq, 'auto')}
-                                style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--status-success-bg)', border: '1.5px solid var(--status-success-border)', color: 'var(--status-success-color)', fontWeight: 800, fontSize: '11.5px', cursor: 'pointer' }}
+                                style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--status-success-bg)', border: '1.5px solid var(--status-success-border)', color: 'var(--status-success-color)', fontWeight: 800, fontSize: '11.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                               >
-                                ✔ Quét Khớp
+                                <Icons.Check size={13} color="currentColor" />
+                                <span>Quét Khớp</span>
                               </button>
                               <button
                                 type="button"
                                 disabled={scanning}
                                 onClick={() => handleQuickScanFromChecklist(eq, 'damaged')}
-                                style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--status-danger-bg)', border: '1.5px solid var(--status-danger-border)', color: 'var(--status-danger-color)', fontWeight: 800, fontSize: '11.5px', cursor: 'pointer' }}
+                                style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--status-danger-bg)', border: '1.5px solid var(--status-danger-border)', color: 'var(--status-danger-color)', fontWeight: 800, fontSize: '11.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                               >
-                                ⚠ Báo Hỏng
+                                <Icons.AlertTriangle size={13} color="currentColor" />
+                                <span>Báo Hỏng</span>
                               </button>
                               <button
                                 type="button"
                                 disabled={scanning}
                                 onClick={() => handleQuickScanFromChecklist(eq, 'missing')}
-                                style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--status-purple-bg)', border: '1.5px solid var(--status-purple-border)', color: 'var(--status-purple-color)', fontWeight: 800, fontSize: '11.5px', cursor: 'pointer' }}
+                                style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--status-purple-bg)', border: '1.5px solid var(--status-purple-border)', color: 'var(--status-purple-color)', fontWeight: 800, fontSize: '11.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                               >
-                                ✖ Báo Thiếu
+                                <Icons.X size={13} color="currentColor" />
+                                <span>Báo Thiếu</span>
                               </button>
                             </div>
                           )}

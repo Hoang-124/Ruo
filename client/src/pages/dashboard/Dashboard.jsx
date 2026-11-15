@@ -984,8 +984,9 @@ export const Dashboard = ({ onNavigateTab, onSelectEquipmentForReport }) => {
                     <span>Thời gian trực:</span>
                     <span>06:45 - 21:15 (Tất cả ca giảng dạy)</span>
                   </div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '4px', borderTop: '1px solid var(--border-subtle)', paddingTop: '6px' }}>
-                    ⚡ <strong>Cam kết SLA:</strong> Kỹ thuật viên có mặt xử lý máy chiếu / âm thanh phòng học trong vòng <strong>15 phút</strong>.
+                  <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '4px', borderTop: '1px solid var(--border-subtle)', paddingTop: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Icons.Zap size={13} color="#ea580c" />
+                    <span><strong>Cam kết SLA:</strong> Kỹ thuật viên có mặt xử lý máy chiếu / âm thanh phòng học trong vòng <strong>15 phút</strong>.</span>
                   </div>
                 </div>
               </div>

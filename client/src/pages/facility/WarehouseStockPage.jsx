@@ -119,7 +119,7 @@ export const WarehouseStockPage = () => {
   const concurrentClusters = (aiOptimization?.concurrent_failure_alerts || []).filter((c) => c.level !== 'green');
 
   const tabs = [
-    { key: 'ai_schedule', label: `✨ AI Lịch Trình Kho & Cảnh Báo Hư Hỏng (${aiCounts.red_count} Đỏ / ${aiCounts.yellow_count} Vàng)` },
+    { key: 'ai_schedule', label: `Lịch Trình Kho & Cảnh Báo Hư Hỏng (AI) (${aiCounts.red_count} Đỏ / ${aiCounts.yellow_count} Vàng)` },
     { key: 'warehouse', label: `Thiết Bị Lưu Kho KHO-01 (${warehouseEquipments.length})` },
     { key: 'shortages', label: `Phòng Thiếu Hụt Định Mức (${shortages.length})` },
     { key: 'parts', label: `Linh Kiện & Cập Nhật Tồn Kho (${spareParts.length})` }
@@ -142,14 +142,41 @@ export const WarehouseStockPage = () => {
           </p>
         </div>
 
-        <button
-          onClick={fetchData}
-          className="laser-btn laser-btn-secondary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
-        >
-          <Icons.RefreshCw size={16} />
-          <span>Phân Tích Lại AI</span>
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('open-ruo-chat', { detail: { tab: 'operations' } }));
+            }}
+            className="laser-btn"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 16px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '13px',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #f97316, #c2410c)',
+              color: '#ffffff',
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(234,88,12,0.25)',
+              cursor: 'pointer'
+            }}
+            title="Mở Kênh 2: Kênh Chat Điều Phối Kỹ Thuật Viên & Kho"
+          >
+            <Icons.Package size={16} />
+            <span>Kênh Chat Điều Phối Kho (Kênh 2)</span>
+          </button>
+
+          <button
+            onClick={fetchData}
+            className="laser-btn laser-btn-secondary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
+          >
+            <Icons.RefreshCw size={16} />
+            <span>Phân Tích Lại AI</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}

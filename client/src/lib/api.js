@@ -35,6 +35,7 @@ export const clearStoredTokens = () => {
   localStorage.removeItem('ruo_token');
   localStorage.removeItem('ruo_refresh_token');
   localStorage.removeItem('ruo_role');
+  localStorage.removeItem('ruo_user');
   localStorage.removeItem('ruo_is_logged_in');
   window.dispatchEvent(new CustomEvent('ruo:session-expired'));
 };
@@ -384,6 +385,17 @@ export const adminConfigApi = {
   resetTemplate: (key) => api.post('/admin/config/templates/reset', { key }),
   resetAllTemplates: () => api.post('/admin/config/templates/reset', {}),
   verifyChain: () => api.get('/audit/verify-chain')
+};
+
+export const chatApi = {
+  getTicketMessages: (repairId) => api.get(`/chat/ticket/${repairId}`),
+  sendTicketMessage: (repairId, payload) => api.post(`/chat/ticket/${repairId}`, payload),
+  getOperationsMessages: () => api.get('/chat/operations'),
+  sendOperationsMessage: (payload) => api.post('/chat/operations', payload),
+  decideActionCard: (messageId, payload) => api.put(`/chat/action-card/${messageId}/decide`, payload),
+  getAiMessages: () => api.get('/chat/ai'),
+  sendAiMessage: (payload) => api.post('/chat/ai', payload),
+  getUnreadSummary: () => api.get('/chat/unread-summary')
 };
 
 // Backward compatibility alias for transferApi

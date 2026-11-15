@@ -26,6 +26,7 @@ import reportRoutes from './routes/reportRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import masterDataRoutes from './routes/masterDataRoutes.js';
 import adminMasterDataRoutes from './routes/adminMasterDataRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 
 dotenv.config();
 
@@ -91,6 +92,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/master', masterDataRoutes);
 app.use('/api/master-data', masterDataRoutes);
+app.use('/api/chat', chatRoutes);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

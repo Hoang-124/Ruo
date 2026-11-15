@@ -830,8 +830,9 @@ export const UserProfileModal = ({ isOpen, onClose }) => {
                   <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>Mật khẩu mới *</span>
                     {oldPassword && newPassword && oldPassword === newPassword && (
-                      <span style={{ fontSize: '10.5px', color: '#EF4444', fontWeight: 600 }}>
-                        ⚠️ Trùng MK cũ
+                      <span style={{ fontSize: '10.5px', color: '#EF4444', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <SvgIcons.AlertTriangle size={12} color="#EF4444" />
+                        <span>Trùng MK cũ</span>
                       </span>
                     )}
                   </label>

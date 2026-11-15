@@ -4,6 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import { repairApi, authApi, equipmentApi, masterDataApi } from '../../lib/api';
 import { RepairStepper } from '../../components/repairs/RepairStepper';
 import { DeadlineCountdown } from '../../components/repairs/DeadlineCountdown';
+import { TicketChatDrawer } from '../../components/chat/TicketChatDrawer';
 
 const toLocalDateTime = (value) => {
   if (!value) return '';
@@ -28,6 +29,7 @@ export const TicketKanbanPage = () => {
   const [checkingBreaches, setCheckingBreaches] = useState(false);
   const [technicians, setTechnicians] = useState([]);
   const [spareEquipments, setSpareEquipments] = useState([]);
+  const [chatTicket, setChatTicket] = useState(null);
   const [rooms, setRooms] = useState([]);
 
   // Active drawer & modals
@@ -348,7 +350,8 @@ export const TicketKanbanPage = () => {
           }}
         >
           <div style={{ fontSize: '12px', color: '#EF4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>🚨 Đang Quá Hạn SLA</span>
+            <Icons.AlertCircle size={14} color="#EF4444" />
+            <span>Đang Quá Hạn SLA</span>
             {filterMode === 'OVERDUE' && <span style={{ fontSize: '10px', background: '#EF4444', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>ĐANG LỌC</span>}
           </div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: '#EF4444', marginTop: '4px' }}>
@@ -371,7 +374,8 @@ export const TicketKanbanPage = () => {
           }}
         >
           <div style={{ fontSize: '12px', color: '#F59E0B', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>⚠️ Sắp Hết Hạn (≤ 2h)</span>
+            <Icons.Clock size={14} color="#F59E0B" />
+            <span>Sắp Hết Hạn (≤ 2h)</span>
             {filterMode === 'AT_RISK' && <span style={{ fontSize: '10px', background: '#F59E0B', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>ĐANG LỌC</span>}
           </div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: '#F59E0B', marginTop: '4px' }}>
@@ -615,8 +619,9 @@ export const TicketKanbanPage = () => {
                         )}
                       </div>
                       {cp.disposal_advisory?.should_consider_disposal && (
-                        <div style={{ background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger-border)', color: 'var(--status-danger-color)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700 }}>
-                          ⚠ {cp.disposal_advisory.recommendation}
+                        <div style={{ background: 'var(--status-danger-bg)', border: '1px solid var(--status-danger-border)', color: 'var(--status-danger-color)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Icons.AlertTriangle size={14} color="currentColor" />
+                          <span>{cp.disposal_advisory.recommendation}</span>
                         </div>
                       )}
                       {hist?.chronic_pattern?.advisory && (
@@ -671,7 +676,20 @@ export const TicketKanbanPage = () => {
 
               {selectedTicket.feedback_rating && (
                 <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
-                  <div>Đánh giá của Giảng viên: <strong style={{ color: '#F59E0B' }}>{'★'.repeat(selectedTicket.feedback_rating)} ({selectedTicket.feedback_rating}/5 sao)</strong></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>Đánh giá của Giảng viên:</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', color: '#F59E0B' }}>
+                      {Array.from({ length: 5 }).map((_, sIdx) => (
+                        <Icons.Star
+                          key={sIdx}
+                          size={13}
+                          fill={sIdx < selectedTicket.feedback_rating ? '#F59E0B' : 'none'}
+                          color="#F59E0B"
+                        />
+                      ))}
+                    </span>
+                    <strong style={{ color: '#F59E0B' }}>({selectedTicket.feedback_rating}/5 sao)</strong>
+                  </div>
                   {selectedTicket.feedback_comment && <div style={{ marginTop: '2px', color: 'var(--ink-secondary)' }}>"{selectedTicket.feedback_comment}"</div>}
                 </div>
               )}
@@ -680,6 +698,15 @@ export const TicketKanbanPage = () => {
             <div className="ruo-drawer-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
               <button onClick={() => setSelectedTicket(null)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>
                 Đóng Cửa Sổ
+              </button>
+              <button
+                onClick={() => setChatTicket(selectedTicket)}
+                className="laser-btn laser-btn-secondary"
+                style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Mở kênh chat trao đổi của phiếu sửa chữa"
+              >
+                <Icons.MessageSquare size={15} />
+                <span>Mở Khung Chat Phiếu</span>
               </button>
               {selectedTicket.status === 'reported' && (
                 <button onClick={() => openAssign(selectedTicket)} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
@@ -911,6 +938,13 @@ export const TicketKanbanPage = () => {
           </div>
         </div>
       )}
+      {/* Ticket Chat Drawer */}
+      <TicketChatDrawer
+        isOpen={Boolean(chatTicket)}
+        onClose={() => setChatTicket(null)}
+        ticket={chatTicket}
+        onTicketUpdated={fetchData}
+      />
     </div>
   );
 };

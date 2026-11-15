@@ -267,8 +267,9 @@ const RoomDetailContent = ({ roomCode, onClose, onEdit, onTransferEquipment }) =
                                 <td style={td}>{record.equipment_id?.code || '—'}<div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>{record.equipment_id?.name}</div></td>
                                 <td style={{ ...td, minWidth: 220 }}>
                                   {(record.checklist_results || []).map((item) => (
-                                    <div key={item.item} style={{ color: item.passed ? '#2FB37A' : '#E5484D', marginBottom: 3 }}>
-                                      {item.passed ? '✓' : '✕'} {item.item}{item.notes ? ` — ${item.notes}` : ''}
+                                    <div key={item.item} style={{ color: item.passed ? '#2FB37A' : '#E5484D', marginBottom: 3, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      {item.passed ? <Icons.Check size={12} color="#2FB37A" /> : <Icons.X size={12} color="#E5484D" />}
+                                      <span>{item.item}{item.notes ? ` — ${item.notes}` : ''}</span>
                                     </div>
                                   ))}
                                   {record.notes && <div style={{ color: 'var(--ink-muted)', marginTop: 5 }}>{record.notes}</div>}

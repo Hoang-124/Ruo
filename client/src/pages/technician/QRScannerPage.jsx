@@ -357,8 +357,9 @@ export const QRScannerPage = ({ onNavigateTab }) => {
                   Mã TS: <strong style={{ color: 'var(--ink-pure)' }}>{equipment.code}</strong> • Hãng: <strong style={{ color: 'var(--ink-pure)' }}>{equipment.brand || 'N/A'}</strong> • Model: <strong style={{ color: 'var(--ink-pure)' }}>{equipment.model || 'N/A'}</strong> • Serial: <strong style={{ color: 'var(--ink-pure)' }}>{equipment.serial_number || 'N/A'}</strong>
                 </div>
                 {lookupMs !== null && (
-                  <div style={{ fontSize: '11.5px', color: 'var(--status-success-color)', fontWeight: 800, marginTop: '4px' }}>
-                    ⚡ Tốc độ phản hồi Sub-second Lookup: {lookupMs} ms (&lt; 1000ms)
+                  <div style={{ fontSize: '11.5px', color: 'var(--status-success-color)', fontWeight: 800, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Icons.Zap size={12} color="currentColor" />
+                    <span>Tốc độ phản hồi Sub-second Lookup: {lookupMs} ms (&lt; 1000ms)</span>
                   </div>
                 )}
               </div>

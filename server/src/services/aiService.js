@@ -17,7 +17,7 @@ import {
   learnFromSystemHistory
 } from './ai/localClassifier.js';
 
-const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview';
 const GEMINI_TIMEOUT_MS = 8000;
 
 const SENSITIVE_AUDIT_ACTIONS = new Set([

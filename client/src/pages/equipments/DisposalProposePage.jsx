@@ -327,7 +327,7 @@ export const DisposalProposePage = () => {
                 <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Thu Hồi Dự Kiến</th>
                 <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Trạng Thái RACI</th>
                 <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>Ngày Đề Xuất</th>
-                <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>{isTechnician ? 'Tiếp Nhận' : 'Thao Tác CSVC'}</th>
+                <th style={{ padding: '12px 18px', color: 'var(--ink-pure)', fontWeight: 700 }}>{isTechnician ? 'Tiếp Nhận' : 'Thẩm Định CSVC (Bước 1)'}</th>
               </tr>
             </thead>
             <tbody>
@@ -392,9 +392,10 @@ export const DisposalProposePage = () => {
                             disabled={submitting}
                             onClick={() => handleHcApprove(p)}
                             className="laser-btn laser-btn-primary"
-                            style={{ padding: '5px 10px', fontSize: '11.5px', fontWeight: 700 }}
+                            style={{ padding: '5px 12px', fontSize: '11.5px', fontWeight: 700 }}
+                            title="Xác nhận thẩm định hồ sơ kỹ thuật và chuyển lên Ban Giám Hiệu phê duyệt"
                           >
-                            Duyệt CSVC
+                            Ký Thẩm Định & Trình BGH
                           </button>
                           <button
                             type="button"

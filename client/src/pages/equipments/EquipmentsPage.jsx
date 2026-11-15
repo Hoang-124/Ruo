@@ -1128,8 +1128,8 @@ export const EquipmentsPage = () => {
           }}
           title={`Hết hạn vào ${expiryDate.toLocaleDateString('vi-VN')} (${daysRemaining} ngày còn lại)`}
         >
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#d97706' }} />
-          ⚠️ Sắp hết ({daysRemaining} ngày)
+          <Icons.AlertTriangle size={12} color="#d97706" />
+          <span>Sắp hết ({daysRemaining} ngày)</span>
         </span>
       );
     } else {
@@ -2555,7 +2555,7 @@ export const EquipmentsPage = () => {
                         MÃ QR CHUẨN HÓA (2D MATRIX)
                       </span>
                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        {formData.code ? '✓ Mã hợp lệ' : 'Chờ nhập mã tài sản'}
+                        {formData.code ? 'Mã hợp lệ' : 'Chờ nhập mã tài sản'}
                       </span>
                     </div>
                     <div style={{
@@ -2664,8 +2664,9 @@ export const EquipmentsPage = () => {
                         </svg>
                         <div>
                           <span><strong>{selectedCreateRoom.code}</strong> (Tầng {selectedCreateRoom.floor}) • Sức chứa: {selectedCreateRoom.capacity || 50} chỗ</span>
-                          <span style={{ display: 'block', color: 'var(--laser-cyan)', fontSize: '10px' }}>
-                            ⚡ Tự động ghi biên bản bàn giao ban đầu (INITIAL_ALLOCATION)
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--laser-cyan)', fontSize: '10px' }}>
+                            <Icons.Zap size={11} color="currentColor" />
+                            <span>Tự động ghi biên bản bàn giao ban đầu (INITIAL_ALLOCATION)</span>
                           </span>
                         </div>
                       </div>
@@ -2811,7 +2812,7 @@ export const EquipmentsPage = () => {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', marginBottom: '8px', color: 'var(--ink-primary)', flexWrap: 'wrap' }}>
                         <span style={{ padding: '2px 6px', background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>Từ: <strong>{oldRoomName}</strong></span>
-                        <span style={{ color: 'var(--laser-cyan)', fontWeight: 800 }}>➔</span>
+                        <Icons.ArrowRight size={13} color="var(--laser-cyan)" />
                         <span style={{ padding: '2px 6px', background: 'rgba(6, 182, 212, 0.2)', color: 'var(--laser-cyan)', borderRadius: '4px' }}>Đến: <strong>{newRoomName}</strong></span>
                         <span style={{ marginLeft: 'auto', fontSize: '10.5px', color: '#10b981', fontWeight: 700 }}>• {movType}</span>
                       </div>
@@ -3157,9 +3158,10 @@ export const EquipmentsPage = () => {
                       type="button"
                       onClick={() => handleGenerate105SampleRows(false)}
                       className="laser-btn laser-btn-secondary"
-                      style={{ padding: '7px 12px', fontSize: '12px', fontWeight: 800 }}
+                      style={{ padding: '7px 12px', fontSize: '12px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                     >
-                      ⚡ Tạo 105 Bản Ghi Chuẩn (&gt;100 dòng)
+                      <Icons.Zap size={13} color="currentColor" />
+                      <span>Tạo 105 Bản Ghi Chuẩn (&gt;100 dòng)</span>
                     </button>
 
                     <button
@@ -3218,10 +3220,18 @@ export const EquipmentsPage = () => {
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: '13.5px', fontWeight: 800, color: validationResult.valid ? 'var(--status-success-color)' : 'var(--status-danger-color)' }}>
-                        {validationResult.valid
-                          ? `✔ KIỂM TRA HỢP LỆ 100%: Toàn bộ ${validationResult.totalRows} dòng dữ liệu đều đạt chuẩn!`
-                          : `✖ PHÁT HIỆN ${validationResult.errorCount} LỖI DỮ LIỆU TRÊN ${validationResult.invalidRowCount}/${validationResult.totalRows} DÒNG`}
+                      <div style={{ fontSize: '13.5px', fontWeight: 800, color: validationResult.valid ? 'var(--status-success-color)' : 'var(--status-danger-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {validationResult.valid ? (
+                          <>
+                            <Icons.CheckCircle size={16} color="var(--status-success-color)" />
+                            <span>KIỂM TRA HỢP LỆ 100%: Toàn bộ {validationResult.totalRows} dòng dữ liệu đều đạt chuẩn!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Icons.AlertTriangle size={16} color="var(--status-danger-color)" />
+                            <span>PHÁT HIỆN {validationResult.errorCount} LỖI DỮ LIỆU TRÊN {validationResult.invalidRowCount}/{validationResult.totalRows} DÒNG</span>
+                          </>
+                        )}
                       </div>
                       <div style={{ fontSize: '12.5px', color: 'var(--ink-primary)', marginTop: '3px', fontWeight: 600 }}>
                         Hợp lệ: <strong>{validationResult.validCount}</strong> dòng • Lỗi: <strong>{validationResult.invalidRowCount}</strong> dòng (Bạn có thể sửa trực tiếp trên lưới bên dưới rồi bấm Kiểm tra lại)
@@ -3354,7 +3364,10 @@ export const EquipmentsPage = () => {
                                       ))}
                                     </div>
                                   ) : (
-                                    <span style={{ color: 'var(--status-success-color)', fontWeight: 800, fontSize: '11.5px' }}>✔ Hợp lệ ({r.room_name})</span>
+                                    <span style={{ color: 'var(--status-success-color)', fontWeight: 800, fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                      <Icons.Check size={12} color="var(--status-success-color)" />
+                                      <span>Hợp lệ ({r.room_name})</span>
+                                    </span>
                                   )}
                                 </td>
                                 <td style={{ padding: '6px 8px', textAlign: 'center' }}>
@@ -3369,11 +3382,14 @@ export const EquipmentsPage = () => {
                                       padding: '3px 7px',
                                       cursor: 'pointer',
                                       fontWeight: 800,
-                                      fontSize: '11px'
+                                      fontSize: '11px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center'
                                     }}
                                     title="Xóa dòng này khỏi lô nhập"
                                   >
-                                    ✕
+                                    <Icons.X size={12} color="currentColor" />
                                   </button>
                                 </td>
                               </tr>

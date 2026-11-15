@@ -122,7 +122,7 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
   };
 
   if (status === 'unrepairable') {
-    rightHeadline = '✗ KHÔNG THỂ SỬA';
+    rightHeadline = 'KHÔNG THỂ SỬA';
     rightSubline = 'Chờ đóng phiếu / thanh lý';
     compactText = 'Chờ thanh lý';
     theme = {
@@ -134,7 +134,7 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
       Icon: SvgIcons.AlertCircle
     };
   } else if (status === 'resolved') {
-    rightHeadline = '✓ ĐÃ SỬA XONG';
+    rightHeadline = 'ĐÃ SỬA XONG';
     rightSubline = 'Chờ Quản lý nghiệm thu';
     compactText = 'Chờ nghiệm thu';
     theme = {
@@ -146,7 +146,7 @@ export const DeadlineCountdown = ({ deadline, status = 'assigned', compact = fal
       Icon: SvgIcons.CheckCircle
     };
   } else if (status === 'closed') {
-    rightHeadline = '✓ ĐÃ ĐÓNG PHIẾU';
+    rightHeadline = 'ĐÃ ĐÓNG PHIẾU';
     rightSubline = 'Nhiệm vụ đã hoàn tất';
     compactText = 'Hoàn tất';
     theme = {

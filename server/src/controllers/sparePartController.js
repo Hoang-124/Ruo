@@ -5,6 +5,7 @@ import { Repair } from '../models/Repair.js';
 import { Notification } from '../models/Notification.js';
 import { User } from '../models/User.js';
 import { AuditLog } from '../models/AuditLog.js';
+import { ChatMessage } from '../models/ChatMessage.js';
 import { assertTransition } from '../domain/stateMachines.js';
 import { runTransaction } from '../services/transaction.js';
 import { normalizePartsRequestItems } from '../services/partsRequestItems.js';
@@ -252,6 +253,47 @@ export const requestSpareParts = async (req, res) => {
       });
     }
 
+    // Tự động tạo Thẻ Hành Động (Action Card) vào Kênh 2 Chat để Quản lý duyệt 1-click
+    try {
+      const firstItem = normalizedItems[0];
+      const partDoc = firstItem ? await SparePart.findById(firstItem.part_id) : null;
+      if (partDoc) {
+        await ChatMessage.create({
+          channel_type: 'operations',
+          conversation_id: 'ops_tech_desk',
+          sender_id: req.user._id,
+          sender_name: req.user.full_name || req.user.code,
+          sender_role: req.user.role,
+          sender_avatar: req.user.avatar || '',
+          message_type: 'action_card',
+          content: `Yêu cầu xuất kho vật tư: ${partDoc.name}`,
+          action_data: {
+            card_type: 'spare_part_request',
+            request_id: partsRequest._id.toString(),
+            parts_request_id: partsRequest._id.toString(),
+            part_id: partDoc._id.toString(),
+            part_code: partDoc.code,
+            part_name: partDoc.name,
+            unit: partDoc.unit || 'Cái',
+            unit_price: partDoc.price || 0,
+            current_stock: partDoc.stock,
+            quantity: Number(firstItem.qty) || 1,
+            repair_id: repair._id.toString(),
+            ticket_code: repair.ticket_code || '',
+            reason: `Thay linh kiện hỏng cho ${repair.ticket_code}`,
+            status: 'pending',
+            requested_by_id: req.user._id,
+            requested_by_name: req.user.full_name || req.user.code,
+            decided_by: null,
+            decided_at: null
+          },
+          read_by: [{ user_id: req.user._id, read_at: new Date() }]
+        });
+      }
+    } catch (chatCardErr) {
+      console.warn('Lỗi tạo Chat Action Card cho PartsRequest:', chatCardErr.message);
+    }
+
     res.status(201).json({ success: true, message: 'Gửi yêu cầu linh kiện thành công.', partsRequest });
   } catch (error) {
     res.status(error.statusCode || 500).json({ success: false, message: error.message });
@@ -315,6 +357,94 @@ export const approvePartsRequest = async (req, res) => {
       new_value: { status: 'approved' }
     });
 
+    // Đồng bộ tức thời thẻ Chat Action Card & Kênh Tác Nghiệp KHO-01
+    try {
+      const repairIdStr = partsRequest.repair_id ? partsRequest.repair_id.toString() : null;
+      const partIds = (partsRequest.items || []).map((i) => (i.part_id?._id || i.part_id)?.toString()).filter(Boolean);
+      const decider = req.user.full_name || req.user.code || 'Quản lý CSVC';
+
+      // Build broad match criteria handling both String and ObjectId
+      const partMatches = [];
+      for (const pid of partIds) {
+        partMatches.push(pid);
+        if (mongoose.Types.ObjectId.isValid(pid)) {
+          partMatches.push(new mongoose.Types.ObjectId(pid));
+        }
+      }
+
+      const repairMatches = [];
+      if (repairIdStr) {
+        repairMatches.push(repairIdStr);
+        if (mongoose.Types.ObjectId.isValid(repairIdStr)) {
+          repairMatches.push(new mongoose.Types.ObjectId(repairIdStr));
+        }
+      }
+
+      const orConditions = [
+        { 'action_data.request_id': partsRequest._id.toString() },
+        { 'action_data.parts_request_id': partsRequest._id.toString() }
+      ];
+      if (repairMatches.length > 0) {
+        orConditions.push({ 'action_data.repair_id': { $in: repairMatches } });
+      }
+      if (partMatches.length > 0) {
+        orConditions.push({ 'action_data.part_id': { $in: partMatches } });
+      }
+
+      const cardQuery = {
+        channel_type: 'operations',
+        message_type: 'action_card',
+        'action_data.status': 'pending',
+        $or: orConditions
+      };
+
+      const pendingCards = await ChatMessage.find(cardQuery);
+      for (const card of pendingCards) {
+        card.action_data = {
+          ...card.action_data,
+          status: 'approved',
+          decided_by: decider,
+          decided_at: new Date()
+        };
+        card.markModified('action_data');
+        await card.save();
+      }
+
+      // Phát sinh tin nhắn hệ thống xác nhận vào Kênh 2
+      const firstItem = partsRequest.items?.[0];
+      const partName = firstItem?.part_id?.name || 'linh kiện';
+      await ChatMessage.create({
+        channel_type: 'operations',
+        conversation_id: 'ops_tech_desk',
+        sender_id: null,
+        sender_name: 'Hệ Thống Kho KHO-01',
+        sender_role: 'system',
+        message_type: 'system_event',
+        content: `[ĐÃ DUYỆT] Quản lý ${decider} đã DUYỆT xuất kho linh kiện theo yêu cầu mã [${partsRequest._id.toString().slice(-6).toUpperCase()}].`
+      }).catch(() => null);
+
+      // Nếu gắn với ca sửa chữa: thông báo vào kênh chat của phiếu và cộng chi phí linh kiện vào repair
+      if (repairIdStr) {
+        await ChatMessage.create({
+          channel_type: 'ticket',
+          conversation_id: repairIdStr,
+          repair_id: partsRequest.repair_id,
+          sender_id: null,
+          sender_name: 'Hệ Thống Kho KHO-01',
+          sender_role: 'system',
+          message_type: 'system_event',
+          content: `[THÔNG BÁO VẬT TƯ] Quản lý CSVC (${decider}) đã PHÊ DUYỆT cấp phát linh kiện. Kỹ thuật viên có thể nhận vật tư tại KHO-01 để tiến hành sửa chữa.`
+        }).catch(() => null);
+
+        const totalCost = (partsRequest.items || []).reduce((acc, it) => acc + (Number(it.qty || 1) * Number(it.unit_price || 0)), 0);
+        if (totalCost > 0) {
+          await Repair.findByIdAndUpdate(partsRequest.repair_id, { $inc: { total_cost: totalCost } }).catch(() => null);
+        }
+      }
+    } catch (syncErr) {
+      console.error('Lỗi đồng bộ Chat khi phê duyệt linh kiện:', syncErr);
+    }
+
     res.json({
       success: true,
       message: 'Phê duyệt xuất kho linh kiện thành công.',
@@ -343,6 +473,72 @@ export const rejectPartsRequest = async (req, res) => {
     partsRequest.approved_by = req.user._id;
     partsRequest.reject_reason = String(reject_reason || 'Không duyệt cấp linh kiện').trim();
     await partsRequest.save();
+
+    // Đồng bộ thẻ Chat Action Card khi từ chối
+    try {
+      const repairIdStr = partsRequest.repair_id ? partsRequest.repair_id.toString() : null;
+      const partIds = (partsRequest.items || []).map((i) => (i.part_id?._id || i.part_id)?.toString()).filter(Boolean);
+      const decider = req.user.full_name || req.user.code || 'Quản lý CSVC';
+
+      const partMatches = [];
+      for (const pid of partIds) {
+        partMatches.push(pid);
+        if (mongoose.Types.ObjectId.isValid(pid)) {
+          partMatches.push(new mongoose.Types.ObjectId(pid));
+        }
+      }
+
+      const repairMatches = [];
+      if (repairIdStr) {
+        repairMatches.push(repairIdStr);
+        if (mongoose.Types.ObjectId.isValid(repairIdStr)) {
+          repairMatches.push(new mongoose.Types.ObjectId(repairIdStr));
+        }
+      }
+
+      const orConditions = [
+        { 'action_data.request_id': partsRequest._id.toString() },
+        { 'action_data.parts_request_id': partsRequest._id.toString() }
+      ];
+      if (repairMatches.length > 0) {
+        orConditions.push({ 'action_data.repair_id': { $in: repairMatches } });
+      }
+      if (partMatches.length > 0) {
+        orConditions.push({ 'action_data.part_id': { $in: partMatches } });
+      }
+
+      const cardQuery = {
+        channel_type: 'operations',
+        message_type: 'action_card',
+        'action_data.status': 'pending',
+        $or: orConditions
+      };
+
+      const pendingCards = await ChatMessage.find(cardQuery);
+      for (const card of pendingCards) {
+        card.action_data = {
+          ...card.action_data,
+          status: 'rejected',
+          reject_reason: partsRequest.reject_reason,
+          decided_by: decider,
+          decided_at: new Date()
+        };
+        card.markModified('action_data');
+        await card.save();
+      }
+
+      await ChatMessage.create({
+        channel_type: 'operations',
+        conversation_id: 'ops_tech_desk',
+        sender_id: null,
+        sender_name: 'Hệ Thống Kho KHO-01',
+        sender_role: 'system',
+        message_type: 'system_event',
+        content: `[TỪ CHỐI] Quản lý ${decider} đã TỪ CHỐI xuất kho linh kiện mã [${partsRequest._id.toString().slice(-6).toUpperCase()}]. Lý do: ${partsRequest.reject_reason}.`
+      }).catch(() => null);
+    } catch (syncErr) {
+      console.error('Lỗi đồng bộ Chat khi từ chối linh kiện:', syncErr);
+    }
 
     res.json({ success: true, message: 'Đã từ chối cấp linh kiện.', partsRequest });
   } catch (error) {

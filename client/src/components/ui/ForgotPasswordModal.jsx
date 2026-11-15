@@ -105,7 +105,7 @@ export const ForgotPasswordModal = ({ isOpen, onClose, defaultEmail = '', onSucc
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && !verifyingOtp && !sendingOtp && !resettingPassword) {
         if (step > 1 && step < 4) {
-          toast.info('Bạn đang trong tiến trình xác thực mã OTP. Nhấn nút [✕] ở góc phải nếu bạn muốn hủy bỏ.', 'Tiến Trình Xác Thực');
+          toast.info('Bạn đang trong tiến trình xác thực mã OTP. Nhấn nút đóng (X) ở góc phải nếu bạn muốn hủy bỏ.', 'Tiến Trình Xác Thực');
           return;
         }
         resetModal();

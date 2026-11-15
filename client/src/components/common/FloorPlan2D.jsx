@@ -941,7 +941,7 @@ export const FloorPlan2D = ({
               style={{ filter: 'drop-shadow(0 2px 8px var(--cad-room-selected-glow))' }}
             />
             <text x="124" y="26" fontFamily="var(--font-sans)" fontSize="12.5" fontWeight="900" fill="var(--cad-room-accent)" textAnchor="middle" letterSpacing="0.8">
-              ✦ CỔNG CHÍNH ✦
+              CỔNG CHÍNH
             </text>
           </g>
 
