@@ -56,10 +56,6 @@ export const LoginPage = ({ onLoginSuccess }) => {
         setLockoutData(null);
         setAttemptsLeft(null);
         setSuccessMsg('Đăng nhập thành công! Đang đồng bộ sổ cái vận hành...');
-        toast.success(
-          `Chào mừng ${res.user?.full_name || res.user?.fullName || 'Cán bộ'} đã đăng nhập hệ thống!`,
-          'Xác Thực Thành Công'
-        );
         if (onLoginSuccess) {
           onLoginSuccess();
         }
