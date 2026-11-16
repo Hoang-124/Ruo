@@ -230,7 +230,8 @@ export const LoginForm = ({
               fontSize: '10px',
               fontFamily: 'var(--font-mono)',
               color: 'var(--blueprint-500)',
-              fontWeight: 800
+              fontWeight: 800,
+              textTransform: 'none'
             }}
           >
             MK: Ruo@2026

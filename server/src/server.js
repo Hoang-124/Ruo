@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import mongoose from 'mongoose';
 import { connectDB } from './config/db.js';
+import { ensureDemoUsers } from './utils/bootstrapDemoUsers.js';
 import { notFound, errorHandler } from './middlewares/errorMiddleware.js';
 import { securityHeaders } from './middlewares/securityMiddleware.js';
 
@@ -151,6 +152,7 @@ const startSlaBackgroundWorker = () => {
 const startServer = async () => {
   try {
     await connectDB();
+    await ensureDemoUsers();
     startSlaBackgroundWorker();
 
     const server = app.listen(PORT, () => {
