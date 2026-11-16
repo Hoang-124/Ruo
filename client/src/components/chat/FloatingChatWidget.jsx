@@ -456,7 +456,7 @@ export const FloatingChatWidget = () => {
       if (res?.success && res.ai_message) {
         setAiMessages((prev) => [...prev, res.ai_message]);
         if (toast?.success) {
-          toast.success(`Đã tự động tạo phiếu [${res.repair?.ticket_code || ''}] thành công!`);
+          toast.success(`Đã gửi yêu cầu báo hỏng [${res.repair?.ticket_code || ''}] đến Quản lý CSVC!`);
         }
         window.dispatchEvent(new CustomEvent('ruo-chat-refresh'));
         window.dispatchEvent(new CustomEvent('ruo-repairs-refresh'));
@@ -809,7 +809,7 @@ export const FloatingChatWidget = () => {
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#16a34a', fontWeight: 700, fontSize: '12px' }}>
                                   <Icons.CheckCircle size={15} />
-                                  <span>Đã Kích Hoạt Điều Động KTV [{msg.action_data.ticket_code}]</span>
+                                  <span>Đã Gửi Yêu Cầu Đến Quản Lý CSVC [{msg.action_data.ticket_code}]</span>
                                 </div>
                                 <button
                                   type="button"
@@ -873,7 +873,7 @@ export const FloatingChatWidget = () => {
                                       ) : (
                                         <Icons.Zap size={13} />
                                       )}
-                                      <span>{autoReportingId === msg._id ? 'Đang Lập Phiếu...' : 'AI Tự Động Báo Hỏng 1-Chạm'}</span>
+                                      <span>{autoReportingId === msg._id ? 'Đang Gửi Yêu Cầu...' : 'AI Gửi Yêu Cầu Báo Hỏng 1-Chạm'}</span>
                                     </button>
                                   )}
 

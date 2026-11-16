@@ -406,16 +406,16 @@ export const processAiChatQuery = async ({ content, user, chatHistory = [] }) =>
   if (isAutoReportInquiry) {
     const { targetRoom, matchedEq } = await resolveRoomAndEquipmentFromContext(rawText, chatHistory);
 
-    const responseText = `**[TÍNH NĂNG TỰ ĐỘNG LẬP PHIẾU BÁO HỎNG RUO CORTEX AI]**\n\n` +
-      `Dạ hoàn toàn **ĐƯỢC**! Ruo Cortex AI được trang bị tính năng **Tự Động Lập Phiếu Báo Hỏng 1-Chạm** nhằm **giảm tối đa gánh nặng thủ tục và tiết kiệm thời gian cho Quý Thầy/Cô**:\n\n` +
-      `1. **Tự động báo hỏng 1-chạm (1-Click Ticket):**\n` +
-      `   Khi Thầy/Cô phản ánh sự cố thiết bị tại phòng (ví dụ: *"phòng 209 đang bị hỏng tivi"*), Ruo Cortex AI tự động nhận diện thiết bị và cung cấp ngay nút bấm **[⚡ AI Tự Động Báo Hỏng 1-Chạm]** ngay trong khung chat. Thầy/Cô chỉ cần chạm 1 lần duy nhất, phiếu kỹ thuật sẽ được kích hoạt tức thì mà **không cần mở form hay gõ bất kỳ trường thông tin nào**.\n\n` +
-      `2. **Ra lệnh bằng đàm thoại tự nhiên (Conversational AI):**\n` +
-      `   Thầy/Cô chỉ cần nhắn: *"Báo hỏng giúp tôi tivi phòng 209"* hoặc sau khi hỏi về phòng, chỉ cần nói *"Báo hỏng giúp tôi"*, AI sẽ tự động phân tích ngữ cảnh và tạo phiếu ngay lập tức.\n\n` +
-      `3. **Điều động KTV đúng chuyên môn (AI Specialty Auto-Dispatch):**\n` +
-      `   Hệ thống tự động phân loại sự cố để giao đúng Kỹ thuật viên phụ trách (Điện lạnh / Nghe nhìn / Thiết bị mạng / Điện lực), cam kết hạn xử lý SLA (4 giờ đối với sự cố khẩn cấp) và gửi thông báo trực tiếp đến điện thoại KTV.\n\n` +
+    const responseText = `**[QUY TRÌNH TỰ ĐỘNG BÁO HỎNG & ĐIỀU PHỐI QUA RUO CORTEX AI]**\n\n` +
+      `Dạ hoàn toàn **ĐƯỢC**! Ruo Cortex AI được thiết kế tuân thủ chuẩn quy trình vận hành: **Giảng viên gửi yêu cầu → Ban Quản lý CSVC tiếp nhận → Điều phối Kỹ thuật viên xử lý** nhằm tiết kiệm tối đa thời gian cho Thầy/Cô:\n\n` +
+      `1. **Gửi yêu cầu tức thì (1-Chạm hoặc Hội thoại):**\n` +
+      `   Thầy/Cô chỉ cần nhắn: *"Báo hỏng giúp tôi tivi phòng 209"* hoặc bấm nút **[⚡ AI Gửi Yêu Cầu Báo Hỏng 1-Chạm]** trong khung chat. Thầy/Cô không cần mở form hay nhập thông tin thủ công.\n\n` +
+      `2. **Tự động chuyển tiếp đến Quản lý CSVC:**\n` +
+      `   Ngay khi nhận yêu cầu, AI lập tức tạo mã yêu cầu với trạng thái **"Chờ Quản lý CSVC tiếp nhận & phân công"**, đồng thời gửi thông báo đến Ban Quản lý CSVC trên Bảng điều phối Kanban.\n\n` +
+      `3. **AI gợi ý chuyên môn (Specialty Recommendation):**\n` +
+      `   AI tự động chẩn đoán lỗi và đề xuất Kỹ thuật viên đúng chuyên ngành (Điện tử/Nghe nhìn, Điện lạnh, Mạng CNTT, Mộc/Cơ khí) để Quản lý CSVC chỉ cần 1 cú nhấp chuột là hoàn tất giao việc cho KTV xuống hiện trường.\n\n` +
       (matchedEq
-        ? `*Tôi đã nhận diện thiết bị **[${matchedEq.code}] ${matchedEq.name}** tại phòng **${targetRoom.code}**. Thầy/Cô có thể nhấn nút **[⚡ AI Tự Động Báo Hỏng 1-Chạm]** bên dưới để kích hoạt phiếu ngay lập tức!*`
+        ? `*Tôi đã nhận diện thiết bị **[${matchedEq.code}] ${matchedEq.name}** tại phòng **${targetRoom.code}**. Thầy/Cô có thể nhấn nút **[⚡ AI Gửi Yêu Cầu Báo Hỏng 1-Chạm]** bên dưới để gửi yêu cầu đến Quản lý CSVC ngay lập tức!*`
         : `*Thầy/Cô có thể thử ngay bằng cách nhắn: "phòng 209 đang bị hỏng tivi" hoặc "Báo hỏng tivi phòng 209 giúp tôi".*`);
 
     const cardData = matchedEq ? {
@@ -427,7 +427,7 @@ export const processAiChatQuery = async ({ content, user, chatHistory = [] }) =>
       equipment_name: matchedEq.name,
       can_auto_report: true,
       damage_level: 'minor',
-      incident_description: `Báo hỏng [${matchedEq.name}] qua Ruo Cortex AI`,
+      incident_description: `Yêu cầu báo hỏng [${matchedEq.name}] qua Ruo Cortex AI`,
       quick_action: {
         label: `Báo Hỏng ${matchedEq.name} (${targetRoom.code})`,
         tab: 'report_issue',
@@ -458,12 +458,17 @@ export const processAiChatQuery = async ({ content, user, chatHistory = [] }) =>
 
       if (!autoResult.success) {
         if (autoResult.isDuplicate) {
+          const isAssigned = ['assigned', 'in_progress'].includes(autoResult.repair?.status);
           const ktvText = autoResult.repair?.assigned_to?.full_name
             ? `KTV ${autoResult.repair.assigned_to.full_name} (${autoResult.repair.assigned_to.code || ''})`
-            : 'Tổ kỹ thuật';
+            : 'Kỹ thuật viên';
+          const statusText = isAssigned
+            ? `đang được ${ktvText} tiếp nhận xử lý`
+            : 'đang chờ Quản lý CSVC tiếp nhận và phân công Kỹ thuật viên';
+
           const responseText = `**[Thiết Bị Đã Có Phiếu Đang Xử Lý]**\n\n` +
-            `Thiết bị **[${matchedEq.code}] ${matchedEq.name}** tại phòng **${targetRoom.code}** hiện đã có phiếu sửa chữa **[${autoResult.repair.ticket_code}]** đang được ${ktvText} tiếp nhận xử lý.\n\n` +
-            `Thầy/Cô không cần tạo thêm phiếu trùng lặp. Đội ngũ kỹ thuật đang bám sát tiến độ theo khung cam kết SLA.`;
+            `Thiết bị **[${matchedEq.code}] ${matchedEq.name}** tại phòng **${targetRoom.code}** hiện đã có phiếu **[${autoResult.repair.ticket_code}]** (${statusText}).\n\n` +
+            `Thầy/Cô không cần tạo thêm yêu cầu trùng lặp. Đội ngũ CSVC đang bám sát tiến độ theo khung cam kết SLA.`;
           const cardData = {
             type: 'repair_progress',
             ticket_code: autoResult.repair.ticket_code,
@@ -486,7 +491,7 @@ export const processAiChatQuery = async ({ content, user, chatHistory = [] }) =>
         room_code: targetRoom.code,
         equipment_code: matchedEq.code,
         quick_action: {
-          label: `Theo Dõi Tiến Độ Phiếu [${autoResult.repair.ticket_code}]`,
+          label: `Theo Dõi Tiến Độ Yêu Cầu [${autoResult.repair.ticket_code}]`,
           tab: 'my_tickets'
         }
       };
@@ -509,7 +514,7 @@ export const processAiChatQuery = async ({ content, user, chatHistory = [] }) =>
 
     return {
       responseText: `**[Yêu Cầu Tự Động Báo Hỏng Kỹ Thuật]**\n\n` +
-        `Để Ruo Cortex AI tự động lập phiếu và điều phối Kỹ thuật viên nhanh nhất, Thầy/Cô vui lòng cho biết **số phòng** và **thiết bị gặp sự cố**.\n\n` +
+        `Để Ruo Cortex AI tự động lập phiếu và chuyển đến Quản lý CSVC nhanh nhất, Thầy/Cô vui lòng cho biết **số phòng** và **thiết bị gặp sự cố**.\n\n` +
         `*Ví dụ câu lệnh mẫu:*\n` +
         `- *"Báo hỏng tivi phòng 209 giúp tôi"*\n` +
         `- *"Báo hỏng điều hòa phòng A1-101"*\n` +
@@ -741,7 +746,7 @@ Quy tắc:
         const responseText = `**[Tiếp Nhận Sự Cố Kỹ Thuật - Phòng ${targetRoom.code}]**\n\n` +
           `Hệ thống ghi nhận sự cố đối với **${matchedEq ? `[${matchedEq.code}] ${matchedEq.name}` : 'thiết bị'}** tại phòng **${targetRoom.code} - ${targetRoom.name}**.\n\n` +
           troubleshootingText + `\n\n` +
-          `*Nếu sau khi kiểm tra thiết bị vẫn không hoạt động, Thầy/Cô có thể nhấn nút **[⚡ AI Tự Động Báo Hỏng 1-Chạm]** bên dưới hoặc nhắn tin **"Báo hỏng giúp tôi"**, hệ thống sẽ tự động lập phiếu kỹ thuật và phân công KTV đến xử lý theo cam kết SLA.*`;
+          `*Nếu sau khi kiểm tra thiết bị vẫn không hoạt động, Thầy/Cô có thể nhấn nút **[⚡ AI Gửi Yêu Cầu Báo Hỏng 1-Chạm]** bên dưới hoặc nhắn tin **"Báo hỏng giúp tôi"**, yêu cầu sẽ được gửi thẳng đến Ban Quản lý CSVC để điều phối KTV xử lý theo cam kết SLA.*`;
 
         const cardData = {
           type: 'incident_report_suggestion',

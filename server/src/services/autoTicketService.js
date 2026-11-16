@@ -6,7 +6,8 @@ import {
   Room,
   Notification,
   AuditLog,
-  ChatMessage
+  ChatMessage,
+  User
 } from '../models/index.js';
 import {
   REPAIR_STATUSES,
@@ -20,6 +21,10 @@ import { evaluateTicketAiSpecialtyDispatch } from '../controllers/repairControll
 /**
  * Service executeAutoTicketCreation
  * Core unified engine for automated repair ticket creation (1-Click & Conversational AI).
+ * Follows university standard operating procedure (SOP):
+ * 1. Lecturer submits report -> Status is REPORTED (Chờ Quản lý CSVC tiếp nhận & phân công).
+ * 2. AI calculates SLA & recommends the best qualified domain specialist to the Facility Manager.
+ * 3. Facility Manager receives real-time notification to review and officially assign the Technician.
  */
 export async function executeAutoTicketCreation({
   user,
@@ -56,12 +61,17 @@ export async function executeAutoTicketCreation({
   }).populate('assigned_to', 'full_name code phone email');
 
   if (existingTicket) {
+    const isAssigned = ['assigned', 'in_progress'].includes(existingTicket.status);
     const ktvName = existingTicket.assigned_to?.full_name || 'chuyên môn';
     const ktvPhone = existingTicket.assigned_to?.phone || '0987654321';
+    const statusText = isAssigned
+      ? `đang được KTV ${ktvName} (SĐT: ${ktvPhone}) tiếp nhận xử lý`
+      : 'đang chờ Quản lý CSVC tiếp nhận và phân công Kỹ thuật viên';
+
     return {
       success: false,
       isDuplicate: true,
-      message: `Thiết bị [${equipment.name}] đã có phiếu sửa chữa [${existingTicket.ticket_code}] đang được KTV ${ktvName} (SĐT: ${ktvPhone}) tiếp nhận xử lý. Bạn không cần tạo thêm phiếu trùng lặp.`,
+      message: `Thiết bị [${equipment.name}] đã có yêu cầu báo hỏng [${existingTicket.ticket_code}] ${statusText}. Thầy/Cô không cần tạo thêm yêu cầu trùng lặp.`,
       repair: existingTicket
     };
   }
@@ -74,20 +84,18 @@ export async function executeAutoTicketCreation({
   // Compute SLA resolution deadline
   const resolutionDeadline = computeDeadline(finalLevel, new Date());
 
-  // Evaluate AI Specialty Dispatch
+  // Evaluate AI Specialty Dispatch recommendation for Facility Manager
   const { bestTechnician, effectiveCategory } = await evaluateTicketAiSpecialtyDispatch({
     equipment,
     description: cleanDescription,
     damageLevel: finalLevel
   });
 
-  const shouldAutoAssign = Boolean(bestTechnician && bestTechnician.is_qualified);
-
   const specialtyReason = bestTechnician
-    ? `AI khớp chuyên môn [${effectiveCategory}] → ${bestTechnician.full_name} (${bestTechnician.code} • ${bestTechnician.short_specialty || bestTechnician.department})`
-    : 'Đang chờ điều phối KTV';
+    ? `AI đề xuất KTV chuyên môn [${effectiveCategory}] → ${bestTechnician.full_name} (${bestTechnician.code} • ${bestTechnician.short_specialty || bestTechnician.department})`
+    : 'Chờ Quản lý CSVC phân công KTV';
 
-  // Create official repair ticket
+  // Create official repair ticket with status REPORTED (Chờ Quản lý CSVC tiếp nhận & phân công)
   const repair = await Repair.create({
     equipment_id: equipment._id,
     room_id: room ? room._id : null,
@@ -96,10 +104,10 @@ export async function executeAutoTicketCreation({
     incident_description: cleanDescription,
     damage_level: finalLevel,
     deadline: resolutionDeadline,
-    status: shouldAutoAssign ? REPAIR_STATUSES.ASSIGNED : REPAIR_STATUSES.REPORTED,
-    assigned_to: shouldAutoAssign ? bestTechnician._id : null,
+    status: REPAIR_STATUSES.REPORTED,
+    assigned_to: null,
     ai_recommended_to: bestTechnician ? bestTechnician._id : null,
-    ai_auto_assigned: shouldAutoAssign,
+    ai_auto_assigned: false,
     ai_dispatch_score: bestTechnician ? bestTechnician.score : null,
     ai_dispatch_reason: specialtyReason
   });
@@ -114,26 +122,25 @@ export async function executeAutoTicketCreation({
     repair_id: repair._id,
     action: 'reported',
     performed_by: user._id,
-    description: `Báo sự cố qua Ruo Cortex AI Copilot: ${cleanDescription}`
+    description: `Giảng viên gửi yêu cầu báo sự cố qua Ruo Cortex AI Copilot: ${cleanDescription}`
   });
 
-  if (shouldAutoAssign && bestTechnician) {
-    await RepairLog.create({
-      repair_id: repair._id,
-      action: 'assigned',
-      performed_by: user._id,
-      description: `[AI AUTO-DISPATCH] Tự động giao cho ${bestTechnician.full_name} (${bestTechnician.code}) theo đúng chuyên môn ${bestTechnician.short_specialty} (Điểm: ${bestTechnician.score}/100).`
-    });
-
-    // Notify assigned technician
-    await Notification.create({
-      user_id: bestTechnician._id,
-      title: `Phân công sự cố mới [${repair.ticket_code}]`,
-      message: `Ruo Cortex AI đã tự động phân công bạn xử lý sự cố [${equipment.name}] tại phòng ${room?.code || ''} (Hạn SLA: ${new Date(resolutionDeadline).toLocaleTimeString('vi-VN')}).`,
-      type: 'repair_assigned',
-      entity_id: repair._id.toString(),
-      entity_model: 'Repair'
-    }).catch((err) => console.warn('Lỗi gửi notification KTV:', err.message));
+  // Gửi thông báo đến Quản lý CSVC (Facility Managers) để tiếp nhận & phân công KTV trên Kanban
+  const rawManagers = await User.find({ role: 'facility_manager', status: 'active' }).select('_id full_name code');
+  const managers = Array.isArray(rawManagers) ? rawManagers : [];
+  if (managers.length > 0) {
+    await Notification.insertMany(
+      managers.map((mgr) => ({
+        user_id: mgr._id,
+        type: 'incident_reported',
+        title: `Yêu cầu báo hỏng mới [${repair.ticket_code}]`,
+        message: `Giảng viên ${user.full_name || user.name || user.code} vừa gửi yêu cầu báo hỏng [${equipment.name}] tại phòng ${room?.code || ''}.${bestTechnician ? ` AI đề xuất KTV: ${bestTechnician.full_name} (${bestTechnician.short_specialty}).` : ''} Vui lòng tiếp nhận và phân công KTV.`,
+        reference_type: 'repair',
+        reference_id: repair._id,
+        entity_id: repair._id.toString(),
+        entity_model: 'Repair'
+      }))
+    ).catch((err) => console.warn('Lỗi gửi thông báo cho Quản lý CSVC:', err.message));
   }
 
   // AuditLog
@@ -148,8 +155,9 @@ export async function executeAutoTicketCreation({
       ticket_code: repair.ticket_code,
       equipment_code: equipment.code,
       room_code: room?.code,
-      assigned_to: bestTechnician?.code,
-      deadline: resolutionDeadline
+      ai_recommended_to: bestTechnician?.code,
+      deadline: resolutionDeadline,
+      status: 'reported'
     }
   });
 
@@ -161,15 +169,15 @@ export async function executeAutoTicketCreation({
     year: 'numeric'
   });
 
-  const confirmContent = `**[ĐÃ TỰ ĐỘNG LẬP PHIẾU BÁO HỎNG THÀNH CÔNG]**\n\n` +
-    `Ruo Cortex AI đã hoàn tất thủ tục lập phiếu kỹ thuật và kích hoạt điều động KTV:\n` +
-    `- **Mã phiếu sửa chữa:** \`[${repair.ticket_code}]\`\n` +
+  const confirmContent = `**[ĐÃ GỬI YÊU CẦU BÁO HỎNG ĐẾN QUẢN LÝ CSVC]**\n\n` +
+    `Ruo Cortex AI đã chuyển tiếp yêu cầu kỹ thuật của Thầy/Cô đến Ban Quản lý CSVC:\n` +
+    `- **Mã yêu cầu:** \`[${repair.ticket_code}]\`\n` +
     `- **Tài sản báo hỏng:** [${equipment.code}] ${equipment.name}\n` +
     `- **Vị trí phòng học:** ${room ? `${room.code} - ${room.name}` : 'Tòa nhà A1'}\n` +
-    `- **Kỹ thuật viên phụ trách:** **${bestTechnician ? `${bestTechnician.full_name} (${bestTechnician.code} • ${bestTechnician.short_specialty || bestTechnician.department})` : 'Đang chờ phân công KTV'}**\n` +
-    `- **Cam kết thời hạn SLA:** **${deadlineFormatted}**\n` +
-    `- **Trạng thái:** **${shouldAutoAssign ? 'Đã phân công KTV tiếp nhận' : 'Đã ghi nhận, chờ duyệt'}**\n\n` +
-    `Thầy/Cô không cần điền thêm đơn hay thao tác gì nữa. Kỹ thuật viên đã nhận lệnh điều động và sẽ có mặt kiểm tra tại phòng đúng cam kết SLA!`;
+    `- **Trạng thái:** **Chờ Quản lý CSVC tiếp nhận & phân công KTV**\n` +
+    (bestTechnician ? `- **KTV đề xuất (AI Gợi ý):** ${bestTechnician.full_name} (${bestTechnician.code} • ${bestTechnician.short_specialty || bestTechnician.department})\n` : '') +
+    `- **Cam kết thời hạn SLA:** **${deadlineFormatted}**\n\n` +
+    `Yêu cầu của Thầy/Cô đã được chuyển trực tiếp đến Ban Quản lý CSVC. Quản lý sẽ tiếp nhận và giao việc cho Kỹ thuật viên xuống kiểm tra theo đúng quy trình vận hành!`;
 
   let aiConfirmMsg = null;
   if (createChatMessage) {
@@ -188,7 +196,7 @@ export async function executeAutoTicketCreation({
         room_code: room?.code,
         equipment_code: equipment.code,
         quick_action: {
-          label: `Theo Dõi Tiến Độ Phiếu [${repair.ticket_code}]`,
+          label: `Theo Dõi Tiến Độ Yêu Cầu [${repair.ticket_code}]`,
           tab: 'my_tickets'
         }
       },

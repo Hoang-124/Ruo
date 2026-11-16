@@ -354,11 +354,20 @@ export function rankTechniciansBySpecialty({
         specialtyMatchType = 'mismatch';
         disqualifiedReason = `Trái phân quyền chuyên môn (Chuyên trách: ${profile.short_label}, không phụ trách ${catMeta.label})`;
         specialtyScore = -55;
-      } else if (profile.specialty_code !== TECHNICIAN_SPECIALTIES.TECH_GENERAL || deptMatch) {
-        // Dedicated domain specialist (e.g., HVAC, IT/AV, Furniture)
+      } else if (profile.specialty_code !== TECHNICIAN_SPECIALTIES.TECH_GENERAL && profile.allowed_categories.includes(effectiveCategory)) {
+        // True dedicated domain specialist (e.g., HVAC, IT/AV, Furniture)
         isQualified = true;
         specialtyMatchType = 'specialist_match';
         specialtyScore = 42;
+      } else if (hasDedicatedSpecialistInRoster && !profile.allowed_categories.includes(effectiveCategory)) {
+        isQualified = false;
+        specialtyMatchType = 'mismatch';
+        disqualifiedReason = `Trái phân quyền chuyên môn (Chuyên trách: ${profile.short_label}, không phụ trách ${catMeta.label})`;
+        specialtyScore = -50;
+      } else if (deptMatch) {
+        isQualified = true;
+        specialtyMatchType = 'specialist_match';
+        specialtyScore = 35;
       } else {
         // Generalist backup technician
         isQualified = true;

@@ -13,7 +13,7 @@ export const CATEGORY_ONTOLOGY = {
     isElectrical: true,
     hasWater: false,
     isPressurized: false,
-    deptKeywords: ['nghe nhìn', 'điện tử', 'cntt', 'kỹ thuật'],
+    deptKeywords: ['nghe nhìn', 'điện tử', 'cntt', 'máy chiếu', 'màn hình'],
     mentionKeywords: [
       'máy chiếu', 'projector', 'bóng chiếu', 'thấu kính', 'màn chiếu', 'smart tivi',
       'tivi', 'tv 4k', 'màn hình quảng cáo', 'standee', 'signage', 'panasonic pt', 'dalite'
