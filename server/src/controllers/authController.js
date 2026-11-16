@@ -5,7 +5,7 @@ import { User, PasswordReset } from '../models/User.js';
 import { RefreshToken } from '../models/RefreshToken.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { Notification } from '../models/Notification.js';
-import { USER_STATUSES, USER_ROLES } from '../config/constants.js';
+import { USER_STATUSES, USER_ROLES, TECHNICIAN_SPECIALTY_PROFILES } from '../config/constants.js';
 import { sendPasswordResetEmail, generateSixDigitOtp } from '../utils/mailer.js';
 import { dispatchPasswordResetOtpEmail } from '../services/emailService.js';
 
@@ -192,6 +192,11 @@ export const login = async (req, res) => {
         email: user.email,
         role: user.role,
         department: user.department,
+        specialty_code: user.specialty_code || 'TECH_GENERAL',
+        specialty_label: user.specialty_label || '',
+        allowed_categories: user.allowed_categories || [],
+        allowed_damage_levels: user.allowed_damage_levels || ['minor', 'major', 'critical'],
+        specialized_tasks: user.specialized_tasks || [],
         phone: user.phone || '',
         avatar: user.avatar || '',
         status: user.status,
@@ -994,6 +999,11 @@ export const getMe = async (req, res) => {
         role: user.role,
         permissions: Array.isArray(req.userPermissions) ? req.userPermissions : undefined,
         department: user.department,
+        specialty_code: user.specialty_code || 'TECH_GENERAL',
+        specialty_label: user.specialty_label || '',
+        allowed_categories: user.allowed_categories || [],
+        allowed_damage_levels: user.allowed_damage_levels || ['minor', 'major', 'critical'],
+        specialized_tasks: user.specialized_tasks || [],
         status: user.status,
         force_change_pw: user.force_change_pw,
         created_at: user.created_at,
@@ -1117,6 +1127,11 @@ export const updateProfile = async (req, res) => {
         avatar: user.avatar || '',
         role: user.role,
         department: user.department,
+        specialty_code: user.specialty_code || 'TECH_GENERAL',
+        specialty_label: user.specialty_label || '',
+        allowed_categories: user.allowed_categories || [],
+        allowed_damage_levels: user.allowed_damage_levels || ['minor', 'major', 'critical'],
+        specialized_tasks: user.specialized_tasks || [],
         status: user.status,
         repute_score: reputeScore,
         reputeScore: reputeScore,
@@ -1426,7 +1441,20 @@ export const adminUpdateUser = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng trong hệ thống.' });
     }
 
-    const { role, department, phone, full_name, status, requested_role, repute_score } = req.body;
+    const {
+      role,
+      department,
+      phone,
+      full_name,
+      status,
+      requested_role,
+      repute_score,
+      specialty_code,
+      specialty_label,
+      allowed_categories,
+      allowed_damage_levels,
+      specialized_tasks
+    } = req.body;
 
     // Hard-lock: Không được phép sửa mã cán bộ hoặc email để bảo toàn định danh
     if (req.body.code && req.body.code !== user.code) {
@@ -1518,6 +1546,33 @@ export const adminUpdateUser = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Điểm tín nhiệm phải là số nguyên từ 0 đến 100.' });
       }
       user.repute_score = Math.round(scoreNum);
+    }
+
+    // Update Technician Specialty & Task Scope RBAC
+    if (specialty_code !== undefined) {
+      const cleanSpec = String(specialty_code).trim().toUpperCase();
+      const specProfile = TECHNICIAN_SPECIALTY_PROFILES[cleanSpec];
+      if (specProfile) {
+        user.specialty_code = cleanSpec;
+        user.specialty_label = specialty_label !== undefined ? String(specialty_label).trim() : specProfile.label;
+        user.allowed_categories = Array.isArray(allowed_categories) && allowed_categories.length > 0
+          ? allowed_categories
+          : specProfile.allowed_categories;
+        user.allowed_damage_levels = Array.isArray(allowed_damage_levels) && allowed_damage_levels.length > 0
+          ? allowed_damage_levels
+          : specProfile.allowed_damage_levels;
+        user.specialized_tasks = Array.isArray(specialized_tasks) && specialized_tasks.length > 0
+          ? specialized_tasks
+          : specProfile.specialized_tasks;
+        if (department === undefined && specProfile.department) {
+          user.department = specProfile.department;
+        }
+      }
+    } else {
+      if (specialty_label !== undefined) user.specialty_label = String(specialty_label).trim();
+      if (Array.isArray(allowed_categories)) user.allowed_categories = allowed_categories;
+      if (Array.isArray(allowed_damage_levels)) user.allowed_damage_levels = allowed_damage_levels;
+      if (Array.isArray(specialized_tasks)) user.specialized_tasks = specialized_tasks;
     }
 
     await user.save();

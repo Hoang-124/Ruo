@@ -3,6 +3,7 @@ import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { inventoryApi, masterDataApi } from '../../lib/api';
+import { triggerCsvDownload } from '../../lib/csvExport';
 
 export const InventoryPage = () => {
   const { toast } = useToast();
@@ -249,7 +250,7 @@ export const InventoryPage = () => {
     }
   };
 
-  const handleDownloadCsvReport = () => {
+  const handleDownloadCsvReport = async () => {
     if (!reportData) return;
     const allItems = [
       ...(reportData.categories?.matched_items || []),
@@ -287,13 +288,7 @@ export const InventoryPage = () => {
     });
 
     const csv = '\uFEFF' + rows.map((r) => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${reportData.report_code}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    await triggerCsvDownload(csv, `${reportData.report_code}.csv`);
     toast.success(`Đã tải xuống tệp CSV biên bản kiểm kê [${reportData.report_code}.csv]!`);
   };
 

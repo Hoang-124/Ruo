@@ -56,6 +56,14 @@ const DEMO_ACCOUNTS = [
   }
 ];
 
+const SPECIALIZED_TECH_ACCOUNTS = [
+  { code: 'KT001', email: 'technician@ruo.edu.vn', shortLabel: 'KT001 • Đa năng', desc: 'KTV Đa năng / Tổ trưởng Kỹ thuật CSVC (Trần Minh Tuấn)' },
+  { code: 'KT002', email: 'guard@ruo.edu.vn', shortLabel: 'KT002 • Bảo vệ', desc: 'Tổ Bảo vệ & Vận hành cơ bản: Chỉ bật/tắt điều hòa, đèn, mở cửa (Nguyễn Văn Bình)' },
+  { code: 'KT003', email: 'hvac.tech@ruo.edu.vn', shortLabel: 'KT003 • Điện lạnh', desc: 'KTV Điện lạnh, Nguồn điện & PCCC (Phạm Quang Huy)' },
+  { code: 'KT004', email: 'it.tech@ruo.edu.vn', shortLabel: 'KT004 • CNTT/AV', desc: 'KTV Máy chiếu, Âm thanh & CNTT - Mạng (Vũ Hoàng Nam)' },
+  { code: 'KT005', email: 'furn.tech@ruo.edu.vn', shortLabel: 'KT005 • Cơ khí', desc: 'KTV Mộc, Nội thất & Cơ khí phòng học (Đỗ Văn Sơn)' }
+];
+
 export const LoginForm = ({
   identifier,
   setIdentifier,
@@ -74,6 +82,18 @@ export const LoginForm = ({
 
   const selectedDemoAccount = useMemo(() => {
     const clean = String(identifier || '').trim().toLowerCase();
+    const specTech = SPECIALIZED_TECH_ACCOUNTS.find(
+      (t) => t.email.toLowerCase() === clean || t.code.toLowerCase() === clean
+    );
+    if (specTech) {
+      return {
+        ...DEMO_ACCOUNTS[2],
+        code: specTech.code,
+        email: specTech.email,
+        roleLabel: specTech.shortLabel,
+        desc: specTech.desc
+      };
+    }
     return (
       DEMO_ACCOUNTS.find(
         (acc) => acc.email.toLowerCase() === clean || acc.code.toLowerCase() === clean
@@ -286,6 +306,45 @@ export const LoginForm = ({
                 >
                   {acc.code}
                 </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 5 Specialized Technician Quick-Fill Chips */}
+        <div
+          style={{
+            marginTop: '7px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--ink-muted)', marginRight: '2px' }}>
+            KTV Chuyên Môn:
+          </span>
+          {SPECIALIZED_TECH_ACCOUNTS.map((st) => {
+            const clean = String(identifier || '').trim().toLowerCase();
+            const active = clean === st.email.toLowerCase() || clean === st.code.toLowerCase();
+            return (
+              <button
+                key={st.code}
+                type="button"
+                onClick={() => handleQuickFill(st)}
+                title={st.desc}
+                style={{
+                  padding: '2px 6px',
+                  borderRadius: '5px',
+                  fontSize: '9.5px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  border: active ? '1.5px solid #0EA5E9' : '1px solid var(--border-subtle)',
+                  background: active ? 'rgba(14, 165, 233, 0.16)' : 'var(--surface-card)',
+                  color: active ? '#0EA5E9' : 'var(--ink-secondary)'
+                }}
+              >
+                {st.shortLabel}
               </button>
             );
           })}

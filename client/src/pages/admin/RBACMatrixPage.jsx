@@ -2,6 +2,7 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { roleApi } from '../../lib/api';
+import { triggerCsvDownload } from '../../lib/csvExport';
 import { USER_ROLES } from '../../config/navigation';
 
 /**
@@ -399,7 +400,7 @@ export const RBACMatrixPage = () => {
     }
   };
 
-  const handleExport = (format = 'json') => {
+  const handleExport = async (format = 'json') => {
     const exportData = {
       system: 'Ruo University Equipment Management System (UEMS)',
       useCase: 'Dynamic RBAC Matrix Configuration',
@@ -430,13 +431,7 @@ export const RBACMatrixPage = () => {
     };
 
     if (format === 'json') {
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ruo_rbac_matrix_${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await triggerCsvDownload(JSON.stringify(exportData, null, 2), `ruo_rbac_matrix_${new Date().toISOString().slice(0, 10)}.json`);
       toast.success('Đã xuất ma trận phân quyền dạng JSON.');
     } else {
       let csv = '# RUO UFMS - MA TRẬN PHÂN QUYỀN RBAC (UC-12.1)\n';
@@ -451,13 +446,7 @@ export const RBACMatrixPage = () => {
           csv += `"${mod.name}","${p.code}","${p.label}","${l}","${t}","${m}","${a}"\n`;
         });
       });
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ruo_rbac_matrix_${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await triggerCsvDownload(csv, `ruo_rbac_matrix_${new Date().toISOString().slice(0, 10)}.csv`);
       toast.success('Đã xuất ma trận phân quyền dạng CSV.');
     }
   };

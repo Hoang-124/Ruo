@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import {
   ChatMessage,
   Repair,
+  RepairLog,
   User,
   SparePart,
   PartsRequest,
@@ -11,6 +12,7 @@ import {
   AuditLog
 } from '../models/index.js';
 import { processAiChatQuery } from '../services/aiChatEngine.js';
+import { resolveTechnicianSpecialtyProfile } from '../services/aiService.js';
 
 /**
  * 1. TICKET-SCOPED CHAT (Giảng viên ↔ Kỹ thuật viên)
@@ -28,7 +30,9 @@ export const getTicketMessages = async (req, res) => {
 
     const ticket = await Repair.findById(repairId)
       .populate('reported_by', 'full_name code email role avatar phone')
-      .populate('assigned_to', 'full_name code email role avatar phone')
+      .populate('assigned_to', 'full_name code email role avatar phone department specialty_code specialty_label allowed_categories specialized_tasks')
+      .populate('ai_recommended_to', 'full_name code email role avatar phone department specialty_code specialty_label allowed_categories specialized_tasks')
+      .populate('assigned_by', 'full_name code email role')
       .populate('equipment_id', 'code name status brand model')
       .populate('room_id', 'code name floor');
 
@@ -66,6 +70,13 @@ export const getTicketMessages = async (req, res) => {
         room: ticket.room_id,
         reported_by: ticket.reported_by,
         assigned_to: ticket.assigned_to,
+        assigned_by: ticket.assigned_by,
+        ai_recommended_to: ticket.ai_recommended_to,
+        ai_auto_assigned: Boolean(ticket.ai_auto_assigned),
+        ai_dispatch_score: ticket.ai_dispatch_score,
+        ai_dispatch_reason: ticket.ai_dispatch_reason,
+        reassign_requested: Boolean(ticket.reassign_requested),
+        reassign_reason: ticket.reassign_reason,
         is_closed: ['resolved', 'closed', 'repaired'].includes(ticket.status)
       },
       messages
@@ -109,17 +120,29 @@ export const sendTicketMessage = async (req, res) => {
       read_by: [{ user_id: sender._id, read_at: new Date() }]
     });
 
-    // Notify the other party
-    let recipientId = null;
-    if (sender.role === 'lecturer' && ticket.assigned_to) {
-      recipientId = ticket.assigned_to;
-    } else if (sender.role === 'technician' && ticket.reported_by) {
-      recipientId = ticket.reported_by;
+    // Notify the other parties (Lecturer <-> Technician <-> Facility Manager)
+    const recipientIds = new Set();
+    if (sender.role === 'lecturer') {
+      if (ticket.assigned_to) recipientIds.add(ticket.assigned_to.toString());
+      if (ticket.assigned_by) recipientIds.add(ticket.assigned_by.toString());
+    } else if (sender.role === 'technician') {
+      if (ticket.reported_by) recipientIds.add(ticket.reported_by.toString());
+      if (ticket.assigned_by) {
+        recipientIds.add(ticket.assigned_by.toString());
+      } else {
+        const managers = await User.find({ role: 'facility_manager', status: 'active' }).select('_id').catch(() => []);
+        managers.forEach((m) => recipientIds.add(m._id.toString()));
+      }
+    } else if (sender.role === 'facility_manager' || sender.role === 'admin') {
+      if (ticket.assigned_to) recipientIds.add(ticket.assigned_to.toString());
+      if (ticket.reported_by) recipientIds.add(ticket.reported_by.toString());
     }
 
-    if (recipientId && recipientId.toString() !== sender._id.toString()) {
+    recipientIds.delete(sender._id.toString());
+
+    for (const rId of recipientIds) {
       await Notification.create({
-        user_id: recipientId,
+        user_id: rId,
         type: 'info',
         title: `Tin nhắn mới từ ${sender.full_name} (${ticket.ticket_code})`,
         message: content.trim().slice(0, 150),
@@ -334,8 +357,127 @@ export const decideActionCard = async (req, res) => {
       });
     }
 
-    const { part_id, quantity, part_name, ticket_code, repair_id } = chatMsg.action_data;
+    const { part_id, quantity, part_name, ticket_code, repair_id, card_type } = chatMsg.action_data;
     const deciderName = req.user.full_name || req.user.code;
+
+    // Handle Technician Reassignment Request Card (Manager <-> Technician Chat)
+    if (card_type === 'reassign_request') {
+      const targetTechId = req.body.new_technician_id || chatMsg.action_data.suggested_technician_id;
+      const repair = repair_id && mongoose.Types.ObjectId.isValid(repair_id)
+        ? await Repair.findById(repair_id)
+        : null;
+
+      if (decision === 'approve') {
+        if (!targetTechId || !mongoose.Types.ObjectId.isValid(targetTechId)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Không tìm thấy Kỹ thuật viên thay thế hợp lệ để điều phối lại.'
+          });
+        }
+
+        const newTech = await User.findById(targetTechId).select('full_name code department specialty_code specialty_label allowed_categories');
+        if (!newTech) {
+          return res.status(404).json({ success: false, message: 'Kỹ thuật viên được chọn không tồn tại.' });
+        }
+        const techProfile = resolveTechnicianSpecialtyProfile(newTech);
+
+        if (repair) {
+          repair.assigned_to = newTech._id;
+          repair.assigned_by = req.user._id;
+          repair.status = 'assigned';
+          repair.reassign_requested = false;
+          repair.reassign_reason = '';
+          await repair.save();
+
+          await RepairLog.create({
+            repair_id: repair._id,
+            action: 'assigned',
+            performed_by: req.user._id,
+            description: `Quản lý ${deciderName} đã duyệt đổi người qua Chat → Giao cho ${newTech.full_name} (${techProfile.short_label})`
+          }).catch(() => null);
+
+          await Notification.create({
+            user_id: newTech._id,
+            type: 'repair_assigned',
+            title: `Nhiệm vụ điều phối đúng chuyên môn (${repair.ticket_code})`,
+            message: `Quản lý ${deciderName} đã chuyển giao phiếu ${repair.ticket_code} cho bạn theo chuyên môn [${techProfile.short_label}].`,
+            reference_type: 'repair',
+            reference_id: repair._id
+          }).catch(() => null);
+
+          await ChatMessage.create({
+            channel_type: 'ticket',
+            conversation_id: repair._id.toString(),
+            repair_id: repair._id,
+            sender_id: req.user._id,
+            sender_name: deciderName,
+            sender_role: req.user.role,
+            message_type: 'system_event',
+            content: `[ĐÃ ĐIỀU PHỐI LẠI] Quản lý ${deciderName} đã duyệt yêu cầu đổi KTV và phân công phiếu ${repair.ticket_code} sang cho ${newTech.full_name} (${techProfile.short_label}).`
+          }).catch(() => null);
+        }
+
+        chatMsg.action_data = {
+          ...chatMsg.action_data,
+          status: 'approved',
+          new_technician_id: newTech._id.toString(),
+          new_technician_name: newTech.full_name,
+          new_technician_specialty: techProfile.short_label,
+          decided_by: deciderName,
+          decided_at: new Date()
+        };
+        chatMsg.markModified('action_data');
+        await chatMsg.save();
+
+        const confirmReassignMsg = await ChatMessage.create({
+          channel_type: 'operations',
+          conversation_id: 'ops_tech_desk',
+          sender_id: null,
+          sender_name: 'Hệ Thống Điều Phối AI',
+          sender_role: 'system',
+          message_type: 'system_event',
+          content: `[ĐÃ CHUYỂN GIAO] Quản lý ${deciderName} đã duyệt đổi KTV cho phiếu ${ticket_code || ''} → Chuyển sang cho ${newTech.full_name} (${newTech.code} • ${techProfile.short_label}).`
+        });
+
+        return res.json({
+          success: true,
+          message: `Đã chuyển giao phiếu ${ticket_code || ''} sang cho ${newTech.full_name} (${techProfile.short_label})!`,
+          updated_card: chatMsg,
+          system_message: confirmReassignMsg
+        });
+      } else {
+        if (repair) {
+          repair.reassign_requested = false;
+          await repair.save();
+        }
+        chatMsg.action_data = {
+          ...chatMsg.action_data,
+          status: 'rejected',
+          reject_reason: reason || 'Quản lý yêu cầu KTV hiện tại tiếp tục xử lý',
+          decided_by: deciderName,
+          decided_at: new Date()
+        };
+        chatMsg.markModified('action_data');
+        await chatMsg.save();
+
+        const rejectReassignMsg = await ChatMessage.create({
+          channel_type: 'operations',
+          conversation_id: 'ops_tech_desk',
+          sender_id: null,
+          sender_name: 'Hệ Thống Điều Phối AI',
+          sender_role: 'system',
+          message_type: 'system_event',
+          content: `[GIỮ PHÂN CÔNG] Quản lý ${deciderName} đã từ chối đổi KTV cho phiếu ${ticket_code || ''}. Ghi chú: ${reason || 'Đề nghị KTV hiện tại tiếp tục kiểm tra tại chỗ'}.`
+        });
+
+        return res.json({
+          success: true,
+          message: 'Đã từ chối yêu cầu đổi KTV.',
+          updated_card: chatMsg,
+          system_message: rejectReassignMsg
+        });
+      }
+    }
 
     if (decision === 'approve') {
       // Check if there is already an approved PartsRequest to avoid double deduction

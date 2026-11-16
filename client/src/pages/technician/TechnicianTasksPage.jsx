@@ -9,11 +9,25 @@ import { DeadlineCountdown } from '../../components/repairs/DeadlineCountdown';
 import { TicketChatDrawer } from '../../components/chat/TicketChatDrawer';
 
 export const TechnicianTasksPage = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, login } = useAuth();
   const userIdentity = useMemo(() => ({ _id: currentUser?._id, id: currentUser?.id, code: currentUser?.code, email: currentUser?.email }),
     [currentUser?._id, currentUser?.id, currentUser?.code, currentUser?.email]);
   const { toast } = useToast();
   const { error: showError } = toast;
+
+  const handleQuickSwitchTech = async (techCode, techLabel) => {
+    if (typeof login !== 'function') return;
+    try {
+      const res = await login(techCode, 'Ruo@2026');
+      if (res?.success) {
+        toast.success(`Đã chuyển sang tài khoản [${techCode}] ${techLabel}!`);
+      } else {
+        showError(res?.message || 'Không thể chuyển tài khoản KTV.');
+      }
+    } catch (err) {
+      showError('Lỗi khi chuyển tài khoản KTV: ' + err.message);
+    }
+  };
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -35,6 +49,43 @@ export const TechnicianTasksPage = () => {
   const [requestQty, setRequestQty] = useState(1);
   const [requestReason, setRequestReason] = useState('');
   const [submittingPartRequest, setSubmittingPartRequest] = useState(false);
+
+  // States báo trái chuyên môn / xin đổi KTV (kết nối trực tiếp Chat với Quản lý CSVC)
+  const [reassignModalTask, setReassignModalTask] = useState(null);
+  const [reassignReason, setReassignReason] = useState('');
+  const [submittingReassign, setSubmittingReassign] = useState(false);
+
+  const openReassignModal = (task) => {
+    setReassignModalTask(task);
+    const isGuard = currentUser?.specialty_code === 'GUARD_OPS' || /bảo vệ/i.test(currentUser?.department || '');
+    setReassignReason(
+      isGuard
+        ? `Tổ Bảo vệ chỉ phụ trách bật/tắt điều hòa, công tắc đèn và mở cửa phòng. Sự cố [${task.equipment_id?.name || 'thiết bị'}] cần KTV chuyên môn sửa chữa phần cứng.`
+        : `Qua kiểm tra thực tế, sự cố [${task.equipment_id?.name || 'thiết bị'}] không đúng chuyên môn phụ trách (${currentUser?.specialty_label || currentUser?.department || 'KTV'}), đề nghị Quản lý CSVC điều phối KTV chuyên sâu.`
+    );
+  };
+
+  const handleSubmitReassignRequest = async (e) => {
+    e.preventDefault();
+    if (!reassignModalTask || !reassignReason.trim()) return;
+    setSubmittingReassign(true);
+    try {
+      const targetTask = reassignModalTask;
+      const res = await repairApi.requestReassign(targetTask._id, {
+        reason: reassignReason.trim()
+      });
+      if (res && res.success) {
+        toast.success(res.message || `Đã gửi yêu cầu đổi KTV và mở kênh Chat với Quản lý CSVC cho phiếu ${targetTask.ticket_code}!`);
+        setReassignModalTask(null);
+        await fetchTasks();
+        setChatTicket(res.repair || targetTask);
+      }
+    } catch (err) {
+      showError('Lỗi khi gửi yêu cầu đổi KTV: ' + err.message);
+    } finally {
+      setSubmittingReassign(false);
+    }
+  };
 
   const openTaskHistory = async (task) => {
     setSelectedTask(task);
@@ -437,6 +488,75 @@ export const TechnicianTasksPage = () => {
         </div>
       </div>
 
+      {/* Specialty RBAC Banner for Logged-in Technician */}
+      <div
+        style={{
+          background: 'var(--surface-card)',
+          border: '1px solid rgba(14,165,233,0.35)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '12px 16px',
+          marginBottom: '18px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', background: 'rgba(6,182,212,0.14)', color: 'var(--laser-cyan)' }}>
+              ĐANG ĐĂNG NHẬP: {currentUser?.code || 'KT001'} • {currentUser?.specialty_code || 'TECH_GENERAL'}
+            </span>
+            <strong style={{ fontSize: '13px', color: 'var(--ink-pure)' }}>
+              {currentUser?.full_name || currentUser?.name || 'Kỹ Thuật Viên'} — {currentUser?.specialty_label || currentUser?.department || 'Kỹ Thuật Viên Đa Năng CSVC'}
+            </strong>
+          </div>
+          {typeof login === 'function' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-muted)' }}>Chuyển nhanh KTV:</span>
+              {[
+                { code: 'KT001', label: 'KT001 • Đa năng' },
+                { code: 'KT002', label: 'KT002 • Bảo vệ' },
+                { code: 'KT003', label: 'KT003 • Điện lạnh' },
+                { code: 'KT004', label: 'KT004 • CNTT/Máy chiếu' },
+                { code: 'KT005', label: 'KT005 • Cơ khí' }
+              ].map((st) => {
+                const isCurrent = String(currentUser?.code || '').toUpperCase() === st.code;
+                return (
+                  <button
+                    key={st.code}
+                    type="button"
+                    onClick={() => handleQuickSwitchTech(st.code, st.label)}
+                    disabled={isCurrent}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: isCurrent ? 'default' : 'pointer',
+                      border: isCurrent ? '1.5px solid var(--laser-cyan)' : '1px solid var(--hairline-medium)',
+                      background: isCurrent ? 'rgba(6,182,212,0.18)' : 'var(--surface-panel)',
+                      color: isCurrent ? 'var(--laser-cyan)' : 'var(--ink-secondary)'
+                    }}
+                  >
+                    {st.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+          <span>
+            {Array.isArray(currentUser?.specialized_tasks) && currentUser.specialized_tasks.length > 0
+              ? `Phạm vi công việc được phân quyền: ${currentUser.specialized_tasks.join(', ')}`
+              : 'Phụ trách tiếp nhận và khắc phục sự cố kỹ thuật đúng chuyên môn được giao.'}
+          </span>
+          <span style={{ color: 'var(--ink-secondary)' }}>
+            Nếu công việc không phù hợp chuyên môn, bấm <strong>"Báo Trái Chuyên Môn / Đổi KTV"</strong> để Chat với Quản lý CSVC.
+          </span>
+        </div>
+      </div>
+
       {/* KPI Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }}>
         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
@@ -574,6 +694,39 @@ export const TechnicianTasksPage = () => {
                     <div style={{ color: 'var(--ink-pure)' }}>{t.incident_description}</div>
                   </div>
 
+                  {(t.ai_auto_assigned || t.ai_dispatch_reason) && (
+                    <div style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.28)', padding: '8px 12px', borderRadius: 'var(--radius-md)', fontSize: '12px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <Icons.Sparkles size={14} style={{ color: 'var(--laser-cyan)', flexShrink: 0 }} />
+                      <div>
+                        <strong style={{ color: 'var(--laser-cyan)' }}>
+                          {t.ai_auto_assigned ? 'AI Tự Động Phân Công Theo Chuyên Môn:' : 'Đánh Giá Khớp Chuyên Môn AI:'}
+                        </strong>{' '}
+                        <span style={{ color: 'var(--ink-secondary)' }}>
+                          {t.ai_dispatch_reason || `Khớp hồ sơ chuyên môn (${t.ai_dispatch_score || 90}/100 điểm)`}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {t.reassign_requested && (
+                    <div style={{ background: 'rgba(234,88,12,0.1)', border: '1px solid rgba(234,88,12,0.4)', padding: '8px 12px', borderRadius: 'var(--radius-md)', fontSize: '12px', color: '#ea580c', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                      <div>
+                        <strong>Đã gửi yêu cầu đổi KTV cho Quản lý CSVC:</strong> "{t.reassign_reason}"
+                        {t.ai_recommended_to?.full_name && (
+                          <span> • AI đề xuất chuyển cho: <strong>{t.ai_recommended_to.full_name}</strong></span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setChatTicket(t)}
+                        className="laser-btn laser-btn-secondary"
+                        style={{ padding: '4px 10px', fontSize: '11.5px', fontWeight: 700, borderColor: '#ea580c', color: '#ea580c' }}
+                      >
+                        Mở Chat Với Quản Lý
+                      </button>
+                    </div>
+                  )}
+
                   {/* Dải trạng thái yêu cầu linh kiện gắn chặt với Ticket này */}
                   {t.parts_requests && t.parts_requests.length > 0 && (
                     <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -677,6 +830,29 @@ export const TechnicianTasksPage = () => {
                         <span>Báo Cáo Kết Quả</span>
                       </button>
                     </>
+                  )}
+
+                  {(isAssigned || isInProgress) && (
+                    <button
+                      onClick={() => openReassignModal(t)}
+                      className="laser-btn laser-btn-secondary"
+                      style={{
+                        padding: '7px 12px',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '5px',
+                        color: '#ea580c',
+                        borderColor: 'rgba(234,88,12,0.45)',
+                        background: 'rgba(234,88,12,0.08)'
+                      }}
+                      title="Báo công việc không đúng chuyên môn và mở khung Chat với Quản lý CSVC để đổi KTV"
+                    >
+                      <Icons.AlertTriangle size={13} color="#ea580c" />
+                      <span>{t.reassign_requested ? 'Cập Nhật Lý Do Đổi Ca' : 'Báo Trái Chuyên Môn / Đổi KTV'}</span>
+                    </button>
                   )}
 
                   <button
@@ -1143,6 +1319,107 @@ export const TechnicianTasksPage = () => {
                   style={{ flex: 1.5, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
                   {submittingPartRequest ? 'Đang Gửi...' : 'Gửi Tới Quản Lý CSVC'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Báo Trái Chuyên Môn / Xin Đổi KTV Gửi Quản Lý CSVC */}
+      {reassignModalTask && (
+        <div className="ruo-drawer-backdrop" onClick={() => setReassignModalTask(null)} style={{ zIndex: 1250 }}>
+          <div
+            className="ruo-drawer-panel"
+            style={{ width: '500px', maxWidth: '95vw', padding: '24px', borderRadius: '16px', background: 'var(--surface-primary)', boxShadow: '0 16px 40px rgba(0,0,0,0.25)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: 'rgba(234,88,12,0.12)', color: '#ea580c' }}>
+                    BÁO TRÁI CHUYÊN MÔN • CHAT QUẢN LÝ CSVC
+                  </span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '12.5px', color: 'var(--blueprint-500)' }}>
+                    {reassignModalTask.ticket_code}
+                  </span>
+                </div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--ink-pure)' }}>
+                  Đề Nghị Quản Lý CSVC Đổi Kỹ Thuật Viên Đúng Chuyên Môn
+                </h3>
+              </div>
+              <button onClick={() => setReassignModalTask(null)} className="ruo-btn ruo-btn-ghost ruo-btn-sm" style={{ padding: '4px' }}>
+                <Icons.X size={16} />
+              </button>
+            </div>
+
+            <div style={{ background: 'var(--bg-app)', padding: '12px 14px', borderRadius: '8px', fontSize: '12.5px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '4px', border: '1px solid var(--border-subtle)' }}>
+              <div><strong>Thiết bị:</strong> {reassignModalTask.equipment_id?.name} ({reassignModalTask.equipment_id?.code})</div>
+              <div><strong>Hiện tượng:</strong> {reassignModalTask.incident_description}</div>
+              <div><strong>Chuyên môn hiện tại của bạn:</strong> <span style={{ color: 'var(--laser-cyan)', fontWeight: 700 }}>{currentUser?.specialty_label || currentUser?.department || 'KTV CSVC'}</span></div>
+            </div>
+
+            <form onSubmit={handleSubmitReassignRequest} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-muted)', marginBottom: '6px' }}>
+                  Chọn nhanh lý do thực tế tại trường:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {[
+                    'Tổ Bảo vệ chỉ phụ trách bật/tắt điều hòa, công tắc đèn và mở cửa phòng; sự cố này hỏng phần cứng cần KTV chuyên sâu.',
+                    'Sự cố thực tế tại hiện trường thuộc chuyên môn khác (Điện lạnh / Điện nguồn / CNTT - Âm thanh - Máy chiếu / Cơ khí).',
+                    'Đang xử lý ca khẩn cấp khác tại tòa nhà, nhờ Quản lý CSVC điều phối KTV cùng chuyên môn hỗ trợ.'
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setReassignReason(preset)}
+                      style={{
+                        textAlign: 'left',
+                        padding: '7px 10px',
+                        borderRadius: '6px',
+                        fontSize: '11.5px',
+                        border: reassignReason === preset ? '1px solid #ea580c' : '1px solid var(--border-default)',
+                        background: reassignReason === preset ? 'rgba(234,88,12,0.08)' : 'var(--surface-secondary)',
+                        color: 'var(--ink-pure)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px', color: 'var(--ink-secondary)' }}>
+                  Nội dung gửi Quản lý CSVC (đồng bộ vào Chat Phiếu & Kênh 2): *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={reassignReason}
+                  onChange={(e) => setReassignReason(e.target.value)}
+                  placeholder="Nhập lý do công việc chưa phù hợp chuyên môn để trao đổi với Quản lý CSVC..."
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--border-default)', background: 'var(--surface-primary)', color: 'var(--ink-pure)', fontSize: '13px', resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setReassignModalTask(null)}
+                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border-default)', background: 'transparent', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingReassign || !reassignReason.trim()}
+                  className="laser-btn laser-btn-primary"
+                  style={{ flex: 1.6, padding: '10px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, background: '#ea580c', borderColor: '#ea580c' }}
+                >
+                  {submittingReassign ? 'Đang Gửi & Mở Chat...' : 'Gửi Yêu Cầu & Chat Với Quản Lý'}
                 </button>
               </div>
             </form>

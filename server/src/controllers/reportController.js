@@ -1,3 +1,8 @@
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 import { Equipment } from '../models/Equipment.js';
 import { Repair } from '../models/Repair.js';
 import { Room } from '../models/Room.js';
@@ -147,8 +152,91 @@ export const exportStatisticalReport = async (req, res) => {
     }
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="ruo_${query.type}_${now.toISOString().slice(0, 10)}.csv"`);
-    res.send(renderReportCsv(report));
+    const csvPayload = renderReportCsv(report);
+    res.send(csvPayload.startsWith('\uFEFF') ? csvPayload : `\uFEFF${csvPayload}`);
   } catch {
     res.status(500).json({ success: false, message: 'Không xuất được báo cáo. Vui lòng thử lại.' });
+  }
+};
+
+const sanitizeExportFilename = (rawName = 'ruo_export.csv') => {
+  const base = path.basename(String(rawName || 'ruo_export.csv')).replace(/[^a-zA-Z0-9._-]/g, '_');
+  if (base.toLowerCase().endsWith('.csv') || base.toLowerCase().endsWith('.json')) {
+    return base;
+  }
+  return `${base}.csv`;
+};
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const resolveExportPath = async (safeFilename) => {
+  // Primary: D:\Ruo\exports (always has >88GB free even when C: drive is full)
+  const workspaceExportDir = path.resolve(__dirname, '..', '..', '..', 'exports');
+  await fs.mkdir(workspaceExportDir, { recursive: true });
+  return path.join(workspaceExportDir, safeFilename);
+};
+
+// @desc    Save CSV/JSON export directly into D:\Ruo\exports (and Downloads if space permits)
+// @route   POST /api/reports/save-csv
+export const saveCsvExport = async (req, res) => {
+  try {
+    const { filename, content } = req.body || {};
+    if (typeof content !== 'string' || !content.trim()) {
+      return res.status(400).json({ success: false, message: 'Nội dung tệp xuất không hợp lệ.' });
+    }
+    const safeFilename = sanitizeExportFilename(filename);
+    const isCsv = safeFilename.toLowerCase().endsWith('.csv');
+    const normalizedContent = isCsv && !content.startsWith('\uFEFF') ? `\uFEFF${content}` : content;
+
+    const primaryPath = await resolveExportPath(safeFilename);
+    await fs.writeFile(primaryPath, normalizedContent, 'utf8');
+
+    // Also mirror to C:\Users\admin\Downloads if C: drive has enough free space
+    try {
+      const downloadsDir = path.join(os.homedir(), 'Downloads');
+      await fs.mkdir(downloadsDir, { recursive: true });
+      await fs.writeFile(path.join(downloadsDir, safeFilename), normalizedContent, 'utf8');
+    } catch {
+      // Ignore ENOSPC on C: drive since primaryPath on D:\Ruo\exports succeeded
+    }
+
+    return res.json({
+      success: true,
+      filename: safeFilename,
+      savedPath: primaryPath,
+      message: `Đã lưu tệp ${safeFilename} thành công tại ${primaryPath}.`
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || 'Không thể lưu tệp xuất.' });
+  }
+};
+
+// @desc    Open saved CSV/JSON export in Excel or Windows File Explorer
+// @route   POST /api/reports/open-csv
+export const openCsvExport = async (req, res) => {
+  try {
+    const { filename, mode = 'folder' } = req.body || {};
+    const safeFilename = sanitizeExportFilename(filename);
+    const primaryPath = await resolveExportPath(safeFilename);
+    await fs.access(primaryPath);
+
+    if (process.platform === 'win32') {
+      if (mode === 'excel') {
+        const child = spawn('cmd.exe', ['/c', 'start', '', primaryPath], { detached: true, stdio: 'ignore' });
+        child.unref();
+      } else {
+        const child = spawn('explorer.exe', [`/select,${primaryPath}`], { detached: true, stdio: 'ignore' });
+        child.unref();
+      }
+    }
+
+    return res.json({
+      success: true,
+      filename: safeFilename,
+      savedPath: primaryPath
+    });
+  } catch (error) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy tệp đã xuất: ' + error.message });
   }
 };

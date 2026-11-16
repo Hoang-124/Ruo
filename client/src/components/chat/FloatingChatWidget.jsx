@@ -510,7 +510,7 @@ export const FloatingChatWidget = () => {
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          zIndex: 10050,
+          zIndex: isOpen ? 1250 : 950,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-end',
@@ -934,6 +934,105 @@ export const FloatingChatWidget = () => {
                         const card = msg.action_data;
                         const isPending = card.status === 'pending';
                         const isManager = ['facility_manager', 'admin'].includes(currentUser?.role);
+                        const isReassignCard = card.card_type === 'reassign_request';
+
+                        if (isReassignCard) {
+                          return (
+                            <div
+                              key={msg._id || i}
+                              style={{
+                                width: '100%',
+                                background: 'var(--surface-primary)',
+                                borderRadius: '12px',
+                                border: '1px solid rgba(6,182,212,0.4)',
+                                padding: '14px',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', gap: '8px' }}>
+                                <div>
+                                  <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: 'rgba(6,182,212,0.14)', color: 'var(--blueprint-500)' }}>
+                                    ĐỀ NGHỊ ĐỔI KTV ĐÚNG CHUYÊN MÔN
+                                  </span>
+                                  <h4 style={{ margin: '4px 0 0', fontSize: '13.5px', fontWeight: 700, color: 'var(--ink-pure)' }}>
+                                    [{card.ticket_code}] {card.equipment_name} ({card.room_code || 'Phòng học'})
+                                  </h4>
+                                </div>
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    padding: '2px 8px',
+                                    borderRadius: '999px',
+                                    fontWeight: 700,
+                                    background: card.status === 'approved' ? 'rgba(22,163,74,0.1)' : card.status === 'rejected' ? 'rgba(220,38,38,0.1)' : 'rgba(234,88,12,0.1)',
+                                    color: card.status === 'approved' ? '#16a34a' : card.status === 'rejected' ? '#dc2626' : '#ea580c'
+                                  }}
+                                >
+                                  {card.status === 'approved' ? 'Đã Đổi KTV' : card.status === 'rejected' ? 'Giữ Phân Công' : 'Chờ Quản Lý Duyệt'}
+                                </span>
+                              </div>
+
+                              <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', display: 'flex', flexDirection: 'column', gap: '4px', margin: '8px 0', padding: '8px 10px', background: 'var(--bg-app)', borderRadius: '6px' }}>
+                                <div>KTV báo trái chuyên môn: <strong>{card.requested_by_name}</strong> ({card.requested_by_specialty || 'KTV'})</div>
+                                {card.reason && <div>Lý do thực tế: <em>"{card.reason}"</em></div>}
+                                {card.recommended_tech_name && (
+                                  <div style={{ color: 'var(--blueprint-500)', fontWeight: 700, marginTop: '2px' }}>
+                                    AI đề xuất chuyển giao: {card.recommended_tech_name} ({card.recommended_tech_code} • {card.recommended_tech_specialty})
+                                  </div>
+                                )}
+                              </div>
+
+                              {isPending && isManager && (
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                                  <button
+                                    onClick={() => handleDecideCard(msg._id, 'approve')}
+                                    className="laser-btn"
+                                    style={{
+                                      flex: 1,
+                                      padding: '7px 12px',
+                                      fontSize: '12px',
+                                      fontWeight: 700,
+                                      background: '#16a34a',
+                                      color: '#ffffff',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '6px'
+                                    }}
+                                  >
+                                    <Icons.Check size={14} />
+                                    <span>Duyệt Đổi Sang {card.recommended_tech_name || 'KTV AI Gợi Ý'}</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleDecideCard(msg._id, 'reject')}
+                                    className="laser-btn"
+                                    style={{
+                                      padding: '7px 12px',
+                                      fontSize: '12px',
+                                      fontWeight: 600,
+                                      background: 'transparent',
+                                      color: '#dc2626',
+                                      border: '1px solid #dc2626',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Giữ Nguyên
+                                  </button>
+                                </div>
+                              )}
+
+                              {!isPending && card.decided_by && (
+                                <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '6px', textAlign: 'right' }}>
+                                  Xử lý bởi: <strong>{card.decided_by}</strong>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
 
                         return (
                           <div

@@ -29,6 +29,39 @@ const UserDetailContent = ({
   const loadingActivities = isOpen && Boolean(user?._id) && loadedUserId !== user._id;
   const [userData, setUserData] = useState(user);
 
+  const TECHNICIAN_SPECIALTY_OPTIONS = [
+    {
+      code: 'GUARD_OPS',
+      label: 'Tổ Bảo vệ & Vận hành cơ bản',
+      department: 'Tổ Bảo Vệ & Vận Hành Cơ Bản',
+      tasks: 'Chỉ bật/tắt điều hòa, bật/tắt đèn phòng học & hành lang, đóng/mở cửa phòng, kiểm tra aptomat cơ bản (Không tự ý tháo lắp phần cứng)'
+    },
+    {
+      code: 'TECH_HVAC_POWER',
+      label: 'KTV Chuyên trách Điện lạnh, Nguồn điện & PCCC',
+      department: 'Tổ Kỹ Thuật Điện Lạnh & Nguồn Điện',
+      tasks: 'Sửa chữa điều hòa (HVAC), nạp gas, vệ sinh dàn lạnh, xử lý tủ điện, aptomat, hệ thống đèn chiếu sáng & PCCC'
+    },
+    {
+      code: 'TECH_IT_AV',
+      label: 'KTV Chuyên trách Máy chiếu, Âm thanh & CNTT - Mạng',
+      department: 'Tổ Kỹ Thuật CNTT & Nghe Nhìn (AV)',
+      tasks: 'Sửa chữa máy chiếu, màn hình tương tác, âm ly, loa, micro giảng đường, PC phòng lab, switch mạng, Wifi, Camera'
+    },
+    {
+      code: 'TECH_FURN_MECH',
+      label: 'KTV Chuyên trách Nội thất, Cơ khí & Thiết bị Phòng Y tế',
+      department: 'Tổ Kỹ Thuật Cơ Khí & Nội Thất',
+      tasks: 'Sửa chữa bàn ghế giảng đường, bảng từ, cửa kính, bản lề, khóa cơ khí và thiết bị cơ bản phòng y tế'
+    },
+    {
+      code: 'TECH_GENERAL',
+      label: 'Kỹ thuật viên Đa năng / Tổ trưởng Kỹ thuật CSVC',
+      department: 'Tổ Kỹ Thuật Đa Năng CSVC',
+      tasks: 'Phụ trách đa chuyên môn, xử lý sự cố liên ngành và hỗ trợ tất cả các hạng mục thiết bị cơ sở vật chất'
+    }
+  ];
+
   // Edit Mode & Form State (UC-10.3 RBAC Update)
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -38,7 +71,8 @@ const UserDetailContent = ({
     status: user.status || 'active',
     department: user.department || '',
     phone: user.phone || '',
-    repute_score: user.repute_score ?? 100
+    repute_score: user.repute_score ?? 100,
+    specialty_code: user.specialty_code || 'TECH_GENERAL'
   });
 
   const [previousUser, setPreviousUser] = useState(user);
@@ -52,7 +86,8 @@ const UserDetailContent = ({
         status: user.status || 'active',
         department: user.department || '',
         phone: user.phone || '',
-        repute_score: user.repute_score ?? 100
+        repute_score: user.repute_score ?? 100,
+        specialty_code: user.specialty_code || 'TECH_GENERAL'
       });
       setIsEditing(false);
     }
@@ -74,7 +109,8 @@ const UserDetailContent = ({
                 status: res.user.status || 'active',
                 department: res.user.department || '',
                 phone: res.user.phone || '',
-                repute_score: res.user.repute_score ?? 100
+                repute_score: res.user.repute_score ?? 100,
+                specialty_code: res.user.specialty_code || 'TECH_GENERAL'
               });
             }
             if (Array.isArray(res.activities)) setActivities(res.activities);
@@ -130,7 +166,8 @@ const UserDetailContent = ({
         full_name: editForm.full_name.trim(),
         department: editForm.department.trim(),
         phone: editForm.phone.trim(),
-        repute_score: editForm.repute_score
+        repute_score: editForm.repute_score,
+        ...(editForm.role === USER_ROLES.TECHNICIAN ? { specialty_code: editForm.specialty_code } : {})
       };
 
       const res = await authApi.adminUpdateUser(userData._id, payload);
@@ -960,6 +997,71 @@ const UserDetailContent = ({
                   )}
                 </ul>
               </div>
+
+              {/* Technician Specialty RBAC Configuration */}
+              {(isEditing ? editForm.role : userData.role) === USER_ROLES.TECHNICIAN && (
+                <div
+                  style={{
+                    background: 'var(--surface-sunken)',
+                    padding: '16px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid rgba(6,182,212,0.35)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <h5 style={{ margin: 0, fontSize: '13.5px', fontWeight: 800, color: 'var(--laser-cyan)' }}>
+                        Phân Quyền Chuyên Môn Kỹ Thuật Viên (AI Specialty Dispatch RBAC)
+                      </h5>
+                      <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '2px' }}>
+                        Định tuyến AI tự động giao đúng người — đúng việc theo mô hình thực tế của nhà trường
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', background: 'rgba(6,182,212,0.14)', color: 'var(--laser-cyan)' }}>
+                      {isEditing ? editForm.specialty_code : (userData.specialty_code || 'TECH_GENERAL')}
+                    </span>
+                  </div>
+
+                  {isEditing ? (
+                    <div>
+                      <label className="ruo-label">Chọn Nhóm Chuyên Môn Phụ Trách *</label>
+                      <select
+                        className="ruo-select"
+                        value={editForm.specialty_code}
+                        onChange={(e) => {
+                          const chosen = TECHNICIAN_SPECIALTY_OPTIONS.find((o) => o.code === e.target.value);
+                          setEditForm({
+                            ...editForm,
+                            specialty_code: e.target.value,
+                            department: chosen?.department || editForm.department
+                          });
+                        }}
+                        style={{ width: '100%' }}
+                      >
+                        {TECHNICIAN_SPECIALTY_OPTIONS.map((opt) => (
+                          <option key={opt.code} value={opt.code}>
+                            [{opt.code}] {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink-primary)' }}>
+                      {userData.specialty_label || TECHNICIAN_SPECIALTY_OPTIONS.find((o) => o.code === userData.specialty_code)?.label || 'Kỹ thuật viên Đa năng / Tổ trưởng Kỹ thuật CSVC'}
+                    </div>
+                  )}
+
+                  <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', background: 'var(--surface-elevated)', padding: '10px 12px', borderRadius: '6px' }}>
+                    <strong>Phạm vi công việc được phân quyền:</strong>{' '}
+                    {
+                      (TECHNICIAN_SPECIALTY_OPTIONS.find((o) => o.code === (isEditing ? editForm.specialty_code : (userData.specialty_code || 'TECH_GENERAL'))) || TECHNICIAN_SPECIALTY_OPTIONS[4]).tasks
+                    }
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
