@@ -212,6 +212,54 @@ const FAULT_KEYWORDS = [
 ];
 
 /**
+ * Intelligent Room-to-Equipment matcher
+ */
+export function findMatchingEquipmentInRoom(equipments, text) {
+  if (!equipments || equipments.length === 0) return null;
+  const lower = String(text || '').toLowerCase();
+  const ascii = stripDiacritics(lower);
+
+  // If query is a general inquiry about what's in the room, do not match single equipment
+  if (/có (những |các )?thiết bị gì|có gì|danh sách|toàn bộ|tổng số|các trang thiết bị/i.test(lower)) {
+    return null;
+  }
+
+  const patterns = [
+    { type: 'tv', re: /\b(tivi|tv|smart tv|smart tivi|man hinh tivi)\b/i, eqRe: /tivi|tv|smart tv/i },
+    { type: 'projector', re: /\b(may chieu|máy chiếu|projector|bong chieu)\b/i, eqRe: /máy chiếu|projector/i },
+    { type: 'screen', re: /\b(man chieu|màn chiếu|rem chieu)\b/i, eqRe: /màn chiếu/i },
+    { type: 'ac', re: /\b(dieu hoa|điều hòa|may lanh|máy lạnh|cassette|dan lanh)\b/i, eqRe: /điều hòa|máy lạnh|cassette/i },
+    { type: 'audio', re: /\b(loa|am thanh|âm thanh|amply|mixer|cuc day)\b/i, eqRe: /loa|âm thanh|amply/i },
+    { type: 'mic', re: /\b(micro|mic|tro giang|trợ giảng)\b/i, eqRe: /micro|mic/i },
+    { type: 'pc', re: /\b(may tinh|máy tính|pc|laptop|thung may)\b/i, eqRe: /máy tính|pc|laptop/i },
+    { type: 'net', re: /\b(wifi|mạng|mang|switch|router|access point|aruba)\b/i, eqRe: /wifi|switch|router|mạng/i },
+    { type: 'cam', re: /\b(camera|cctv|cam dome)\b/i, eqRe: /camera/i },
+    { type: 'light', re: /\b(den|đèn|chieu sang|chiếu sáng|bong den|bóng đèn)\b/i, eqRe: /đèn|led|panel/i },
+    { type: 'desk', re: /\b(ban|bàn|ghe|ghế|noi that|nội thất)\b/i, eqRe: /bàn|ghế/i },
+    { type: 'curtain', re: /\b(rem|rèm|man cua|màn cửa)\b/i, eqRe: /rèm/i },
+    { type: 'fire', re: /\b(pccc|bao chay|báo cháy|chua chay|chữa cháy|khoi|khói)\b/i, eqRe: /báo cháy|khói|chữa cháy/i }
+  ];
+
+  for (const p of patterns) {
+    if (p.re.test(lower) || p.re.test(ascii)) {
+      const match = equipments.find((e) => p.eqRe.test(e.name) || p.eqRe.test(e.category_id?.name || '') || p.eqRe.test(e.code));
+      if (match) return match;
+    }
+  }
+
+  const STOPWORDS = new Set(['thiết', 'bị', 'phòng', 'tại', 'trong', 'đang', 'cho', 'của', 'các', 'những', 'này', 'nào', 'chung', 'toàn']);
+  for (const eq of equipments) {
+    const eqNameLower = (eq.name || '').toLowerCase();
+    const words = eqNameLower.split(/\s+/).filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+    if (words.some((w) => lower.includes(w))) {
+      return eq;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Main AI Query Handler
  */
 export const processAiChatQuery = async ({ content, user, chatHistory = [] }) => {
@@ -344,7 +392,7 @@ export const processAiChatQuery = async ({ content, user, chatHistory = [] }) =>
   }
 
   // =========================================================================
-  // PRIORITY 4: ROOM & EQUIPMENT IN ROOM QUERY
+  // PRIORITY 4: ROOM & EQUIPMENT IN ROOM / INCIDENT IN ROOM QUERY
   // =========================================================================
   const roomPattern = rawText.match(/A1-\w+|phòng\s*(\d{3})/i);
   if (roomPattern) {
@@ -361,6 +409,175 @@ export const processAiChatQuery = async ({ content, user, chatHistory = [] }) =>
       const brokenList = roomEquipments.filter((e) => ['broken', 'repairing'].includes(e.status));
       const inUseList = roomEquipments.filter((e) => e.status === 'in_use');
 
+      // Check if user is reporting an incident or asking about a specific equipment in this room
+      const hasFaultContext = FAULT_KEYWORDS.some((kw) => hasWholePhrase(lowerQ, kw) || hasWholePhrase(asciiQ, stripDiacritics(kw)))
+        || /hỏng|hư|lỗi|cháy|chập|sự cố|mất|kẹt|không|báo hỏng|sửa|thay|khắc phục|tắt|mở|bật|yếu|rè|hú|mờ/i.test(lowerQ);
+
+      const matchedEq = findMatchingEquipmentInRoom(roomEquipments, rawText);
+
+      // SUB-CASE 4A: Incident report or technical troubleshooting for equipment in this room
+      if (hasFaultContext || (matchedEq && (lowerQ.includes('sao') || lowerQ.includes('thế nào') || lowerQ.includes('kiểm tra')))) {
+        // Check for existing open repair ticket for this equipment or room
+        const openRepair = await Repair.findOne({
+          room_id: targetRoom._id,
+          ...(matchedEq ? { equipment_id: matchedEq._id } : {}),
+          status: { $in: ['reported', 'assigned', 'in_progress'] }
+        }).populate('equipment_id', 'code name').populate('assigned_to', 'full_name code phone');
+
+        if (openRepair) {
+          const statusMap = {
+            reported: 'Chờ phân công KTV',
+            assigned: 'Đã phân công KTV',
+            in_progress: 'Đang tiến hành sửa chữa tại hiện trường'
+          };
+          const ktvInfo = openRepair.assigned_to?.full_name
+            ? `${openRepair.assigned_to.full_name} (${openRepair.assigned_to.code || ''})`
+            : 'Đang chờ phân công KTV chuyên trách';
+          const deadlineText = openRepair.deadline ? new Date(openRepair.deadline).toLocaleString('vi-VN') : 'Trong ca làm việc';
+
+          const responseText = `**[Thông Báo Tiến Độ Xử Lý Sự Cố]**\n\n` +
+            `Sự cố về **${openRepair.equipment_id?.name || matchedEq?.name || 'thiết bị'}** tại phòng **${targetRoom.code} - ${targetRoom.name}** đã được ghi nhận trên hệ thống với mã phiếu **[${openRepair.ticket_code}]**.\n\n` +
+            `- **Tình trạng:** **${statusMap[openRepair.status] || openRepair.status}**\n` +
+            `- **Kỹ thuật viên phụ trách:** ${ktvInfo}\n` +
+            `- **Thời hạn cam kết SLA:** ${deadlineText}\n` +
+            `- **Hiện tượng đã ghi nhận:** ${openRepair.incident_description || 'Sự cố thiết bị'}\n\n` +
+            `Đội ngũ kỹ thuật đang trong ca xử lý sự cố này, bạn không cần phải tạo thêm phiếu trùng lặp.`;
+
+          const cardData = {
+            type: 'repair_progress',
+            ticket_code: openRepair.ticket_code,
+            room_code: targetRoom.code,
+            quick_action: { label: `Xem Phiếu [${openRepair.ticket_code}]`, tab: 'tickets_kanban' }
+          };
+
+          return { responseText, cardData };
+        }
+
+        // Try Gemini / Cloud LLM first if available
+        const cloudResponse = await callCloudLlm({
+          systemPrompt: `Bạn là Ruo Cortex AI Copilot — Trợ lý vận hành cơ sở vật chất Đại học tại Tòa nhà A1.
+Người dùng đang phản ánh sự cố kỹ thuật của thiết bị trong phòng học.
+Thông tin thực tế trích xuất từ cơ sở dữ liệu:
+- Vị trí: Phòng ${targetRoom.code} - ${targetRoom.name} (Tầng ${targetRoom.floor || 1}, Sức chứa: ${targetRoom.capacity || 40} chỗ ngồi)
+- Thiết bị tại phòng: ${matchedEq ? `[${matchedEq.code}] ${matchedEq.name} (Trạng thái hiện tại: ${matchedEq.status === 'in_use' ? 'Đang khai thác' : matchedEq.status})` : 'Chưa định danh thiết bị cụ thể trong danh mục phòng'}
+- Nội dung phản ánh từ người dùng: "${rawText}"
+
+Yêu cầu định dạng và nội dung:
+1. Xác nhận tiếp nhận thông tin sự cố của thiết bị tại phòng ${targetRoom.code}.
+2. Đưa ra 2-3 bước kiểm tra nhanh tại chỗ (Quick Checks) an toàn, dễ làm cho giảng viên/cán bộ (nguồn điện AC 220V, giắc nối cáp HDMI/tín hiệu, điều khiển remote/nút bấm).
+3. Hướng dẫn nếu không khắc phục được thì nhấn nút gợi ý báo hỏng bên dưới để hệ thống tự động phân công Kỹ thuật viên đến xử lý theo cam kết SLA.
+Quy tắc:
+- Tuyệt đối KHÔNG dùng emoji.
+- Trả lời bằng tiếng Việt chuyên nghiệp, ngắn gọn, súc tích, gạch đầu dòng rõ ràng.`,
+          userMessage: rawText,
+          chatHistory
+        });
+
+        if (cloudResponse) {
+          const cardData = {
+            type: 'incident_report_suggestion',
+            room_code: targetRoom.code,
+            room_id: targetRoom._id,
+            equipment_code: matchedEq?.code,
+            equipment_id: matchedEq?._id,
+            equipment_name: matchedEq?.name,
+            quick_action: {
+              label: matchedEq ? `Báo Hỏng ${matchedEq.name} (${targetRoom.code})` : `Báo Hỏng Thiết Bị Phòng ${targetRoom.code}`,
+              tab: 'report_issue',
+              room_id: targetRoom._id,
+              equipment_id: matchedEq?._id
+            }
+          };
+          return { responseText: cloudResponse.text, cardData };
+        }
+
+        // Local high-precision fallback diagnosis
+        let troubleshootingText = '';
+        const eqNameLower = (matchedEq?.name || rawText).toLowerCase();
+
+        if (/tivi|tv/i.test(eqNameLower)) {
+          troubleshootingText = `**Hướng dẫn chẩn đoán & kiểm tra nhanh tại chỗ (Quick Checks):**\n` +
+            `1. **Kiểm tra nguồn điện AC 220V:** Quan sát đèn LED báo nguồn ở cạnh dưới TV xem có sáng đỏ/xanh không. Kiểm tra phích cắm vào ổ điện sau lưng máy hoặc công tắc nguồn trên tường.\n` +
+            `2. **Kiểm tra ngõ vào tín hiệu:** Cắm lại chắc chắn giắc cáp HDMI từ TV nối đến laptop của giảng viên trên bục giảng. Dùng Remote hoặc nút bấm cạnh TV chuyển nguồn phát tín hiệu (Input / Source) sang đúng cổng HDMI 1 hoặc HDMI 2.\n` +
+            `3. **Kiểm tra điều khiển (Remote):** Thử bấm phím nguồn cứng ở cạnh đáy hoặc sau lưng TV (đề phòng remote hết pin).`;
+        } else if (/máy chiếu|projector/i.test(eqNameLower)) {
+          troubleshootingText = `**Hướng dẫn chẩn đoán & kiểm tra nhanh tại chỗ (Quick Checks):**\n` +
+            `1. **Kiểm tra đèn chỉ báo trên máy chiếu:** Đèn LAMP đỏ (cháy/hết tuổi thọ bóng đèn), TEMP đỏ (quá nhiệt/bám bụi cảm biến), POWER nhấp nháy (đang khởi động/lỗi nguồn).\n` +
+            `2. **Kiểm tra kết nối HDMI:** Rút cáp HDMI cắm lại hoặc thử đổi cổng HDMI phụ trên bàn giảng viên.\n` +
+            `3. **Chờ tản nhiệt:** Nếu máy vừa tắt, hãy đợi 3–5 phút để quạt làm mát hoàn toàn rồi mới bật lại.`;
+        } else if (/điều hòa|máy lạnh|cassette/i.test(eqNameLower)) {
+          troubleshootingText = `**Hướng dẫn chẩn đoán & kiểm tra nhanh tại chỗ (Quick Checks):**\n` +
+            `1. **Kiểm tra Remote:** Đặt chế độ COOL (biểu tượng bông tuyết), nhiệt độ 24–26°C, quạt mức vừa hoặc cao.\n` +
+            `2. **Kiểm tra Aptomat:** Kiểm tra tủ điện trong phòng xem cầu dao điều hòa có bị nhảy xuống không.\n` +
+            `3. **Hiện tượng chảy nước:** Tắt điều hòa ngay lập tức để tránh chập điện trần thạch cao.`;
+        } else {
+          troubleshootingText = `**Hướng dẫn kiểm tra sơ bộ:**\n` +
+            `1. Kiểm tra nguồn cấp điện AC 220V và công tắc nguồn của thiết bị.\n` +
+            `2. Kiểm tra các cổng cắm, dây cáp nối tín hiệu xem có bị lỏng hoặc đứt ngầm không.\n` +
+            `3. Thử khởi động lại (restart) thiết bị sau 30 giây ngắt nguồn.`;
+        }
+
+        const responseText = `**[Tiếp Nhận Sự Cố Kỹ Thuật - Phòng ${targetRoom.code}]**\n\n` +
+          `Hệ thống ghi nhận sự cố đối với **${matchedEq ? `[${matchedEq.code}] ${matchedEq.name}` : 'thiết bị'}** tại phòng **${targetRoom.code} - ${targetRoom.name}**.\n\n` +
+          troubleshootingText + `\n\n` +
+          `*Nếu sau khi kiểm tra thiết bị vẫn không hoạt động, bạn vui lòng nhấn nút **[Gợi ý: Báo Hỏng Thiết Bị]** bên dưới để kích hoạt phiếu kỹ thuật. Đội ngũ KTV sẽ có mặt xử lý theo khung cam kết SLA.*`;
+
+        const cardData = {
+          type: 'incident_report_suggestion',
+          room_code: targetRoom.code,
+          room_id: targetRoom._id,
+          equipment_code: matchedEq?.code,
+          equipment_id: matchedEq?._id,
+          equipment_name: matchedEq?.name,
+          quick_action: {
+            label: matchedEq ? `Báo Hỏng ${matchedEq.name} (${targetRoom.code})` : `Báo Hỏng Thiết Bị Phòng ${targetRoom.code}`,
+            tab: 'report_issue',
+            room_id: targetRoom._id,
+            equipment_id: matchedEq?._id
+          }
+        };
+
+        return { responseText, cardData };
+      }
+
+      // SUB-CASE 4B: Specific equipment lookup inside this room (not broken, e.g. "phòng 209 có tivi không")
+      if (matchedEq) {
+        const statusMap = {
+          in_use: 'Đang hoạt động tốt',
+          broken: 'Đang báo hỏng',
+          repairing: 'Đang trong ca sửa chữa',
+          in_stock: 'Trong kho dự phòng',
+          disposed: 'Đã thanh lý'
+        };
+
+        const responseText = `**[Thông Tin Thiết Bị Phòng ${targetRoom.code}]**\n\n` +
+          `Phòng **${targetRoom.code} - ${targetRoom.name}** hiện có trang bị thiết bị sau:\n` +
+          `- **Tên thiết bị:** **${matchedEq.name}**\n` +
+          `- **Mã tài sản:** \`[${matchedEq.code}]\`\n` +
+          `- **Phân loại:** ${matchedEq.category_id?.name || 'Trình chiếu & Hiển thị'}\n` +
+          `- **Trạng thái vận hành:** **${statusMap[matchedEq.status] || matchedEq.status}**\n` +
+          `- **Vị trí:** Tầng ${targetRoom.floor || 1} • Sức chứa phòng: ${targetRoom.capacity || 40} chỗ\n\n` +
+          (matchedEq.status === 'in_use'
+            ? `Thiết bị hiện đang sẵn sàng phục vụ công tác giảng dạy và học tập.`
+            : `Thiết bị hiện đang có sự cố cần hỗ trợ kỹ thuật.`);
+
+        const cardData = {
+          type: 'room_equipment_detail',
+          room_code: targetRoom.code,
+          equipment_code: matchedEq.code,
+          equipment_id: matchedEq._id,
+          quick_action: {
+            label: matchedEq.status === 'in_use' ? `Báo Hỏng ${matchedEq.name}` : `Xem Sơ Đồ Phòng ${targetRoom.code}`,
+            tab: matchedEq.status === 'in_use' ? 'report_issue' : 'dashboard',
+            room_id: targetRoom._id,
+            equipment_id: matchedEq._id
+          }
+        };
+
+        return { responseText, cardData };
+      }
+
+      // SUB-CASE 4C: Pure room overview query (e.g. "phòng 209 có gì", "thông tin phòng A1-209")
       const typeSummary = {};
       for (const eq of roomEquipments) {
         const catName = eq.category_id?.name || eq.name.split(' ')[0] || 'Thiết bị';

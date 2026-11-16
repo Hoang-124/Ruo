@@ -754,7 +754,19 @@ export const FloatingChatWidget = () => {
                                   type="button"
                                   onClick={() => {
                                     const targetTab = msg.action_data?.quick_action?.tab;
-                                    if (targetTab === 'report_issue') navigate('#/report-issue');
+                                    if (targetTab === 'report_issue') {
+                                      const roomId = msg.action_data?.quick_action?.room_id || msg.action_data?.room_id;
+                                      const eqId = msg.action_data?.quick_action?.equipment_id || msg.action_data?.equipment_id;
+                                      if (roomId || eqId) {
+                                        try {
+                                          sessionStorage.setItem('ruo_prefill_report', JSON.stringify({
+                                            room_id: String(roomId || ''),
+                                            equipment_id: String(eqId || '')
+                                          }));
+                                        } catch {}
+                                      }
+                                      navigate('#/report-issue');
+                                    }
                                     else if (targetTab === 'spare_parts') navigate('#/spare_parts');
                                     else if (targetTab === 'tickets_kanban') navigate('#/tickets');
                                     else if (targetTab === 'disposal_propose') navigate('#/disposals');

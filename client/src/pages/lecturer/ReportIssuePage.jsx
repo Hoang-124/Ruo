@@ -41,6 +41,21 @@ export const ReportIssuePage = ({ onNavigateTab, preselectedEquipment, preselect
 
   useEffect(() => {
     let active = true;
+    try {
+      const stored = sessionStorage.getItem('ruo_prefill_report');
+      if (stored) {
+        sessionStorage.removeItem('ruo_prefill_report');
+        const parsed = JSON.parse(stored);
+        if (parsed.room_id || parsed.equipment_id) {
+          setFormData(prev => ({
+            ...prev,
+            room_id: parsed.room_id || prev.room_id,
+            equipment_id: parsed.equipment_id || prev.equipment_id
+          }));
+        }
+      }
+    } catch {}
+
     masterDataApi.getRooms({ limit: 100 }).then(res => {
       if (!active) return;
       const availableRooms = (res?.rooms || []).filter(r => (r.room_type || r.type) !== 'warehouse');
