@@ -97,9 +97,10 @@ const MainAppContent = () => {
   );
 
   const renderActiveView = () => {
-    // Check permission if not landing tab and not allowed
-    const isLandingTab = activeTab === currentRoleMeta?.defaultTab || activeTab === 'dashboard';
-    if (!isLandingTab && !isTabAllowed(activeTab)) {
+    // Normalize tab id (handle both hyphen and underscore aliases)
+    const normalizedTab = String(activeTab || '').replace(/-/g, '_');
+    const isLandingTab = normalizedTab === currentRoleMeta?.defaultTab || normalizedTab === 'dashboard';
+    if (!isLandingTab && !isTabAllowed(normalizedTab)) {
       return (
         <div style={{ maxWidth: '600px', margin: '80px auto', textAlign: 'center', padding: '48px 32px', background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)' }}>
           <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(229, 72, 77, 0.12)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', border: '1px solid rgba(229,72,77,0.25)' }}>
@@ -121,7 +122,7 @@ const MainAppContent = () => {
       );
     }
 
-    switch (activeTab) {
+    switch (normalizedTab) {
       // Room & Facility Directory
       case 'rooms':
         return renderSubPageWrapper(

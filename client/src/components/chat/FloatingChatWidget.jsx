@@ -813,7 +813,15 @@ export const FloatingChatWidget = () => {
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() => navigate('#/my-tickets')}
+                                  onClick={() => {
+                                    if (currentUser?.role === 'technician') {
+                                      navigate('#/technician-tasks');
+                                    } else if (currentUser?.role === 'facility_manager' || currentUser?.role === 'admin') {
+                                      navigate('#/repairs');
+                                    } else {
+                                      navigate('#/my-tickets');
+                                    }
+                                  }}
                                   style={{
                                     alignSelf: 'flex-start',
                                     display: 'inline-flex',
@@ -901,7 +909,11 @@ export const FloatingChatWidget = () => {
                                         else if (targetTab === 'disposal_propose') navigate('#/disposals');
                                         else if (targetTab === 'dashboard') navigate('#/dashboard');
                                         else if (targetTab === 'equipments') navigate('#/equipments');
-                                        else if (targetTab === 'my_tickets') navigate('#/my-tickets');
+                                        else if (targetTab === 'my_tickets') {
+                                          if (currentUser?.role === 'technician') navigate('#/technician-tasks');
+                                          else if (currentUser?.role === 'facility_manager' || currentUser?.role === 'admin') navigate('#/repairs');
+                                          else navigate('#/my-tickets');
+                                        }
                                         else if (targetTab) navigate(`#/${targetTab}`);
                                       }}
                                       style={{

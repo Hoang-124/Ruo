@@ -327,7 +327,8 @@ export function getDefaultTabForRole(role) {
 export function isTabAllowedForRole(role, tabId, hasPermission) {
   if (!tabId) return false;
   const normalizedRole = String(role || '').toLowerCase();
-  const navItem = ALL_NAV_ITEMS[tabId];
+  const normalizedTabId = String(tabId).replace(/-/g, '_');
+  const navItem = ALL_NAV_ITEMS[normalizedTabId] || ALL_NAV_ITEMS[tabId];
   if (!navItem) return false;
   if (!navItem.roles.includes(normalizedRole)) {
     return false;
