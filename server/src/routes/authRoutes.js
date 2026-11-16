@@ -36,7 +36,7 @@ const router = express.Router();
 
 const loginLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  maxRequests: 20,
+  maxRequests: process.env.NODE_ENV === 'development' ? 500 : 20,
   message: 'Quá nhiều yêu cầu đăng nhập từ IP này.'
 });
 

@@ -31,7 +31,17 @@ export function createRateLimiter({ windowMs = 15 * 60 * 1000, maxRequests = 10,
   }, 5 * 60 * 1000).unref();
 
   return (req, res, next) => {
-    const ip = req.ip || req.socket.remoteAddress || '127.0.0.1';
+    const rawIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
+
+    // Allow unlimited attempts from localhost during development to avoid blocking testers
+    if (process.env.NODE_ENV !== 'production') {
+      const isLoopback = rawIp === '127.0.0.1' || rawIp === '::1' || rawIp === '::ffff:127.0.0.1' || rawIp.endsWith('127.0.0.1');
+      if (isLoopback) {
+        return next();
+      }
+    }
+
+    const ip = rawIp;
     const now = Date.now();
     const record = store.get(ip);
 
