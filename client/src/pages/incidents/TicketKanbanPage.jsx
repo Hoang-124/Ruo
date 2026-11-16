@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { Icons } from '../../components/common/SvgIcons';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -31,10 +31,13 @@ export const TicketKanbanPage = () => {
     const timer = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(timer);
   }, []);
+
   const [loading, setLoading] = useState(true);
   const [repairs, setRepairs] = useState([]);
   const [slaStats, setSlaStats] = useState(null);
   const [filterMode, setFilterMode] = useState('ALL'); // 'ALL' | 'OVERDUE' | 'AT_RISK'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [columnViewMode, setColumnViewMode] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'RESOLVED'
   const [checkingBreaches, setCheckingBreaches] = useState(false);
   const [technicians, setTechnicians] = useState([]);
   const [spareEquipments, setSpareEquipments] = useState([]);
@@ -77,46 +80,52 @@ export const TicketKanbanPage = () => {
   });
 
   const STATUS_LABELS = {
-    reported: { label: 'Mới tiếp nhận', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
-    assigned: { label: 'Đã giao KTV', color: 'var(--laser-cyan)', bg: 'rgba(6,182,212,0.15)' },
-    in_progress: { label: 'Đang sửa chữa', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)' },
-    resolved: { label: 'Đã khắc phục', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
-    unrepairable: { label: 'Không thể sửa', color: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
-    closed: { label: 'Đã đóng phiếu', color: 'var(--ink-secondary)', bg: 'rgba(100,116,139,0.18)' }
+    reported: { label: 'Mới tiếp nhận', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' },
+    assigned: { label: 'Đã giao KTV', color: '#0284c7', bg: 'rgba(2,132,199,0.12)', border: 'rgba(2,132,199,0.3)' },
+    in_progress: { label: 'Đang sửa chữa', color: '#2563eb', bg: 'rgba(37,99,235,0.12)', border: 'rgba(37,99,235,0.3)' },
+    resolved: { label: 'Đã khắc phục', color: '#16a34a', bg: 'rgba(22,163,74,0.12)', border: 'rgba(22,163,74,0.3)' },
+    unrepairable: { label: 'Không thể sửa', color: '#dc2626', bg: 'rgba(220,38,38,0.12)', border: 'rgba(220,38,38,0.3)' },
+    closed: { label: 'Đã đóng phiếu', color: '#64748b', bg: 'rgba(100,116,139,0.12)', border: 'rgba(100,116,139,0.25)' }
   };
 
   const DAMAGE_LABELS = {
-    minor: { label: 'Hỏng nhẹ', short: 'Nhẹ', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
-    major: { label: 'Hỏng nặng', short: 'Nặng', color: '#F59E0B', bg: 'rgba(245,158,11,0.18)' },
-    critical: { label: 'Khẩn cấp', short: 'Khẩn cấp', color: '#EF4444', bg: 'rgba(239,68,68,0.2)' }
+    minor: { label: 'Hỏng nhẹ', short: 'Nhẹ', color: '#16a34a', bg: 'rgba(22,163,74,0.1)', border: 'rgba(22,163,74,0.25)' },
+    major: { label: 'Hỏng nặng', short: 'Nặng', color: '#d97706', bg: 'rgba(217,119,6,0.12)', border: 'rgba(217,119,6,0.3)' },
+    critical: { label: 'Khẩn cấp', short: 'Khẩn cấp', color: '#dc2626', bg: 'rgba(220,38,38,0.12)', border: 'rgba(220,38,38,0.3)' }
   };
 
   const getStatusBadge = (status) => {
-    const info = STATUS_LABELS[status] || { label: status, color: 'var(--ink-secondary)', bg: 'var(--surface-panel)' };
+    const info = STATUS_LABELS[status] || { label: status, color: '#64748b', bg: 'var(--surface-3)', border: 'var(--border-subtle)' };
     return (
-      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '4px', fontSize: '11.5px', fontWeight: 700, color: info.color, background: info.bg }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 9px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 700, color: info.color, background: info.bg, border: `1px solid ${info.border}` }}>
         {info.label}
       </span>
     );
   };
 
   const getDamageBadge = (level, compact = false) => {
-    const info = DAMAGE_LABELS[level] || { label: level, short: level, color: '#F59E0B', bg: 'rgba(245,158,11,0.18)' };
+    const info = DAMAGE_LABELS[level] || { label: level, short: level, color: '#d97706', bg: 'rgba(217,119,6,0.12)', border: 'rgba(217,119,6,0.25)' };
     return (
-      <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: '4px', fontSize: compact ? '10.5px' : '11.5px', fontWeight: 700, color: info.color, background: info.bg }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '6px', fontSize: compact ? '10.5px' : '11.5px', fontWeight: 700, color: info.color, background: info.bg, border: `1px solid ${info.border}` }}>
         {compact ? info.short : info.label}
       </span>
     );
   };
 
-  const columns = [
-    { id: 'reported', title: 'MỚI TIẾP NHẬN', color: '#F59E0B' },
-    { id: 'assigned', title: 'ĐÃ GIAO KTV', color: 'var(--laser-cyan)' },
-    { id: 'in_progress', title: 'ĐANG XỬ LÝ', color: '#3B82F6' },
-    { id: 'resolved', title: 'ĐÃ KHẮC PHỤC', color: '#10B981' },
-    { id: 'unrepairable', title: 'KHÔNG THỂ SỬA', color: '#EF4444' },
-    { id: 'closed', title: 'ĐÃ ĐÓNG PHIẾU', color: 'var(--ink-secondary)' }
-  ];
+  const allColumns = useMemo(() => [
+    { id: 'reported', title: 'MỚI TIẾP NHẬN', color: '#f59e0b', category: 'ACTIVE' },
+    { id: 'assigned', title: 'ĐÃ GIAO KTV', color: '#0284c7', category: 'ACTIVE' },
+    { id: 'in_progress', title: 'ĐANG XỬ LÝ', color: '#2563eb', category: 'ACTIVE' },
+    { id: 'resolved', title: 'ĐÃ KHẮC PHỤC', color: '#16a34a', category: 'RESOLVED' },
+    { id: 'unrepairable', title: 'KHÔNG THỂ SỬA', color: '#dc2626', category: 'RESOLVED' },
+    { id: 'closed', title: 'ĐÃ ĐÓNG PHIẾU', color: '#64748b', category: 'RESOLVED' }
+  ], []);
+
+  const visibleColumns = useMemo(() => {
+    if (columnViewMode === 'ACTIVE') return allColumns.filter(c => c.category === 'ACTIVE');
+    if (columnViewMode === 'RESOLVED') return allColumns.filter(c => c.category === 'RESOLVED');
+    return allColumns;
+  }, [allColumns, columnViewMode]);
 
   const fetchData = useCallback(async () => {
     aiRequest.current += 1;
@@ -175,8 +184,6 @@ export const TicketKanbanPage = () => {
   };
 
   useEffect(() => {
-    // This effect synchronizes remote data; the loader also sets its pending state before awaiting the response.
-    // eslint-disable-next-line react/set-state-in-effect
     fetchData();
   }, [fetchData]);
 
@@ -201,7 +208,6 @@ export const TicketKanbanPage = () => {
   const applyAiDispatchRecommendation = (copilot) => {
     const rec = copilot?.dispatch_recommendation;
     if (!rec) return;
-    // AI searches the full category; the initial lists may be paginated.
     if (rec.recommended_replacement?._id) {
       setSpareEquipments((prev) => prev.some((eq) => eq._id === rec.recommended_replacement._id)
         ? prev : [...prev, rec.recommended_replacement]);
@@ -345,277 +351,610 @@ export const TicketKanbanPage = () => {
     }
   };
 
+  // Filtered tickets by search query & SLA filter
+  const filteredRepairs = useMemo(() => {
+    const q = (searchQuery || '').trim().toLowerCase();
+    return repairs.filter((r) => {
+      if (filterMode === 'OVERDUE') {
+        const isOverdue = r.deadline_status === 'overdue' || (r.deadline && new Date(r.deadline).getTime() < now);
+        if (!isOverdue) return false;
+      } else if (filterMode === 'AT_RISK') {
+        const isAtRisk = r.deadline_status === 'at_risk' || (r.remaining_minutes > 0 && r.remaining_minutes <= 120);
+        if (!isAtRisk) return false;
+      }
+
+      if (!q) return true;
+      const codeMatch = (r.ticket_code || '').toLowerCase().includes(q);
+      const eqNameMatch = (r.equipment_id?.name || '').toLowerCase().includes(q);
+      const eqCodeMatch = (r.equipment_id?.code || '').toLowerCase().includes(q);
+      const roomMatch = (r.room_id?.code || '').toLowerCase().includes(q);
+      const techMatch = (r.assigned_to?.full_name || '').toLowerCase().includes(q);
+      const descMatch = (r.incident_description || '').toLowerCase().includes(q);
+      return codeMatch || eqNameMatch || eqCodeMatch || roomMatch || techMatch || descMatch;
+    });
+  }, [repairs, filterMode, searchQuery, now]);
+
   return (
-    <div>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+    <div style={{ maxWidth: '100%', margin: '0 auto', paddingBottom: '32px' }}>
+      {/* Top Header Command Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>FACILITY MANAGER</span>
-            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Điều Phối Kỹ Thuật & Giám Sát Hạn Định SLA</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <span style={{ fontSize: '11px', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)', padding: '2px 8px', borderRadius: '5px', fontWeight: 800, letterSpacing: '0.04em' }}>
+              FACILITY MANAGER
+            </span>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Điều Phối Kỹ Thuật • Giám Sát Hạn Định SLA Tòa A1</span>
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '-0.02em', margin: 0 }}>
-            Trung Tâm Điều Phối Sửa Chữa Thiết Bị
+            Trung Tâm Điều Phối Sửa Chữa (Kanban SLA)
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--ink-muted)' }}>
-            Giao việc cho Kỹ thuật viên, cấp đồ dự phòng thay thế từ kho, duyệt linh kiện và chọn nơi về sau khi sửa xong.
+          <p style={{ margin: '5px 0 0', fontSize: '13px', color: 'var(--ink-secondary)' }}>
+            Tiếp nhận báo hỏng từ Giảng viên, AI gợi ý KTV đúng chuyên môn, cấp thiết bị dự phòng KHO-01 và nghiệm thu đóng phiếu.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
           {isFacilityManager && (
             <button
               onClick={handleAutoDispatchAll}
               disabled={autoDispatching}
-              className="laser-btn laser-btn-primary"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700 }}
-              title="AI tự động quét các phiếu Mới Tiếp Nhận và giao ngay cho Kỹ thuật viên đúng chuyên môn"
+              className="ruo-btn ruo-btn-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 700,
+                background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(2,132,199,0.3)',
+                cursor: autoDispatching ? 'wait' : 'pointer'
+              }}
+              title="AI tự động phân tích các phiếu Mới Tiếp Nhận và đề xuất/giao KTV đúng chuyên môn"
             >
               <Icons.Sparkles size={16} />
-              <span>{autoDispatching ? 'AI Đang Giao...' : 'AI Tự Động Giao Theo Chuyên Môn'}</span>
+              <span>{autoDispatching ? 'AI Đang Giao...' : 'AI Gợi Ý Giao Theo Chuyên Môn'}</span>
             </button>
           )}
 
           <button
             onClick={handleCheckBreaches}
             disabled={checkingBreaches}
-            className="laser-btn laser-btn-secondary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', border: '1px solid rgba(239,68,68,0.4)', color: '#EF4444' }}
+            className="ruo-btn"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 15px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 700,
+              background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.35)',
+              color: '#dc2626',
+              cursor: checkingBreaches ? 'wait' : 'pointer'
+            }}
             title="Quét toàn bộ phiếu quá hạn và phát cảnh báo đến KTV và Quản Lý"
           >
-            <Icons.AlertTriangle size={16} />
+            <Icons.AlertTriangle size={15} />
             <span>{checkingBreaches ? 'Đang Quét...' : 'Quét Cảnh Báo SLA'}</span>
           </button>
 
           <button
             onClick={fetchData}
-            className="laser-btn laser-btn-secondary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}
+            className="ruo-btn ruo-btn-ghost"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '9px 14px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 600,
+              border: '1px solid var(--border-default)',
+              background: 'var(--surface-card)',
+              color: 'var(--ink-secondary)',
+              cursor: 'pointer'
+            }}
           >
-            <Icons.RefreshCw size={16} />
+            <Icons.RefreshCw size={15} />
             <span>Làm Mới</span>
           </button>
         </div>
       </div>
 
-      {/* Cơ Chế AI Tự Động Điều Phối Theo Chuyên Môn — Quyền Facility Manager */}
-      {isFacilityManager && (
-        <div
-          style={{
-            background: 'var(--surface-card)',
-            border: '1px solid var(--border-focus)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '12px 18px',
-            marginBottom: '20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '10px'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', background: 'rgba(6,182,212,0.14)', color: 'var(--laser-cyan)' }}>
-              <Icons.Sparkles size={13} />
-              <span>AI AUTO-DISPATCH THEO CHUYÊN MÔN</span>
-            </span>
-            <span style={{ fontSize: '12.5px', color: 'var(--ink-secondary)' }}>
-              Phiếu báo hỏng gửi lên được AI tự động phân tích và giao ngay cho đúng Kỹ thuật viên chuyên trách (<strong>Tổ Bảo vệ</strong>: bật/tắt điều hòa & đèn • <strong>KTV Điện lạnh/Nguồn</strong> • <strong>KTV CNTT/Máy chiếu</strong> • <strong>KTV Cơ khí</strong>). Quản lý luôn giữ quyền <strong>Đổi KTV</strong> và <strong>Chat KTV</strong> trên từng phiếu.
-            </span>
+      {/* AI Dispatch Guidance Banner (Refined Anti-Slop Style) */}
+      <div
+        style={{
+          background: 'linear-gradient(135deg, rgba(2,132,199,0.06), rgba(99,102,241,0.06))',
+          border: '1px solid rgba(2,132,199,0.22)',
+          borderRadius: '12px',
+          padding: '12px 18px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'rgba(2,132,199,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7', flexShrink: 0 }}>
+            <Icons.Sparkles size={18} />
+          </div>
+          <div>
+            <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '0.01em' }}>
+              Quy Trình Phân Công Theo Chuyên Môn Ruo Cortex AI
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', marginTop: '2px', lineHeight: 1.5 }}>
+              Yêu cầu từ Giảng viên hiển thị tại cột <strong>Mới Tiếp Nhận</strong> kèm gợi ý chuyên môn (<strong>KTV Điện lạnh KT003</strong> • <strong>KTV Nghe nhìn/Tivi KT004</strong> • <strong>KTV Mộc/Cơ khí KT005</strong>). Quản lý CSVC chỉ cần 1 cú click để duyệt hoặc mở form cấp thiết bị dự phòng KHO-01.
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* SLA & KPI Stats (UC-7.2) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px', marginBottom: '20px' }}>
-        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
-          <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Tỷ Lệ Tuân Thủ SLA</div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: (slaStats?.compliance_rate ?? 100) >= 90 ? '#10B981' : (slaStats?.compliance_rate ?? 100) >= 70 ? '#F59E0B' : '#EF4444', marginTop: '4px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '12px', padding: '16px 18px', boxShadow: 'var(--shadow-xs)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 600 }}>Tỷ Lệ Tuân Thủ SLA</span>
+            <Icons.CheckCircle size={16} color="#16a34a" />
+          </div>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: (slaStats?.compliance_rate ?? 100) >= 90 ? '#16a34a' : (slaStats?.compliance_rate ?? 100) >= 70 ? '#f59e0b' : '#dc2626', marginTop: '4px' }}>
             {slaStats ? `${slaStats.compliance_rate}%` : '100%'}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
-            {slaStats?.on_time_resolved || 0} đúng hạn / {slaStats?.resolved_count || 0} đã xong
+          <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '3px' }}>
+            {slaStats?.on_time_resolved || 0} đúng hạn / {slaStats?.resolved_count || 0} đã hoàn tất
           </div>
         </div>
 
         <div
           onClick={() => setFilterMode(filterMode === 'OVERDUE' ? 'ALL' : 'OVERDUE')}
           style={{
-            background: 'var(--surface-card)',
-            border: filterMode === 'OVERDUE' ? '2px solid #EF4444' : '1px solid rgba(239,68,68,0.3)',
-            borderRadius: 'var(--radius-lg)',
+            background: filterMode === 'OVERDUE' ? 'rgba(239,68,68,0.06)' : 'var(--surface-card)',
+            border: filterMode === 'OVERDUE' ? '2px solid #dc2626' : '1px solid rgba(239,68,68,0.25)',
+            borderRadius: '12px',
             padding: '16px 18px',
             cursor: 'pointer',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            boxShadow: 'var(--shadow-xs)'
           }}
+          title="Bấm để lọc danh sách các ca trễ hạn SLA"
         >
-          <div style={{ fontSize: '12px', color: '#EF4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Icons.AlertCircle size={14} color="#EF4444" />
-            <span>Đang Quá Hạn SLA</span>
-            {filterMode === 'OVERDUE' && <span style={{ fontSize: '10px', background: '#EF4444', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>ĐANG LỌC</span>}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: '12px', color: '#dc2626', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icons.AlertCircle size={15} color="#dc2626" />
+              <span>Đang Quá Hạn SLA</span>
+            </div>
+            {filterMode === 'OVERDUE' && (
+              <span style={{ fontSize: '10px', fontWeight: 800, background: '#dc2626', color: '#fff', padding: '1px 6px', borderRadius: '4px' }}>
+                ĐANG LỌC
+              </span>
+            )}
           </div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#EF4444', marginTop: '4px' }}>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: '#dc2626', marginTop: '4px' }}>
             {slaStats?.currently_overdue ?? 0}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
-            Bấm để {filterMode === 'OVERDUE' ? 'hủy lọc' : 'lọc ca trễ hạn'}
+          <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '3px' }}>
+            {filterMode === 'OVERDUE' ? 'Bấm lại để hủy lọc' : 'Bấm để lọc ca trễ hạn'}
           </div>
         </div>
 
         <div
           onClick={() => setFilterMode(filterMode === 'AT_RISK' ? 'ALL' : 'AT_RISK')}
           style={{
-            background: 'var(--surface-card)',
-            border: filterMode === 'AT_RISK' ? '2px solid #F59E0B' : '1px solid rgba(245,158,11,0.3)',
-            borderRadius: 'var(--radius-lg)',
+            background: filterMode === 'AT_RISK' ? 'rgba(245,158,11,0.06)' : 'var(--surface-card)',
+            border: filterMode === 'AT_RISK' ? '2px solid #f59e0b' : '1px solid rgba(245,158,11,0.25)',
+            borderRadius: '12px',
             padding: '16px 18px',
             cursor: 'pointer',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            boxShadow: 'var(--shadow-xs)'
           }}
+          title="Bấm để lọc các ca sắp quá hạn trong 2 giờ tới"
         >
-          <div style={{ fontSize: '12px', color: '#F59E0B', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Icons.Clock size={14} color="#F59E0B" />
-            <span>Sắp Hết Hạn (≤ 2h)</span>
-            {filterMode === 'AT_RISK' && <span style={{ fontSize: '10px', background: '#F59E0B', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>ĐANG LỌC</span>}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: '12px', color: '#d97706', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Icons.Clock size={15} color="#d97706" />
+              <span>Sắp Hết Hạn (≤ 2h)</span>
+            </div>
+            {filterMode === 'AT_RISK' && (
+              <span style={{ fontSize: '10px', fontWeight: 800, background: '#d97706', color: '#fff', padding: '1px 6px', borderRadius: '4px' }}>
+                ĐANG LỌC
+              </span>
+            )}
           </div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#F59E0B', marginTop: '4px' }}>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: '#d97706', marginTop: '4px' }}>
             {slaStats?.currently_at_risk ?? 0}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
-            Bấm để {filterMode === 'AT_RISK' ? 'hủy lọc' : 'lọc ca rủi ro'}
+          <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '3px' }}>
+            {filterMode === 'AT_RISK' ? 'Bấm lại để hủy lọc' : 'Bấm để lọc ca rủi ro'}
           </div>
         </div>
 
-        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', borderRadius: 'var(--radius-lg)', padding: '16px 18px' }}>
-          <div style={{ fontSize: '12px', color: 'var(--ink-muted)' }}>Thời Gian Xử Lý TB (MTTR)</div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--laser-cyan)', marginTop: '4px' }}>
+        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '12px', padding: '16px 18px', boxShadow: 'var(--shadow-xs)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 600 }}>Thời Gian Xử Lý TB (MTTR)</span>
+            <Icons.Activity size={16} color="#0284c7" />
+          </div>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: '#0284c7', marginTop: '4px' }}>
             {slaStats?.avg_resolution_hours ?? 0}h
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
+          <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '3px' }}>
             Khẩn cấp: {slaStats?.by_damage_level?.critical?.overdue ?? 0} trễ / {slaStats?.by_damage_level?.critical?.total ?? 0}
           </div>
         </div>
       </div>
 
-      {/* Kanban Board Grid */}
+      {/* Kanban Filter & View Controls Bar */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+          padding: '12px 16px',
+          background: 'var(--surface-card)',
+          border: '1px solid var(--border-default)',
+          borderRadius: '12px',
+          marginBottom: '18px',
+          boxShadow: 'var(--shadow-xs)'
+        }}
+      >
+        {/* Search input */}
+        <div style={{ position: 'relative', minWidth: '280px', flex: '1 1 300px' }}>
+          <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-muted)', pointerEvents: 'none' }}>
+            <Icons.Search size={15} />
+          </div>
+          <input
+            type="text"
+            placeholder="Tìm theo mã phiếu, tên thiết bị, phòng học, KTV..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="ruo-portal-input"
+            style={{ width: '100%', height: '38px', paddingLeft: '36px', paddingRight: searchQuery ? '30px' : '12px', fontSize: '12.5px' }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--ink-muted)', cursor: 'pointer', padding: '2px' }}
+            >
+              <Icons.X size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* View Switchers */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 600 }}>Hiển thị cột:</span>
+          <div style={{ display: 'inline-flex', background: 'var(--surface-2)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+            <button
+              type="button"
+              onClick={() => setColumnViewMode('ALL')}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '11.5px',
+                fontWeight: columnViewMode === 'ALL' ? 700 : 500,
+                background: columnViewMode === 'ALL' ? 'var(--surface-card)' : 'transparent',
+                color: columnViewMode === 'ALL' ? 'var(--ink-pure)' : 'var(--ink-muted)',
+                border: 'none',
+                boxShadow: columnViewMode === 'ALL' ? 'var(--shadow-xs)' : 'none',
+                cursor: 'pointer'
+              }}
+            >
+              Tất Cả (6 Cột)
+            </button>
+            <button
+              type="button"
+              onClick={() => setColumnViewMode('ACTIVE')}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '11.5px',
+                fontWeight: columnViewMode === 'ACTIVE' ? 700 : 500,
+                background: columnViewMode === 'ACTIVE' ? 'var(--surface-card)' : 'transparent',
+                color: columnViewMode === 'ACTIVE' ? '#0284c7' : 'var(--ink-muted)',
+                border: 'none',
+                boxShadow: columnViewMode === 'ACTIVE' ? 'var(--shadow-xs)' : 'none',
+                cursor: 'pointer'
+              }}
+            >
+              Đang Xử Lý (3 Cột)
+            </button>
+            <button
+              type="button"
+              onClick={() => setColumnViewMode('RESOLVED')}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '11.5px',
+                fontWeight: columnViewMode === 'RESOLVED' ? 700 : 500,
+                background: columnViewMode === 'RESOLVED' ? 'var(--surface-card)' : 'transparent',
+                color: columnViewMode === 'RESOLVED' ? '#16a34a' : 'var(--ink-muted)',
+                border: 'none',
+                boxShadow: columnViewMode === 'RESOLVED' ? 'var(--shadow-xs)' : 'none',
+                cursor: 'pointer'
+              }}
+            >
+              Đã Giải Quyết (3 Cột)
+            </button>
+          </div>
+
+          {filterMode !== 'ALL' && (
+            <button
+              onClick={() => setFilterMode('ALL')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '11.5px',
+                padding: '5px 10px',
+                borderRadius: '6px',
+                background: 'rgba(239,68,68,0.1)',
+                color: '#dc2626',
+                border: '1px solid rgba(239,68,68,0.25)',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              <Icons.X size={12} />
+              <span>Hủy Lọc SLA</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Kanban Board Horizontal Scroll Container (Never Wraps To Second Row) */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--ink-muted)' }}>
-          <Icons.RefreshCw size={28} className="spin" style={{ marginBottom: '12px' }} />
-          <div>Đang nạp bảng điều phối Kanban...</div>
+        <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--ink-muted)' }}>
+          <Icons.RefreshCw size={32} className="spin" style={{ marginBottom: '12px', color: '#0284c7' }} />
+          <div style={{ fontSize: '14px', fontWeight: 600 }}>Đang nạp bảng điều phối Kanban SLA...</div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '14px', alignItems: 'start' }}>
-          {columns.map(col => {
-            const colTickets = repairs.filter(r => {
-              if (r.status !== col.id) return false;
-              if (filterMode === 'OVERDUE') {
-                return r.deadline_status === 'overdue' || (r.deadline && new Date(r.deadline).getTime() < now);
-              }
-              if (filterMode === 'AT_RISK') {
-                return r.deadline_status === 'at_risk' || (r.remaining_minutes > 0 && r.remaining_minutes <= 120);
-              }
-              return true;
-            });
+        <div
+          className="ruo-kanban-horizontal-shell"
+          style={{
+            display: 'flex',
+            gap: '16px',
+            overflowX: 'auto',
+            paddingBottom: '20px',
+            alignItems: 'stretch',
+            minHeight: '620px',
+            scrollbarWidth: 'thin'
+          }}
+        >
+          {visibleColumns.map((col) => {
+            const colTickets = filteredRepairs.filter((r) => r.status === col.id);
 
             return (
               <div
                 key={col.id}
                 style={{
+                  flex: '0 0 310px',
+                  width: '310px',
+                  minWidth: '295px',
+                  maxWidth: '325px',
                   background: 'var(--surface-card)',
-                  border: '1px solid var(--hairline-medium)',
-                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: '12px',
                   display: 'flex',
                   flexDirection: 'column',
-                  minHeight: '400px'
+                  boxShadow: 'var(--shadow-xs)'
                 }}
               >
                 {/* Column Header */}
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--hairline-medium)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    borderBottom: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: 'var(--surface-2)',
+                    borderTopLeftRadius: '11px',
+                    borderTopRightRadius: '11px'
+                  }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: col.color }} />
-                    <strong style={{ fontSize: '12.5px', color: 'var(--ink-pure)', letterSpacing: '0.02em' }}>{col.title}</strong>
+                    <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: col.color }} />
+                    <strong style={{ fontSize: '12.5px', color: 'var(--ink-pure)', letterSpacing: '0.02em' }}>
+                      {col.title}
+                    </strong>
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, padding: '2px 7px', borderRadius: '10px', background: 'var(--surface-panel)', color: 'var(--ink-secondary)' }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '2px 8px',
+                      borderRadius: '99px',
+                      background: 'var(--surface-card)',
+                      color: col.color,
+                      border: `1px solid ${col.color}40`
+                    }}
+                  >
                     {colTickets.length}
                   </span>
                 </div>
 
-                {/* Column Body Cards */}
-                <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto', maxHeight: '700px' }}>
-                  {colTickets.map(t => {
+                {/* Column Body Cards (Smooth Y-Scroll inside each column) */}
+                <div
+                  style={{
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    flex: 1,
+                    overflowY: 'auto',
+                    maxHeight: 'calc(100vh - 350px)',
+                    minHeight: '480px',
+                    scrollbarWidth: 'thin'
+                  }}
+                >
+                  {colTickets.map((t) => {
                     const eq = t.equipment_id || {};
                     const room = t.room_id || {};
                     const isReported = t.status === 'reported';
                     const isResolved = t.status === 'resolved';
                     const isUnrepairable = t.status === 'unrepairable';
+                    const isSelected = selectedTicket?._id === t._id;
 
                     return (
                       <div
                         key={t._id}
+                        onClick={() => setSelectedTicket(t)}
                         style={{
-                          background: 'var(--surface-panel)',
-                          border: '1px solid var(--hairline-soft)',
-                          borderRadius: 'var(--radius-md)',
-                          padding: '12px',
+                          background: 'var(--surface-1, #ffffff)',
+                          border: isSelected ? '1.5px solid #0284c7' : '1px solid var(--border-subtle)',
+                          borderRadius: '10px',
+                          padding: '13px 14px',
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '8px',
+                          gap: '10px',
                           cursor: 'pointer',
-                          transition: 'border-color 0.15s'
+                          transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                          boxShadow: isSelected ? '0 4px 14px rgba(2,132,199,0.18)' : '0 1px 3px rgba(0,0,0,0.04)',
+                          position: 'relative'
                         }}
-                        onClick={() => setSelectedTicket(t)}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.borderColor = 'var(--border-focus, #94a3b8)';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.07)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
+                          }
+                        }}
                       >
+                        {/* Top Bar: Code & Severity */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 800, color: 'var(--laser-cyan)' }}>
+                          <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', fontWeight: 800, color: '#0284c7', background: 'rgba(2,132,199,0.09)', padding: '2px 7px', borderRadius: '5px' }}>
                             {t.ticket_code}
                           </span>
                           {getDamageBadge(t.damage_level, true)}
                         </div>
 
+                        {/* Equipment Name & Room */}
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink-pure)' }}>{eq.name}</div>
-                          <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)' }}>Phòng: {room.code || 'Chưa gán'}</div>
+                          <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--ink-pure)', lineHeight: 1.35, marginBottom: '4px' }}>
+                            {eq.name || 'Thiết bị không xác định'}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--surface-2)', padding: '2px 7px', borderRadius: '4px' }}>
+                              <Icons.MapPin size={11} />
+                              <span>{room.code ? `Phòng ${room.code}` : 'Chưa gán phòng'}</span>
+                            </span>
+                          </div>
                         </div>
 
-                        <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', background: 'var(--surface-card)', padding: '6px 8px', borderRadius: '4px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                          {t.incident_description}
-                        </div>
-
-                        {t.assigned_to && (
-                          <div style={{ fontSize: '11px', color: 'var(--ink-muted)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', flexWrap: 'wrap' }}>
-                              <span>KTV: <strong style={{ color: 'var(--ink-pure)' }}>{t.assigned_to.full_name}</strong></span>
-                              {t.ai_auto_assigned && (
-                                <span style={{ fontSize: '9.5px', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', background: 'rgba(6,182,212,0.14)', color: 'var(--laser-cyan)' }}>
-                                  AI Tự Giao
-                                </span>
-                              )}
-                            </div>
-                            {(t.assigned_to.specialty_label || t.assigned_to.department) && (
-                              <span style={{ fontSize: '10.5px', color: 'var(--laser-cyan)', fontWeight: 600 }}>
-                                {t.assigned_to.specialty_label || t.assigned_to.department}
-                              </span>
-                            )}
+                        {/* Incident Description */}
+                        {t.incident_description && (
+                          <div
+                            style={{
+                              fontSize: '12px',
+                              color: 'var(--ink-secondary)',
+                              background: 'var(--surface-2)',
+                              padding: '8px 10px',
+                              borderRadius: '6px',
+                              borderLeft: '3px solid var(--border-default)',
+                              lineHeight: 1.45,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical'
+                            }}
+                          >
+                            "{t.incident_description}"
                           </div>
                         )}
 
+                        {/* AI Recommendation Box (Visible when reported) */}
                         {isReported && t.ai_recommended_to && (
-                          <div style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.28)', borderRadius: '6px', padding: '6px 8px', fontSize: '11px' }}>
-                            <div style={{ fontWeight: 800, color: 'var(--laser-cyan)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Icons.Sparkles size={12} />
-                              <span>AI Đề Xuất Chuyên Môn ({t.ai_dispatch_score || 90}/100)</span>
+                          <div
+                            style={{
+                              background: 'linear-gradient(135deg, rgba(2,132,199,0.08), rgba(99,102,241,0.08))',
+                              border: '1px solid rgba(2,132,199,0.28)',
+                              borderRadius: '8px',
+                              padding: '8px 10px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                              <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <Icons.Sparkles size={12} />
+                                AI Đề Xuất Chuyên Môn
+                              </span>
+                              <span style={{ fontSize: '10px', fontWeight: 800, color: '#16a34a', background: 'rgba(22,163,74,0.12)', padding: '1px 6px', borderRadius: '99px' }}>
+                                {t.ai_dispatch_score || 90}/100đ
+                              </span>
                             </div>
-                            <div style={{ color: 'var(--ink-pure)', fontWeight: 700, marginTop: '2px' }}>
+                            <div style={{ color: 'var(--ink-pure)', fontWeight: 700, fontSize: '12px' }}>
                               {t.ai_recommended_to.full_name} ({t.ai_recommended_to.code})
                             </div>
-                            <div style={{ color: 'var(--ink-muted)', fontSize: '10.5px' }}>
+                            <div style={{ color: 'var(--ink-muted)', fontSize: '10.5px', marginTop: '1px' }}>
                               {t.ai_recommended_to.specialty_label || t.ai_recommended_to.department || 'KTV Chuyên Trách'}
                             </div>
                           </div>
                         )}
 
+                        {/* Assigned Technician Block */}
+                        {t.assigned_to && (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '7px 9px',
+                              borderRadius: '7px',
+                              background: 'var(--surface-2)',
+                              border: '1px solid var(--border-subtle)'
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: '26px',
+                                height: '26px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                                color: '#ffffff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                flexShrink: 0
+                              }}
+                            >
+                              {t.assigned_to.full_name?.split(' ').pop()?.charAt(0) || 'K'}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-pure)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {t.assigned_to.full_name}
+                              </div>
+                              <div style={{ fontSize: '10.5px', color: '#0284c7', fontWeight: 600 }}>
+                                {t.assigned_to.specialty_label || t.assigned_to.department || 'KTV Vận Hành'}
+                              </div>
+                            </div>
+                            {t.ai_auto_assigned && (
+                              <span style={{ fontSize: '9px', fontWeight: 800, padding: '2px 5px', borderRadius: '4px', background: 'rgba(2,132,199,0.12)', color: '#0284c7' }}>
+                                AI
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Reassign Warning Alert */}
                         {t.reassign_requested && (
-                          <div style={{ background: 'rgba(234,88,12,0.12)', border: '1px solid rgba(234,88,12,0.45)', borderRadius: '6px', padding: '7px 8px', fontSize: '11px' }}>
+                          <div style={{ background: 'rgba(234,88,12,0.1)', border: '1px solid rgba(234,88,12,0.4)', borderRadius: '6px', padding: '7px 9px', fontSize: '11px' }}>
                             <div style={{ fontWeight: 800, color: '#ea580c', display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <Icons.AlertTriangle size={12} color="#ea580c" />
                               <span>KTV Báo Trái Chuyên Môn / Xin Đổi Ca</span>
@@ -626,39 +965,66 @@ export const TicketKanbanPage = () => {
                               </div>
                             )}
                             {t.ai_recommended_to && (
-                              <div style={{ color: 'var(--laser-cyan)', fontWeight: 700, marginTop: '3px' }}>
-                                AI gợi ý đổi sang: {t.ai_recommended_to.full_name} ({t.ai_recommended_to.specialty_label || t.ai_recommended_to.code})
+                              <div style={{ color: '#0284c7', fontWeight: 700, marginTop: '3px' }}>
+                                Gợi ý: {t.ai_recommended_to.full_name} ({t.ai_recommended_to.code})
                               </div>
                             )}
                           </div>
                         )}
 
-                        {/* Real-time SLA Deadline Countdown (UC-7.1) */}
+                        {/* Real-time SLA Deadline Countdown */}
                         {t.deadline && (
                           <div style={{ marginTop: '2px' }}>
                             <DeadlineCountdown compact={true} deadline={t.deadline} status={t.status} />
                           </div>
                         )}
 
-                        {/* Quick action buttons */}
+                        {/* Action Buttons Toolbar */}
                         <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
                           {isReported && (
                             <>
                               {t.ai_recommended_to && (
                                 <button
+                                  type="button"
                                   onClick={() => handleQuickApproveAiAssign(t)}
                                   disabled={submitting}
-                                  className="laser-btn"
-                                  style={{ width: '100%', padding: '5px 8px', fontSize: '11px', fontWeight: 700, background: 'rgba(16,185,129,0.14)', color: '#10B981', border: '1px solid rgba(16,185,129,0.35)' }}
-                                  title="Duyệt 1-click giao ngay cho KTV đúng chuyên môn do AI liên kết"
+                                  className="ruo-btn"
+                                  style={{
+                                    width: '100%',
+                                    padding: '6px 10px',
+                                    fontSize: '11.5px',
+                                    fontWeight: 700,
+                                    background: 'rgba(22,163,74,0.12)',
+                                    color: '#16a34a',
+                                    border: '1px solid rgba(22,163,74,0.35)',
+                                    borderRadius: '6px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '5px',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Duyệt 1-click giao ngay cho KTV đúng chuyên môn do AI đề xuất"
                                 >
-                                  Duyệt Giao AI ({t.ai_recommended_to.code || 'KTV'})
+                                  <Icons.CheckCircle size={13} />
+                                  <span>Duyệt Giao AI ({t.ai_recommended_to.code || 'KTV'})</span>
                                 </button>
                               )}
                               <button
+                                type="button"
                                 onClick={() => openAssign(t)}
-                                className="laser-btn laser-btn-primary"
-                                style={{ width: '100%', padding: '6px', fontSize: '11.5px', fontWeight: 700 }}
+                                className="ruo-btn ruo-btn-primary"
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  fontSize: '11.5px',
+                                  fontWeight: 700,
+                                  borderRadius: '6px',
+                                  background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  cursor: 'pointer'
+                                }}
                               >
                                 Giao KTV & Cấp Đồ
                               </button>
@@ -668,16 +1034,42 @@ export const TicketKanbanPage = () => {
                           {(t.status === 'assigned' || t.status === 'in_progress') && (
                             <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
                               <button
+                                type="button"
                                 onClick={() => openAssign(t)}
-                                className="laser-btn laser-btn-secondary"
-                                style={{ flex: 1, padding: '5px 8px', fontSize: '11px', fontWeight: 700, borderColor: t.reassign_requested ? '#ea580c' : undefined, color: t.reassign_requested ? '#ea580c' : undefined }}
+                                className="ruo-btn ruo-btn-ghost"
+                                style={{
+                                  flex: 1,
+                                  padding: '6px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  border: t.reassign_requested ? '1px solid #ea580c' : '1px solid var(--border-default)',
+                                  color: t.reassign_requested ? '#ea580c' : 'var(--ink-secondary)',
+                                  background: 'var(--surface-2)',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer'
+                                }}
                               >
                                 Đổi KTV
                               </button>
                               <button
+                                type="button"
                                 onClick={() => setChatTicket(t)}
-                                className="laser-btn laser-btn-secondary"
-                                style={{ flex: 1, padding: '5px 8px', fontSize: '11px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                className="ruo-btn ruo-btn-ghost"
+                                style={{
+                                  flex: 1,
+                                  padding: '6px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '4px',
+                                  border: '1px solid var(--border-default)',
+                                  background: 'var(--surface-2)',
+                                  color: 'var(--ink-secondary)',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer'
+                                }}
                               >
                                 <Icons.MessageSquare size={12} />
                                 <span>Chat KTV</span>
@@ -687,9 +1079,20 @@ export const TicketKanbanPage = () => {
 
                           {isResolved && (
                             <button
+                              type="button"
                               onClick={() => openClose(t)}
-                              className="laser-btn laser-btn-primary"
-                              style={{ width: '100%', padding: '6px', fontSize: '11.5px', fontWeight: 700 }}
+                              className="ruo-btn ruo-btn-primary"
+                              style={{
+                                width: '100%',
+                                padding: '7px 10px',
+                                fontSize: '11.5px',
+                                fontWeight: 700,
+                                borderRadius: '6px',
+                                background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                                color: '#ffffff',
+                                border: 'none',
+                                cursor: 'pointer'
+                              }}
                             >
                               Nghiệm Thu & Đóng Phiếu
                             </button>
@@ -697,9 +1100,20 @@ export const TicketKanbanPage = () => {
 
                           {isUnrepairable && (
                             <button
+                              type="button"
                               onClick={() => openClose(t)}
-                              className="laser-btn"
-                              style={{ width: '100%', padding: '6px', fontSize: '11.5px', fontWeight: 700, background: 'rgba(239,68,68,0.14)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.35)' }}
+                              className="ruo-btn"
+                              style={{
+                                width: '100%',
+                                padding: '7px 10px',
+                                fontSize: '11.5px',
+                                fontWeight: 700,
+                                background: 'rgba(220,38,38,0.1)',
+                                color: '#dc2626',
+                                border: '1px solid rgba(220,38,38,0.3)',
+                                borderRadius: '6px',
+                                cursor: 'pointer'
+                              }}
                             >
                               Đóng Phiếu (Chờ Thanh Lý)
                             </button>
@@ -710,8 +1124,8 @@ export const TicketKanbanPage = () => {
                   })}
 
                   {colTickets.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '30px 0', fontSize: '12px', color: 'var(--hairline-medium)' }}>
-                      Không có phiếu
+                    <div style={{ textAlign: 'center', padding: '36px 12px', fontSize: '12px', color: 'var(--ink-muted)' }}>
+                      Không có phiếu trong mục này
                     </div>
                   )}
                 </div>
@@ -758,8 +1172,8 @@ export const TicketKanbanPage = () => {
                 <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--ink-muted)', fontWeight: 700, marginBottom: '4px' }}>
                   Mô Tả Sự Cố
                 </div>
-                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--hairline-medium)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}>
-                  {selectedTicket.incident_description}
+                <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '13px' }}>
+                  {selectedTicket.incident_description || 'Không có mô tả'}
                 </div>
               </div>
 
@@ -767,14 +1181,14 @@ export const TicketKanbanPage = () => {
               <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-focus)', borderRadius: 'var(--radius-md)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '12.5px', color: 'var(--ink-pure)' }}>
-                    <Icons.Sparkles size={15} style={{ color: 'var(--laser-cyan)' }} />
+                    <Icons.Sparkles size={15} style={{ color: '#0284c7' }} />
                     <span>AI Chẩn Đoán & Gợi Ý Điều Phối</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleRunAiCopilot(selectedTicket)}
                     disabled={aiCopilotLoading}
-                    className="laser-btn laser-btn-secondary"
+                    className="ruo-btn ruo-btn-secondary"
                     style={{ padding: '4px 10px', fontSize: '11.5px', fontWeight: 700 }}
                   >
                     {aiCopilotLoading ? 'Đang Phân Tích...' : (aiCopilotMap[selectedTicket._id] ? 'Phân Tích Lại' : 'Chạy AI Copilot')}
@@ -814,7 +1228,7 @@ export const TicketKanbanPage = () => {
                       </div>
                       {bestTech && (
                         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', padding: '8px 10px', borderRadius: 'var(--radius-sm)' }}>
-                          <div style={{ fontWeight: 800, color: 'var(--laser-cyan)' }}>
+                          <div style={{ fontWeight: 800, color: '#0284c7' }}>
                             KTV đề xuất #1: {bestTech.full_name} ({bestTech.code}) • Điểm phù hợp {bestTech.score}/100
                           </div>
                           <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', marginTop: '2px' }}>{bestTech.reason}</div>
@@ -837,7 +1251,7 @@ export const TicketKanbanPage = () => {
                       {cp.dispatch_recommendation?.recommended_replacement && (
                         <div>
                           <strong style={{ color: 'var(--ink-pure)' }}>Thiết bị dự phòng thay thế (Kho KHO-01):</strong>{' '}
-                          <span style={{ color: 'var(--laser-cyan)', fontWeight: 700 }}>
+                          <span style={{ color: '#0284c7', fontWeight: 700 }}>
                             {cp.dispatch_recommendation.recommended_replacement.code} — {cp.dispatch_recommendation.recommended_replacement.name}
                           </span>
                         </div>
@@ -848,7 +1262,7 @@ export const TicketKanbanPage = () => {
               </div>
 
               {selectedTicket.replacement_equipment_id && (
-                <div style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
+                <div style={{ background: 'rgba(2,132,199,0.08)', border: '1px solid rgba(2,132,199,0.25)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
                   Thiết bị dự phòng thay thế đã cấp: <strong>{selectedTicket.replacement_equipment_id?.name} ({selectedTicket.replacement_equipment_id?.code})</strong>
                 </div>
               )}
@@ -857,17 +1271,17 @@ export const TicketKanbanPage = () => {
                 <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>Đánh giá của Giảng viên:</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', color: '#F59E0B' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', color: '#f59e0b' }}>
                       {Array.from({ length: 5 }).map((_, sIdx) => (
                         <Icons.Star
                           key={sIdx}
                           size={13}
-                          fill={sIdx < selectedTicket.feedback_rating ? '#F59E0B' : 'none'}
-                          color="#F59E0B"
+                          fill={sIdx < selectedTicket.feedback_rating ? '#f59e0b' : 'none'}
+                          color="#f59e0b"
                         />
                       ))}
                     </span>
-                    <strong style={{ color: '#F59E0B' }}>({selectedTicket.feedback_rating}/5 sao)</strong>
+                    <strong style={{ color: '#f59e0b' }}>({selectedTicket.feedback_rating}/5 sao)</strong>
                   </div>
                   {selectedTicket.feedback_comment && <div style={{ marginTop: '2px', color: 'var(--ink-secondary)' }}>"{selectedTicket.feedback_comment}"</div>}
                 </div>
@@ -875,12 +1289,12 @@ export const TicketKanbanPage = () => {
             </div>
 
             <div className="ruo-drawer-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
-              <button onClick={() => setSelectedTicket(null)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>
+              <button onClick={() => setSelectedTicket(null)} className="ruo-btn ruo-btn-secondary" style={{ padding: '8px 16px' }}>
                 Đóng Cửa Sổ
               </button>
               <button
                 onClick={() => setChatTicket(selectedTicket)}
-                className="laser-btn laser-btn-secondary"
+                className="ruo-btn ruo-btn-secondary"
                 style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}
                 title="Mở kênh chat trao đổi của phiếu sửa chữa"
               >
@@ -888,17 +1302,17 @@ export const TicketKanbanPage = () => {
                 <span>Mở Khung Chat Phiếu</span>
               </button>
               {selectedTicket.status === 'reported' && (
-                <button onClick={() => openAssign(selectedTicket)} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                <button onClick={() => openAssign(selectedTicket)} className="ruo-btn ruo-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
                   Giao Nhiệm Vụ Cho KTV
                 </button>
               )}
               {(selectedTicket.status === 'assigned' || selectedTicket.status === 'in_progress') && (
-                <button onClick={() => openAssign(selectedTicket)} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                <button onClick={() => openAssign(selectedTicket)} className="ruo-btn ruo-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
                   Đổi Kỹ Thuật Viên Phụ Trách
                 </button>
               )}
               {selectedTicket.status === 'resolved' && (
-                <button onClick={() => openClose(selectedTicket)} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                <button onClick={() => openClose(selectedTicket)} className="ruo-btn ruo-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
                   Nghiệm Thu & Đóng Phiếu
                 </button>
               )}
@@ -907,12 +1321,12 @@ export const TicketKanbanPage = () => {
                   <a
                     href="#/disposal_propose"
                     onClick={() => setSelectedTicket(null)}
-                    className="laser-btn laser-btn-secondary"
-                    style={{ padding: '8px 16px', fontWeight: 700, textDecoration: 'none', color: '#EF4444', borderColor: 'rgba(239,68,68,0.4)' }}
+                    className="ruo-btn ruo-btn-secondary"
+                    style={{ padding: '8px 16px', fontWeight: 700, textDecoration: 'none', color: '#dc2626', borderColor: 'rgba(239,68,68,0.4)' }}
                   >
                     Lập Đề Xuất Thanh Lý
                   </a>
-                  <button onClick={() => openClose(selectedTicket)} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                  <button onClick={() => openClose(selectedTicket)} className="ruo-btn ruo-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
                     Xác Nhận & Đóng Phiếu (Chờ Thanh Lý)
                   </button>
                 </>
@@ -925,7 +1339,7 @@ export const TicketKanbanPage = () => {
       {/* Assign Modal */}
       {showAssignModal && selectedTicket && (
         <div className="ruo-drawer-backdrop" onClick={() => setShowAssignModal(false)}>
-          <div className="ruo-drawer-panel" style={{ width: '520px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="ruo-drawer-panel" style={{ width: '540px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ruo-drawer-header">
               <div>
                 <h2 className="ruo-drawer-title">Phân Công Kỹ Thuật Viên & Cấp Đồ Dự Phòng</h2>
@@ -937,10 +1351,10 @@ export const TicketKanbanPage = () => {
             <form onSubmit={handleAssignSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {/* AI Dispatch One-Click Banner inside Assign Modal */}
-                <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-focus)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>
+                <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-focus)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--ink-pure)' }}>
-                      <Icons.Sparkles size={14} style={{ color: 'var(--laser-cyan)' }} />
+                      <Icons.Sparkles size={14} style={{ color: '#0284c7' }} />
                       <span>AI Gợi Ý Phân Công Tối Ưu</span>
                     </div>
                     <div style={{ display: 'flex', gap: '6px' }}>
@@ -948,7 +1362,7 @@ export const TicketKanbanPage = () => {
                         type="button"
                         onClick={() => handleRunAiCopilot(selectedTicket)}
                         disabled={aiCopilotLoading}
-                        className="laser-btn laser-btn-secondary"
+                        className="ruo-btn ruo-btn-secondary"
                         style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
                       >
                         {aiCopilotLoading ? 'Đang Tính...' : 'Gợi Ý Từ AI'}
@@ -957,7 +1371,7 @@ export const TicketKanbanPage = () => {
                         <button
                           type="button"
                           onClick={() => applyAiDispatchRecommendation(aiCopilotMap[selectedTicket._id])}
-                          className="laser-btn laser-btn-primary"
+                          className="ruo-btn ruo-btn-primary"
                           style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
                         >
                           Áp Dụng Gợi Ý
@@ -980,21 +1394,21 @@ export const TicketKanbanPage = () => {
                           key={rt._id}
                           onClick={() => setAssignForm((prev) => ({ ...prev, assigned_to: rt._id }))}
                           style={{
-                            padding: '5px 8px',
-                            borderRadius: '4px',
+                            padding: '6px 9px',
+                            borderRadius: '6px',
                             fontSize: '11px',
                             cursor: 'pointer',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            background: String(assignForm.assigned_to) === String(rt._id) ? 'rgba(6,182,212,0.14)' : 'var(--surface-card)',
-                            border: String(assignForm.assigned_to) === String(rt._id) ? '1px solid var(--laser-cyan)' : '1px solid var(--hairline-soft)'
+                            background: String(assignForm.assigned_to) === String(rt._id) ? 'rgba(2,132,199,0.12)' : 'var(--surface-card)',
+                            border: String(assignForm.assigned_to) === String(rt._id) ? '1.5px solid #0284c7' : '1px solid var(--border-subtle)'
                           }}
                         >
                           <div>
                             <strong>{rt.full_name}</strong> ({rt.code}) • <span style={{ color: 'var(--ink-muted)' }}>{rt.specialty_label || rt.department}</span>
                           </div>
-                          <span style={{ fontWeight: 700, color: rt.is_specialty_match !== false ? '#10B981' : '#EF4444' }}>
+                          <span style={{ fontWeight: 700, color: rt.is_specialty_match !== false ? '#16a34a' : '#dc2626' }}>
                             {rt.score}đ • {rt.is_specialty_match !== false ? 'Đúng chuyên môn' : 'Trái phân quyền'}
                           </span>
                         </div>
@@ -1083,8 +1497,8 @@ export const TicketKanbanPage = () => {
               </div>
 
               <div className="ruo-drawer-footer">
-                <button type="button" onClick={() => setShowAssignModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
-                <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                <button type="button" onClick={() => setShowAssignModal(false)} className="ruo-btn ruo-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                <button type="submit" disabled={submitting} className="ruo-btn ruo-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
                   {submitting ? 'Đang Phân Công...' : 'Xác Nhận Giao Việc'}
                 </button>
               </div>
@@ -1113,7 +1527,7 @@ export const TicketKanbanPage = () => {
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {selectedTicket.status === 'unrepairable' ? (
                   <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', padding: '12px 14px', borderRadius: 'var(--radius-md)', fontSize: '12.5px', color: 'var(--ink-primary)' }}>
-                    <div style={{ fontWeight: 700, color: '#EF4444', marginBottom: '4px' }}>
+                    <div style={{ fontWeight: 700, color: '#dc2626', marginBottom: '4px' }}>
                       Xác nhận thiết bị không thể khắc phục
                     </div>
                     <div>
@@ -1149,8 +1563,8 @@ export const TicketKanbanPage = () => {
               </div>
 
               <div className="ruo-drawer-footer">
-                <button type="button" onClick={() => setShowCloseModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
-                <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                <button type="button" onClick={() => setShowCloseModal(false)} className="ruo-btn ruo-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
+                <button type="submit" disabled={submitting} className="ruo-btn ruo-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
                   {submitting ? 'Đang Đóng Phiếu...' : 'Xác Nhận & Đóng Phiếu'}
                 </button>
               </div>
@@ -1158,6 +1572,7 @@ export const TicketKanbanPage = () => {
           </div>
         </div>
       )}
+
       {/* Ticket Chat Drawer */}
       <TicketChatDrawer
         isOpen={Boolean(chatTicket)}
