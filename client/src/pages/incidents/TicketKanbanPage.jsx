@@ -82,7 +82,7 @@ export const TicketKanbanPage = () => {
 
   const STATUS_LABELS = {
     reported: { label: 'Mới tiếp nhận', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' },
-    assigned: { label: 'Đã giao KTV', color: '#0284c7', bg: 'rgba(2,132,199,0.12)', border: 'rgba(2,132,199,0.3)' },
+    assigned: { label: 'Đã giao KTV', color: '#ea580c', bg: 'rgba(234, 88, 12,0.12)', border: 'rgba(234, 88, 12,0.3)' },
     in_progress: { label: 'Đang sửa chữa', color: '#2563eb', bg: 'rgba(37,99,235,0.12)', border: 'rgba(37,99,235,0.3)' },
     resolved: { label: 'Đã khắc phục', color: '#16a34a', bg: 'rgba(22,163,74,0.12)', border: 'rgba(22,163,74,0.3)' },
     unrepairable: { label: 'Không thể sửa', color: '#dc2626', bg: 'rgba(220,38,38,0.12)', border: 'rgba(220,38,38,0.3)' },
@@ -115,7 +115,7 @@ export const TicketKanbanPage = () => {
 
   const allColumns = useMemo(() => [
     { id: 'reported', title: 'MỚI TIẾP NHẬN', color: '#f59e0b', category: 'ACTIVE' },
-    { id: 'assigned', title: 'ĐÃ GIAO KTV', color: '#0284c7', category: 'ACTIVE' },
+    { id: 'assigned', title: 'ĐÃ GIAO KTV', color: '#ea580c', category: 'ACTIVE' },
     { id: 'in_progress', title: 'ĐANG XỬ LÝ', color: '#2563eb', category: 'ACTIVE' },
     { id: 'resolved', title: 'ĐÃ KHẮC PHỤC', color: '#16a34a', category: 'RESOLVED' },
     { id: 'unrepairable', title: 'KHÔNG THỂ SỬA', color: '#dc2626', category: 'RESOLVED' },
@@ -408,10 +408,10 @@ export const TicketKanbanPage = () => {
                 borderRadius: '8px',
                 fontSize: '13px',
                 fontWeight: 700,
-                background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                background: 'linear-gradient(135deg, #ea580c, #c2410c)',
                 color: '#ffffff',
                 border: 'none',
-                boxShadow: '0 2px 8px rgba(2,132,199,0.3)',
+                boxShadow: '0 2px 8px rgba(234, 88, 12,0.3)',
                 cursor: autoDispatching ? 'wait' : 'pointer'
               }}
               title="AI tự động phân tích các phiếu Mới Tiếp Nhận và đề xuất/giao KTV đúng chuyên môn"
@@ -549,9 +549,9 @@ export const TicketKanbanPage = () => {
         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '12px', padding: '16px 18px', boxShadow: 'var(--shadow-xs)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 600 }}>Thời Gian Xử Lý TB (MTTR)</span>
-            <Icons.Activity size={16} color="#0284c7" />
+            <Icons.Activity size={16} color="#ea580c" />
           </div>
-          <div style={{ fontSize: '26px', fontWeight: 800, color: '#0284c7', marginTop: '4px' }}>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: '#ea580c', marginTop: '4px' }}>
             {slaStats?.avg_resolution_hours ?? 0}h
           </div>
           <div style={{ fontSize: '11.5px', color: 'var(--ink-muted)', marginTop: '3px' }}>
@@ -615,7 +615,7 @@ export const TicketKanbanPage = () => {
                 fontSize: '11.5px',
                 fontWeight: displayMode === 'kanban' ? 700 : 500,
                 background: displayMode === 'kanban' ? 'var(--surface-card)' : 'transparent',
-                color: displayMode === 'kanban' ? '#0284c7' : 'var(--ink-muted)',
+                color: displayMode === 'kanban' ? '#ea580c' : 'var(--ink-muted)',
                 border: 'none',
                 boxShadow: displayMode === 'kanban' ? 'var(--shadow-xs)' : 'none',
                 cursor: 'pointer'
@@ -636,7 +636,7 @@ export const TicketKanbanPage = () => {
                 fontSize: '11.5px',
                 fontWeight: displayMode === 'table' ? 700 : 500,
                 background: displayMode === 'table' ? 'var(--surface-card)' : 'transparent',
-                color: displayMode === 'table' ? '#0284c7' : 'var(--ink-muted)',
+                color: displayMode === 'table' ? '#ea580c' : 'var(--ink-muted)',
                 border: 'none',
                 boxShadow: displayMode === 'table' ? 'var(--shadow-xs)' : 'none',
                 cursor: 'pointer'
@@ -676,7 +676,7 @@ export const TicketKanbanPage = () => {
                   fontSize: '11px',
                   fontWeight: columnViewMode === 'ACTIVE' ? 700 : 500,
                   background: columnViewMode === 'ACTIVE' ? 'var(--surface-card)' : 'transparent',
-                  color: columnViewMode === 'ACTIVE' ? '#0284c7' : 'var(--ink-muted)',
+                  color: columnViewMode === 'ACTIVE' ? '#ea580c' : 'var(--ink-muted)',
                   border: 'none',
                   boxShadow: columnViewMode === 'ACTIVE' ? 'var(--shadow-xs)' : 'none',
                   cursor: 'pointer'
@@ -730,7 +730,7 @@ export const TicketKanbanPage = () => {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--ink-muted)' }}>
-          <Icons.RefreshCw size={32} className="spin" style={{ marginBottom: '12px', color: '#0284c7' }} />
+          <Icons.RefreshCw size={32} className="spin" style={{ marginBottom: '12px', color: '#ea580c' }} />
           <div style={{ fontSize: '14px', fontWeight: 600 }}>Đang nạp dữ liệu điều phối sửa chữa...</div>
         </div>
       ) : displayMode === 'table' ? (
@@ -772,7 +772,7 @@ export const TicketKanbanPage = () => {
                       <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                         <span
                           onClick={() => setSelectedTicket(t)}
-                          style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 800, color: '#0284c7', background: 'rgba(2,132,199,0.09)', padding: '3px 8px', borderRadius: '5px', cursor: 'pointer' }}
+                          style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 800, color: '#ea580c', background: 'rgba(234, 88, 12,0.09)', padding: '3px 8px', borderRadius: '5px', cursor: 'pointer' }}
                         >
                           {t.ticket_code}
                         </span>
@@ -820,13 +820,13 @@ export const TicketKanbanPage = () => {
                             <div style={{ fontWeight: 700, color: 'var(--ink-pure)' }}>
                               {t.assigned_to.full_name}
                             </div>
-                            <div style={{ fontSize: '11px', color: '#0284c7' }}>
+                            <div style={{ fontSize: '11px', color: '#ea580c' }}>
                               {t.assigned_to.specialty_label || t.assigned_to.department || 'KTV Vận Hành'}
                             </div>
                           </div>
                         ) : isReported && t.ai_recommended_to ? (
-                          <div style={{ background: 'rgba(2,132,199,0.08)', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(2,132,199,0.22)' }}>
-                            <div style={{ fontSize: '10.5px', color: '#0284c7', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <div style={{ background: 'rgba(234, 88, 12,0.08)', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(234, 88, 12,0.22)' }}>
+                            <div style={{ fontSize: '10.5px', color: '#ea580c', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '3px' }}>
                               <Icons.Sparkles size={11} />
                               <span>AI Gợi Ý: {t.ai_recommended_to.full_name}</span>
                             </div>
@@ -869,7 +869,7 @@ export const TicketKanbanPage = () => {
                                 type="button"
                                 onClick={() => openAssign(t)}
                                 className="ruo-btn ruo-btn-primary"
-                                style={{ padding: '5px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '6px', background: '#0284c7', color: '#fff', border: 'none', cursor: 'pointer' }}
+                                style={{ padding: '5px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '6px', background: '#ea580c', color: '#fff', border: 'none', cursor: 'pointer' }}
                               >
                                 Giao KTV & Cấp Đồ
                               </button>
@@ -1028,7 +1028,7 @@ export const TicketKanbanPage = () => {
                         onClick={() => setSelectedTicket(t)}
                         style={{
                           background: 'var(--surface-1, #ffffff)',
-                          border: isSelected ? '1.5px solid #0284c7' : '1px solid var(--border-subtle)',
+                          border: isSelected ? '1.5px solid #ea580c' : '1px solid var(--border-subtle)',
                           borderRadius: '8px',
                           padding: '10px 11px',
                           display: 'flex',
@@ -1036,7 +1036,7 @@ export const TicketKanbanPage = () => {
                           gap: '8px',
                           cursor: 'pointer',
                           transition: 'all 0.16s ease',
-                          boxShadow: isSelected ? '0 4px 12px rgba(2,132,199,0.16)' : '0 1px 3px rgba(0,0,0,0.03)',
+                          boxShadow: isSelected ? '0 4px 12px rgba(234, 88, 12,0.16)' : '0 1px 3px rgba(0,0,0,0.03)',
                           wordBreak: 'break-word'
                         }}
                         onMouseEnter={(e) => {
@@ -1056,7 +1056,7 @@ export const TicketKanbanPage = () => {
                       >
                         {/* Top Bar: Code & Severity */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
-                          <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10.5px', fontWeight: 800, color: '#0284c7', background: 'rgba(2,132,199,0.09)', padding: '2px 6px', borderRadius: '4px' }}>
+                          <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10.5px', fontWeight: 800, color: '#ea580c', background: 'rgba(234, 88, 12,0.09)', padding: '2px 6px', borderRadius: '4px' }}>
                             {t.ticket_code}
                           </span>
                           {getDamageBadge(t.damage_level, true)}
@@ -1097,14 +1097,14 @@ export const TicketKanbanPage = () => {
                         {isReported && t.ai_recommended_to && (
                           <div
                             style={{
-                              background: 'linear-gradient(135deg, rgba(2,132,199,0.08), rgba(99,102,241,0.08))',
-                              border: '1px solid rgba(2,132,199,0.28)',
+                              background: 'linear-gradient(135deg, rgba(234, 88, 12,0.08), rgba(99,102,241,0.08))',
+                              border: '1px solid rgba(234, 88, 12,0.28)',
                               borderRadius: '6px',
                               padding: '6px 8px'
                             }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                              <span style={{ fontSize: '10px', fontWeight: 800, color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <span style={{ fontSize: '10px', fontWeight: 800, color: '#ea580c', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                                 <Icons.Sparkles size={11} />
                                 AI Gợi Ý
                               </span>
@@ -1139,7 +1139,7 @@ export const TicketKanbanPage = () => {
                                 width: '22px',
                                 height: '22px',
                                 borderRadius: '50%',
-                                background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                                background: 'linear-gradient(135deg, #ea580c, #c2410c)',
                                 color: '#ffffff',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -1156,12 +1156,12 @@ export const TicketKanbanPage = () => {
                               <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-pure)', lineHeight: 1.3, wordBreak: 'break-word' }}>
                                 {t.assigned_to.full_name}
                               </div>
-                              <div style={{ fontSize: '10px', color: '#0284c7', fontWeight: 600, marginTop: '1px' }}>
+                              <div style={{ fontSize: '10px', color: '#ea580c', fontWeight: 600, marginTop: '1px' }}>
                                 {t.assigned_to.specialty_label || t.assigned_to.department || 'KTV Vận Hành'}
                               </div>
                             </div>
                             {t.ai_auto_assigned && (
-                              <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 4px', borderRadius: '3px', background: 'rgba(2,132,199,0.12)', color: '#0284c7', flexShrink: 0 }}>
+                              <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 4px', borderRadius: '3px', background: 'rgba(234, 88, 12,0.12)', color: '#ea580c', flexShrink: 0 }}>
                                 AI
                               </span>
                             )}
@@ -1231,7 +1231,7 @@ export const TicketKanbanPage = () => {
                                   fontSize: '11px',
                                   fontWeight: 700,
                                   borderRadius: '5px',
-                                  background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                                  background: 'linear-gradient(135deg, #ea580c, #c2410c)',
                                   color: '#ffffff',
                                   border: 'none',
                                   cursor: 'pointer'
@@ -1392,7 +1392,7 @@ export const TicketKanbanPage = () => {
               <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-focus)', borderRadius: 'var(--radius-md)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '12.5px', color: 'var(--ink-pure)' }}>
-                    <Icons.Sparkles size={15} style={{ color: '#0284c7' }} />
+                    <Icons.Sparkles size={15} style={{ color: '#ea580c' }} />
                     <span>AI Chẩn Đoán & Gợi Ý Điều Phối</span>
                   </div>
                   <button
@@ -1439,7 +1439,7 @@ export const TicketKanbanPage = () => {
                       </div>
                       {bestTech && (
                         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', padding: '8px 10px', borderRadius: 'var(--radius-sm)' }}>
-                          <div style={{ fontWeight: 800, color: '#0284c7' }}>
+                          <div style={{ fontWeight: 800, color: '#ea580c' }}>
                             KTV đề xuất #1: {bestTech.full_name} ({bestTech.code}) • Điểm phù hợp {bestTech.score}/100
                           </div>
                           <div style={{ color: 'var(--ink-muted)', fontSize: '11.5px', marginTop: '2px' }}>{bestTech.reason}</div>
@@ -1462,7 +1462,7 @@ export const TicketKanbanPage = () => {
                       {cp.dispatch_recommendation?.recommended_replacement && (
                         <div>
                           <strong style={{ color: 'var(--ink-pure)' }}>Thiết bị dự phòng thay thế (Kho KHO-01):</strong>{' '}
-                          <span style={{ color: '#0284c7', fontWeight: 700 }}>
+                          <span style={{ color: '#ea580c', fontWeight: 700 }}>
                             {cp.dispatch_recommendation.recommended_replacement.code} — {cp.dispatch_recommendation.recommended_replacement.name}
                           </span>
                         </div>
@@ -1473,7 +1473,7 @@ export const TicketKanbanPage = () => {
               </div>
 
               {selectedTicket.replacement_equipment_id && (
-                <div style={{ background: 'rgba(2,132,199,0.08)', border: '1px solid rgba(2,132,199,0.25)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
+                <div style={{ background: 'rgba(234, 88, 12,0.08)', border: '1px solid rgba(234, 88, 12,0.25)', padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: '12.5px' }}>
                   Thiết bị dự phòng thay thế đã cấp: <strong>{selectedTicket.replacement_equipment_id?.name} ({selectedTicket.replacement_equipment_id?.code})</strong>
                 </div>
               )}
@@ -1565,7 +1565,7 @@ export const TicketKanbanPage = () => {
                 <div style={{ background: 'var(--surface-2)', border: '1.5px solid var(--border-focus)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--ink-pure)' }}>
-                      <Icons.Sparkles size={14} style={{ color: '#0284c7' }} />
+                      <Icons.Sparkles size={14} style={{ color: '#ea580c' }} />
                       <span>AI Gợi Ý Phân Công Tối Ưu</span>
                     </div>
                     <div style={{ display: 'flex', gap: '6px' }}>
@@ -1612,8 +1612,8 @@ export const TicketKanbanPage = () => {
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            background: String(assignForm.assigned_to) === String(rt._id) ? 'rgba(2,132,199,0.12)' : 'var(--surface-card)',
-                            border: String(assignForm.assigned_to) === String(rt._id) ? '1.5px solid #0284c7' : '1px solid var(--border-subtle)'
+                            background: String(assignForm.assigned_to) === String(rt._id) ? 'rgba(234, 88, 12,0.12)' : 'var(--surface-card)',
+                            border: String(assignForm.assigned_to) === String(rt._id) ? '1.5px solid #ea580c' : '1px solid var(--border-subtle)'
                           }}
                         >
                           <div>
