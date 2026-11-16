@@ -13,6 +13,15 @@ import {
 } from '../models/index.js';
 import { processAiChatQuery } from '../services/aiChatEngine.js';
 import { resolveTechnicianSpecialtyProfile } from '../services/aiService.js';
+import {
+  REPAIR_STATUSES,
+  EQUIPMENT_STATUSES,
+  DAMAGE_LEVELS,
+  REPAIR_SOURCES
+} from '../config/constants.js';
+import { computeDeadline } from '../services/slaReactor.js';
+import { evaluateTicketAiSpecialtyDispatch } from './repairController.js';
+import { executeAutoTicketCreation } from '../services/autoTicketService.js';
 
 /**
  * 1. TICKET-SCOPED CHAT (Giảng viên ↔ Kỹ thuật viên)
@@ -761,5 +770,52 @@ export const getUnreadSummary = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi đếm tin chưa đọc: ' + error.message });
+  }
+};
+
+/**
+ * 4. ONE-CLICK AI AUTO-TICKET CREATION (Báo hỏng 1-chạm trực tiếp từ hội thoại AI)
+ * @route   POST /api/chat/ai/auto-ticket
+ * @access  Private (Lecturer, Technician, Facility Manager, Admin)
+ */
+export const createAiAutoTicket = async (req, res) => {
+  try {
+    const {
+      room_id,
+      equipment_id,
+      incident_description = '',
+      damage_level = 'minor'
+    } = req.body;
+
+    if (!equipment_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp mã ID thiết bị cần báo hỏng.'
+      });
+    }
+
+    const result = await executeAutoTicketCreation({
+      user: req.user,
+      roomId: room_id,
+      equipmentId: equipment_id,
+      incidentDescription: incident_description,
+      damageLevel: damage_level,
+      ipAddress: req.ip || req.socket.remoteAddress || '127.0.0.1',
+      createChatMessage: true
+    });
+
+    if (!result.success) {
+      const statusCode = result.isDuplicate ? 409 : 400;
+      return res.status(statusCode).json(result);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Đã tự động tạo phiếu sửa chữa [${result.repair.ticket_code}] thành công!`,
+      repair: result.repair,
+      ai_message: result.aiConfirmMsg
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi tự động tạo phiếu: ' + error.message });
   }
 };

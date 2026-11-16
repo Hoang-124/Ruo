@@ -358,7 +358,7 @@ export const getRepairById = async (req, res) => {
 };
 
 // Helper: Evaluate AI Specialty Dispatch for a repair ticket
-async function evaluateTicketAiSpecialtyDispatch({ equipment, description, damageLevel, excludeTechnicianId = null }) {
+export async function evaluateTicketAiSpecialtyDispatch({ equipment, description, damageLevel, excludeTechnicianId = null }) {
   try {
     const localAnalysis = classifyIncidentLocally({
       description,

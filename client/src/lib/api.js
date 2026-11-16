@@ -399,6 +399,7 @@ export const chatApi = {
   decideActionCard: (messageId, payload) => api.put(`/chat/action-card/${messageId}/decide`, payload),
   getAiMessages: () => api.get('/chat/ai'),
   sendAiMessage: (payload) => api.post('/chat/ai', payload),
+  createAiAutoTicket: (payload) => api.post('/chat/ai/auto-ticket', payload),
   getUnreadSummary: () => api.get('/chat/unread-summary')
 };
 

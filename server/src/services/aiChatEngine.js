@@ -7,6 +7,7 @@ import {
   User,
   Category
 } from '../models/index.js';
+import { executeAutoTicketCreation } from './autoTicketService.js';
 import {
   stripDiacritics,
   normalizeVietnameseText,
@@ -247,16 +248,103 @@ export function findMatchingEquipmentInRoom(equipments, text) {
     }
   }
 
-  const STOPWORDS = new Set(['thiết', 'bị', 'phòng', 'tại', 'trong', 'đang', 'cho', 'của', 'các', 'những', 'này', 'nào', 'chung', 'toàn']);
+  const hasAccents = /[áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ]/i.test(lower);
+  const STOPWORDS = new Set([
+    'thiết', 'bị', 'phòng', 'tại', 'trong', 'đang', 'cho', 'của', 'các', 'những', 'này', 'nào', 'chung', 'toàn',
+    'báo', 'hỏng', 'sửa', 'giúp', 'thay', 'sự', 'cố', 'lỗi', 'hư', 'kiểm', 'tra', 'xem', 'chữa', 'tạo', 'phiếu',
+    'thiet', 'bi', 'phong', 'tai', 'trong', 'dang', 'cho', 'cua', 'cac', 'nhung', 'nay', 'nao', 'chung', 'toan',
+    'bao', 'hong', 'sua', 'giup', 'thay', 'su', 'co', 'loi', 'hu', 'kiem', 'tra', 'xem', 'chua', 'tao', 'phieu',
+    'hồng'
+  ]);
   for (const eq of equipments) {
     const eqNameLower = (eq.name || '').toLowerCase();
-    const words = eqNameLower.split(/\s+/).filter((w) => w.length >= 3 && !STOPWORDS.has(w));
-    if (words.some((w) => lower.includes(w))) {
-      return eq;
+    const words = eqNameLower.split(/\s+/).filter((w) => w.length >= 4 && !STOPWORDS.has(w));
+    if (hasAccents) {
+      if (words.some((w) => hasWholePhrase(lower, w))) {
+        return eq;
+      }
+    } else {
+      if (words.some((w) => hasWholePhrase(ascii, stripDiacritics(w)))) {
+        return eq;
+      }
     }
   }
 
   return null;
+}
+
+/**
+ * Resolves room and equipment from current query and/or conversation history
+ */
+export async function resolveRoomAndEquipmentFromContext(rawText, chatHistory = []) {
+  let targetRoom = null;
+  const roomPattern = rawText.match(/A1-\w+|phòng\s*(\d{3})/i);
+  if (roomPattern) {
+    const roomCode = roomPattern[0].toUpperCase().startsWith('A1-')
+      ? roomPattern[0].toUpperCase()
+      : `A1-${roomPattern[1]}`;
+    targetRoom = await Room.findOne({ code: new RegExp(`^${roomCode}$`, 'i') });
+  }
+
+  // If room not in rawText, inspect chatHistory (newest first)
+  if (!targetRoom && chatHistory && chatHistory.length > 0) {
+    for (let i = chatHistory.length - 1; i >= 0; i--) {
+      const h = chatHistory[i];
+      if (h.action_data?.room_id) {
+        targetRoom = await Room.findById(h.action_data.room_id);
+        if (targetRoom) break;
+      }
+      if (h.action_data?.room_code) {
+        targetRoom = await Room.findOne({ code: new RegExp(`^${h.action_data.room_code}$`, 'i') });
+        if (targetRoom) break;
+      }
+      const hMatch = String(h.content || '').match(/A1-\w+|phòng\s*(\d{3})/i);
+      if (hMatch) {
+        const hCode = hMatch[0].toUpperCase().startsWith('A1-') ? hMatch[0].toUpperCase() : `A1-${hMatch[1]}`;
+        targetRoom = await Room.findOne({ code: new RegExp(`^${hCode}$`, 'i') });
+        if (targetRoom) break;
+      }
+    }
+  }
+
+  if (!targetRoom) {
+    return { targetRoom: null, matchedEq: null };
+  }
+
+  const roomEquipments = await Equipment.find({ room_id: targetRoom._id }).populate('category_id', 'code name');
+
+  // Match equipment from rawText
+  let matchedEq = findMatchingEquipmentInRoom(roomEquipments, rawText);
+
+  // If equipment not in rawText, inspect chatHistory
+  if (!matchedEq && chatHistory && chatHistory.length > 0) {
+    for (let i = chatHistory.length - 1; i >= 0; i--) {
+      const h = chatHistory[i];
+      if (h.action_data?.equipment_id) {
+        matchedEq = roomEquipments.find((e) => e._id.toString() === h.action_data.equipment_id.toString());
+        if (matchedEq) break;
+      }
+      if (h.action_data?.equipment_code) {
+        matchedEq = roomEquipments.find((e) => e.code.toUpperCase() === h.action_data.equipment_code.toUpperCase());
+        if (matchedEq) break;
+      }
+      const candidate = findMatchingEquipmentInRoom(roomEquipments, h.content || '');
+      if (candidate) {
+        matchedEq = candidate;
+        break;
+      }
+    }
+  }
+
+  // Fallback: if only 1 equipment is broken in room, pick it
+  if (!matchedEq && roomEquipments.length > 0) {
+    const brokenInRoom = roomEquipments.filter((e) => ['broken', 'repairing'].includes(e.status));
+    if (brokenInRoom.length === 1) {
+      matchedEq = brokenInRoom[0];
+    }
+  }
+
+  return { targetRoom, matchedEq, roomEquipments };
 }
 
 /**
@@ -301,6 +389,136 @@ export const processAiChatQuery = async ({ content, user, chatHistory = [] }) =>
     };
 
     return { responseText, cardData };
+  }
+
+  // =========================================================================
+  // PRIORITY 1.5: AUTO REPAIR REPORTING INQUIRY & CONVERSATIONAL COMMAND
+  // =========================================================================
+  const isAutoReportInquiry = /tự (động )?báo hỏng (được không|thế nào|sao|ra sao)|có (thể |tự )?(động )?báo hỏng (được )?không|bớt việc|tự tạo phiếu (được không|thế nào)|ai này tự báo hỏng/i.test(lowerQ)
+    || /tu (dong )?bao hong (duoc khong|the nao|sao)|co (the |tu )?(dong )?bao hong|bot viec/i.test(asciiQ);
+
+  const isDirectCreateIntent = !isAutoReportInquiry && (
+    /^(hãy |nhờ ai |ai |vui lòng |làm ơn )?(báo hỏng|tạo phiếu|lập phiếu|tự báo hỏng)( giúp| cho| hộ| đi| ngay| luôn| nhanh)?/i.test(lowerQ) ||
+    /báo hỏng (giúp|cho|hộ|đi|ngay|luôn|nhanh)|tạo phiếu (giúp|cho|hộ|đi)|lập phiếu (giúp|cho|hộ|đi)/i.test(lowerQ) ||
+    /^(báo hỏng|tạo phiếu|lập phiếu)\s+/i.test(lowerQ)
+  );
+
+  if (isAutoReportInquiry) {
+    const { targetRoom, matchedEq } = await resolveRoomAndEquipmentFromContext(rawText, chatHistory);
+
+    const responseText = `**[TÍNH NĂNG TỰ ĐỘNG LẬP PHIẾU BÁO HỎNG RUO CORTEX AI]**\n\n` +
+      `Dạ hoàn toàn **ĐƯỢC**! Ruo Cortex AI được trang bị tính năng **Tự Động Lập Phiếu Báo Hỏng 1-Chạm** nhằm **giảm tối đa gánh nặng thủ tục và tiết kiệm thời gian cho Quý Thầy/Cô**:\n\n` +
+      `1. **Tự động báo hỏng 1-chạm (1-Click Ticket):**\n` +
+      `   Khi Thầy/Cô phản ánh sự cố thiết bị tại phòng (ví dụ: *"phòng 209 đang bị hỏng tivi"*), Ruo Cortex AI tự động nhận diện thiết bị và cung cấp ngay nút bấm **[⚡ AI Tự Động Báo Hỏng 1-Chạm]** ngay trong khung chat. Thầy/Cô chỉ cần chạm 1 lần duy nhất, phiếu kỹ thuật sẽ được kích hoạt tức thì mà **không cần mở form hay gõ bất kỳ trường thông tin nào**.\n\n` +
+      `2. **Ra lệnh bằng đàm thoại tự nhiên (Conversational AI):**\n` +
+      `   Thầy/Cô chỉ cần nhắn: *"Báo hỏng giúp tôi tivi phòng 209"* hoặc sau khi hỏi về phòng, chỉ cần nói *"Báo hỏng giúp tôi"*, AI sẽ tự động phân tích ngữ cảnh và tạo phiếu ngay lập tức.\n\n` +
+      `3. **Điều động KTV đúng chuyên môn (AI Specialty Auto-Dispatch):**\n` +
+      `   Hệ thống tự động phân loại sự cố để giao đúng Kỹ thuật viên phụ trách (Điện lạnh / Nghe nhìn / Thiết bị mạng / Điện lực), cam kết hạn xử lý SLA (4 giờ đối với sự cố khẩn cấp) và gửi thông báo trực tiếp đến điện thoại KTV.\n\n` +
+      (matchedEq
+        ? `*Tôi đã nhận diện thiết bị **[${matchedEq.code}] ${matchedEq.name}** tại phòng **${targetRoom.code}**. Thầy/Cô có thể nhấn nút **[⚡ AI Tự Động Báo Hỏng 1-Chạm]** bên dưới để kích hoạt phiếu ngay lập tức!*`
+        : `*Thầy/Cô có thể thử ngay bằng cách nhắn: "phòng 209 đang bị hỏng tivi" hoặc "Báo hỏng tivi phòng 209 giúp tôi".*`);
+
+    const cardData = matchedEq ? {
+      type: 'incident_report_suggestion',
+      room_code: targetRoom.code,
+      room_id: targetRoom._id,
+      equipment_code: matchedEq.code,
+      equipment_id: matchedEq._id,
+      equipment_name: matchedEq.name,
+      can_auto_report: true,
+      damage_level: 'minor',
+      incident_description: `Báo hỏng [${matchedEq.name}] qua Ruo Cortex AI`,
+      quick_action: {
+        label: `Báo Hỏng ${matchedEq.name} (${targetRoom.code})`,
+        tab: 'report_issue',
+        room_id: targetRoom._id,
+        equipment_id: matchedEq._id
+      }
+    } : {
+      type: 'auto_report_guidance',
+      quick_action: { label: 'Báo Hỏng Sự Cố', tab: 'report_issue' }
+    };
+
+    return { responseText, cardData };
+  }
+
+  if (isDirectCreateIntent) {
+    const { targetRoom, matchedEq } = await resolveRoomAndEquipmentFromContext(rawText, chatHistory);
+
+    if (targetRoom && matchedEq) {
+      const autoResult = await executeAutoTicketCreation({
+        user,
+        roomId: targetRoom._id,
+        equipmentId: matchedEq._id,
+        incidentDescription: rawText || `Báo hỏng [${matchedEq.name}] tại phòng ${targetRoom.code}`,
+        damageLevel: 'minor',
+        ipAddress: '127.0.0.1',
+        createChatMessage: false
+      });
+
+      if (!autoResult.success) {
+        if (autoResult.isDuplicate) {
+          const ktvText = autoResult.repair?.assigned_to?.full_name
+            ? `KTV ${autoResult.repair.assigned_to.full_name} (${autoResult.repair.assigned_to.code || ''})`
+            : 'Tổ kỹ thuật';
+          const responseText = `**[Thiết Bị Đã Có Phiếu Đang Xử Lý]**\n\n` +
+            `Thiết bị **[${matchedEq.code}] ${matchedEq.name}** tại phòng **${targetRoom.code}** hiện đã có phiếu sửa chữa **[${autoResult.repair.ticket_code}]** đang được ${ktvText} tiếp nhận xử lý.\n\n` +
+            `Thầy/Cô không cần tạo thêm phiếu trùng lặp. Đội ngũ kỹ thuật đang bám sát tiến độ theo khung cam kết SLA.`;
+          const cardData = {
+            type: 'repair_progress',
+            ticket_code: autoResult.repair.ticket_code,
+            room_code: targetRoom.code,
+            quick_action: { label: `Xem Phiếu [${autoResult.repair.ticket_code}]`, tab: 'my_tickets' }
+          };
+          return { responseText, cardData };
+        }
+
+        return {
+          responseText: `**[Thông Báo Không Thể Lập Phiếu]**\n\n${autoResult.message}`,
+          cardData: { type: 'general_info', quick_action: { label: 'Tra Cứu Phòng Học', tab: 'dashboard' } }
+        };
+      }
+
+      const cardData = {
+        type: 'ticket_created_success',
+        ticket_code: autoResult.repair.ticket_code,
+        repair_id: autoResult.repair._id.toString(),
+        room_code: targetRoom.code,
+        equipment_code: matchedEq.code,
+        quick_action: {
+          label: `Theo Dõi Tiến Độ Phiếu [${autoResult.repair.ticket_code}]`,
+          tab: 'my_tickets'
+        }
+      };
+
+      return { responseText: autoResult.confirmContent, cardData };
+    }
+
+    if (targetRoom && !matchedEq) {
+      return {
+        responseText: `**[Cần Xác Định Thiết Bị Cần Báo Hỏng]**\n\n` +
+          `Tôi đã ghi nhận phòng học **${targetRoom.code} - ${targetRoom.name}**.\n` +
+          `Thầy/Cô vui lòng cho biết thiết bị gặp sự cố tại phòng này (ví dụ: *'Tivi'*, *'Máy chiếu'*, *'Điều hòa'*), Ruo Cortex AI sẽ tự động lập phiếu kỹ thuật ngay lập tức!`,
+        cardData: {
+          type: 'room_equipment_detail',
+          room_code: targetRoom.code,
+          quick_action: { label: `Xem Thiết Bị Phòng ${targetRoom.code}`, tab: 'dashboard' }
+        }
+      };
+    }
+
+    return {
+      responseText: `**[Yêu Cầu Tự Động Báo Hỏng Kỹ Thuật]**\n\n` +
+        `Để Ruo Cortex AI tự động lập phiếu và điều phối Kỹ thuật viên nhanh nhất, Thầy/Cô vui lòng cho biết **số phòng** và **thiết bị gặp sự cố**.\n\n` +
+        `*Ví dụ câu lệnh mẫu:*\n` +
+        `- *"Báo hỏng tivi phòng 209 giúp tôi"*\n` +
+        `- *"Báo hỏng điều hòa phòng A1-101"*\n` +
+        `- *"Máy chiếu phòng 302 không lên nguồn, tạo phiếu giúp tôi"*`,
+      cardData: {
+        type: 'auto_report_guidance',
+        quick_action: { label: 'Báo Hỏng Trực Tiếp', tab: 'report_issue' }
+      }
+    };
   }
 
   // =========================================================================
@@ -481,6 +699,9 @@ Quy tắc:
             equipment_code: matchedEq?.code,
             equipment_id: matchedEq?._id,
             equipment_name: matchedEq?.name,
+            can_auto_report: Boolean(matchedEq),
+            damage_level: 'minor',
+            incident_description: rawText,
             quick_action: {
               label: matchedEq ? `Báo Hỏng ${matchedEq.name} (${targetRoom.code})` : `Báo Hỏng Thiết Bị Phòng ${targetRoom.code}`,
               tab: 'report_issue',
@@ -520,7 +741,7 @@ Quy tắc:
         const responseText = `**[Tiếp Nhận Sự Cố Kỹ Thuật - Phòng ${targetRoom.code}]**\n\n` +
           `Hệ thống ghi nhận sự cố đối với **${matchedEq ? `[${matchedEq.code}] ${matchedEq.name}` : 'thiết bị'}** tại phòng **${targetRoom.code} - ${targetRoom.name}**.\n\n` +
           troubleshootingText + `\n\n` +
-          `*Nếu sau khi kiểm tra thiết bị vẫn không hoạt động, bạn vui lòng nhấn nút **[Gợi ý: Báo Hỏng Thiết Bị]** bên dưới để kích hoạt phiếu kỹ thuật. Đội ngũ KTV sẽ có mặt xử lý theo khung cam kết SLA.*`;
+          `*Nếu sau khi kiểm tra thiết bị vẫn không hoạt động, Thầy/Cô có thể nhấn nút **[⚡ AI Tự Động Báo Hỏng 1-Chạm]** bên dưới hoặc nhắn tin **"Báo hỏng giúp tôi"**, hệ thống sẽ tự động lập phiếu kỹ thuật và phân công KTV đến xử lý theo cam kết SLA.*`;
 
         const cardData = {
           type: 'incident_report_suggestion',
@@ -529,6 +750,9 @@ Quy tắc:
           equipment_code: matchedEq?.code,
           equipment_id: matchedEq?._id,
           equipment_name: matchedEq?.name,
+          can_auto_report: Boolean(matchedEq),
+          damage_level: 'minor',
+          incident_description: rawText,
           quick_action: {
             label: matchedEq ? `Báo Hỏng ${matchedEq.name} (${targetRoom.code})` : `Báo Hỏng Thiết Bị Phòng ${targetRoom.code}`,
             tab: 'report_issue',

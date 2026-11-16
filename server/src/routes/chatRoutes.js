@@ -7,6 +7,7 @@ import {
   decideActionCard,
   getAiMessages,
   sendAiMessage,
+  createAiAutoTicket,
   getUnreadSummary
 } from '../controllers/chatController.js';
 import { protect } from '../middlewares/authMiddleware.js';
@@ -34,6 +35,9 @@ router.route('/action-card/:messageId/decide')
 router.route('/ai')
   .get(getAiMessages)
   .post(sendAiMessage);
+
+// Báo hỏng 1-chạm tự động từ AI Chatbot
+router.post('/ai/auto-ticket', createAiAutoTicket);
 
 // Huy hiệu đếm tin nhắn chưa đọc
 router.route('/unread-summary')

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { chatApi, sparePartApi, repairApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import { useOptionalToast } from '../../context/ToastContext';
 import { Icons } from '../common/SvgIcons';
 import { navigate } from '../../lib/router';
 
@@ -243,6 +244,8 @@ const FormattedAiMessage = ({ content, isUser }) => {
 
 export const FloatingChatWidget = () => {
   const { currentUser, isLoggedIn } = useAuth();
+  const toastContext = useOptionalToast();
+  const toast = toastContext?.toast;
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('ai'); // 'ai' | 'operations'
   const [unreadCount, setUnreadCount] = useState(0);
@@ -252,6 +255,7 @@ export const FloatingChatWidget = () => {
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSending, setAiSending] = useState(false);
+  const [autoReportingId, setAutoReportingId] = useState(null);
 
   // Operations Chat state
   const [opsMessages, setOpsMessages] = useState([]);
@@ -432,6 +436,48 @@ export const FloatingChatWidget = () => {
       ]);
     } finally {
       setAiSending(false);
+    }
+  };
+
+  // Handle 1-Click AI Auto Report
+  const handleOneClickAutoReport = async (msg) => {
+    const cardData = msg?.action_data;
+    if (!cardData?.equipment_id || autoReportingId) return;
+
+    setAutoReportingId(msg._id);
+    try {
+      const res = await chatApi.createAiAutoTicket({
+        room_id: cardData.room_id || null,
+        equipment_id: cardData.equipment_id,
+        incident_description: cardData.incident_description || msg.content || 'Báo hỏng 1-chạm qua Ruo Cortex AI',
+        damage_level: cardData.damage_level || 'minor'
+      });
+
+      if (res?.success && res.ai_message) {
+        setAiMessages((prev) => [...prev, res.ai_message]);
+        if (toast?.success) {
+          toast.success(`Đã tự động tạo phiếu [${res.repair?.ticket_code || ''}] thành công!`);
+        }
+        window.dispatchEvent(new CustomEvent('ruo-chat-refresh'));
+        window.dispatchEvent(new CustomEvent('ruo-repairs-refresh'));
+      }
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || err.message || 'Lỗi hệ thống';
+      if (err?.response?.status === 409 || errMsg.includes('đã có phiếu')) {
+        if (toast?.warning) {
+          toast.warning(errMsg);
+        } else {
+          alert(errMsg);
+        }
+      } else {
+        if (toast?.error) {
+          toast.error('Lỗi tự động tạo phiếu: ' + errMsg);
+        } else {
+          alert('Lỗi tự động tạo phiếu: ' + errMsg);
+        }
+      }
+    } finally {
+      setAutoReportingId(null);
     }
   };
 
@@ -748,51 +794,137 @@ export const FloatingChatWidget = () => {
                             <FormattedAiMessage content={msg.content} isUser={isUser} />
 
                             {/* Rich AI Card */}
-                            {msg.action_data?.quick_action && (
-                              <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: isUser ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border-subtle)' }}>
+                            {msg.action_data?.type === 'ticket_created_success' ? (
+                              <div
+                                style={{
+                                  marginTop: '10px',
+                                  padding: '10px 12px',
+                                  borderRadius: '8px',
+                                  background: 'rgba(22, 163, 74, 0.08)',
+                                  border: '1px solid rgba(22, 163, 74, 0.25)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '8px'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#16a34a', fontWeight: 700, fontSize: '12px' }}>
+                                  <Icons.CheckCircle size={15} />
+                                  <span>Đã Kích Hoạt Điều Động KTV [{msg.action_data.ticket_code}]</span>
+                                </div>
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    const targetTab = msg.action_data?.quick_action?.tab;
-                                    if (targetTab === 'report_issue') {
-                                      const roomId = msg.action_data?.quick_action?.room_id || msg.action_data?.room_id;
-                                      const eqId = msg.action_data?.quick_action?.equipment_id || msg.action_data?.equipment_id;
-                                      if (roomId || eqId) {
-                                        try {
-                                          sessionStorage.setItem('ruo_prefill_report', JSON.stringify({
-                                            room_id: String(roomId || ''),
-                                            equipment_id: String(eqId || '')
-                                          }));
-                                        } catch {}
-                                      }
-                                      navigate('#/report-issue');
-                                    }
-                                    else if (targetTab === 'spare_parts') navigate('#/spare_parts');
-                                    else if (targetTab === 'tickets_kanban') navigate('#/tickets');
-                                    else if (targetTab === 'disposal_propose') navigate('#/disposals');
-                                    else if (targetTab === 'dashboard') navigate('#/dashboard');
-                                    else if (targetTab === 'equipments') navigate('#/equipments');
-                                    else if (targetTab) navigate(`#/${targetTab}`);
-                                  }}
+                                  onClick={() => navigate('#/my-tickets')}
                                   style={{
+                                    alignSelf: 'flex-start',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '6px',
                                     fontSize: '11.5px',
                                     fontWeight: 700,
-                                    color: isUser ? '#ffffff' : 'var(--blueprint-500)',
-                                    background: isUser ? 'rgba(255,255,255,0.15)' : 'rgba(37,99,235,0.08)',
-                                    padding: '5px 10px',
+                                    padding: '5px 12px',
                                     borderRadius: '6px',
+                                    background: '#16a34a',
+                                    color: '#ffffff',
                                     border: 'none',
                                     cursor: 'pointer'
                                   }}
-                                  title={`Chuyển nhanh đến ${msg.action_data.quick_action.label}`}
                                 >
-                                  <Icons.ArrowRight size={12} />
-                                  <span>Gợi ý: {msg.action_data.quick_action.label}</span>
+                                  <Icons.Ticket size={13} />
+                                  <span>{msg.action_data.quick_action?.label || 'Theo Dõi Tiến Độ Phiếu'}</span>
                                 </button>
                               </div>
+                            ) : (
+                              (msg.action_data?.can_auto_report || msg.action_data?.quick_action) && (
+                                <div
+                                  style={{
+                                    marginTop: '10px',
+                                    paddingTop: '8px',
+                                    borderTop: isUser ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border-subtle)',
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: '8px',
+                                    alignItems: 'center'
+                                  }}
+                                >
+                                  {/* 1-Click Auto Ticket Creation Button */}
+                                  {Boolean(msg.action_data?.can_auto_report && msg.action_data?.equipment_id) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOneClickAutoReport(msg)}
+                                      disabled={autoReportingId === msg._id}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        fontSize: '11.5px',
+                                        fontWeight: 700,
+                                        color: '#ffffff',
+                                        background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                                        padding: '6px 12px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        cursor: autoReportingId === msg._id ? 'wait' : 'pointer',
+                                        boxShadow: '0 2px 6px rgba(37,99,235,0.3)'
+                                      }}
+                                      title="AI tự động phân tích và lập phiếu sửa chữa, điều phối KTV ngay lập tức"
+                                    >
+                                      {autoReportingId === msg._id ? (
+                                        <Icons.Loader size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                                      ) : (
+                                        <Icons.Zap size={13} />
+                                      )}
+                                      <span>{autoReportingId === msg._id ? 'Đang Lập Phiếu...' : 'AI Tự Động Báo Hỏng 1-Chạm'}</span>
+                                    </button>
+                                  )}
+
+                                  {/* Secondary Quick Action Button */}
+                                  {msg.action_data?.quick_action && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const targetTab = msg.action_data?.quick_action?.tab;
+                                        if (targetTab === 'report_issue') {
+                                          const roomId = msg.action_data?.quick_action?.room_id || msg.action_data?.room_id;
+                                          const eqId = msg.action_data?.quick_action?.equipment_id || msg.action_data?.equipment_id;
+                                          if (roomId || eqId) {
+                                            try {
+                                              sessionStorage.setItem('ruo_prefill_report', JSON.stringify({
+                                                room_id: String(roomId || ''),
+                                                equipment_id: String(eqId || '')
+                                              }));
+                                            } catch {}
+                                          }
+                                          navigate('#/report-issue');
+                                        }
+                                        else if (targetTab === 'spare_parts') navigate('#/spare_parts');
+                                        else if (targetTab === 'tickets_kanban') navigate('#/tickets');
+                                        else if (targetTab === 'disposal_propose') navigate('#/disposals');
+                                        else if (targetTab === 'dashboard') navigate('#/dashboard');
+                                        else if (targetTab === 'equipments') navigate('#/equipments');
+                                        else if (targetTab === 'my_tickets') navigate('#/my-tickets');
+                                        else if (targetTab) navigate(`#/${targetTab}`);
+                                      }}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '5px',
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        color: isUser ? '#ffffff' : 'var(--blueprint-500)',
+                                        background: isUser ? 'rgba(255,255,255,0.15)' : 'rgba(37,99,235,0.08)',
+                                        padding: '5px 10px',
+                                        borderRadius: '6px',
+                                        border: '1px solid var(--border-subtle, rgba(0,0,0,0.08))',
+                                        cursor: 'pointer'
+                                      }}
+                                      title={msg.action_data.can_auto_report ? 'Mở trang báo hỏng để điền thông tin chi tiết' : `Chuyển nhanh đến ${msg.action_data.quick_action.label}`}
+                                    >
+                                      <Icons.ArrowRight size={11} />
+                                      <span>{msg.action_data.can_auto_report ? 'Điền Form Chi Tiết' : `Gợi ý: ${msg.action_data.quick_action.label}`}</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )
                             )}
                           </div>
                         </div>
@@ -811,6 +943,9 @@ export const FloatingChatWidget = () => {
                 {/* Question Suggestion Chips */}
                 <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border-subtle)', background: 'var(--surface-secondary)', display: 'flex', gap: '6px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
                   {[
+                    'AI tự báo hỏng được không?',
+                    'Báo hỏng tivi phòng 209 giúp tôi',
+                    'phòng 209 đang bị hỏng tivi',
                     'Tivi không lên nguồn?',
                     'Phòng A1-101 có thiết bị gì?',
                     'Tồn kho bóng đèn máy chiếu?',
