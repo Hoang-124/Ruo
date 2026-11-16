@@ -517,7 +517,7 @@ export const TechnicianTasksPage = () => {
                 { code: 'KT001', label: 'KT001 • Đa năng' },
                 { code: 'KT002', label: 'KT002 • Bảo vệ' },
                 { code: 'KT003', label: 'KT003 • Điện lạnh' },
-                { code: 'KT004', label: 'KT004 • CNTT/Máy chiếu' },
+                { code: 'KT004', label: 'KT004 • CNTT/AV' },
                 { code: 'KT005', label: 'KT005 • Cơ khí' }
               ].map((st) => {
                 const isCurrent = String(currentUser?.code || '').toUpperCase() === st.code;

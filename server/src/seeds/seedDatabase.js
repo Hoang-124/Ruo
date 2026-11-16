@@ -330,37 +330,114 @@ const seed = async () => {
 
   const createdEquipments = await Equipment.insertMany(equipmentDocs);
   const eqACBroken = createdEquipments.find((eq) => eq.code === 'EQ-AC-101-B');
+  const eqPrjBroken = createdEquipments.find((eq) => eq.code === 'EQ-101-PRJ-01' || eq.code === 'EQ-209-TVSMART-01');
+  const eqDeskBroken = createdEquipments.find((eq) => eq.code === 'EQ-101-DESKSTU-01');
+  const eqExtBroken = createdEquipments.find((eq) => eq.code === 'EQ-101-EXT-01');
   const room101 = roomsByCode.get('A1-101');
 
-  if (eqACBroken && lecturer && fm && tech) {
-    console.log('[Ruo Seeder] 7. Seeding Initial Demo Repair Ticket on A1-101...');
-    const repairIncident = await Repair.create({
-      equipment_id: eqACBroken._id,
-      room_id: room101?._id || null,
-      source: REPAIR_SOURCES.LECTURER_REPORT,
-      reported_by: lecturer._id,
-      incident_description: 'Điều hòa âm trần Cassette kêu to và giảm lạnh sau 20 phút vận hành tiết đầu',
-      damage_level: 'major',
-      status: REPAIR_STATUSES.ASSIGNED,
-      assigned_by: fm._id,
-      assigned_to: tech._id,
-      deadline: new Date(Date.now() + 24 * 3600 * 1000)
-    });
+  const techGuard = await User.findOne({ code: 'KT002' });
+  const techHvac = await User.findOne({ code: 'KT003' });
+  const techIt = await User.findOne({ code: 'KT004' });
+  const techFurn = await User.findOne({ code: 'KT005' });
 
-    await RepairLog.create([
-      {
-        repair_id: repairIncident._id,
-        action: 'reported',
-        performed_by: lecturer._id,
-        description: 'Giảng viên báo cáo sự cố điều hòa âm trần tại phòng A1-101'
-      },
-      {
-        repair_id: repairIncident._id,
+  if (lecturer && fm) {
+    console.log('[Ruo Seeder] 7. Seeding Initial Demo Repair Tickets per Specialty KTV...');
+    
+    // 1. KT003 • Điện lạnh: Điều hòa âm trần Cassette
+    if (eqACBroken && techHvac) {
+      const repHvac = await Repair.create({
+        equipment_id: eqACBroken._id,
+        room_id: room101?._id || null,
+        source: REPAIR_SOURCES.LECTURER_REPORT,
+        reported_by: lecturer._id,
+        incident_description: 'Điều hòa âm trần Cassette kêu to và giảm lạnh sau 20 phút vận hành tiết đầu',
+        damage_level: 'major',
+        status: REPAIR_STATUSES.ASSIGNED,
+        assigned_by: fm._id,
+        assigned_to: techHvac._id,
+        ai_recommended_to: techHvac._id,
+        ai_dispatch_reason: 'Khớp chuyên ngành Điện lạnh & Cơ điện: KTV Điện Lạnh Phạm Quang Huy (KT003)',
+        deadline: new Date(Date.now() + 24 * 3600 * 1000)
+      });
+      await RepairLog.create({
+        repair_id: repHvac._id,
         action: 'assigned',
         performed_by: fm._id,
-        description: 'Quản lý CSVC giao việc kiểm tra thực địa cho Kỹ thuật viên Trần Minh Tuấn'
-      }
-    ]);
+        description: 'Quản lý CSVC giao việc sửa chữa điều hòa cho KTV Điện Lạnh Phạm Quang Huy (KT003)'
+      });
+    }
+
+    // 2. KT004 • CNTT/AV: Máy chiếu hoặc Smart Tivi
+    if (eqPrjBroken && techIt) {
+      const repIt = await Repair.create({
+        equipment_id: eqPrjBroken._id,
+        room_id: eqPrjBroken.room_id || room101?._id || null,
+        source: REPAIR_SOURCES.LECTURER_REPORT,
+        reported_by: lecturer._id,
+        incident_description: 'Máy chiếu / Tivi không lên nguồn khi bật công tắc giảng dạy',
+        damage_level: 'minor',
+        status: REPAIR_STATUSES.IN_PROGRESS,
+        assigned_by: fm._id,
+        assigned_to: techIt._id,
+        ai_recommended_to: techIt._id,
+        ai_dispatch_reason: 'Khớp chuyên ngành CNTT & Nghe nhìn: KTV CNTT & Nghe Nhìn Vũ Hoàng Nam (KT004)',
+        deadline: new Date(Date.now() + 24 * 3600 * 1000)
+      });
+      await RepairLog.create({
+        repair_id: repIt._id,
+        action: 'assigned',
+        performed_by: fm._id,
+        description: 'Quản lý CSVC giao việc kiểm tra thiết bị AV cho KTV Vũ Hoàng Nam (KT004)'
+      });
+    }
+
+    // 3. KT005 • Cơ khí: Bàn ghế sinh viên
+    if (eqDeskBroken && techFurn) {
+      const repFurn = await Repair.create({
+        equipment_id: eqDeskBroken._id,
+        room_id: room101?._id || null,
+        source: REPAIR_SOURCES.LECTURER_REPORT,
+        reported_by: lecturer._id,
+        incident_description: 'Bàn ghế sinh viên bị lỏng bu-lông chân sắt, cập kênh và bung nẹp gỗ Melamine',
+        damage_level: 'minor',
+        status: REPAIR_STATUSES.IN_PROGRESS,
+        assigned_by: fm._id,
+        assigned_to: techFurn._id,
+        ai_recommended_to: techFurn._id,
+        ai_dispatch_reason: 'Khớp chuyên ngành Mộc & Cơ khí: KTV Mộc & Cơ Khí Đỗ Văn Sơn (KT005)',
+        deadline: new Date(Date.now() + 48 * 3600 * 1000)
+      });
+      await RepairLog.create({
+        repair_id: repFurn._id,
+        action: 'assigned',
+        performed_by: fm._id,
+        description: 'Quản lý CSVC giao việc sửa chữa cơ khí bàn ghế cho KTV Đỗ Văn Sơn (KT005)'
+      });
+    }
+
+    // 4. KT002 • Bảo vệ: Bình chữa cháy PCCC
+    if (eqExtBroken && techGuard) {
+      const repGuard = await Repair.create({
+        equipment_id: eqExtBroken._id,
+        room_id: room101?._id || null,
+        source: REPAIR_SOURCES.SYSTEM_AUTO,
+        reported_by: fm._id,
+        incident_description: 'Kiểm tra chốt an toàn và áp suất bình chữa cháy PCCC theo ca trực ban',
+        damage_level: 'minor',
+        status: REPAIR_STATUSES.ASSIGNED,
+        assigned_by: fm._id,
+        assigned_to: techGuard._id,
+        ai_recommended_to: techGuard._id,
+        ai_dispatch_reason: 'Khớp phân quyền trực ban vận hành: Trực Ban Bảo Vệ Nguyễn Văn Bình (KT002)',
+        deadline: new Date(Date.now() + 12 * 3600 * 1000)
+      });
+      await RepairLog.create({
+        repair_id: repGuard._id,
+        action: 'assigned',
+        performed_by: fm._id,
+        description: 'Quản lý CSVC giao việc kiểm tra vận hành PCCC cho Trực Ban Bảo Vệ Nguyễn Văn Bình (KT002)'
+      });
+    }
   }
 
   console.log('[Ruo Seeder] 8. Recording Cryptographic SHA-256 Audit Log...');

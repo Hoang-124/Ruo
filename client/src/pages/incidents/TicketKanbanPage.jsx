@@ -269,11 +269,35 @@ export const TicketKanbanPage = () => {
     }
   };
 
+  const findMatchingSpecialist = (ticket, techList) => {
+    if (ticket.ai_recommended_to?._id) return ticket.ai_recommended_to._id;
+    if (ticket.assigned_to?._id) return ticket.assigned_to._id;
+    const catCode = ticket.equipment_id?.category_id?.code || '';
+    if (['CAT-DISPLAY', 'CAT-AUDIO', 'CAT-IT', 'CAT-NET', 'CAT-SEC', 'CAT-OFFICE'].includes(catCode)) {
+      const itTech = techList.find((t) => t.code === 'KT004' || t.specialty_code === 'TECH_IT_AV');
+      if (itTech) return itTech._id;
+    }
+    if (['CAT-HVAC', 'CAT-POWER'].includes(catCode)) {
+      const hvacTech = techList.find((t) => t.code === 'KT003' || t.specialty_code === 'TECH_HVAC_POWER');
+      if (hvacTech) return hvacTech._id;
+    }
+    if (['CAT-FURN', 'CAT-SPEC'].includes(catCode)) {
+      const furnTech = techList.find((t) => t.code === 'KT005' || t.specialty_code === 'TECH_FURN_MECH');
+      if (furnTech) return furnTech._id;
+    }
+    if (catCode === 'CAT-FIRE') {
+      const fireTech = techList.find((t) => t.code === 'KT003' || t.code === 'KT002');
+      if (fireTech) return fireTech._id;
+    }
+    const generalTech = techList.find((t) => t.code === 'KT001' || t.specialty_code === 'TECH_GENERAL');
+    return generalTech?._id || techList[0]?._id || '';
+  };
+
   const openAssign = (ticket) => {
     setSelectedTicket(ticket);
     const defaultHours = ticket.damage_level === 'critical' ? 8 : ticket.damage_level === 'major' ? 24 : 48;
     const defaultDeadline = toLocalDateTime(ticket.deadline) || toLocalDateTime(now + defaultHours * 3600 * 1000);
-    const prefilledTech = ticket.ai_recommended_to?._id || ticket.assigned_to?._id || technicians[0]?._id || '';
+    const prefilledTech = findMatchingSpecialist(ticket, technicians);
 
     setAssignForm({
       assigned_to: prefilledTech,
@@ -289,6 +313,23 @@ export const TicketKanbanPage = () => {
     e.preventDefault();
     if (!assignForm.assigned_to) {
       showError('Vui lòng chọn Kỹ thuật viên phụ trách.');
+      return;
+    }
+
+    const catCode = selectedTicket?.equipment_id?.category_id?.code || '';
+    const chosenTech = technicians.find((t) => String(t._id) === String(assignForm.assigned_to));
+    const isMismatched = Boolean(
+      catCode &&
+      chosenTech &&
+      chosenTech.specialty_code &&
+      chosenTech.specialty_code !== 'TECH_GENERAL' &&
+      Array.isArray(chosenTech.allowed_categories) &&
+      chosenTech.allowed_categories.length > 0 &&
+      !chosenTech.allowed_categories.includes(catCode)
+    );
+
+    if (isMismatched && !assignForm.force_override) {
+      showError(`Cảnh báo Phân quyền Chuyên môn: ${chosenTech.full_name} (${chosenTech.code}) không chuyên trách nhóm thiết bị này. Vui lòng chọn đúng KTV chuyên ngành hoặc tích "Cho phép giao vượt rào".`);
       return;
     }
 
@@ -1639,12 +1680,37 @@ export const TicketKanbanPage = () => {
                     className="ruo-portal-input"
                     style={{ width: '100%', height: '38px' }}
                   >
-                    {technicians.map(t => (
-                      <option key={t._id} value={t._id}>
-                        {t.full_name} ({t.code} • {t.specialty_label || t.department || 'Tổ Kỹ Thuật CSVC'})
-                      </option>
-                    ))}
+                    {technicians.map((t) => {
+                      const catCode = selectedTicket?.equipment_id?.category_id?.code || '';
+                      const isSpecialist = Array.isArray(t.allowed_categories) && t.allowed_categories.includes(catCode);
+                      const isGeneral = t.specialty_code === 'TECH_GENERAL';
+                      const prefix = isSpecialist ? '⭐ [Đúng Chuyên Môn] ' : isGeneral ? '🔷 [Tổ Trưởng Đa Năng] ' : '⚠️ [Trái Phân Quyền] ';
+                      return (
+                        <option key={t._id} value={t._id}>
+                          {prefix}{t.full_name} ({t.code} • {t.specialty_label || t.department || 'Tổ Kỹ Thuật CSVC'})
+                        </option>
+                      );
+                    })}
                   </select>
+                  {(() => {
+                    const catCode = selectedTicket?.equipment_id?.category_id?.code || '';
+                    const chosenTech = technicians.find((t) => String(t._id) === String(assignForm.assigned_to));
+                    const isMismatched = Boolean(
+                      catCode &&
+                      chosenTech &&
+                      chosenTech.specialty_code &&
+                      chosenTech.specialty_code !== 'TECH_GENERAL' &&
+                      Array.isArray(chosenTech.allowed_categories) &&
+                      chosenTech.allowed_categories.length > 0 &&
+                      !chosenTech.allowed_categories.includes(catCode)
+                    );
+                    if (!isMismatched) return null;
+                    return (
+                      <div style={{ marginTop: '6px', padding: '7px 10px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#dc2626', fontSize: '11.5px', fontWeight: 600 }}>
+                        ⚠️ Cảnh báo: Kỹ thuật viên {chosenTech.full_name} ({chosenTech.code}) không chuyên trách nhóm thiết bị {selectedTicket?.equipment_id?.category_id?.name || catCode}. Vui lòng chọn KTV chuyên môn hoặc tích cho phép giao vượt rào bên dưới.
+                      </div>
+                    );
+                  })()}
                   <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontSize: '11.5px', color: 'var(--ink-muted)', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
