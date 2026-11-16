@@ -37,6 +37,7 @@ export const TicketKanbanPage = () => {
   const [slaStats, setSlaStats] = useState(null);
   const [filterMode, setFilterMode] = useState('ALL'); // 'ALL' | 'OVERDUE' | 'AT_RISK'
   const [searchQuery, setSearchQuery] = useState('');
+  const [displayMode, setDisplayMode] = useState('kanban'); // 'kanban' | 'table'
   const [columnViewMode, setColumnViewMode] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'RESOLVED'
   const [checkingBreaches, setCheckingBreaches] = useState(false);
   const [technicians, setTechnicians] = useState([]);
@@ -97,7 +98,7 @@ export const TicketKanbanPage = () => {
   const getStatusBadge = (status) => {
     const info = STATUS_LABELS[status] || { label: status, color: '#64748b', bg: 'var(--surface-3)', border: 'var(--border-subtle)' };
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 9px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 700, color: info.color, background: info.bg, border: `1px solid ${info.border}` }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: '5px', fontSize: '11px', fontWeight: 700, color: info.color, background: info.bg, border: `1px solid ${info.border}` }}>
         {info.label}
       </span>
     );
@@ -106,7 +107,7 @@ export const TicketKanbanPage = () => {
   const getDamageBadge = (level, compact = false) => {
     const info = DAMAGE_LABELS[level] || { label: level, short: level, color: '#d97706', bg: 'rgba(217,119,6,0.12)', border: 'rgba(217,119,6,0.25)' };
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '6px', fontSize: compact ? '10.5px' : '11.5px', fontWeight: 700, color: info.color, background: info.bg, border: `1px solid ${info.border}` }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 7px', borderRadius: '5px', fontSize: compact ? '10px' : '11px', fontWeight: 700, color: info.color, background: info.bg, border: `1px solid ${info.border}` }}>
         {compact ? info.short : info.label}
       </span>
     );
@@ -466,36 +467,6 @@ export const TicketKanbanPage = () => {
         </div>
       </div>
 
-      {/* AI Dispatch Guidance Banner (Refined Anti-Slop Style) */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, rgba(2,132,199,0.06), rgba(99,102,241,0.06))',
-          border: '1px solid rgba(2,132,199,0.22)',
-          borderRadius: '12px',
-          padding: '12px 18px',
-          marginBottom: '20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'rgba(2,132,199,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7', flexShrink: 0 }}>
-            <Icons.Sparkles size={18} />
-          </div>
-          <div>
-            <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--ink-pure)', letterSpacing: '0.01em' }}>
-              Quy Trình Phân Công Theo Chuyên Môn Ruo Cortex AI
-            </div>
-            <div style={{ fontSize: '12px', color: 'var(--ink-secondary)', marginTop: '2px', lineHeight: 1.5 }}>
-              Yêu cầu từ Giảng viên hiển thị tại cột <strong>Mới Tiếp Nhận</strong> kèm gợi ý chuyên môn (<strong>KTV Điện lạnh KT003</strong> • <strong>KTV Nghe nhìn/Tivi KT004</strong> • <strong>KTV Mộc/Cơ khí KT005</strong>). Quản lý CSVC chỉ cần 1 cú click để duyệt hoặc mở form cấp thiết bị dự phòng KHO-01.
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* SLA & KPI Stats (UC-7.2) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '20px' }}>
         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '12px', padding: '16px 18px', boxShadow: 'var(--shadow-xs)' }}>
@@ -589,7 +560,7 @@ export const TicketKanbanPage = () => {
         </div>
       </div>
 
-      {/* Kanban Filter & View Controls Bar */}
+      {/* Filter & View Controls Bar */}
       <div
         style={{
           display: 'flex',
@@ -623,67 +594,115 @@ export const TicketKanbanPage = () => {
               onClick={() => setSearchQuery('')}
               style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--ink-muted)', cursor: 'pointer', padding: '2px' }}
             >
-              <Icons.X size={14} />
+              <Icons.Close size={14} />
             </button>
           )}
         </div>
 
         {/* View Switchers */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 600 }}>Hiển thị cột:</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {/* Display Mode: Kanban vs Table */}
           <div style={{ display: 'inline-flex', background: 'var(--surface-2)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
             <button
               type="button"
-              onClick={() => setColumnViewMode('ALL')}
+              onClick={() => setDisplayMode('kanban')}
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
                 padding: '5px 12px',
                 borderRadius: '6px',
                 fontSize: '11.5px',
-                fontWeight: columnViewMode === 'ALL' ? 700 : 500,
-                background: columnViewMode === 'ALL' ? 'var(--surface-card)' : 'transparent',
-                color: columnViewMode === 'ALL' ? 'var(--ink-pure)' : 'var(--ink-muted)',
+                fontWeight: displayMode === 'kanban' ? 700 : 500,
+                background: displayMode === 'kanban' ? 'var(--surface-card)' : 'transparent',
+                color: displayMode === 'kanban' ? '#0284c7' : 'var(--ink-muted)',
                 border: 'none',
-                boxShadow: columnViewMode === 'ALL' ? 'var(--shadow-xs)' : 'none',
+                boxShadow: displayMode === 'kanban' ? 'var(--shadow-xs)' : 'none',
                 cursor: 'pointer'
               }}
             >
-              Tất Cả (6 Cột)
+              <Icons.Dashboard size={13} />
+              <span>Bảng Kanban (6 Cột)</span>
             </button>
             <button
               type="button"
-              onClick={() => setColumnViewMode('ACTIVE')}
+              onClick={() => setDisplayMode('table')}
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
                 padding: '5px 12px',
                 borderRadius: '6px',
                 fontSize: '11.5px',
-                fontWeight: columnViewMode === 'ACTIVE' ? 700 : 500,
-                background: columnViewMode === 'ACTIVE' ? 'var(--surface-card)' : 'transparent',
-                color: columnViewMode === 'ACTIVE' ? '#0284c7' : 'var(--ink-muted)',
+                fontWeight: displayMode === 'table' ? 700 : 500,
+                background: displayMode === 'table' ? 'var(--surface-card)' : 'transparent',
+                color: displayMode === 'table' ? '#0284c7' : 'var(--ink-muted)',
                 border: 'none',
-                boxShadow: columnViewMode === 'ACTIVE' ? 'var(--shadow-xs)' : 'none',
+                boxShadow: displayMode === 'table' ? 'var(--shadow-xs)' : 'none',
                 cursor: 'pointer'
               }}
             >
-              Đang Xử Lý (3 Cột)
-            </button>
-            <button
-              type="button"
-              onClick={() => setColumnViewMode('RESOLVED')}
-              style={{
-                padding: '5px 12px',
-                borderRadius: '6px',
-                fontSize: '11.5px',
-                fontWeight: columnViewMode === 'RESOLVED' ? 700 : 500,
-                background: columnViewMode === 'RESOLVED' ? 'var(--surface-card)' : 'transparent',
-                color: columnViewMode === 'RESOLVED' ? '#16a34a' : 'var(--ink-muted)',
-                border: 'none',
-                boxShadow: columnViewMode === 'RESOLVED' ? 'var(--shadow-xs)' : 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Đã Giải Quyết (3 Cột)
+              <Icons.FileText size={13} />
+              <span>Danh Sách Đầy Đủ Trường</span>
             </button>
           </div>
+
+          {/* Column filter when in Kanban mode */}
+          {displayMode === 'kanban' && (
+            <div style={{ display: 'inline-flex', background: 'var(--surface-2)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+              <button
+                type="button"
+                onClick={() => setColumnViewMode('ALL')}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: columnViewMode === 'ALL' ? 700 : 500,
+                  background: columnViewMode === 'ALL' ? 'var(--surface-card)' : 'transparent',
+                  color: columnViewMode === 'ALL' ? 'var(--ink-pure)' : 'var(--ink-muted)',
+                  border: 'none',
+                  boxShadow: columnViewMode === 'ALL' ? 'var(--shadow-xs)' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Tất Cả (6)
+              </button>
+              <button
+                type="button"
+                onClick={() => setColumnViewMode('ACTIVE')}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: columnViewMode === 'ACTIVE' ? 700 : 500,
+                  background: columnViewMode === 'ACTIVE' ? 'var(--surface-card)' : 'transparent',
+                  color: columnViewMode === 'ACTIVE' ? '#0284c7' : 'var(--ink-muted)',
+                  border: 'none',
+                  boxShadow: columnViewMode === 'ACTIVE' ? 'var(--shadow-xs)' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Đang Xử Lý (3)
+              </button>
+              <button
+                type="button"
+                onClick={() => setColumnViewMode('RESOLVED')}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: columnViewMode === 'RESOLVED' ? 700 : 500,
+                  background: columnViewMode === 'RESOLVED' ? 'var(--surface-card)' : 'transparent',
+                  color: columnViewMode === 'RESOLVED' ? '#16a34a' : 'var(--ink-muted)',
+                  border: 'none',
+                  boxShadow: columnViewMode === 'RESOLVED' ? 'var(--shadow-xs)' : 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Đã Xong (3)
+              </button>
+            </div>
+          )}
 
           {filterMode !== 'ALL' && (
             <button
@@ -702,30 +721,233 @@ export const TicketKanbanPage = () => {
                 fontWeight: 600
               }}
             >
-              <Icons.X size={12} />
+              <Icons.Close size={12} />
               <span>Hủy Lọc SLA</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Kanban Board Horizontal Scroll Container (Never Wraps To Second Row) */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--ink-muted)' }}>
           <Icons.RefreshCw size={32} className="spin" style={{ marginBottom: '12px', color: '#0284c7' }} />
-          <div style={{ fontSize: '14px', fontWeight: 600 }}>Đang nạp bảng điều phối Kanban SLA...</div>
+          <div style={{ fontSize: '14px', fontWeight: 600 }}>Đang nạp dữ liệu điều phối sửa chữa...</div>
+        </div>
+      ) : displayMode === 'table' ? (
+        /* ========================================================================
+           FULL-FIELD DATA TABLE VIEW (HIỂN THỊ ĐẦY ĐỦ 100% CÁC TRƯỜNG DỮ LIỆU)
+           ======================================================================== */
+        <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-xs)' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: 'var(--surface-2)', borderBottom: '1.5px solid var(--border-default)' }}>
+                  <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--ink-secondary)', whiteSpace: 'nowrap' }}>MÃ PHIẾU</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--ink-secondary)', minWidth: '170px' }}>THIẾT BỊ / TÀI SẢN</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--ink-secondary)', whiteSpace: 'nowrap' }}>PHÒNG HỌC</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--ink-secondary)', minWidth: '220px' }}>MÔ TẢ SỰ CỐ CHI TIẾT</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--ink-secondary)', whiteSpace: 'nowrap' }}>MỨC ĐỘ</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--ink-secondary)', whiteSpace: 'nowrap' }}>TRẠNG THÁI</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--ink-secondary)', minWidth: '200px' }}>KTV PHỤ TRÁCH / GỢI Ý AI</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--ink-secondary)', minWidth: '140px' }}>HẠN XỬ LÝ (SLA)</th>
+                  <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--ink-secondary)', textAlign: 'right', minWidth: '150px' }}>THAO TÁC</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRepairs.map((t) => {
+                  const eq = t.equipment_id || {};
+                  const room = t.room_id || {};
+                  const isReported = t.status === 'reported';
+                  const isResolved = t.status === 'resolved';
+                  const isUnrepairable = t.status === 'unrepairable';
+
+                  return (
+                    <tr
+                      key={t._id}
+                      style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background-color 0.15s ease' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--surface-2)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                    >
+                      {/* Mã phiếu */}
+                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                        <span
+                          onClick={() => setSelectedTicket(t)}
+                          style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 800, color: '#0284c7', background: 'rgba(2,132,199,0.09)', padding: '3px 8px', borderRadius: '5px', cursor: 'pointer' }}
+                        >
+                          {t.ticket_code}
+                        </span>
+                      </td>
+
+                      {/* Thiết bị */}
+                      <td style={{ padding: '12px 14px' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--ink-pure)', lineHeight: 1.35 }}>
+                          {eq.name || 'Thiết bị không xác định'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--ink-muted)', marginTop: '2px' }}>
+                          Mã: {eq.code || 'N/A'} {eq.brand ? `• ${eq.brand}` : ''}
+                        </div>
+                      </td>
+
+                      {/* Phòng */}
+                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--surface-2)', padding: '3px 8px', borderRadius: '5px', color: 'var(--ink-secondary)', fontWeight: 600 }}>
+                          <Icons.MapPin size={11} />
+                          <span>{room.code ? `Phòng ${room.code}` : 'Chưa gán'}</span>
+                        </span>
+                      </td>
+
+                      {/* Mô tả sự cố - Đầy đủ 100% không bị cắt */}
+                      <td style={{ padding: '12px 14px' }}>
+                        <div style={{ color: 'var(--ink-secondary)', lineHeight: 1.45, wordBreak: 'break-word' }}>
+                          {t.incident_description || 'Không có mô tả chi tiết'}
+                        </div>
+                      </td>
+
+                      {/* Mức độ */}
+                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                        {getDamageBadge(t.damage_level)}
+                      </td>
+
+                      {/* Trạng thái */}
+                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                        {getStatusBadge(t.status)}
+                      </td>
+
+                      {/* KTV phụ trách / Gợi ý AI */}
+                      <td style={{ padding: '12px 14px' }}>
+                        {t.assigned_to ? (
+                          <div>
+                            <div style={{ fontWeight: 700, color: 'var(--ink-pure)' }}>
+                              {t.assigned_to.full_name}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#0284c7' }}>
+                              {t.assigned_to.specialty_label || t.assigned_to.department || 'KTV Vận Hành'}
+                            </div>
+                          </div>
+                        ) : isReported && t.ai_recommended_to ? (
+                          <div style={{ background: 'rgba(2,132,199,0.08)', padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(2,132,199,0.22)' }}>
+                            <div style={{ fontSize: '10.5px', color: '#0284c7', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <Icons.Sparkles size={11} />
+                              <span>AI Gợi Ý: {t.ai_recommended_to.full_name}</span>
+                            </div>
+                            <div style={{ fontSize: '10.5px', color: 'var(--ink-muted)' }}>
+                              {t.ai_recommended_to.specialty_label || t.ai_recommended_to.department} ({t.ai_dispatch_score || 90}đ)
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--ink-muted)' }}>Chưa phân công</span>
+                        )}
+                      </td>
+
+                      {/* Hạn SLA */}
+                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                        {t.deadline ? (
+                          <DeadlineCountdown compact={true} deadline={t.deadline} status={t.status} />
+                        ) : (
+                          <span style={{ color: 'var(--ink-muted)' }}>Chưa đặt hạn</span>
+                        )}
+                      </td>
+
+                      {/* Thao tác */}
+                      <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                          {isReported && (
+                            <>
+                              {t.ai_recommended_to && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickApproveAiAssign(t)}
+                                  disabled={submitting}
+                                  className="ruo-btn"
+                                  style={{ padding: '5px 9px', fontSize: '11px', fontWeight: 700, background: 'rgba(22,163,74,0.12)', color: '#16a34a', border: '1px solid rgba(22,163,74,0.3)', borderRadius: '6px', cursor: 'pointer' }}
+                                  title="Duyệt giao KTV do AI đề xuất"
+                                >
+                                  Duyệt AI
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => openAssign(t)}
+                                className="ruo-btn ruo-btn-primary"
+                                style={{ padding: '5px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '6px', background: '#0284c7', color: '#fff', border: 'none', cursor: 'pointer' }}
+                              >
+                                Giao KTV & Cấp Đồ
+                              </button>
+                            </>
+                          )}
+
+                          {(t.status === 'assigned' || t.status === 'in_progress') && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openAssign(t)}
+                                className="ruo-btn ruo-btn-ghost"
+                                style={{ padding: '5px 9px', fontSize: '11px', fontWeight: 600, border: '1px solid var(--border-default)', borderRadius: '6px', cursor: 'pointer' }}
+                              >
+                                Đổi KTV
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setChatTicket(t)}
+                                className="ruo-btn ruo-btn-ghost"
+                                style={{ padding: '5px 9px', fontSize: '11px', fontWeight: 600, border: '1px solid var(--border-default)', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer' }}
+                              >
+                                <Icons.MessageSquare size={12} />
+                                <span>Chat</span>
+                              </button>
+                            </>
+                          )}
+
+                          {isResolved && (
+                            <button
+                              type="button"
+                              onClick={() => openClose(t)}
+                              className="ruo-btn ruo-btn-primary"
+                              style={{ padding: '5px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '6px', background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer' }}
+                            >
+                              Nghiệm Thu
+                            </button>
+                          )}
+
+                          {isUnrepairable && (
+                            <button
+                              type="button"
+                              onClick={() => openClose(t)}
+                              className="ruo-btn"
+                              style={{ padding: '5px 10px', fontSize: '11px', fontWeight: 700, borderRadius: '6px', background: 'rgba(220,38,38,0.1)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.3)', cursor: 'pointer' }}
+                            >
+                              Đóng Phiếu
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {filteredRepairs.length === 0 && (
+                  <tr>
+                    <td colSpan={9} style={{ textAlign: 'center', padding: '40px 14px', color: 'var(--ink-muted)' }}>
+                      Không có phiếu nào phù hợp với bộ lọc hiện tại
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
+        /* ========================================================================
+           FULL-WIDTH RESPONSIVE 6-COLUMN KANBAN (NO HORIZONTAL SCROLLBAR AT ALL)
+           ======================================================================== */
         <div
-          className="ruo-kanban-horizontal-shell"
+          className="ruo-kanban-fullwidth-grid"
           style={{
-            display: 'flex',
-            gap: '16px',
-            overflowX: 'auto',
-            paddingBottom: '20px',
-            alignItems: 'stretch',
-            minHeight: '620px',
-            scrollbarWidth: 'thin'
+            display: 'grid',
+            gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(0, 1fr))`,
+            gap: '10px',
+            width: '100%',
+            alignItems: 'stretch'
           }}
         >
           {visibleColumns.map((col) => {
@@ -735,63 +957,60 @@ export const TicketKanbanPage = () => {
               <div
                 key={col.id}
                 style={{
-                  flex: '0 0 310px',
-                  width: '310px',
-                  minWidth: '295px',
-                  maxWidth: '325px',
                   background: 'var(--surface-card)',
                   border: '1px solid var(--border-default)',
-                  borderRadius: '12px',
+                  borderRadius: '10px',
                   display: 'flex',
                   flexDirection: 'column',
-                  boxShadow: 'var(--shadow-xs)'
+                  boxShadow: 'var(--shadow-xs)',
+                  minWidth: 0
                 }}
               >
                 {/* Column Header */}
                 <div
                   style={{
-                    padding: '12px 16px',
+                    padding: '10px 12px',
                     borderBottom: '1px solid var(--border-subtle)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     background: 'var(--surface-2)',
-                    borderTopLeftRadius: '11px',
-                    borderTopRightRadius: '11px'
+                    borderTopLeftRadius: '9px',
+                    borderTopRightRadius: '9px'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: col.color }} />
-                    <strong style={{ fontSize: '12.5px', color: 'var(--ink-pure)', letterSpacing: '0.02em' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: col.color, flexShrink: 0 }} />
+                    <strong style={{ fontSize: '11.5px', color: 'var(--ink-pure)', letterSpacing: '0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {col.title}
                     </strong>
                   </div>
                   <span
                     style={{
-                      fontSize: '11px',
+                      fontSize: '10.5px',
                       fontWeight: 800,
-                      padding: '2px 8px',
+                      padding: '1px 6px',
                       borderRadius: '99px',
                       background: 'var(--surface-card)',
                       color: col.color,
-                      border: `1px solid ${col.color}40`
+                      border: `1px solid ${col.color}40`,
+                      flexShrink: 0
                     }}
                   >
                     {colTickets.length}
                   </span>
                 </div>
 
-                {/* Column Body Cards (Smooth Y-Scroll inside each column) */}
+                {/* Column Body Cards (Smooth Y-Scroll inside column without overflowing horizontally) */}
                 <div
                   style={{
-                    padding: '12px',
+                    padding: '10px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '12px',
+                    gap: '10px',
                     flex: 1,
                     overflowY: 'auto',
-                    maxHeight: 'calc(100vh - 350px)',
-                    minHeight: '480px',
+                    maxHeight: 'calc(100vh - 300px)',
                     scrollbarWidth: 'thin'
                   }}
                 >
@@ -810,68 +1029,64 @@ export const TicketKanbanPage = () => {
                         style={{
                           background: 'var(--surface-1, #ffffff)',
                           border: isSelected ? '1.5px solid #0284c7' : '1px solid var(--border-subtle)',
-                          borderRadius: '10px',
-                          padding: '13px 14px',
+                          borderRadius: '8px',
+                          padding: '10px 11px',
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '10px',
+                          gap: '8px',
                           cursor: 'pointer',
-                          transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                          boxShadow: isSelected ? '0 4px 14px rgba(2,132,199,0.18)' : '0 1px 3px rgba(0,0,0,0.04)',
-                          position: 'relative'
+                          transition: 'all 0.16s ease',
+                          boxShadow: isSelected ? '0 4px 12px rgba(2,132,199,0.16)' : '0 1px 3px rgba(0,0,0,0.03)',
+                          wordBreak: 'break-word'
                         }}
                         onMouseEnter={(e) => {
                           if (!isSelected) {
                             e.currentTarget.style.borderColor = 'var(--border-focus, #94a3b8)';
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.07)';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)';
                           }
                         }}
                         onMouseLeave={(e) => {
                           if (!isSelected) {
                             e.currentTarget.style.borderColor = 'var(--border-subtle)';
                             e.currentTarget.style.transform = 'none';
-                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
+                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)';
                           }
                         }}
                       >
                         {/* Top Bar: Code & Severity */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', fontWeight: 800, color: '#0284c7', background: 'rgba(2,132,199,0.09)', padding: '2px 7px', borderRadius: '5px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10.5px', fontWeight: 800, color: '#0284c7', background: 'rgba(2,132,199,0.09)', padding: '2px 6px', borderRadius: '4px' }}>
                             {t.ticket_code}
                           </span>
                           {getDamageBadge(t.damage_level, true)}
                         </div>
 
-                        {/* Equipment Name & Room */}
+                        {/* Equipment Name & Room (Full Info, No Cutoff) */}
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--ink-pure)', lineHeight: 1.35, marginBottom: '4px' }}>
+                          <div style={{ fontWeight: 700, fontSize: '12.5px', color: 'var(--ink-pure)', lineHeight: 1.35, marginBottom: '3px' }}>
                             {eq.name || 'Thiết bị không xác định'}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: 'var(--ink-muted)' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--surface-2)', padding: '2px 7px', borderRadius: '4px' }}>
-                              <Icons.MapPin size={11} />
-                              <span>{room.code ? `Phòng ${room.code}` : 'Chưa gán phòng'}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--ink-muted)' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'var(--surface-2)', padding: '2px 6px', borderRadius: '4px' }}>
+                              <Icons.MapPin size={10} />
+                              <span>{room.code ? `Phòng ${room.code}` : 'Chưa gán'}</span>
                             </span>
                           </div>
                         </div>
 
-                        {/* Incident Description */}
+                        {/* Incident Description (Full text, NO ellipsis) */}
                         {t.incident_description && (
                           <div
                             style={{
-                              fontSize: '12px',
+                              fontSize: '11.5px',
                               color: 'var(--ink-secondary)',
                               background: 'var(--surface-2)',
-                              padding: '8px 10px',
-                              borderRadius: '6px',
-                              borderLeft: '3px solid var(--border-default)',
-                              lineHeight: 1.45,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical'
+                              padding: '6px 8px',
+                              borderRadius: '5px',
+                              borderLeft: '2.5px solid var(--border-default)',
+                              lineHeight: 1.4,
+                              wordBreak: 'break-word'
                             }}
                           >
                             "{t.incident_description}"
@@ -884,68 +1099,69 @@ export const TicketKanbanPage = () => {
                             style={{
                               background: 'linear-gradient(135deg, rgba(2,132,199,0.08), rgba(99,102,241,0.08))',
                               border: '1px solid rgba(2,132,199,0.28)',
-                              borderRadius: '8px',
-                              padding: '8px 10px'
+                              borderRadius: '6px',
+                              padding: '6px 8px'
                             }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                              <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                <Icons.Sparkles size={12} />
-                                AI Đề Xuất Chuyên Môn
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                              <span style={{ fontSize: '10px', fontWeight: 800, color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                <Icons.Sparkles size={11} />
+                                AI Gợi Ý
                               </span>
-                              <span style={{ fontSize: '10px', fontWeight: 800, color: '#16a34a', background: 'rgba(22,163,74,0.12)', padding: '1px 6px', borderRadius: '99px' }}>
-                                {t.ai_dispatch_score || 90}/100đ
+                              <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#16a34a', background: 'rgba(22,163,74,0.12)', padding: '1px 5px', borderRadius: '99px' }}>
+                                {t.ai_dispatch_score || 90}đ
                               </span>
                             </div>
-                            <div style={{ color: 'var(--ink-pure)', fontWeight: 700, fontSize: '12px' }}>
+                            <div style={{ color: 'var(--ink-pure)', fontWeight: 700, fontSize: '11.5px' }}>
                               {t.ai_recommended_to.full_name} ({t.ai_recommended_to.code})
                             </div>
-                            <div style={{ color: 'var(--ink-muted)', fontSize: '10.5px', marginTop: '1px' }}>
+                            <div style={{ color: 'var(--ink-muted)', fontSize: '10px' }}>
                               {t.ai_recommended_to.specialty_label || t.ai_recommended_to.department || 'KTV Chuyên Trách'}
                             </div>
                           </div>
                         )}
 
-                        {/* Assigned Technician Block */}
+                        {/* Assigned Technician Block (Full Name, No Cutoff) */}
                         {t.assigned_to && (
                           <div
                             style={{
                               display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '7px 9px',
-                              borderRadius: '7px',
+                              alignItems: 'flex-start',
+                              gap: '6px',
+                              padding: '6px 8px',
+                              borderRadius: '6px',
                               background: 'var(--surface-2)',
                               border: '1px solid var(--border-subtle)'
                             }}
                           >
                             <div
                               style={{
-                                width: '26px',
-                                height: '26px',
+                                width: '22px',
+                                height: '22px',
                                 borderRadius: '50%',
                                 background: 'linear-gradient(135deg, #0284c7, #0369a1)',
                                 color: '#ffffff',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: '11px',
+                                fontSize: '10px',
                                 fontWeight: 800,
-                                flexShrink: 0
+                                flexShrink: 0,
+                                marginTop: '1px'
                               }}
                             >
                               {t.assigned_to.full_name?.split(' ').pop()?.charAt(0) || 'K'}
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-pure)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-pure)', lineHeight: 1.3, wordBreak: 'break-word' }}>
                                 {t.assigned_to.full_name}
                               </div>
-                              <div style={{ fontSize: '10.5px', color: '#0284c7', fontWeight: 600 }}>
+                              <div style={{ fontSize: '10px', color: '#0284c7', fontWeight: 600, marginTop: '1px' }}>
                                 {t.assigned_to.specialty_label || t.assigned_to.department || 'KTV Vận Hành'}
                               </div>
                             </div>
                             {t.ai_auto_assigned && (
-                              <span style={{ fontSize: '9px', fontWeight: 800, padding: '2px 5px', borderRadius: '4px', background: 'rgba(2,132,199,0.12)', color: '#0284c7' }}>
+                              <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 4px', borderRadius: '3px', background: 'rgba(2,132,199,0.12)', color: '#0284c7', flexShrink: 0 }}>
                                 AI
                               </span>
                             )}
@@ -954,19 +1170,14 @@ export const TicketKanbanPage = () => {
 
                         {/* Reassign Warning Alert */}
                         {t.reassign_requested && (
-                          <div style={{ background: 'rgba(234,88,12,0.1)', border: '1px solid rgba(234,88,12,0.4)', borderRadius: '6px', padding: '7px 9px', fontSize: '11px' }}>
-                            <div style={{ fontWeight: 800, color: '#ea580c', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Icons.AlertTriangle size={12} color="#ea580c" />
-                              <span>KTV Báo Trái Chuyên Môn / Xin Đổi Ca</span>
+                          <div style={{ background: 'rgba(234,88,12,0.1)', border: '1px solid rgba(234,88,12,0.4)', borderRadius: '5px', padding: '5px 7px', fontSize: '10.5px' }}>
+                            <div style={{ fontWeight: 800, color: '#ea580c', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <Icons.AlertTriangle size={11} color="#ea580c" />
+                              <span>Xin Đổi Ca</span>
                             </div>
                             {t.reassign_reason && (
                               <div style={{ color: 'var(--ink-secondary)', marginTop: '2px' }}>
                                 "{t.reassign_reason}"
-                              </div>
-                            )}
-                            {t.ai_recommended_to && (
-                              <div style={{ color: '#0284c7', fontWeight: 700, marginTop: '3px' }}>
-                                Gợi ý: {t.ai_recommended_to.full_name} ({t.ai_recommended_to.code})
                               </div>
                             )}
                           </div>
@@ -974,13 +1185,13 @@ export const TicketKanbanPage = () => {
 
                         {/* Real-time SLA Deadline Countdown */}
                         {t.deadline && (
-                          <div style={{ marginTop: '2px' }}>
+                          <div style={{ marginTop: '1px' }}>
                             <DeadlineCountdown compact={true} deadline={t.deadline} status={t.status} />
                           </div>
                         )}
 
                         {/* Action Buttons Toolbar */}
-                        <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', gap: '5px', marginTop: '3px', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
                           {isReported && (
                             <>
                               {t.ai_recommended_to && (
@@ -991,23 +1202,23 @@ export const TicketKanbanPage = () => {
                                   className="ruo-btn"
                                   style={{
                                     width: '100%',
-                                    padding: '6px 10px',
-                                    fontSize: '11.5px',
+                                    padding: '5px 8px',
+                                    fontSize: '11px',
                                     fontWeight: 700,
                                     background: 'rgba(22,163,74,0.12)',
                                     color: '#16a34a',
-                                    border: '1px solid rgba(22,163,74,0.35)',
-                                    borderRadius: '6px',
+                                    border: '1px solid rgba(22,163,74,0.3)',
+                                    borderRadius: '5px',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    gap: '5px',
+                                    gap: '4px',
                                     cursor: 'pointer'
                                   }}
-                                  title="Duyệt 1-click giao ngay cho KTV đúng chuyên môn do AI đề xuất"
+                                  title="Duyệt giao KTV do AI đề xuất"
                                 >
-                                  <Icons.CheckCircle size={13} />
-                                  <span>Duyệt Giao AI ({t.ai_recommended_to.code || 'KTV'})</span>
+                                  <Icons.CheckCircle size={12} />
+                                  <span>Duyệt AI ({t.ai_recommended_to.code || 'KTV'})</span>
                                 </button>
                               )}
                               <button
@@ -1016,10 +1227,10 @@ export const TicketKanbanPage = () => {
                                 className="ruo-btn ruo-btn-primary"
                                 style={{
                                   width: '100%',
-                                  padding: '7px 10px',
-                                  fontSize: '11.5px',
+                                  padding: '6px 8px',
+                                  fontSize: '11px',
                                   fontWeight: 700,
-                                  borderRadius: '6px',
+                                  borderRadius: '5px',
                                   background: 'linear-gradient(135deg, #0284c7, #0369a1)',
                                   color: '#ffffff',
                                   border: 'none',
@@ -1032,20 +1243,20 @@ export const TicketKanbanPage = () => {
                           )}
 
                           {(t.status === 'assigned' || t.status === 'in_progress') && (
-                            <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                            <div style={{ display: 'flex', gap: '4px', width: '100%' }}>
                               <button
                                 type="button"
                                 onClick={() => openAssign(t)}
                                 className="ruo-btn ruo-btn-ghost"
                                 style={{
                                   flex: 1,
-                                  padding: '6px 8px',
-                                  fontSize: '11px',
+                                  padding: '5px 6px',
+                                  fontSize: '10.5px',
                                   fontWeight: 700,
                                   border: t.reassign_requested ? '1px solid #ea580c' : '1px solid var(--border-default)',
                                   color: t.reassign_requested ? '#ea580c' : 'var(--ink-secondary)',
                                   background: 'var(--surface-2)',
-                                  borderRadius: '6px',
+                                  borderRadius: '5px',
                                   cursor: 'pointer'
                                 }}
                               >
@@ -1057,22 +1268,22 @@ export const TicketKanbanPage = () => {
                                 className="ruo-btn ruo-btn-ghost"
                                 style={{
                                   flex: 1,
-                                  padding: '6px 8px',
-                                  fontSize: '11px',
+                                  padding: '5px 6px',
+                                  fontSize: '10.5px',
                                   fontWeight: 700,
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  gap: '4px',
+                                  gap: '3px',
                                   border: '1px solid var(--border-default)',
                                   background: 'var(--surface-2)',
                                   color: 'var(--ink-secondary)',
-                                  borderRadius: '6px',
+                                  borderRadius: '5px',
                                   cursor: 'pointer'
                                 }}
                               >
-                                <Icons.MessageSquare size={12} />
-                                <span>Chat KTV</span>
+                                <Icons.MessageSquare size={11} />
+                                <span>Chat</span>
                               </button>
                             </div>
                           )}
@@ -1084,17 +1295,17 @@ export const TicketKanbanPage = () => {
                               className="ruo-btn ruo-btn-primary"
                               style={{
                                 width: '100%',
-                                padding: '7px 10px',
-                                fontSize: '11.5px',
+                                padding: '6px 8px',
+                                fontSize: '11px',
                                 fontWeight: 700,
-                                borderRadius: '6px',
+                                borderRadius: '5px',
                                 background: 'linear-gradient(135deg, #16a34a, #15803d)',
                                 color: '#ffffff',
                                 border: 'none',
                                 cursor: 'pointer'
                               }}
                             >
-                              Nghiệm Thu & Đóng Phiếu
+                              Nghiệm Thu
                             </button>
                           )}
 
@@ -1105,17 +1316,17 @@ export const TicketKanbanPage = () => {
                               className="ruo-btn"
                               style={{
                                 width: '100%',
-                                padding: '7px 10px',
-                                fontSize: '11.5px',
+                                padding: '6px 8px',
+                                fontSize: '11px',
                                 fontWeight: 700,
                                 background: 'rgba(220,38,38,0.1)',
                                 color: '#dc2626',
                                 border: '1px solid rgba(220,38,38,0.3)',
-                                borderRadius: '6px',
+                                borderRadius: '5px',
                                 cursor: 'pointer'
                               }}
                             >
-                              Đóng Phiếu (Chờ Thanh Lý)
+                              Đóng Phiếu
                             </button>
                           )}
                         </div>
@@ -1124,8 +1335,8 @@ export const TicketKanbanPage = () => {
                   })}
 
                   {colTickets.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '36px 12px', fontSize: '12px', color: 'var(--ink-muted)' }}>
-                      Không có phiếu trong mục này
+                    <div style={{ textAlign: 'center', padding: '30px 8px', fontSize: '11.5px', color: 'var(--ink-muted)' }}>
+                      Không có phiếu
                     </div>
                   )}
                 </div>
@@ -1144,7 +1355,7 @@ export const TicketKanbanPage = () => {
                 <h2 className="ruo-drawer-title">{selectedTicket.ticket_code}</h2>
                 <p className="ruo-drawer-subtitle">{selectedTicket.equipment_id?.name} ({selectedTicket.equipment_id?.code})</p>
               </div>
-              <button onClick={() => setSelectedTicket(null)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
+              <button onClick={() => setSelectedTicket(null)} className="ruo-drawer-close-btn"><Icons.Close size={18} /></button>
             </div>
 
             <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1345,7 +1556,7 @@ export const TicketKanbanPage = () => {
                 <h2 className="ruo-drawer-title">Phân Công Kỹ Thuật Viên & Cấp Đồ Dự Phòng</h2>
                 <p className="ruo-drawer-subtitle">{selectedTicket.ticket_code}</p>
               </div>
-              <button onClick={() => setShowAssignModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
+              <button onClick={() => setShowAssignModal(false)} className="ruo-drawer-close-btn"><Icons.Close size={18} /></button>
             </div>
 
             <form onSubmit={handleAssignSubmit}>
@@ -1520,7 +1731,7 @@ export const TicketKanbanPage = () => {
                 </h2>
                 <p className="ruo-drawer-subtitle">{selectedTicket.ticket_code} • {selectedTicket.equipment_id?.name}</p>
               </div>
-              <button onClick={() => setShowCloseModal(false)} className="ruo-drawer-close-btn"><Icons.X size={18} /></button>
+              <button onClick={() => setShowCloseModal(false)} className="ruo-drawer-close-btn"><Icons.Close size={18} /></button>
             </div>
 
             <form onSubmit={handleCloseSubmit}>
