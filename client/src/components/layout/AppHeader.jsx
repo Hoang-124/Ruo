@@ -215,7 +215,7 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenProfileModal }) => {
                 </button>
               </div>
 
-              {/* Chat Hub Launcher Button (Kênh 2 & AI) */}
+              {/* Chat Hub Launcher Button (Tác Nghiệp & AI) */}
               <div style={{ position: 'relative' }}>
                 <button
                   type="button"
@@ -223,8 +223,8 @@ export const AppHeader = ({ activeTab, onSelectTab, onOpenProfileModal }) => {
                   onClick={() => {
                     window.dispatchEvent(new CustomEvent('open-ruo-chat', { detail: { tab: 'operations' } }));
                   }}
-                  aria-label="Kênh Chat Tác Nghiệp Kỹ Thuật & Kho"
-                  title="Mở Kênh Chat Tác Nghiệp & Kho (Kênh 2)"
+                  aria-label="Chat Tác Nghiệp Kỹ Thuật & Kho"
+                  title="Mở Chat Tác Nghiệp & Kho"
                 >
                   <Icons.MessageSquare size={15} color="var(--ink-secondary)" />
                 </button>

@@ -872,7 +872,7 @@ Quy tắc:
         `- **Đơn giá xuất kho:** ${Number(part.price || 0).toLocaleString('vi-VN')} đ / ${part.unit}\n` +
         `- **Vị trí lưu kho:** Kho Linh Kiện & Vật Tư Dự Phòng KHO-01 (Tòa A1)\n` +
         `- **Nhà cung cấp:** ${part.supplier_id?.name || 'Công ty Cổ phần Công nghệ FPT'}\n\n` +
-        `*Kỹ thuật viên có thể xin xuất kho linh kiện này trực tiếp từ Kênh 2 hoặc nút [Xin Linh Kiện Kho] trên thẻ nhiệm vụ.*`;
+        `*Kỹ thuật viên có thể xin xuất kho linh kiện này trực tiếp từ Chat Tác Nghiệp Kho hoặc nút [Xin Linh Kiện Kho] trên thẻ nhiệm vụ.*`;
 
       const cardData = {
         type: 'spare_part_detail',

@@ -162,10 +162,10 @@ export const WarehouseStockPage = () => {
               boxShadow: '0 2px 8px rgba(234,88,12,0.25)',
               cursor: 'pointer'
             }}
-            title="Mở Kênh 2: Kênh Chat Điều Phối Kỹ Thuật Viên & Kho"
+            title="Mở Chat Điều Phối Kỹ Thuật Viên & Kho"
           >
             <Icons.Package size={16} />
-            <span>Kênh Chat Điều Phối Kho (Kênh 2)</span>
+            <span>Chat Điều Phối Kho</span>
           </button>
 
           <button

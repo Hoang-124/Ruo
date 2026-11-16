@@ -580,7 +580,7 @@ export const FloatingChatWidget = () => {
               border: '2px solid rgba(255,255,255,0.3)',
               cursor: 'pointer'
             }}
-            title="Mở Ruo Chat: AI Trợ Lý & Kênh 2 Tác Nghiệp Kho"
+            title="Mở Ruo Chat: AI Trợ Lý & Tác Nghiệp Kho"
           >
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Icons.MessageSquare size={18} />
@@ -599,7 +599,7 @@ export const FloatingChatWidget = () => {
                 />
               )}
             </div>
-            <span>Ruo Chat (AI & Kênh 2)</span>
+            <span>Ruo Chat</span>
           </button>
         )}
 
@@ -652,7 +652,7 @@ export const FloatingChatWidget = () => {
                     {activeTab === 'ai' ? 'Ruo Cortex AI Copilot' : 'Tác Nghiệp Kỹ Thuật & Kho'}
                   </h3>
                   <div style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
-                    {activeTab === 'ai' ? 'Trợ lý tri thức CSVC đại học' : 'Kênh phối hợp KTV ↔ Quản lý KHO-01'}
+                    {activeTab === 'ai' ? 'Trợ lý tri thức CSVC đại học' : 'Phối hợp KTV ↔ Quản lý KHO-01'}
                   </div>
                 </div>
               </div>
@@ -697,7 +697,7 @@ export const FloatingChatWidget = () => {
                 }}
               >
                 <Icons.Bot size={15} />
-                <span>AI Trợ Lý (Kênh 3)</span>
+                <span>AI Trợ Lý</span>
               </button>
 
               {isTechnicianOrManager && (
@@ -722,7 +722,7 @@ export const FloatingChatWidget = () => {
                   }}
                 >
                   <Icons.Package size={15} />
-                  <span>Kỹ Thuật & Kho (Kênh 2)</span>
+                  <span>Kỹ Thuật & Kho</span>
                 </button>
               )}
             </div>
@@ -1070,7 +1070,7 @@ export const FloatingChatWidget = () => {
                       <div style={{ width: '44px', height: '44px', margin: '0 auto 10px', borderRadius: '50%', background: 'rgba(234,88,12,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ea580c' }}>
                         <Icons.Package size={22} />
                       </div>
-                      <h4 style={{ margin: '0 0 6px', fontSize: '14px', color: 'var(--ink-pure)', fontWeight: 700 }}>Kênh Tác Nghiệp Kỹ Thuật & Kho KHO-01</h4>
+                      <h4 style={{ margin: '0 0 6px', fontSize: '14px', color: 'var(--ink-pure)', fontWeight: 700 }}>Tác Nghiệp Kỹ Thuật & Kho KHO-01</h4>
                       <p style={{ margin: 0, fontSize: '12.5px' }}>Nơi Kỹ thuật viên gửi yêu cầu xuất kho và Quản lý CSVC duyệt trực tiếp 1-click qua Thẻ Hành Động.</p>
                     </div>
                   ) : (

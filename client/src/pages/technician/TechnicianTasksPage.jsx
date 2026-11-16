@@ -471,10 +471,10 @@ export const TechnicianTasksPage = () => {
               boxShadow: '0 2px 8px rgba(234,88,12,0.25)',
               cursor: 'pointer'
             }}
-            title="Mở Kênh 2: Chat Tác Nghiệp Kỹ Thuật Viên & Quản Lý Kho"
+            title="Mở Chat Tác Nghiệp Kỹ Thuật Viên & Quản Lý Kho"
           >
             <Icons.Package size={16} />
-            <span>Chat Tác Nghiệp & Kho (Kênh 2)</span>
+            <span>Chat Tác Nghiệp & Kho</span>
           </button>
 
           <button
@@ -1393,7 +1393,7 @@ export const TechnicianTasksPage = () => {
 
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px', color: 'var(--ink-secondary)' }}>
-                  Nội dung gửi Quản lý CSVC (đồng bộ vào Chat Phiếu & Kênh 2): *
+                  Nội dung gửi Quản lý CSVC (đồng bộ vào Chat Phiếu & Chat Tác Nghiệp): *
                 </label>
                 <textarea
                   required
