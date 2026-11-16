@@ -477,6 +477,254 @@ class _EquipmentsDirectoryPageState extends State<EquipmentsDirectoryPage> {
 }
 
 /// 2. Kho Linh Kiện & Cấp Phát Vật Tư (SparePartsMobilePage)
+class _CreateSparePartDialog extends StatefulWidget {
+  const _CreateSparePartDialog();
+
+  @override
+  State<_CreateSparePartDialog> createState() => _CreateSparePartDialogState();
+}
+
+class _CreateSparePartDialogState extends State<_CreateSparePartDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _codeCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _unitCtrl = TextEditingController();
+  final _priceCtrl = TextEditingController(text: '0');
+  final _stockCtrl = TextEditingController(text: '0');
+  final _minStockCtrl = TextEditingController(text: '5');
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    _nameCtrl.dispose();
+    _unitCtrl.dispose();
+    _priceCtrl.dispose();
+    _stockCtrl.dispose();
+    _minStockCtrl.dispose();
+    super.dispose();
+  }
+
+  String? _validateQuantity(String? text, String label) {
+    final quantity = int.tryParse((text ?? '').trim());
+    return quantity == null || quantity < 0
+        ? 'Nhập $label nguyên không âm.'
+        : null;
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    Navigator.pop(context, {
+      'code': _codeCtrl.text.trim().toUpperCase(),
+      'name': _nameCtrl.text.trim(),
+      'unit': _unitCtrl.text.trim(),
+      'price': num.parse(_priceCtrl.text.trim()),
+      'stock': int.parse(_stockCtrl.text.trim()),
+      'min_stock': int.parse(_minStockCtrl.text.trim()),
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Thêm mã linh kiện mới'),
+    content: SizedBox(
+      width: 440,
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                key: const Key('spare_part_code'),
+                controller: _codeCtrl,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  labelText: 'Mã linh kiện',
+                  hintText: 'VD: PRT-HDMI-2M',
+                ),
+                validator: (text) => (text ?? '').trim().isEmpty
+                    ? 'Vui lòng nhập mã linh kiện.'
+                    : null,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                key: const Key('spare_part_name'),
+                controller: _nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Tên và thông số linh kiện',
+                ),
+                validator: (text) => (text ?? '').trim().isEmpty
+                    ? 'Vui lòng nhập tên linh kiện.'
+                    : null,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                key: const Key('spare_part_unit'),
+                controller: _unitCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Đơn vị tính',
+                  hintText: 'VD: sợi, mét, cuộn, hộp',
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                key: const Key('spare_part_price'),
+                controller: _priceCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(labelText: 'Đơn giá (VNĐ)'),
+                validator: (text) {
+                  final amount = num.tryParse((text ?? '').trim());
+                  return amount == null || amount < 0
+                      ? 'Nhập đơn giá không âm hợp lệ.'
+                      : null;
+                },
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                key: const Key('spare_part_stock'),
+                controller: _stockCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Tồn ban đầu'),
+                validator: (text) => _validateQuantity(text, 'số lượng'),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                key: const Key('spare_part_min_stock'),
+                controller: _minStockCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Định mức cảnh báo tồn thấp',
+                ),
+                validator: (text) => _validateQuantity(text, 'định mức'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(
+        key: const Key('submit_create_spare_part'),
+        onPressed: _submit,
+        child: const Text('Thêm linh kiện'),
+      ),
+    ],
+  );
+}
+
+class _SparePartRequestDialog extends StatefulWidget {
+  const _SparePartRequestDialog({required this.parts});
+
+  final List<Json> parts;
+
+  @override
+  State<_SparePartRequestDialog> createState() =>
+      _SparePartRequestDialogState();
+}
+
+class _SparePartRequestDialogState extends State<_SparePartRequestDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _qtyCtrl = TextEditingController(text: '1');
+  final _reasonCtrl = TextEditingController(
+    text: 'Thay thế vật tư tiêu hao phục vụ sửa chữa thiết bị tại phòng học',
+  );
+  late String _selectedPartId = value(
+    widget.parts.first['_id'] ?? widget.parts.first['code'],
+  );
+
+  @override
+  void dispose() {
+    _qtyCtrl.dispose();
+    _reasonCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    Navigator.pop(context, {
+      'items': [
+        {'part_id': _selectedPartId, 'qty': int.parse(_qtyCtrl.text.trim())},
+      ],
+      'reason': _reasonCtrl.text.trim(),
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Lập Phiếu Xin Lĩnh Linh Kiện'),
+    content: SizedBox(
+      width: 440,
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: _selectedPartId,
+                decoration: const InputDecoration(labelText: 'Chọn linh kiện'),
+                items: widget.parts
+                    .map(
+                      (part) => DropdownMenuItem(
+                        value: value(part['_id'] ?? part['code']),
+                        child: Text(
+                          '${value(part['code'])} · ${value(part['name'])} (Tồn: ${value(part['stock'] ?? part['quantity'])})',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (id) {
+                  if (id != null) setState(() => _selectedPartId = id);
+                },
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                key: const Key('spare_request_quantity'),
+                controller: _qtyCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Số lượng yêu cầu',
+                ),
+                validator: (text) {
+                  final quantity = int.tryParse((text ?? '').trim());
+                  return quantity == null || quantity < 1
+                      ? 'Nhập số nguyên lớn hơn 0.'
+                      : null;
+                },
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                key: const Key('spare_request_reason'),
+                controller: _reasonCtrl,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Lý do cấp phát'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(
+        key: const Key('submit_spare_part_request'),
+        onPressed: _submit,
+        child: const Text('Gửi yêu cầu'),
+      ),
+    ],
+  );
+}
+
 class SparePartsMobilePage extends StatefulWidget {
   const SparePartsMobilePage({super.key, required this.api});
   final RuoApi api;
@@ -495,95 +743,53 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
   void _message(String text) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
+  Future<void> _createPartDialog() async {
+    final body = await showDialog<Json>(
+      context: context,
+      builder: (_) => const _CreateSparePartDialog(),
+    );
+
+    if (body == null || !mounted) return;
+    try {
+      final response = await widget.api.send('POST', '/spare-parts', body);
+      if (!mounted) return;
+      setState(() => _revision++);
+      _message(value(response['message'], fallback: 'Đã thêm linh kiện.'));
+    } catch (error) {
+      if (mounted) _message('Không thể thêm linh kiện: $error');
+    }
+  }
+
   Future<void> _createPartRequestDialog(List<Json> parts) async {
     if (parts.isEmpty) return;
-    String selectedPartId = value(parts.first['_id'] ?? parts.first['code']);
-    final qtyCtrl = TextEditingController(text: '1');
-    final reasonCtrl = TextEditingController(
-      text: 'Thay thế vật tư tiêu hao phục vụ sửa chữa thiết bị tại phòng học',
-    );
 
-    final ok = await showDialog<bool>(
+    final requestBody = await showDialog<Json>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Lập Phiếu Xin Lĩnh Linh Kiện'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: selectedPartId,
-                  decoration: const InputDecoration(
-                    labelText: 'Chọn linh kiện',
-                  ),
-                  items: parts
-                      .map(
-                        (p) => DropdownMenuItem(
-                          value: value(p['_id'] ?? p['code']),
-                          child: Text(
-                            '${value(p['code'])} · ${value(p['name'])} (Tồn: ${value(p['quantity'])})',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) setDialogState(() => selectedPartId = v);
-                  },
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: qtyCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Số lượng yêu cầu',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: reasonCtrl,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Lý do cấp phát',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Hủy'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                try {
-                  await widget.api.send('POST', '/spare-parts/requests', {
-                    'spare_part_id': selectedPartId,
-                    'part_id': selectedPartId,
-                    'quantity': int.tryParse(qtyCtrl.text.trim()) ?? 1,
-                    'reason': reasonCtrl.text.trim(),
-                  });
-                } catch (_) {}
-                if (ctx.mounted) Navigator.pop(ctx, true);
-              },
-              child: const Text('Gửi yêu cầu'),
-            ),
-          ],
-        ),
-      ),
+      builder: (_) => _SparePartRequestDialog(parts: parts),
     );
 
-    qtyCtrl.dispose();
-    reasonCtrl.dispose();
-    if (ok == true && mounted) {
-      setState(() => _revision++);
-      _message('Đã gửi phiếu xin lĩnh linh kiện vật tư.');
+    if (requestBody == null || !mounted) return;
+    try {
+      final response = await widget.api.send(
+        'POST',
+        '/spare-parts/requests',
+        requestBody,
+      );
+      if (!mounted) return;
+      setState(() {
+        _tab = 1;
+        _revision++;
+      });
+      _message(value(response['message'], fallback: 'Đã gửi phiếu xin lĩnh.'));
+    } catch (error) {
+      if (mounted) _message('Không thể gửi phiếu xin lĩnh: $error');
     }
   }
 
   Future<void> _restockPartDialog(Json part) async {
+    final currentStock = (part['stock'] ?? part['quantity']) is num
+        ? ((part['stock'] ?? part['quantity']) as num).toInt()
+        : 0;
     final qtyCtrl = TextEditingController(text: '5');
     final partId = value(part['_id'] ?? part['code']);
     final ok = await showDialog<bool>(
@@ -603,18 +809,18 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
           FilledButton(
             onPressed: () async {
               final add = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+              if (add <= 0) {
+                _message('Số lượng nhập thêm phải lớn hơn 0.');
+                return;
+              }
               try {
                 await widget.api.send('PUT', '/spare-parts/$partId/stock', {
-                  'quantity_change': add,
-                  'adjustment': add,
-                  'quantity':
-                      (part['quantity'] is num
-                          ? (part['quantity'] as num).toInt()
-                          : 0) +
-                      add,
+                  'stock': currentStock + add,
                 });
-              } catch (_) {}
-              if (ctx.mounted) Navigator.pop(ctx, true);
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              } catch (error) {
+                if (ctx.mounted) _message('Không thể nhập kho: $error');
+              }
             },
             child: const Text('Cập nhật tồn'),
           ),
@@ -632,15 +838,24 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
     final reqId = value(req['_id'] ?? req['id']);
     final action = approve ? 'approve' : 'reject';
     try {
-      await widget.api.send('PUT', '/spare-parts/requests/$reqId/$action', {});
-    } catch (_) {}
-    if (!mounted) return;
-    setState(() => _revision++);
-    _message(
-      approve
-          ? 'Đã phê duyệt xuất kho linh kiện.'
-          : 'Đã từ chối phiếu yêu cầu linh kiện.',
-    );
+      final response = await widget.api.send(
+        'PUT',
+        '/spare-parts/requests/$reqId/$action',
+        {},
+      );
+      if (!mounted) return;
+      setState(() => _revision++);
+      _message(
+        value(
+          response['message'],
+          fallback: approve
+              ? 'Đã phê duyệt xuất kho linh kiện.'
+              : 'Đã từ chối phiếu yêu cầu linh kiện.',
+        ),
+      );
+    } catch (error) {
+      if (mounted) _message('Không thể xử lý phiếu xin lĩnh: $error');
+    }
   }
 
   @override
@@ -677,74 +892,69 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
           AsyncPanel(
             key: ValueKey('spare-parts-list-$_revision'),
             load: () async {
-              try {
-                return await widget.api.get('/spare-parts');
-              } catch (_) {
-                return {
-                  'parts': [
-                    {
-                      '_id': 'part-1',
-                      'code': 'PART-HDMI',
-                      'name': 'Cáp HDMI 2.0 chống nhiễu 15m (Giảng đường)',
-                      'quantity': 14,
-                      'min_stock': 5,
-                      'unit': 'Sợi',
-                      'unit_price': 450000,
-                    },
-                    {
-                      '_id': 'part-2',
-                      'code': 'PART-CAP45',
-                      'name': 'Tụ đề máy nén điều hòa 45uF chính hãng',
-                      'quantity': 3,
-                      'min_stock': 5,
-                      'unit': 'Cái',
-                      'unit_price': 280000,
-                    },
-                  ],
-                };
-              }
+              return widget.api.get('/spare-parts');
             },
             builder: (data) {
               final parts = asList(
                 data['parts'] ?? data['spareParts'] ?? data['data'],
               );
-              if (parts.isEmpty) {
-                return const EmptyNotice('Chưa có linh kiện trong kho.');
-              }
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton.tonalIcon(
-                      key: const Key('btn_request_spare_part'),
-                      onPressed: () => _createPartRequestDialog(parts),
-                      icon: const Icon(Icons.build_circle_outlined, size: 16),
-                      label: const Text('Xin lĩnh linh kiện'),
-                    ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.end,
+                    children: [
+                      if (_canApprove)
+                        FilledButton.icon(
+                          key: const Key('btn_create_spare_part'),
+                          onPressed: _createPartDialog,
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Thêm mã linh kiện'),
+                        ),
+                      if (parts.isNotEmpty)
+                        FilledButton.tonalIcon(
+                          key: const Key('btn_request_spare_part'),
+                          onPressed: () => _createPartRequestDialog(parts),
+                          icon: const Icon(
+                            Icons.build_circle_outlined,
+                            size: 16,
+                          ),
+                          label: const Text('Xin lĩnh linh kiện'),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 8),
-                  for (final p in parts)
-                    DataCard(
-                      title: '${value(p['code'])} · ${value(p['name'])}',
-                      subtitle:
-                          'Tồn kho: ${value(p['quantity'])} ${value(p['unit'])} (Định mức tối thiểu: ${value(p['min_stock'], fallback: '5')}) · Đơn giá: ${money(p['unit_price'] ?? p['price'])}',
-                      trailing: _canApprove
-                          ? OutlinedButton(
-                              onPressed: () => _restockPartDialog(p),
-                              child: const Text('Nhập kho'),
-                            )
-                          : StatusBadge(
-                              (p['quantity'] is num &&
-                                      p['min_stock'] is num &&
-                                      (p['quantity'] as num) <=
-                                          (p['min_stock'] as num))
-                                  ? 'critical'
-                                  : 'available',
-                              labelOverride:
-                                  'Tồn: ${value(p['quantity'])} ${value(p['unit'])}',
-                            ),
-                    ),
+                  if (parts.isEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      child: const EmptyNotice('Chưa có linh kiện trong kho.'),
+                    )
+                  else ...[
+                    for (final p in parts)
+                      DataCard(
+                        title: '${value(p['code'])} · ${value(p['name'])}',
+                        subtitle:
+                            'Tồn kho: ${value(p['stock'] ?? p['quantity'])} ${value(p['unit'])} (Định mức tối thiểu: ${value(p['min_stock'], fallback: '5')}) · Đơn giá: ${money(p['price'] ?? p['unit_price'])}',
+                        trailing: _canApprove
+                            ? OutlinedButton(
+                                onPressed: () => _restockPartDialog(p),
+                                child: const Text('Nhập kho'),
+                              )
+                            : StatusBadge(
+                                ((p['stock'] ?? p['quantity']) is num &&
+                                        p['min_stock'] is num &&
+                                        ((p['stock'] ?? p['quantity'])
+                                                as num) <=
+                                            (p['min_stock'] as num))
+                                    ? 'critical'
+                                    : 'available',
+                                labelOverride:
+                                    'Tồn: ${value(p['stock'] ?? p['quantity'])} ${value(p['unit'])}',
+                              ),
+                      ),
+                  ],
                 ],
               );
             },
@@ -752,27 +962,7 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
         else
           AsyncPanel(
             key: ValueKey('spare-part-requests-$_revision'),
-            load: () async {
-              try {
-                return await widget.api.get('/spare-parts/requests');
-              } catch (_) {
-                return {
-                  'requests': [
-                    {
-                      '_id': 'req-1',
-                      'status': 'pending',
-                      'quantity': 2,
-                      'reason': 'Thay cáp HDMI phòng A1-201',
-                      'spare_part_id': {
-                        'code': 'PART-HDMI',
-                        'name': 'Cáp HDMI 2.0 chống nhiễu 15m',
-                      },
-                      'requested_by': {'full_name': 'Trần Minh Tuấn (KT001)'},
-                    },
-                  ],
-                };
-              }
-            },
+            load: () => widget.api.get('/spare-parts/requests'),
             builder: (data) {
               final reqs = asList(data['requests'] ?? data['data']);
               if (reqs.isEmpty) {
@@ -782,31 +972,45 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
               }
               return Column(
                 children: [
-                  for (final r in reqs)
-                    DataCard(
-                      title:
-                          '${value(asMap(r['spare_part_id'] ?? r['part_id'])['code'], fallback: 'PART')} · SL: ${value(r['quantity'])}',
-                      subtitle:
-                          'Người yêu cầu: ${value(asMap(r['requested_by'])['full_name'], fallback: 'KTV')} · Lý do: ${value(r['reason'])}',
-                      trailing: StatusBadge(
-                        value(r['status'], fallback: 'pending'),
-                      ),
-                      child: (_canApprove && value(r['status']) == 'pending')
-                          ? Wrap(
-                              spacing: 8,
-                              children: [
-                                FilledButton.tonal(
-                                  onPressed: () => _decideRequest(r, true),
-                                  child: const Text('Phê duyệt xuất kho'),
-                                ),
-                                OutlinedButton(
-                                  onPressed: () => _decideRequest(r, false),
-                                  child: const Text('Từ chối'),
-                                ),
-                              ],
-                            )
-                          : null,
+                  for (final r in reqs) ...[
+                    Builder(
+                      builder: (context) {
+                        final repair = asMap(r['repair_id']);
+                        final items = asList(r['items']);
+                        final itemSummary = items
+                            .map((item) {
+                              final part = asMap(item['part_id']);
+                              return '${value(part['code'], fallback: 'Linh kiện')} · SL: ${value(item['qty'] ?? item['quantity'], fallback: '1')} ${value(part['unit'], fallback: '')}';
+                            })
+                            .join(' | ');
+                        return DataCard(
+                          title:
+                              '${value(repair['ticket_code'], fallback: 'Yêu cầu vật tư')} · $itemSummary',
+                          subtitle:
+                              'Người yêu cầu: ${value(asMap(r['requested_by'])['full_name'], fallback: 'KTV')}${value(r['reason'], fallback: '').isEmpty ? '' : ' · Lý do: ${value(r['reason'])}'}',
+                          trailing: StatusBadge(
+                            value(r['status'], fallback: 'pending'),
+                          ),
+                          child:
+                              (_canApprove && value(r['status']) == 'pending')
+                              ? Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    FilledButton.tonal(
+                                      onPressed: () => _decideRequest(r, true),
+                                      child: const Text('Phê duyệt xuất kho'),
+                                    ),
+                                    OutlinedButton(
+                                      onPressed: () => _decideRequest(r, false),
+                                      child: const Text('Từ chối'),
+                                    ),
+                                  ],
+                                )
+                              : null,
+                        );
+                      },
                     ),
+                  ],
                 ],
               );
             },
@@ -814,6 +1018,452 @@ class _SparePartsMobilePageState extends State<SparePartsMobilePage> {
       ],
     );
   }
+}
+
+class _WarrantyClaimDialog extends StatefulWidget {
+  const _WarrantyClaimDialog({required this.equipment});
+
+  final Json equipment;
+
+  @override
+  State<_WarrantyClaimDialog> createState() => _WarrantyClaimDialogState();
+}
+
+class _WarrantyClaimDialogState extends State<_WarrantyClaimDialog> {
+  final _description = TextEditingController();
+
+  @override
+  void dispose() {
+    _description.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final supplier = asMap(widget.equipment['supplier_id']);
+    return AlertDialog(
+      title: Text('Yêu cầu bảo hành ${value(widget.equipment['code'])}'),
+      content: SizedBox(
+        width: 440,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Nhà cung cấp: ${value(supplier['name'])}'),
+              Text('Email: ${value(supplier['email'])}'),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('warranty_claim_issue'),
+                controller: _description,
+                minLines: 3,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  labelText: 'Mô tả hư hỏng / yêu cầu hỗ trợ',
+                  alignLabelWithHint: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Hủy'),
+        ),
+        FilledButton(
+          key: const Key('submit_warranty_claim'),
+          onPressed: () {
+            if (_description.text.trim().isEmpty) return;
+            Navigator.pop(context, {
+              'equipment_id': widget.equipment['_id'],
+              'issue_description': _description.text.trim(),
+            });
+          },
+          child: const Text('Gửi yêu cầu hãng'),
+        ),
+      ],
+    );
+  }
+}
+
+class _WarrantyClaimStatusDialog extends StatefulWidget {
+  const _WarrantyClaimStatusDialog({
+    required this.status,
+    required this.equipmentName,
+  });
+
+  final String status;
+  final String equipmentName;
+
+  @override
+  State<_WarrantyClaimStatusDialog> createState() =>
+      _WarrantyClaimStatusDialogState();
+}
+
+class _WarrantyClaimStatusDialogState
+    extends State<_WarrantyClaimStatusDialog> {
+  final _note = TextEditingController();
+
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
+
+  String get _statusLabel => switch (widget.status) {
+    'IN_PROGRESS' => 'Đang xử lý',
+    'RESOLVED' => 'Đã giải quyết',
+    'REJECTED' => 'Bị từ chối',
+    _ => widget.status,
+  };
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text('Cập nhật: $_statusLabel'),
+    content: TextField(
+      key: const Key('warranty_claim_status_note'),
+      controller: _note,
+      minLines: 2,
+      maxLines: 4,
+      decoration: const InputDecoration(
+        labelText: 'Ghi chú phản hồi của hãng (không bắt buộc)',
+        alignLabelWithHint: true,
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(
+        key: const Key('confirm_warranty_claim_status'),
+        onPressed: () => Navigator.pop(context, {
+          'status': widget.status,
+          'note': _note.text.trim(),
+        }),
+        child: const Text('Lưu trạng thái'),
+      ),
+    ],
+  );
+}
+
+class WarrantyMobilePage extends StatefulWidget {
+  const WarrantyMobilePage({super.key, required this.api});
+
+  final RuoApi api;
+
+  @override
+  State<WarrantyMobilePage> createState() => _WarrantyMobilePageState();
+}
+
+class _WarrantyMobilePageState extends State<WarrantyMobilePage> {
+  int _tab = 0;
+  int _days = 30;
+  int _revision = 0;
+  bool _scanning = false;
+
+  String get _role => value(widget.api.user?['role'], fallback: '');
+  bool get _canScan => _role == 'facility_manager' || _role == 'admin';
+
+  void _message(String text) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+
+  Future<void> _createClaim(Json equipment) async {
+    final supplier = asMap(equipment['supplier_id']);
+    if (value(supplier['email'], fallback: '').isEmpty) {
+      _message(
+        'Thiết bị chưa có email nhà cung cấp. Hãy cập nhật thông tin NCC trước.',
+      );
+      return;
+    }
+    final body = await showDialog<Json>(
+      context: context,
+      builder: (_) => _WarrantyClaimDialog(equipment: equipment),
+    );
+    if (body == null || !mounted) return;
+    try {
+      final result = await widget.api.send('POST', '/warranty-claims', body);
+      if (!mounted) return;
+      setState(() {
+        _tab = 2;
+        _revision++;
+      });
+      _message(value(result['message'], fallback: 'Đã tạo hồ sơ bảo hành.'));
+    } catch (error) {
+      if (mounted) _message('Không thể tạo yêu cầu bảo hành: $error');
+    }
+  }
+
+  Future<void> _updateClaim(Json claim, String status) async {
+    final result = await showDialog<Json>(
+      context: context,
+      builder: (_) => _WarrantyClaimStatusDialog(
+        status: status,
+        equipmentName: value(asMap(claim['equipment_id'])['name']),
+      ),
+    );
+    if (result == null || !mounted) return;
+    try {
+      final response = await widget.api.send(
+        'PATCH',
+        '/warranty-claims/${claim['_id']}/status',
+        result,
+      );
+      if (!mounted) return;
+      setState(() => _revision++);
+      _message(value(response['message'], fallback: 'Đã cập nhật trạng thái.'));
+    } catch (error) {
+      if (mounted) _message('Không thể cập nhật hồ sơ bảo hành: $error');
+    }
+  }
+
+  Future<void> _scan() async {
+    setState(() => _scanning = true);
+    try {
+      final result = await widget.api.send(
+        'POST',
+        '/equipments/warranty/check-expirations',
+        {'days': 90},
+      );
+      if (mounted) {
+        _message(value(result['message'], fallback: 'Đã quét hạn bảo hành.'));
+      }
+    } catch (error) {
+      if (mounted) _message('Không thể quét hạn bảo hành: $error');
+    } finally {
+      if (mounted) setState(() => _scanning = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+    children: [
+      SectionTitle(
+        'Bảo hành & Nhà cung cấp',
+        eyebrow: 'WARRANTY RADAR · CLAIMS',
+        subtitle:
+            'Theo dõi hạn bảo hành, gửi yêu cầu hãng và cập nhật tiến độ.',
+        trailing: IconButton(
+          tooltip: 'Tải lại',
+          onPressed: () => setState(() => _revision++),
+          icon: const RuoVectorIcon(RuoIcon.refresh, size: 19),
+        ),
+      ),
+      if (_canScan)
+        Align(
+          alignment: Alignment.centerRight,
+          child: OutlinedButton.icon(
+            key: const Key('scan_warranty_expirations'),
+            onPressed: _scanning ? null : _scan,
+            icon: _scanning
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const RuoVectorIcon(RuoIcon.alert, size: 15),
+            label: const Text('Quét hạn 90 ngày'),
+          ),
+        ),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          ChoiceChip(
+            label: const Text('Radar hết hạn'),
+            selected: _tab == 0,
+            onSelected: (_) => setState(() => _tab = 0),
+          ),
+          ChoiceChip(
+            label: const Text('Thiết bị còn hạn'),
+            selected: _tab == 1,
+            onSelected: (_) => setState(() => _tab = 1),
+          ),
+          ChoiceChip(
+            label: const Text('Hồ sơ yêu cầu hãng'),
+            selected: _tab == 2,
+            onSelected: (_) => setState(() => _tab = 2),
+          ),
+        ],
+      ),
+      const SizedBox(height: 10),
+      if (_tab == 0) ...[
+        Wrap(
+          spacing: 8,
+          children: [
+            for (final days in [30, 60, 90])
+              ChoiceChip(
+                label: Text('$days ngày'),
+                selected: _days == days,
+                onSelected: (_) => setState(() => _days = days),
+              ),
+          ],
+        ),
+        AsyncPanel(
+          key: ValueKey('warranty-radar-$_days-$_revision'),
+          load: () => widget.api.get('/equipments/warranty-expiring', {
+            'days': '$_days',
+          }),
+          builder: (data) {
+            final equipment = asList(data['equipments'] ?? data['items']);
+            if (equipment.isEmpty) {
+              return const EmptyNotice(
+                'Không có thiết bị sắp hết hạn trong khoảng đã chọn.',
+              );
+            }
+            return Column(
+              children: [
+                for (final item in equipment)
+                  Builder(
+                    builder: (context) {
+                      final remaining =
+                          int.tryParse(
+                            '${item['days_remaining'] ?? item['daysRemaining'] ?? 0}',
+                          ) ??
+                          0;
+                      final supplier = asMap(item['supplier_id']);
+                      final urgency = remaining <= 30
+                          ? 'critical'
+                          : remaining <= 60
+                          ? 'major'
+                          : 'minor';
+                      return DataCard(
+                        title:
+                            '${value(item['code'])} · ${value(item['name'])}',
+                        subtitle:
+                            'Hết hạn ${formatVnDate(item['warranty_expiry'])} · NCC: ${value(supplier['name'])} · ${value(supplier['phone'])}',
+                        trailing: StatusBadge(
+                          urgency,
+                          labelOverride: remaining <= 0
+                              ? 'Hết hạn'
+                              : 'Còn $remaining ngày',
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            );
+          },
+        ),
+      ] else if (_tab == 1)
+        AsyncPanel(
+          key: ValueKey('warranty-active-$_revision'),
+          load: () => widget.api.get('/equipments', {
+            'warranty_status': 'active',
+            'limit': '200',
+          }),
+          builder: (data) {
+            final equipment = asList(data['equipments']);
+            if (equipment.isEmpty) {
+              return const EmptyNotice('Không có thiết bị còn hạn bảo hành.');
+            }
+            return Column(
+              children: [
+                for (final item in equipment)
+                  Builder(
+                    builder: (context) {
+                      final supplier = asMap(item['supplier_id']);
+                      final canClaim = value(
+                        supplier['email'],
+                        fallback: '',
+                      ).isNotEmpty;
+                      return DataCard(
+                        title:
+                            '${value(item['code'])} · ${value(item['name'])}',
+                        subtitle:
+                            'Còn bảo hành đến ${formatVnDate(item['warranty_expiry'])} · NCC: ${value(supplier['name'])} · Email: ${value(supplier['email'])}',
+                        trailing: OutlinedButton(
+                          key: ValueKey('create_warranty_claim_${item['_id']}'),
+                          onPressed: canClaim ? () => _createClaim(item) : null,
+                          child: const Text('Tạo yêu cầu hãng'),
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            );
+          },
+        )
+      else
+        AsyncPanel(
+          key: ValueKey('warranty-claims-$_revision'),
+          load: () => widget.api.get('/warranty-claims'),
+          builder: (data) {
+            final claims = asList(data['claims']);
+            if (claims.isEmpty) {
+              return const EmptyNotice('Chưa có hồ sơ yêu cầu bảo hành hãng.');
+            }
+            return Column(
+              children: [
+                for (final claim in claims)
+                  Builder(
+                    builder: (context) {
+                      final equipment = asMap(claim['equipment_id']);
+                      final supplier = asMap(claim['supplier_id']);
+                      final status = value(claim['status'], fallback: 'OPEN');
+                      final history = asList(claim['status_history']);
+                      final nextStatuses = switch (status) {
+                        'OPEN' => ['IN_PROGRESS', 'REJECTED'],
+                        'IN_PROGRESS' => ['RESOLVED', 'REJECTED'],
+                        _ => <String>[],
+                      };
+                      return DataCard(
+                        title:
+                            '${value(equipment['code'])} · ${value(equipment['name'])}',
+                        subtitle:
+                            'NCC: ${value(supplier['name'])} (${value(supplier['email'])}) · Email: ${value(claim['supplier_email_status'])}\n${value(claim['issue_description'])}',
+                        trailing: StatusBadge(
+                          status,
+                          labelOverride: switch (status) {
+                            'OPEN' => 'Mới gửi',
+                            'IN_PROGRESS' => 'Đang xử lý',
+                            'RESOLVED' => 'Đã giải quyết',
+                            'REJECTED' => 'Bị từ chối',
+                            _ => status,
+                          },
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (final entry in history)
+                              Text(
+                                '${value(entry['status'])} · ${value(asMap(entry['updated_by'])['full_name'])}${value(entry['note'], fallback: '').isEmpty ? '' : ' · ${value(entry['note'])}'}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            if (nextStatuses.isNotEmpty)
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final next in nextStatuses)
+                                    OutlinedButton(
+                                      key: ValueKey(
+                                        'warranty_status_${claim['_id']}_$next',
+                                      ),
+                                      onPressed: () =>
+                                          _updateClaim(claim, next),
+                                      child: Text(switch (next) {
+                                        'IN_PROGRESS' => 'Bắt đầu xử lý',
+                                        'RESOLVED' => 'Đã giải quyết',
+                                        _ => 'Bị từ chối',
+                                      }),
+                                    ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            );
+          },
+        ),
+    ],
+  );
 }
 
 /// 3. Quản Trị Bảo Mật SHA-256, AI #4B, Người Dùng & Ma Trận RBAC (AdminGovernanceMobilePage)

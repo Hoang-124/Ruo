@@ -40,6 +40,9 @@ class _OperationsPageState extends State<OperationsPage> {
     if (_role == 'technician' || _role == 'facility_manager') {
       sections.add(('maintenance', 'Bảo dưỡng'));
     }
+    if (['technician', 'facility_manager', 'admin'].contains(_role)) {
+      sections.add(('warranty', 'Bảo hành & NCC'));
+    }
     if (_role != 'lecturer') sections.add(('disposals', 'Thanh lý'));
     sections.add(('inventory', 'Kiểm kê & QR'));
     if (_role == 'admin' || _role == 'facility_manager') {
@@ -86,6 +89,7 @@ class _OperationsPageState extends State<OperationsPage> {
             'spare_parts' => SparePartsMobilePage(api: widget.api),
             'transfers' => TransfersPage(api: widget.api),
             'maintenance' => MaintenancePage(api: widget.api),
+            'warranty' => WarrantyMobilePage(api: widget.api),
             'disposals' => DisposalsPage(api: widget.api),
             'governance' => AdminGovernanceMobilePage(api: widget.api),
             _ => InventoryPage(api: widget.api),

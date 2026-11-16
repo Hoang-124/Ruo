@@ -7,8 +7,8 @@ const partsRequestSchema = new mongoose.Schema({
   repair_id: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Repair', 
-    required: true, 
-    index: true 
+    default: null,
+    index: true
   },
   requested_by: { 
     type: mongoose.Schema.Types.ObjectId, 
@@ -42,6 +42,10 @@ const partsRequestSchema = new mongoose.Schema({
       default: 0 
     }
   }],
+  reason: {
+    type: String,
+    default: ''
+  },
   status: { 
     type: String, 
     enum: Object.values(PARTS_REQUEST_STATUSES), 
