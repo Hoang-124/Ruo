@@ -299,23 +299,38 @@ export const sendOperationsMessage = async (req, res) => {
         decided_at: null
       };
 
-      // Tự động tạo PartsRequest song song trong CSDL để bảng Kho Linh Kiện hiển thị tức thì
-      try {
-        const pr = await PartsRequest.create({
-          repair_id: repair_id && mongoose.Types.ObjectId.isValid(repair_id) ? repair_id : null,
-          requested_by: sender._id,
-          items: [{
-            part_id: part._id,
-            qty: Number(quantity) || 1,
-            unit_price: part.price || 0
-          }],
-          status: 'pending'
-        });
-        if (pr) {
-          enrichedActionData.parts_request_id = pr._id.toString();
+      // Tự động tạo PartsRequest song song trong CSDL để bảng Kho Linh Kiện hiển thị tức thì (chống duplicate)
+      if (action_data.parts_request_id) {
+        enrichedActionData.parts_request_id = action_data.parts_request_id;
+      } else {
+        try {
+          const recentPr = await PartsRequest.findOne({
+            repair_id: repair_id && mongoose.Types.ObjectId.isValid(repair_id) ? repair_id : null,
+            requested_by: sender._id,
+            'items.part_id': part._id,
+            status: 'pending'
+          }).sort({ created_at: -1 });
+
+          if (recentPr && (Date.now() - new Date(recentPr.created_at).getTime() < 15000)) {
+            enrichedActionData.parts_request_id = recentPr._id.toString();
+          } else {
+            const pr = await PartsRequest.create({
+              repair_id: repair_id && mongoose.Types.ObjectId.isValid(repair_id) ? repair_id : null,
+              requested_by: sender._id,
+              items: [{
+                part_id: part._id,
+                qty: Number(quantity) || 1,
+                unit_price: part.price || 0
+              }],
+              status: 'pending'
+            });
+            if (pr) {
+              enrichedActionData.parts_request_id = pr._id.toString();
+            }
+          }
+        } catch (prErr) {
+          console.warn('Lỗi tạo PartsRequest từ chat action card:', prErr.message);
         }
-      } catch (prErr) {
-        console.warn('Lỗi tạo PartsRequest từ chat action card:', prErr.message);
       }
     }
 

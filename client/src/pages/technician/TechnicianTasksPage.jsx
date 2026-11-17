@@ -128,28 +128,17 @@ export const TechnicianTasksPage = () => {
     const chosenPart = availableParts.find((p) => p._id === selectedPartId);
     setSubmittingPartRequest(true);
     try {
-      // 1. Tạo bản ghi PartsRequest gắn với mã phiếu
+      // 1. Tạo bản ghi PartsRequest gắn với mã phiếu (Backend đã tự động sinh Action Card Kênh Tác Nghiệp KHO-01 và thông báo Quản lý)
       await sparePartApi.createRequest({
         repair_id: partModalTicket._id,
         items: [{
           part_id: selectedPartId,
           qty: Number(requestQty) || 1
-        }]
+        }],
+        reason: requestReason || `Thay thế linh kiện cho ${partModalTicket.equipment_id?.name || 'thiết bị'}`
       });
 
-      // 2. Phát sinh Action Card trên Kênh Tác Nghiệp Kỹ Thuật & Kho KHO-01
-      await chatApi.sendOperationsMessage({
-        message_type: 'action_card',
-        content: `Yêu cầu xuất linh kiện cho phiếu ${partModalTicket.ticket_code} (${partModalTicket.equipment_id?.name || 'TB'})`,
-        action_data: {
-          part_id: selectedPartId,
-          quantity: Number(requestQty) || 1,
-          repair_id: partModalTicket._id,
-          reason: requestReason || `Thay thế linh kiện cho ${partModalTicket.equipment_id?.name || 'thiết bị'}`
-        }
-      }).catch(() => null);
-
-      // 3. Gửi thông báo hệ thống vào Khung Chat của phiếu
+      // 2. Gửi thông báo hệ thống vào Khung Chat riêng của phiếu sửa chữa
       await chatApi.sendTicketMessage(partModalTicket._id, {
         content: `Kỹ thuật viên ${currentUser?.name || 'KTV'} đã gửi yêu cầu xuất kho linh kiện [${chosenPart?.name || 'Linh kiện'}] (${requestQty} Cái). Đang chờ Quản lý CSVC duyệt xuất kho.`,
         message_type: 'system_event'
@@ -158,6 +147,7 @@ export const TechnicianTasksPage = () => {
       toast.success(`Đã gửi yêu cầu cấp linh kiện [${chosenPart?.name || ''}] cho phiếu ${partModalTicket.ticket_code}!`);
       setPartModalTicket(null);
       await fetchTasks();
+      window.dispatchEvent(new CustomEvent('ruo-chat-refresh'));
     } catch (err) {
       toast.error('Lỗi khi gửi yêu cầu linh kiện: ' + err.message);
     } finally {
