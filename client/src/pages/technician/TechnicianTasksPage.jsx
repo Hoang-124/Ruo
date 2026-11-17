@@ -334,6 +334,11 @@ export const TechnicianTasksPage = () => {
   };
 
   const openOutcomeModal = (task) => {
+    const pendingParts = (task.parts_requests || []).filter((pr) => pr.status === 'pending');
+    if (pendingParts.length > 0) {
+      toast.error(`Phiếu này đang có ${pendingParts.length} yêu cầu linh kiện chờ Quản lý duyệt xuất kho. Cần Quản lý duyệt và sửa xong mới có thể Báo cáo kết quả!`);
+      return;
+    }
     setSelectedTask(task);
     setOutcomeData({
       outcome: 'repaired',
@@ -344,6 +349,11 @@ export const TechnicianTasksPage = () => {
 
   const handleOutcomeSubmit = async (e) => {
     e.preventDefault();
+    const pendingParts = (selectedTask?.parts_requests || []).filter((pr) => pr.status === 'pending');
+    if (pendingParts.length > 0) {
+      showError(`Không thể báo cáo kết quả: Còn ${pendingParts.length} yêu cầu linh kiện chưa được Quản lý duyệt xuất kho!`);
+      return;
+    }
     try {
       setSubmitting(true);
       const res = await repairApi.reportOutcome(selectedTask._id, {
@@ -755,6 +765,25 @@ export const TechnicianTasksPage = () => {
                           </div>
                         );
                       })}
+                      {t.parts_requests.some((pr) => pr.status === 'pending') && (
+                        <div
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '11.5px',
+                            background: 'rgba(234,88,12,0.12)',
+                            border: '1px dashed rgba(234,88,12,0.4)',
+                            color: '#c2410c',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Icons.Clock size={13} color="#ea580c" />
+                          <span>Chờ Quản lý CSVC duyệt xuất kho linh kiện trước khi tiến hành sửa và báo cáo kết quả.</span>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -811,14 +840,40 @@ export const TechnicianTasksPage = () => {
                         <span>Ghi Nhật Ký</span>
                       </button>
 
-                      <button
-                        onClick={() => openOutcomeModal(t)}
-                        className="laser-btn laser-btn-primary"
-                        style={{ padding: '8px 14px', fontSize: '12.5px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                      >
-                        <Icons.Check size={16} />
-                        <span>Báo Cáo Kết Quả</span>
-                      </button>
+                      {(() => {
+                        const pendingParts = (t.parts_requests || []).filter((pr) => pr.status === 'pending');
+                        const hasPendingParts = pendingParts.length > 0;
+
+                        return (
+                          <button
+                            disabled={hasPendingParts}
+                            onClick={() => openOutcomeModal(t)}
+                            className={`laser-btn ${hasPendingParts ? 'laser-btn-secondary' : 'laser-btn-primary'}`}
+                            style={{
+                              padding: '8px 14px',
+                              fontSize: '12.5px',
+                              fontWeight: 700,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              opacity: hasPendingParts ? 0.6 : 1,
+                              cursor: hasPendingParts ? 'not-allowed' : 'pointer',
+                              background: hasPendingParts ? 'rgba(234,88,12,0.08)' : undefined,
+                              color: hasPendingParts ? '#ea580c' : undefined,
+                              borderColor: hasPendingParts ? 'rgba(234,88,12,0.35)' : undefined
+                            }}
+                            title={
+                              hasPendingParts
+                                ? `Đang chờ Quản lý duyệt ${pendingParts.length} yêu cầu linh kiện kho. Cần được duyệt xuất kho và sửa xong mới có thể Báo cáo kết quả!`
+                                : 'Báo cáo kết quả sửa chữa'
+                            }
+                          >
+                            {hasPendingParts ? <Icons.Clock size={16} /> : <Icons.Check size={16} />}
+                            <span>{hasPendingParts ? `Chờ Duyệt Kho (${pendingParts.length})` : 'Báo Cáo Kết Quả'}</span>
+                          </button>
+                        );
+                      })()}
                     </>
                   )}
 
@@ -1127,6 +1182,29 @@ export const TechnicianTasksPage = () => {
 
             <form onSubmit={handleOutcomeSubmit}>
               <div className="ruo-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {(() => {
+                  const modalPendingParts = (selectedTask?.parts_requests || []).filter((pr) => pr.status === 'pending');
+                  if (modalPendingParts.length === 0) return null;
+                  return (
+                    <div
+                      style={{
+                        background: 'rgba(239,68,68,0.1)',
+                        border: '1px solid rgba(239,68,68,0.3)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '10px 14px',
+                        color: '#dc2626',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      <Icons.AlertTriangle size={16} />
+                      <span>Phiếu này đang có <strong>{modalPendingParts.length}</strong> yêu cầu linh kiện chờ Quản lý duyệt xuất kho. Vui lòng đợi duyệt trước khi gửi báo cáo kết quả!</span>
+                    </div>
+                  );
+                })()}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', background: 'var(--surface-2)', border: '1px solid var(--border-focus)', borderRadius: 'var(--radius-sm)', padding: '8px 10px' }}>
                   <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                     <Icons.Sparkles size={13} style={{ color: 'var(--laser-cyan)' }} />
@@ -1198,7 +1276,12 @@ export const TechnicianTasksPage = () => {
 
               <div className="ruo-drawer-footer">
                 <button type="button" onClick={() => setShowOutcomeModal(false)} className="laser-btn laser-btn-secondary" style={{ padding: '8px 16px' }}>Hủy Bỏ</button>
-                <button type="submit" disabled={submitting} className="laser-btn laser-btn-primary" style={{ padding: '8px 20px', fontWeight: 700 }}>
+                <button
+                  type="submit"
+                  disabled={submitting || (selectedTask?.parts_requests || []).some((pr) => pr.status === 'pending')}
+                  className="laser-btn laser-btn-primary"
+                  style={{ padding: '8px 20px', fontWeight: 700, opacity: (selectedTask?.parts_requests || []).some((pr) => pr.status === 'pending') ? 0.5 : 1 }}
+                >
                   {submitting ? 'Đang Báo Cáo...' : 'Xác Nhận & Gửi Báo Cáo'}
                 </button>
               </div>

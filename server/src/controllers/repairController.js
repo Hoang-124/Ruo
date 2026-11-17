@@ -25,7 +25,8 @@ import {
   MOVEMENT_TYPES,
   MOVEMENT_STATUSES,
   ROOM_TYPES,
-  NOTIFICATION_TYPES
+  NOTIFICATION_TYPES,
+  PARTS_REQUEST_STATUSES
 } from '../config/constants.js';
 
 // @desc    Get all repairs with SLA evaluation & filtering
@@ -1113,6 +1114,18 @@ export const reportRepairOutcome = async (req, res) => {
     const repair = await Repair.findById(req.params.id);
     if (!repair) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu sửa chữa.' });
+    }
+
+    // Chặn báo cáo kết quả nếu vẫn còn yêu cầu linh kiện chưa được Quản lý duyệt xuất kho
+    const pendingParts = await PartsRequest.find({
+      repair_id: repair._id,
+      status: PARTS_REQUEST_STATUSES.PENDING
+    });
+    if (pendingParts.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Phiếu sửa chữa đang có ${pendingParts.length} yêu cầu linh kiện chờ Quản lý duyệt xuất kho. Vui lòng đợi Quản lý duyệt hoặc từ chối phiếu xin linh kiện trước khi báo cáo kết quả.`
+      });
     }
 
     const targetStatus = outcome === REPAIR_OUTCOMES.REPAIRED ? REPAIR_STATUSES.RESOLVED : REPAIR_STATUSES.UNREPAIRABLE;
