@@ -75,6 +75,8 @@ export const MaintenancePage = () => {
   const [editingPlanId, setEditingPlanId] = useState(null);
   const [editingRecordId, setEditingRecordId] = useState(null);
   const [recordFilter, setRecordFilter] = useState('ALL');
+  const [logRoomId, setLogRoomId] = useState('');
+  const [expandedRooms, setExpandedRooms] = useState({});
 
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
@@ -186,6 +188,76 @@ export const MaintenancePage = () => {
     });
   }, [records, recordFilter]);
 
+  const availableRoomsInPlan = useMemo(() => {
+    const roomMap = new Map();
+    for (const item of planEquipment) {
+      const r = item.room_id;
+      if (r) {
+        const id = r._id || r;
+        if (!roomMap.has(String(id))) {
+          const fullRoom = rooms.find((rm) => rm._id === id) || (typeof r === 'object' ? r : { _id: id, code: id, name: '' });
+          roomMap.set(String(id), fullRoom);
+        }
+      }
+    }
+    return Array.from(roomMap.values()).sort((a, b) => String(a.code || '').localeCompare(String(b.code || '')));
+  }, [planEquipment, rooms]);
+
+  const filteredPlanEquipment = useMemo(() => {
+    if (!logRoomId) return planEquipment;
+    return planEquipment.filter((item) => String(item.room_id?._id || item.room_id) === String(logRoomId));
+  }, [planEquipment, logRoomId]);
+
+  const groupedRecordsByRoom = useMemo(() => {
+    const groups = new Map();
+    for (const rec of filteredRecords) {
+      const room = rec.room_id || {};
+      const roomId = room._id || 'unknown';
+      const roomCode = room.code || 'Chưa gán phòng';
+      const roomName = room.name || '';
+      const building = room.building || rec.plan_id?.building || '—';
+      const floor = room.floor || rec.plan_id?.floor || '—';
+
+      if (!groups.has(String(roomId))) {
+        groups.set(String(roomId), {
+          roomId: String(roomId),
+          roomCode,
+          roomName,
+          building,
+          floor,
+          room,
+          records: []
+        });
+      }
+      groups.get(String(roomId)).records.push(rec);
+    }
+    return Array.from(groups.values());
+  }, [filteredRecords]);
+
+  const toggleRoomExpand = (roomId) => {
+    setExpandedRooms((prev) => ({
+      ...prev,
+      [roomId]: !prev[roomId]
+    }));
+  };
+
+  const isAllExpanded = useMemo(() => {
+    if (!groupedRecordsByRoom.length) return false;
+    return groupedRecordsByRoom.every((g) => expandedRooms[g.roomId]);
+  }, [groupedRecordsByRoom, expandedRooms]);
+
+  const toggleAllRooms = () => {
+    if (isAllExpanded) {
+      setExpandedRooms({});
+    } else {
+      const all = {};
+      groupedRecordsByRoom.forEach((g) => {
+        all[g.roomId] = true;
+      });
+      setExpandedRooms(all);
+    }
+  };
+
   const changeCalendarMonth = (amount) => {
     setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1));
     setSelectedCalendarDate((current) => {
@@ -204,6 +276,7 @@ export const MaintenancePage = () => {
 
   const openMaintenanceLog = (plan) => {
     setEditingRecordId(null);
+    setLogRoomId('');
     setLogForm({ plan_id: plan._id, equipment_id: '', results: {}, notes: '' });
     window.setTimeout(() => document.getElementById('maintenance-log-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   };
@@ -304,6 +377,7 @@ export const MaintenancePage = () => {
   const startEditRecord = (rec) => {
     const planId = rec.plan_id?._id || rec.plan_id;
     const eqId = rec.equipment_id?._id || rec.equipment_id;
+    const roomId = rec.room_id?._id || rec.room_id;
     const mappedResults = {};
     (rec.checklist_results || []).forEach((item) => {
       mappedResults[item.item] = Boolean(item.passed);
@@ -312,6 +386,7 @@ export const MaintenancePage = () => {
       }
     });
     setEditingRecordId(rec._id);
+    setLogRoomId(roomId ? String(roomId) : '');
     setLogForm({
       plan_id: planId || '',
       equipment_id: eqId || '',
@@ -774,19 +849,120 @@ export const MaintenancePage = () => {
           <form onSubmit={handleLogResult} style={{ display: 'grid', gap: 15 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
               <label style={labelStyle}>Kế hoạch
-                <select className="ruo-portal-input" style={fieldStyle} value={logForm.plan_id} onChange={(event) => { setEditingRecordId(null); setLogForm({ plan_id: event.target.value, equipment_id: '', results: {}, notes: '' }); }}>
-                  {plans.map((plan) => <option key={plan._id} value={plan._id}>{plan.title} · {plan.building}/T{plan.floor}</option>)}
+                <select
+                  className="ruo-portal-input"
+                  style={fieldStyle}
+                  value={logForm.plan_id}
+                  onChange={(event) => {
+                    setEditingRecordId(null);
+                    setLogRoomId('');
+                    setLogForm({ plan_id: event.target.value, equipment_id: '', results: {}, notes: '' });
+                  }}
+                >
+                  {plans.map((plan) => (
+                    <option key={plan._id} value={plan._id}>
+                      {plan.title} · {plan.building}/T{plan.floor}
+                    </option>
+                  ))}
                 </select>
               </label>
-              <label style={labelStyle}>Thiết bị
-                <select required className="ruo-portal-input" style={fieldStyle} value={logForm.equipment_id} onChange={(event) => setLogForm({ ...logForm, equipment_id: event.target.value })}>
+
+              <label style={labelStyle}>Phòng kiểm tra (Lọc thiết bị theo phòng)
+                <select
+                  className="ruo-portal-input"
+                  style={fieldStyle}
+                  value={logRoomId}
+                  onChange={(event) => {
+                    setLogRoomId(event.target.value);
+                    setLogForm((prev) => ({ ...prev, equipment_id: '' }));
+                  }}
+                >
+                  <option value="">Tất cả các phòng ({availableRoomsInPlan.length} phòng)</option>
+                  {availableRoomsInPlan.map((r) => (
+                    <option key={r._id} value={r._id}>
+                      Phòng {r.code} {r.name ? `· ${r.name}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={labelStyle}>Thiết bị cần kiểm tra *
+                <select
+                  required
+                  className="ruo-portal-input"
+                  style={fieldStyle}
+                  value={logForm.equipment_id}
+                  onChange={(event) => {
+                    const selectedId = event.target.value;
+                    const targetEq = planEquipment.find((item) => item._id === selectedId);
+                    if (targetEq?.room_id && !logRoomId) {
+                      setLogRoomId(targetEq.room_id._id || targetEq.room_id);
+                    }
+                    setLogForm({ ...logForm, equipment_id: selectedId });
+                  }}
+                >
                   <option value="">Chọn thiết bị</option>
-                  {planEquipment.map((item) => (
-                    <option key={item._id} value={item._id}>{item.code} · {item.name} ({item.room_id?.code})</option>
+                  {filteredPlanEquipment.map((item) => (
+                    <option key={item._id} value={item._id}>
+                      {item.code} · {item.name} {logRoomId ? '' : `(${item.room_id?.code || '—'})`}
+                    </option>
                   ))}
                 </select>
               </label>
             </div>
+
+            {/* Quick-select equipment pills for the chosen room */}
+            {logRoomId && filteredPlanEquipment.length > 0 && (
+              <div style={{ padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 8, border: '1px solid var(--border-default)' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>
+                    Danh sách thiết bị tại Phòng {availableRoomsInPlan.find((r) => String(r._id) === String(logRoomId))?.code || ''} ({filteredPlanEquipment.length} thiết bị):
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--ink-muted)' }}>Bấm để chọn nhanh</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {filteredPlanEquipment.map((eqItem) => {
+                    const isSelected = logForm.equipment_id === eqItem._id;
+                    const alreadyChecked = records.some(
+                      (r) => (r.equipment_id?._id || r.equipment_id) === eqItem._id && (r.plan_id?._id || r.plan_id) === selectedPlan._id
+                    );
+
+                    return (
+                      <button
+                        key={eqItem._id}
+                        type="button"
+                        onClick={() => setLogForm((prev) => ({ ...prev, equipment_id: eqItem._id }))}
+                        style={{
+                          padding: '5px 11px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: isSelected ? 800 : 600,
+                          cursor: 'pointer',
+                          border: isSelected ? '1.5px solid var(--blueprint-400)' : '1px solid var(--border-default)',
+                          background: isSelected ? 'rgba(234,88,12,0.15)' : 'var(--surface-1)',
+                          color: isSelected ? 'var(--blueprint-400)' : 'var(--ink-primary)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span>{eqItem.code} · {eqItem.name}</span>
+                        {alreadyChecked ? (
+                          <span style={{ fontSize: 10, color: '#10B981', background: 'rgba(16,185,129,0.12)', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+                            ✔ Đã kiểm
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 10, color: 'var(--ink-muted)', background: 'var(--surface-2)', padding: '1px 6px', borderRadius: 4 }}>
+                            Chưa kiểm
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {!planEquipment.length && (
               <div
                 role="alert"
@@ -850,20 +1026,20 @@ export const MaintenancePage = () => {
         </section>
       )}
 
-      {/* BẢNG KẾT QUẢ BẢO DƯỠNG ĐÃ THỰC HIỆN (ĐỒNG BỘ GIỮA KTV & FACILITY MANAGER) */}
+      {/* BẢNG KẾT QUẢ BẢO DƯỠNG THEO PHÒNG HỌC (ĐỒNG BỘ GIỮA KTV & FACILITY MANAGER) */}
       <section id="maintenance-records-section" style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
           <div>
             <h2 style={{ color: 'var(--ink-primary)', fontSize: 17, margin: 0 }}>
-              Kết quả bảo dưỡng đã gửi (KTV ↔ Facility Manager)
+              Kết quả bảo dưỡng theo phòng học (KTV ↔ Facility Manager)
             </h2>
             <p style={{ color: 'var(--ink-muted)', fontSize: 12, margin: '5px 0 0' }}>
-              Danh sách biên bản kiểm tra thực tế tại hiện trường do Kỹ thuật viên và Quản lý CSVC cập nhật.
+              Tổng hợp biên bản kiểm tra thiết bị theo từng phòng. Bấm vào phòng để xem danh sách toàn bộ trang thiết bị và trạng thái.
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {[
-              { key: 'ALL', label: `Tất cả (${records.length})` },
+              { key: 'ALL', label: `Tất cả (${records.length} TB · ${groupedRecordsByRoom.length} phòng)` },
               { key: 'PASSED', label: `Đạt chuẩn (${records.filter((r) => r.status === 'passed').length})` },
               { key: 'FAILED', label: `Phát hiện hỏng (${records.filter((r) => r.status === 'failed').length})` }
             ].map((tab) => (
@@ -876,120 +1052,258 @@ export const MaintenancePage = () => {
                 {tab.label}
               </button>
             ))}
+
+            {groupedRecordsByRoom.length > 0 && (
+              <button
+                type="button"
+                onClick={toggleAllRooms}
+                className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+              >
+                <span>{isAllExpanded ? 'Thu gọn tất cả' : 'Mở rộng tất cả'}</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {filteredRecords.length === 0 ? (
+        {groupedRecordsByRoom.length === 0 ? (
           <div style={{ padding: '28px 16px', textAlign: 'center', border: '1px dashed var(--border-default)', borderRadius: 10, color: 'var(--ink-muted)', fontSize: 13 }}>
             Chưa có biên bản kết quả bảo dưỡng nào trong bộ lọc này. Hãy chọn một kế hoạch và bấm <strong>"Ghi nhận kiểm tra"</strong> để gửi kết quả đầu tiên.
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 12 }}>
-            {filteredRecords.map((rec) => {
-              const isPassed = rec.status === 'passed';
-              const eq = rec.equipment_id || {};
-              const room = rec.room_id || {};
-              const plan = rec.plan_id || {};
-              const checker = rec.checked_by || {};
-              const linkedRepair = rec.repair_id || null;
+            {groupedRecordsByRoom.map((group) => {
+              const isExpanded = Boolean(expandedRooms[group.roomId]);
+              const totalInRoom = group.records.length;
+              const passedInRoom = group.records.filter((r) => r.status === 'passed').length;
+              const failedInRoom = group.records.filter((r) => r.status === 'failed').length;
+              const allPassed = failedInRoom === 0;
+              const latestRec = group.records[0] || {};
+              const planTitle = latestRec.plan_id?.title || 'Bảo dưỡng định kỳ';
+              const checker = latestRec.checked_by || {};
 
               return (
                 <div
-                  key={rec._id}
+                  key={group.roomId}
                   style={{
-                    border: isPassed ? '1px solid rgba(16,185,129,0.35)' : '1px solid rgba(239,68,68,0.4)',
+                    border: allPassed ? '1px solid rgba(16,185,129,0.35)' : '1px solid rgba(239,68,68,0.4)',
                     borderRadius: 12,
-                    padding: 16,
                     background: 'var(--surface-1)',
-                    display: 'grid',
-                    gap: 10
+                    overflow: 'hidden',
+                    boxShadow: 'var(--shadow-sm)'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                        <span
-                          style={{
-                            borderRadius: 999,
-                            padding: '3px 10px',
-                            fontSize: 11,
-                            fontWeight: 800,
-                            background: isPassed ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)',
-                            color: isPassed ? '#10B981' : '#EF4444'
-                          }}
-                        >
-                          {isPassed ? '✔ ĐẠT CHUẨN VẬN HÀNH' : '⚠ PHÁT HIỆN HƯ HỎNG'}
-                        </span>
-                        <strong style={{ color: 'var(--ink-primary)', fontSize: 14 }}>
-                          {eq.code || 'TB'} · {eq.name || 'Thiết bị'}
-                        </strong>
-                        <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}>
-                          (Phòng {room.code || '—'} · Tòa {room.building || plan.building || '—'}/T{room.floor || plan.floor || '—'})
-                        </span>
+                  {/* Thanh Tiêu Đề Phòng Học - Bấm vào để đóng/mở danh sách thiết bị */}
+                  <div
+                    onClick={() => toggleRoomExpand(group.roomId)}
+                    style={{
+                      padding: '14px 18px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 12,
+                      background: isExpanded ? 'var(--surface-2)' : 'var(--surface-1)',
+                      borderBottom: isExpanded ? '1px solid var(--border-default)' : 'none',
+                      transition: 'background 0.15s ease'
+                    }}
+                    title="Bấm để xem/thu gọn toàn bộ trang thiết bị của phòng này"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 8,
+                          background: allPassed ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                          border: allPassed ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(239,68,68,0.3)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: allPassed ? '#10B981' : '#EF4444'
+                        }}
+                      >
+                        <Icons.Building size={18} />
                       </div>
-                      <div style={{ color: 'var(--ink-secondary)', fontSize: 12, marginTop: 4 }}>
-                        Kế hoạch: <strong>{plan.title || 'Bảo dưỡng định kỳ'}</strong> · Người kiểm tra: <strong>{checker.full_name || 'Kỹ thuật viên'}</strong> ({checker.code || 'KTV'}) · Lúc: {formatDateTime(rec.check_date)}
+
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <strong style={{ fontSize: 15, color: 'var(--ink-pure)' }}>
+                            Phòng {group.roomCode} {group.roomName ? `· ${group.roomName}` : ''}
+                          </strong>
+                          <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
+                            (Tòa {group.building} · Tầng {group.floor})
+                          </span>
+                          <span
+                            style={{
+                              borderRadius: 999,
+                              padding: '2px 10px',
+                              fontSize: 11,
+                              fontWeight: 800,
+                              background: allPassed ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)',
+                              color: allPassed ? '#10B981' : '#EF4444'
+                            }}
+                          >
+                            {allPassed
+                              ? `✔ 100% ĐẠT CHUẨN (${totalInRoom} thiết bị)`
+                              : `⚠ CÓ ${failedInRoom} THIẾT BỊ HỎNG (${passedInRoom}/${totalInRoom} đạt)`}
+                          </span>
+                        </div>
+                        <div style={{ color: 'var(--ink-secondary)', fontSize: 12, marginTop: 4 }}>
+                          Kế hoạch: <strong>{planTitle}</strong> · Kiểm tra: <strong>{checker.full_name || 'KTV'}</strong> ({checker.code || 'KTV'}) · Lúc: {formatDateTime(latestRec.check_date)}
+                        </div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button
-                        type="button"
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span
                         className="ruo-btn ruo-btn-secondary ruo-btn-sm"
-                        onClick={() => startEditRecord(rec)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          pointerEvents: 'none'
+                        }}
                       >
-                        <Icons.Edit size={13} /> Sửa kết quả
-                      </button>
-                      <button
-                        type="button"
-                        className="ruo-btn ruo-btn-secondary ruo-btn-sm"
-                        style={{ color: '#EF4444' }}
-                        disabled={submitting}
-                        onClick={() => handleDeleteRecord(rec)}
-                      >
-                        <Icons.Trash2 size={13} /> Xóa
-                      </button>
+                        <span>{isExpanded ? 'Thu gọn' : `Xem chi tiết ${totalInRoom} thiết bị`}</span>
+                        <span style={{ display: 'inline-flex', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+                          <Icons.ChevronDown size={14} />
+                        </span>
+                      </span>
                     </div>
                   </div>
 
-                  {Array.isArray(rec.checklist_results) && rec.checklist_results.length > 0 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 8 }}>
-                      {rec.checklist_results.map((item, idx) => (
-                        <div
-                          key={`${rec._id}-chk-${idx}`}
-                          style={{
-                            padding: '8px 10px',
-                            borderRadius: 8,
-                            background: item.passed ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.08)',
-                            border: item.passed ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(239,68,68,0.25)',
-                            fontSize: 12
-                          }}
-                        >
-                          <div style={{ fontWeight: 700, color: item.passed ? '#10B981' : '#EF4444' }}>
-                            {item.passed ? '✔ Đạt:' : '✕ Không đạt:'} <span style={{ color: 'var(--ink-primary)' }}>{item.item}</span>
-                          </div>
-                          {!item.passed && item.notes && (
-                            <div style={{ color: '#EF4444', fontSize: 11.5, marginTop: 3 }}>
-                              Chi tiết lỗi: {item.notes}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {/* Danh Sách Toàn Bộ Trang Thiết Bị Trong Phòng Khi Click Mở */}
+                  {isExpanded && (
+                    <div style={{ padding: 14, display: 'grid', gap: 10, background: 'var(--surface-card)' }}>
+                      {group.records.map((rec) => {
+                        const isPassed = rec.status === 'passed';
+                        const eq = rec.equipment_id || {};
+                        const linkedRepair = rec.repair_id || null;
 
-                  {(rec.notes || linkedRepair) && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, paddingTop: 4, borderTop: '1px dashed var(--border-default)', fontSize: 12 }}>
-                      {rec.notes ? (
-                        <div style={{ color: 'var(--ink-secondary)' }}>
-                          <strong>Ghi chú KTV:</strong> {rec.notes}
-                        </div>
-                      ) : <span />}
-                      {linkedRepair && (
-                        <span style={{ padding: '3px 10px', borderRadius: 6, background: 'rgba(234,88,12,0.12)', color: 'var(--blueprint-400)', fontWeight: 700 }}>
-                          Đã tạo Phiếu sửa chữa: {linkedRepair.ticket_code || 'REP'} ({linkedRepair.status || 'assigned'})
-                        </span>
-                      )}
+                        return (
+                          <div
+                            key={rec._id}
+                            style={{
+                              border: isPassed ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(239,68,68,0.35)',
+                              borderRadius: 10,
+                              padding: 14,
+                              background: 'var(--surface-1)',
+                              display: 'grid',
+                              gap: 10
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span
+                                  style={{
+                                    fontFamily: 'var(--font-mono)',
+                                    fontWeight: 800,
+                                    fontSize: 12.5,
+                                    color: 'var(--laser-cyan)',
+                                    background: 'rgba(6,182,212,0.1)',
+                                    padding: '2px 8px',
+                                    borderRadius: 4
+                                  }}
+                                >
+                                  {eq.code || 'TB'}
+                                </span>
+                                <strong style={{ color: 'var(--ink-pure)', fontSize: 13.5 }}>
+                                  {eq.name || 'Thiết bị'}
+                                </strong>
+                                {eq.brand && eq.model && (
+                                  <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}>
+                                    ({eq.brand} {eq.model})
+                                  </span>
+                                )}
+                                <span
+                                  style={{
+                                    borderRadius: 999,
+                                    padding: '2px 8px',
+                                    fontSize: 11,
+                                    fontWeight: 800,
+                                    background: isPassed ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)',
+                                    color: isPassed ? '#10B981' : '#EF4444'
+                                  }}
+                                >
+                                  {isPassed ? '✔ Đạt chuẩn' : '⚠ Hư hỏng'}
+                                </span>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button
+                                  type="button"
+                                  className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEditRecord(rec);
+                                  }}
+                                >
+                                  <Icons.Edit size={13} /> Sửa kết quả
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ruo-btn ruo-btn-secondary ruo-btn-sm"
+                                  style={{ color: '#EF4444' }}
+                                  disabled={submitting}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteRecord(rec);
+                                  }}
+                                >
+                                  <Icons.Trash2 size={13} /> Xóa
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Các mục checklist của thiết bị */}
+                            {Array.isArray(rec.checklist_results) && rec.checklist_results.length > 0 && (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 6 }}>
+                                {rec.checklist_results.map((item, idx) => (
+                                  <div
+                                    key={`${rec._id}-chk-${idx}`}
+                                    style={{
+                                      padding: '6px 10px',
+                                      borderRadius: 6,
+                                      background: item.passed ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.08)',
+                                      border: item.passed ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(239,68,68,0.25)',
+                                      fontSize: 11.5
+                                    }}
+                                  >
+                                    <div style={{ fontWeight: 700, color: item.passed ? '#10B981' : '#EF4444' }}>
+                                      {item.passed ? '✔ Đạt:' : '✕ Không đạt:'} <span style={{ color: 'var(--ink-primary)' }}>{item.item}</span>
+                                    </div>
+                                    {!item.passed && item.notes && (
+                                      <div style={{ color: '#EF4444', fontSize: 11, marginTop: 2 }}>
+                                        Chi tiết lỗi: {item.notes}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Ghi chú hoặc phiếu sửa chữa */}
+                            {(rec.notes || linkedRepair) && (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, paddingTop: 4, borderTop: '1px dashed var(--border-default)', fontSize: 11.5 }}>
+                                {rec.notes ? (
+                                  <div style={{ color: 'var(--ink-secondary)' }}>
+                                    <strong>Ghi chú:</strong> {rec.notes}
+                                  </div>
+                                ) : <span />}
+                                {linkedRepair && (
+                                  <span style={{ padding: '2px 8px', borderRadius: 4, background: 'rgba(234,88,12,0.12)', color: 'var(--blueprint-400)', fontWeight: 700, fontSize: 11 }}>
+                                    Phiếu sửa chữa: {linkedRepair.ticket_code || 'REP'} ({linkedRepair.status || 'assigned'})
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
